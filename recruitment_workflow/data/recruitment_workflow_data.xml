@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ============ المراحل (Stages) ============ -->
+        <record id="stage_new" model="recruitment.stage">
+            <field name="name">طلب جديد</field>
+            <field name="code">new</field>
+            <field name="sequence">10</field>
+            <field name="require_attachments">True</field>
+            <field name="description">طلب جديد من الموظف، يحدد فيه نظام التشغيل والتطبيق الرئيسي. المرفقات إجبارية ولا ينتقل للمرحلة الثانية إلا بعد اكتمال كامل المرفقات. مع كنترول على رقم الهوية ورقم الجوال.</field>
+        </record>
+
+        <record id="stage_project_review" model="recruitment.stage">
+            <field name="name">قيد المراجعة - مسؤول المشروع</field>
+            <field name="code">project_review</field>
+            <field name="sequence">20</field>
+            <field name="require_validation">True</field>
+            <field name="description">مراجعة مسؤول المشروع: موافقة / تعديل.</field>
+        </record>
+
+        <record id="stage_operations_review" model="recruitment.stage">
+            <field name="name">مراجعة مدير العمليات</field>
+            <field name="code">operations_review</field>
+            <field name="sequence">30</field>
+            <field name="require_validation">True</field>
+            <field name="description">مراجعة مدير العمليات: موافقة / رفض.</field>
+        </record>
+
+        <record id="stage_gm_approval" model="recruitment.stage">
+            <field name="name">اعتماد المدير العام</field>
+            <field name="code">gm_approval</field>
+            <field name="sequence">40</field>
+            <field name="require_validation">True</field>
+            <field name="description">اعتماد المدير العام: موافقة / رفض.</field>
+        </record>
+
+        <record id="stage_paid" model="recruitment.stage">
+            <field name="name">تم السداد</field>
+            <field name="code">paid</field>
+            <field name="sequence">50</field>
+            <field name="description">تم سداد الرسوم المطلوبة.</field>
+        </record>
+
+        <record id="stage_sponsorship_transfer" model="recruitment.stage">
+            <field name="name">جاري نقل الكفالة</field>
+            <field name="code">sponsorship_transfer</field>
+            <field name="sequence">60</field>
+            <field name="description">جاري إجراءات نقل الكفالة.</field>
+        </record>
+
+        <record id="stage_sponsorship_done" model="recruitment.stage">
+            <field name="name">تم نقل الكفالة - الموارد البشرية</field>
+            <field name="code">sponsorship_done</field>
+            <field name="sequence">70</field>
+            <field name="description">تم نقل الكفالة بنجاح، يتولى قسم الموارد البشرية المتابعة.</field>
+        </record>
+
+        <record id="stage_car_request" model="recruitment.stage">
+            <field name="name">طلب سيارة - مسؤول المشروع</field>
+            <field name="code">car_request</field>
+            <field name="sequence">80</field>
+            <field name="require_car">True</field>
+            <field name="description">يربط مع أسطول السيارات المتاحة. في حال وجود سيارات متاحة يُرسل الطلب لقسم الأسطول لاستلامه والتفويض، ثم يعود لمسؤول المشروع. في حال عدم وجود سيارة لا يقبل الانتقال للخطوة التالية.</field>
+        </record>
+
+        <record id="stage_started" model="recruitment.stage">
+            <field name="name">تم مباشرة العمل</field>
+            <field name="code">started</field>
+            <field name="sequence">90</field>
+            <field name="is_closing_stage">True</field>
+            <field name="description">تم مباشرة العمل، يُنشأ عقد أوتوماتيك في النظام ويُسجّل في المشروع المختار.</field>
+        </record>
+
+        <!-- ============ أنواع المرفقات الإجبارية ============ -->
+        <record id="att_id_copy" model="recruitment.attachment.type">
+            <field name="name">صورة الهوية / الإقامة</field>
+            <field name="sequence">10</field>
+            <field name="required">True</field>
+        </record>
+        <record id="att_cv" model="recruitment.attachment.type">
+            <field name="name">السيرة الذاتية</field>
+            <field name="sequence">20</field>
+            <field name="required">True</field>
+        </record>
+        <record id="att_photo" model="recruitment.attachment.type">
+            <field name="name">صورة شخصية</field>
+            <field name="sequence">30</field>
+            <field name="required">True</field>
+        </record>
+        <record id="att_qualification" model="recruitment.attachment.type">
+            <field name="name">المؤهلات العلمية</field>
+            <field name="sequence">40</field>
+            <field name="required">True</field>
+        </record>
+        <record id="att_bank" model="recruitment.attachment.type">
+            <field name="name">بيانات الحساب البنكي (IBAN)</field>
+            <field name="sequence">50</field>
+            <field name="required">True</field>
+        </record>
+        <record id="att_medical" model="recruitment.attachment.type">
+            <field name="name">الفحص الطبي</field>
+            <field name="sequence">60</field>
+            <field name="required">False</field>
+        </record>
+
+    </data>
+</odoo>

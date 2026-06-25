@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_recruitment_workflow_root"
+              name="سير عمل التوظيف"
+              web_icon="recruitment_workflow,static/description/icon.png"
+              sequence="50"/>
+
+    <menuitem id="menu_recruitment_request"
+              name="طلبات التوظيف"
+              parent="menu_recruitment_workflow_root"
+              action="action_recruitment_request"
+              sequence="10"/>
+
+    <menuitem id="menu_recruitment_config"
+              name="الإعدادات"
+              parent="menu_recruitment_workflow_root"
+              sequence="90"
+              groups="recruitment_workflow.group_recruitment_workflow_manager"/>
+
+    <menuitem id="menu_recruitment_stage"
+              name="المراحل"
+              parent="menu_recruitment_config"
+              action="action_recruitment_stage"
+              sequence="10"/>
+
+    <menuitem id="menu_recruitment_attachment_type"
+              name="أنواع المرفقات"
+              parent="menu_recruitment_config"
+              action="action_recruitment_attachment_type"
+              sequence="20"/>
+
+</odoo>

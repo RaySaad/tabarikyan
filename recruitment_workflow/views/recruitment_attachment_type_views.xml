@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_recruitment_attachment_type_list" model="ir.ui.view">
+        <field name="name">recruitment.attachment.type.list</field>
+        <field name="model">recruitment.attachment.type</field>
+        <field name="arch" type="xml">
+            <list string="أنواع المرفقات" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="required"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_recruitment_attachment_type" model="ir.actions.act_window">
+        <field name="name">أنواع المرفقات</field>
+        <field name="res_model">recruitment.attachment.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

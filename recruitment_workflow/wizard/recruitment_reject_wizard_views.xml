@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_recruitment_reject_wizard_form" model="ir.ui.view">
+        <field name="name">recruitment.reject.wizard.form</field>
+        <field name="model">recruitment.reject.wizard</field>
+        <field name="arch" type="xml">
+            <form string="رفض الطلب">
+                <field name="request_id" invisible="1"/>
+                <group>
+                    <field name="reason" placeholder="اكتب سبب الرفض..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm_reject" type="object"
+                            string="تأكيد الرفض" class="btn-danger"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>
