@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_recruitment_request" model="ir.actions.report">
+        <field name="name">طلب التوظيف</field>
+        <field name="model">recruitment.request</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">recruitment_workflow.report_recruitment_request</field>
+        <field name="report_file">recruitment_workflow.report_recruitment_request</field>
+        <field name="binding_model_id" ref="model_recruitment_request"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_recruitment_request">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page" dir="rtl" style="text-align:right;">
+                        <h2 style="text-align:center;">طلب توظيف</h2>
+                        <h4 style="text-align:center;" t-out="doc.name"/>
+                        <table class="table table-sm o_main_table mt-4">
+                            <tr><td><strong>اسم الموظف</strong></td><td t-out="doc.employee_name"/></tr>
+                            <tr><td><strong>رقم الهوية</strong></td><td t-out="doc.identification_id"/></tr>
+                            <tr><td><strong>رقم الجوال</strong></td><td t-out="doc.mobile"/></tr>
+                            <tr><td><strong>البريد الإلكتروني</strong></td><td t-out="doc.email or ''"/></tr>
+                            <tr><td><strong>الوظيفة</strong></td><td t-out="doc.job_id.name or ''"/></tr>
+                            <tr><td><strong>القسم</strong></td><td t-out="doc.department_id.name or ''"/></tr>
+                            <tr><td><strong>نظام التشغيل</strong></td><td t-out="doc.operating_system or ''"/></tr>
+                            <tr><td><strong>التطبيق الرئيسي</strong></td><td t-out="doc.main_application or ''"/></tr>
+                            <tr><td><strong>المرحلة الحالية</strong></td><td t-out="doc.stage_id.name or ''"/></tr>
+                            <tr><td><strong>السيارة المخصصة</strong></td><td t-out="doc.vehicle_id.display_name or ''"/></tr>
+                        </table>
+
+                        <h4 class="mt-4">المرفقات</h4>
+                        <table class="table table-sm">
+                            <thead>
+                                <tr><th>المرفق</th><th>إجباري</th><th>تم الرفع</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="doc.attachment_line_ids" t-as="line">
+                                    <td t-out="line.attachment_type_id.name"/>
+                                    <td t-out="'نعم' if line.required else 'لا'"/>
+                                    <td t-out="'نعم' if line.is_uploaded else 'لا'"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

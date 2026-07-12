@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7C4DFF"/>
+      <stop offset="1" stop-color="#5E35B1"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F1ECFB"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#00E0A1"/>
+      <stop offset="1" stop-color="#00B27A"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#2A0E5C" flood-opacity="0.28"/>
+    </filter>
+    <filter id="softshadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#3A1773" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- خلفية بحواف دائرية -->
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- زخرفة دوائر شفافة -->
+  <circle cx="408" cy="104" r="120" fill="#FFFFFF" opacity="0.06"/>
+  <circle cx="96" cy="430" r="90" fill="#FFFFFF" opacity="0.05"/>
+
+  <!-- بطاقة الموظف -->
+  <g filter="url(#shadow)">
+    <rect x="118" y="120" width="276" height="300" rx="32" fill="url(#card)"/>
+  </g>
+
+  <!-- شريط علوي للبطاقة -->
+  <rect x="118" y="120" width="276" height="58" rx="32" fill="#EDE5FB"/>
+  <rect x="118" y="150" width="276" height="28" fill="#EDE5FB"/>
+
+  <!-- رأس الموظف -->
+  <circle cx="256" cy="226" r="42" fill="#7C4DFF"/>
+  <!-- جسم الموظف -->
+  <path d="M196 320 C196 282 222 262 256 262 C290 262 316 282 316 320 L316 330 L196 330 Z" fill="#7C4DFF"/>
+
+  <!-- أسطر بيانات -->
+  <rect x="156" y="350" width="200" height="14" rx="7" fill="#C9BBEA"/>
+  <rect x="156" y="378" width="140" height="14" rx="7" fill="#D8CEF0"/>
+
+  <!-- شارة الاعتماد (صح) -->
+  <g filter="url(#softshadow)">
+    <circle cx="352" cy="372" r="56" fill="url(#badge)"/>
+    <path d="M326 374 L344 392 L380 352" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- نقاط مراحل سير العمل (يسار) -->
+  <g>
+    <circle cx="92" cy="180" r="13" fill="#FFFFFF"/>
+    <circle cx="92" cy="232" r="13" fill="#FFFFFF" opacity="0.75"/>
+    <circle cx="92" cy="284" r="13" fill="#FFFFFF" opacity="0.5"/>
+    <rect x="89" y="190" width="6" height="34" fill="#FFFFFF" opacity="0.5"/>
+    <rect x="89" y="242" width="6" height="34" fill="#FFFFFF" opacity="0.35"/>
+  </g>
+</svg>

@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="website_careers_register" name="التسجيل للانضمام كمندوب">
+        <t t-call="website.layout">
+            <div id="wrap" class="oe_structure">
+                <div class="container py-5" dir="rtl">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-7">
+                            <h1 class="mb-2">سجّل للانضمام كمندوب</h1>
+                            <p class="text-muted mb-4">
+                                عبّئ بياناتك وسيتواصل معك فريقنا لاستكمال إجراءات التوظيف.
+                            </p>
+
+                            <form action="/careers/register/submit" method="post">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                <div class="mb-3">
+                                    <label class="form-label" for="employee_name">الاسم الكامل</label>
+                                    <input type="text" id="employee_name" name="employee_name" required="required"
+                                           t-attf-class="form-control #{error.get('employee_name') and 'is-invalid'}"
+                                           t-att-value="default.get('employee_name')"/>
+                                    <div class="invalid-feedback" t-if="error.get('employee_name')" t-out="error['employee_name']"/>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label" for="identification_id">رقم الهوية / الإقامة</label>
+                                    <input type="text" id="identification_id" name="identification_id" required="required"
+                                           placeholder="1XXXXXXXXX أو 2XXXXXXXXX" maxlength="10"
+                                           t-attf-class="form-control #{error.get('identification_id') and 'is-invalid'}"
+                                           t-att-value="default.get('identification_id')"/>
+                                    <div class="invalid-feedback" t-if="error.get('identification_id')" t-out="error['identification_id']"/>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label" for="mobile">رقم الجوال</label>
+                                    <input type="tel" id="mobile" name="mobile" required="required"
+                                           placeholder="05XXXXXXXX"
+                                           t-attf-class="form-control #{error.get('mobile') and 'is-invalid'}"
+                                           t-att-value="default.get('mobile')"/>
+                                    <div class="invalid-feedback" t-if="error.get('mobile')" t-out="error['mobile']"/>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label" for="email">البريد الإلكتروني</label>
+                                    <input type="email" id="email" name="email" required="required"
+                                           t-attf-class="form-control #{error.get('email') and 'is-invalid'}"
+                                           t-att-value="default.get('email')"/>
+                                    <div class="invalid-feedback" t-if="error.get('email')" t-out="error['email']"/>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label" for="gender">الجنس</label>
+                                    <select id="gender" name="gender" required="required"
+                                            t-attf-class="form-select #{error.get('gender') and 'is-invalid'}">
+                                        <option value="">اختر...</option>
+                                        <t t-foreach="genders" t-as="g">
+                                            <option t-att-value="g[0]" t-att-selected="default.get('gender') == g[0]" t-out="g[1]"/>
+                                        </t>
+                                    </select>
+                                    <div class="invalid-feedback" t-if="error.get('gender')" t-out="error['gender']"/>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label" for="country_id">الجنسية</label>
+                                    <select id="country_id" name="country_id" required="required"
+                                            t-attf-class="form-select #{error.get('country_id') and 'is-invalid'}">
+                                        <option value="">اختر...</option>
+                                        <t t-foreach="countries" t-as="c">
+                                            <option t-att-value="c.id" t-att-selected="default.get('country_id') == str(c.id)" t-out="c.name"/>
+                                        </t>
+                                    </select>
+                                    <div class="invalid-feedback" t-if="error.get('country_id')" t-out="error['country_id']"/>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label" for="project_id">المشروع / المنصة التي ترغب بالتسجيل فيها</label>
+                                    <select id="project_id" name="project_id" required="required"
+                                            t-attf-class="form-select #{error.get('project_id') and 'is-invalid'}">
+                                        <option value="">اختر...</option>
+                                        <t t-foreach="projects" t-as="p">
+                                            <option t-att-value="p.id" t-att-selected="default.get('project_id') == str(p.id)" t-out="p.name"/>
+                                        </t>
+                                    </select>
+                                    <div class="invalid-feedback" t-if="error.get('project_id')" t-out="error['project_id']"/>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary btn-lg">إرسال التسجيل</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="website_careers_thank_you" name="شكراً لتسجيلك">
+        <t t-call="website.layout">
+            <div id="wrap" class="oe_structure">
+                <div class="container py-5 text-center" dir="rtl">
+                    <h1 class="mb-3">شكراً لتسجيلك!</h1>
+                    <p class="text-muted">
+                        تم استلام بياناتك بنجاح. سيتواصل معك فريقنا قريباً لاستكمال إجراءات التوظيف.
+                    </p>
+                    <a href="/" class="btn btn-primary mt-3">العودة للرئيسية</a>
+                </div>
+            </div>
+        </t>
+    </template>
+
+</odoo>

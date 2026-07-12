@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_hr_employee_platform_transfer_wizard_form" model="ir.ui.view">
+        <field name="name">hr.employee.platform.transfer.wizard.form</field>
+        <field name="model">hr.employee.platform.transfer.wizard</field>
+        <field name="arch" type="xml">
+            <form string="نقل المندوب لمنصة أخرى">
+                <group>
+                    <field name="employee_id" readonly="1"/>
+                    <field name="current_project_id" readonly="1"/>
+                    <field name="new_project_id" options="{'no_create': True}"/>
+                    <field name="transfer_date"/>
+                    <field name="note" placeholder="مثال: طلب من مسؤول المنصة الجديدة"/>
+                </group>
+                <div class="alert alert-info" role="alert">
+                    السيارة المخصصة للمندوب (إن وُجدت) تبقى معه ولا تتأثر بالنقل.
+                    تُغلق الفترة الحالية في تاريخ المنصات وتُفتح فترة جديدة تلقائياً،
+                    مع تحديث الحساب التحليلي المستخدم للمتابعة والحسابات.
+                </div>
+                <footer>
+                    <button name="action_confirm_transfer" type="object"
+                            string="تأكيد النقل" class="btn-primary"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

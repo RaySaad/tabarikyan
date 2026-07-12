@@ -1,0 +1,416 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ Form View ============ -->
+    <record id="view_recruitment_request_form" model="ir.ui.view">
+        <field name="name">recruitment.request.form</field>
+        <field name="model">recruitment.request</field>
+        <field name="arch" type="xml">
+            <form string="طلب التوظيف">
+                <header>
+                    <!-- موافقة مسؤول المشروع -->
+                    <button name="action_approve" type="object" string="موافقة (مسؤول المشروع)"
+                            class="btn-primary"
+                            groups="recruitment_workflow.group_recruitment_workflow_project_manager"
+                            invisible="state in ('done','rejected') or stage_code != 'project_review'"/>
+                    <!-- موافقة مدير العمليات -->
+                    <button name="action_approve" type="object" string="موافقة (مدير العمليات)"
+                            class="btn-primary"
+                            groups="recruitment_workflow.group_recruitment_workflow_operations"
+                            invisible="state in ('done','rejected') or stage_code != 'operations_review'"/>
+                    <!-- اعتماد المدير العام -->
+                    <button name="action_approve" type="object" string="اعتماد (المدير العام)"
+                            class="btn-primary"
+                            groups="recruitment_workflow.group_recruitment_workflow_gm"
+                            invisible="state in ('done','rejected') or stage_code != 'gm_approval'"/>
+                    <!-- إصدار فاتورة الرسوم (بدل التأكيد اليدوي) -->
+                    <button name="action_create_fee_bill" type="object" string="إصدار فاتورة الرسوم"
+                            class="btn-primary"
+                            groups="recruitment_workflow.group_recruitment_workflow_operations"
+                            invisible="state in ('done','rejected') or stage_code != 'paid' or fee_move_id"/>
+
+                    <!-- رفض - متاح لأصحاب مراحل الموافقة -->
+                    <button name="action_open_reject_wizard" type="object" string="رفض"
+                            class="btn-danger"
+                            groups="recruitment_workflow.group_recruitment_workflow_operations"
+                            invisible="state in ('done','rejected') or not stage_code in ('project_review','operations_review','gm_approval')"/>
+
+                    <!-- إرجاع للتصحيح - متاح في كل المراحل عدا الأولى والنهائية -->
+                    <button name="action_open_return_wizard" type="object" string="إرجاع للتصحيح"
+                            class="btn-warning"
+                            invisible="state in ('done','rejected') or stage_code == 'new'"/>
+
+                    <!-- زر الانتقال العام للمراحل غير التقييمية -->
+                    <button name="action_next_stage" type="object" string="الانتقال للمرحلة التالية"
+                            class="btn-primary"
+                            invisible="state in ('done','rejected') or stage_code in ('project_review','operations_review','gm_approval','car_request') or (stage_code == 'paid' and not fee_move_id)"/>
+
+                    <!-- أزرار طلب السيارة -->
+                    <button name="action_open_car_request_wizard" type="object" string="طلب سيارة"
+                            class="btn-primary"
+                            groups="recruitment_workflow.group_recruitment_workflow_project_manager"
+                            invisible="state in ('done','rejected') or stage_code != 'car_request' or car_requested"/>
+                    <button name="action_fleet_receive" type="object" string="استلام الطلب (الأسطول)"
+                            class="btn-secondary"
+                            groups="recruitment_workflow.group_recruitment_workflow_fleet"
+                            invisible="car_request_state != 'requested'"/>
+                    <button name="action_fleet_authorize" type="object" string="موافقة مسؤول الأسطول (اعتماد نهائي)"
+                            class="btn-secondary"
+                            groups="recruitment_workflow.group_recruitment_workflow_fleet"
+                            invisible="car_request_state != 'received'"/>
+                    <button name="action_next_stage" type="object" string="إنهاء طلب السيارة والمتابعة"
+                            class="btn-primary"
+                            groups="recruitment_workflow.group_recruitment_workflow_project_manager"
+                            invisible="stage_code != 'car_request' or car_request_state != 'authorized'"/>
+
+                    <button name="action_reset_to_draft" type="object" string="إعادة للبداية"
+                            groups="recruitment_workflow.group_recruitment_workflow_operations"
+                            invisible="state != 'rejected'"/>
+                    <button name="action_unarchive_request" type="object" string="إعادة من الأرشيف"
+                            groups="recruitment_workflow.group_recruitment_workflow_operations"
+                            invisible="active"/>
+
+                    <field name="stage_id" widget="statusbar" options="{'clickable': '1'}"/>
+                </header>
+                <sheet>
+                    <field name="active" invisible="1"/>
+                    <field name="fee_move_id" invisible="1"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_contract" type="object"
+                                class="oe_stat_button" icon="fa-file-text-o"
+                                invisible="not has_contract">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">العقد</span>
+                            </div>
+                        </button>
+                        <button name="action_view_fee_bill" type="object"
+                                class="oe_stat_button" icon="fa-money"
+                                invisible="not fee_move_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">فاتورة الرسوم</span>
+                                <field name="fee_payment_state" widget="badge" class="o_stat_value"/>
+                            </div>
+                        </button>
+                    </div>
+
+                    <widget name="web_ribbon" title="مرفوض" bg_color="text-bg-danger"
+                            invisible="state != 'rejected'"/>
+                    <widget name="web_ribbon" title="مكتمل" bg_color="text-bg-success"
+                            invisible="state != 'done'"/>
+
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+
+                    <group>
+                        <group string="بيانات الموظف">
+                            <field name="employee_name"/>
+                            <field name="identification_id" placeholder="1XXXXXXXXX أو 2XXXXXXXXX"/>
+                            <field name="mobile" placeholder="05XXXXXXXX"/>
+                            <field name="email" widget="email"/>
+                            <field name="passport_no"/>
+                        </group>
+                        <group string="بيانات الوظيفة">
+                            <field name="job_id"/>
+                            <field name="department_id"/>
+                            <field name="project_manager_id"/>
+                            <field name="project_id" required="stage_code == 'new'"
+                                   options="{'no_create': True}"/>
+                            <field name="analytic_account_id" readonly="1"
+                                   invisible="not analytic_account_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+
+                    <group string="رسوم التوظيف" invisible="not stage_code or stage_code not in ('gm_approval','paid','sponsorship_transfer','sponsorship_done','car_request','started')">
+                        <group>
+                            <field name="fee_cost_type_id" readonly="fee_move_id"/>
+                            <field name="fee_partner_id" readonly="fee_move_id" options="{'no_create': True}"/>
+                        </group>
+                        <group>
+                            <field name="fee_amount" readonly="fee_move_id"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="fee_payment_state" readonly="1" invisible="not fee_move_id"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="بيانات الهوية / الإقامة">
+                            <field name="id_expiry_date"/>
+                            <label for="id_expiry_date_hijri"/>
+                            <div class="o_row">
+                                <field name="id_expiry_date_hijri" nolabel="1" readonly="1"/>
+                                <button name="action_recompute_hijri" type="object"
+                                        string="إعادة الحساب" class="btn-link"
+                                        icon="fa-refresh"/>
+                            </div>
+                        </group>
+                        <group/>
+                    </group>
+
+                    <group>
+                        <group string="نظام التشغيل والتطبيق">
+                            <field name="operating_system"/>
+                            <field name="main_application"/>
+                        </group>
+                        <group string="العقد">
+                            <field name="contract_start_date"/>
+                            <field name="wage"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="state" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <field name="rejection_reason" invisible="state != 'rejected'" readonly="1"/>
+
+                    <notebook>
+                        <page string="البيانات الشخصية" name="personal">
+                            <group>
+                                <group string="معلومات شخصية">
+                                    <field name="country_id"/>
+                                    <field name="gender"/>
+                                    <field name="marital"/>
+                                </group>
+                                <group string="الحساب البنكي">
+                                    <field name="iban" placeholder="SA00 0000 0000 0000 0000 0000"/>
+                                    <field name="bank_name"/>
+                                </group>
+                            </group>
+                            <group string="العنوان الخاص">
+                                <group>
+                                    <field name="street"/>
+                                    <field name="street2"/>
+                                    <field name="city"/>
+                                </group>
+                                <group>
+                                    <field name="state_address_id"/>
+                                    <field name="zip_code"/>
+                                    <field name="address_country_id"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="المرفقات" name="attachments">
+                            <div class="alert alert-info" role="alert"
+                                 invisible="attachments_complete">
+                                المرفقات الإجبارية غير مكتملة. نسبة الاكتمال:
+                                <field name="attachment_progress" widget="progressbar" class="d-inline"/>
+                            </div>
+                            <div class="alert alert-success" role="alert"
+                                 invisible="not attachments_complete">
+                                جميع المرفقات الإجبارية مكتملة.
+                            </div>
+                            <field name="attachment_line_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="attachment_type_id" readonly="1"/>
+                                    <field name="required" readonly="1"/>
+                                    <field name="file" filename="file_name" widget="binary"/>
+                                    <field name="file_name" column_invisible="1"/>
+                                    <field name="is_uploaded" widget="boolean_toggle" readonly="1"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="السيارة / الأسطول" name="fleet">
+                            <group>
+                                <group>
+                                    <field name="vehicle_id"/>
+                                    <field name="car_requested"/>
+                                    <field name="car_request_state"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="الموظف والعقد" name="contract" invisible="not employee_id and not has_contract">
+                            <field name="has_contract" invisible="1"/>
+                            <group>
+                                <field name="employee_id"/>
+                                <field name="contract_ref" invisible="not has_contract"/>
+                            </group>
+                            <div class="alert alert-warning" role="alert"
+                                 invisible="has_contract or not employee_id">
+                                تم إنشاء سجل الموظف. لإنشاء عقد تلقائي يلزم تثبيت وحدة العقود (Payroll).
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============ List View ============ -->
+    <record id="view_recruitment_request_list" model="ir.ui.view">
+        <field name="name">recruitment.request.list</field>
+        <field name="model">recruitment.request</field>
+        <field name="arch" type="xml">
+            <list string="طلبات التوظيف"
+                  decoration-success="state == 'done'"
+                  decoration-danger="state == 'rejected'"
+                  decoration-muted="state == 'rejected'">
+                <field name="name"/>
+                <field name="employee_name"/>
+                <field name="identification_id"/>
+                <field name="mobile"/>
+                <field name="job_id"/>
+                <field name="project_id"/>
+                <field name="stage_id"/>
+                <field name="vehicle_id" optional="hide"/>
+                <field name="attachment_progress" widget="progressbar" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'done'"
+                       decoration-danger="state == 'rejected'"
+                       decoration-info="state == 'in_progress'"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============ Kanban View ============ -->
+    <record id="view_recruitment_request_kanban" model="ir.ui.view">
+        <field name="name">recruitment.request.kanban</field>
+        <field name="model">recruitment.request</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="stage_id" class="o_kanban_small_column">
+                <field name="stage_id"/>
+                <field name="state"/>
+                <field name="color"/>
+                <field name="employee_name"/>
+                <field name="name"/>
+                <field name="identification_id"/>
+                <field name="mobile"/>
+                <field name="job_id"/>
+                <field name="project_id"/>
+                <field name="attachment_progress"/>
+                <templates>
+                    <t t-name="card">
+                        <div t-attf-class="oe_kanban_card oe_kanban_global_click">
+                            <div class="o_kanban_record_top mb-1">
+                                <div class="o_kanban_record_headings">
+                                    <strong class="o_kanban_record_title">
+                                        <field name="employee_name"/>
+                                    </strong>
+                                    <small class="d-block text-muted">
+                                        <field name="name"/>
+                                    </small>
+                                </div>
+                                <span class="badge text-bg-info" t-if="record.project_id.value">
+                                    <field name="project_id"/>
+                                </span>
+                            </div>
+                            <div>
+                                <span><i class="fa fa-id-card me-1"/><field name="identification_id"/></span>
+                            </div>
+                            <div>
+                                <span><i class="fa fa-phone me-1"/><field name="mobile"/></span>
+                            </div>
+                            <div t-if="record.job_id.value">
+                                <span><i class="fa fa-briefcase me-1"/><field name="job_id"/></span>
+                            </div>
+                            <div class="mt-2">
+                                <field name="attachment_progress" widget="progressbar"/>
+                            </div>
+                            <div class="o_kanban_record_bottom mt-2">
+                                <div class="oe_kanban_bottom_left">
+                                    <field name="state" widget="badge"
+                                           decoration-success="state == 'done'"
+                                           decoration-danger="state == 'rejected'"
+                                           decoration-info="state == 'in_progress'"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ============ Search View ============ -->
+    <record id="view_recruitment_request_search" model="ir.ui.view">
+        <field name="name">recruitment.request.search</field>
+        <field name="model">recruitment.request</field>
+        <field name="arch" type="xml">
+            <search string="بحث طلبات التوظيف">
+                <field name="name"/>
+                <field name="employee_name"/>
+                <field name="identification_id"/>
+                <field name="mobile"/>
+                <field name="job_id"/>
+                <field name="stage_id"/>
+                <field name="vehicle_id"/>
+                <field name="state"/>
+                <field name="project_manager_id"/>
+                <field name="project_id"/>
+                <separator/>
+                <filter name="filter_in_progress" string="قيد التنفيذ" domain="[('state', '=', 'in_progress')]"/>
+                <filter name="filter_done" string="مكتمل" domain="[('state', '=', 'done')]"/>
+                <filter name="filter_rejected" string="مرفوض" domain="[('state', '=', 'rejected')]"/>
+                <separator/>
+                <filter name="filter_archived" string="المؤرشفة (المرفوضة)" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter name="filter_my" string="مشاريعي" domain="[('project_manager_id', '=', uid)]"/>
+                <separator/>
+                <filter name="group_stage" string="المرحلة" context="{'group_by': 'stage_id'}"/>
+                <filter name="group_state" string="الحالة" context="{'group_by': 'state'}"/>
+                <filter name="group_job" string="الوظيفة" context="{'group_by': 'job_id'}"/>
+                <filter name="group_pm" string="مسؤول المشروع" context="{'group_by': 'project_manager_id'}"/>
+                <filter name="group_platform" string="المنصة" context="{'group_by': 'project_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- ============ Action ============ -->
+    <record id="action_recruitment_request" model="ir.actions.act_window">
+        <field name="name">طلبات التوظيف</field>
+        <field name="res_model">recruitment.request</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_recruitment_request_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiley_face">
+                أنشئ أول طلب توظيف
+            </p>
+            <p>
+                تتبّع طلب التوظيف عبر مراحله المعتمدة من الطلب الجديد حتى مباشرة العمل وإنشاء العقد.
+            </p>
+        </field>
+    </record>
+
+    <!-- ============ تكامل مع تطبيق Fleet: قائمة طلبات السيارات المعلّقة ============ -->
+    <record id="view_recruitment_request_list_fleet" model="ir.ui.view">
+        <field name="name">recruitment.request.list.fleet</field>
+        <field name="model">recruitment.request</field>
+        <field name="arch" type="xml">
+            <list string="طلبات السيارات - التوظيف" create="0">
+                <field name="name"/>
+                <field name="employee_name"/>
+                <field name="project_id"/>
+                <field name="vehicle_id"/>
+                <field name="car_request_state" widget="badge"
+                       decoration-success="car_request_state == 'authorized'"
+                       decoration-info="car_request_state == 'requested'"
+                       decoration-warning="car_request_state == 'received'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_recruitment_request_fleet" model="ir.actions.act_window">
+        <field name="name">طلبات السيارات (من التوظيف)</field>
+        <field name="res_model">recruitment.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_recruitment_request_list_fleet"/>
+        <field name="domain">[('car_requested', '=', True), ('car_request_state', '!=', 'authorized')]</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiley_face">
+                لا توجد طلبات سيارات معلّقة من التوظيف حالياً
+            </p>
+            <p>
+                هذه الطلبات قادمة من موديول التوظيف، وتحتاج استلام وموافقة
+                مسؤول الأسطول قبل أن يكمل الموظف الجديد إجراءاته.
+            </p>
+        </field>
+    </record>
+
+</odoo>
+

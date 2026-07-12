@@ -1,0 +1,238 @@
+# -*- coding: utf-8 -*-
+from psycopg2 import IntegrityError
+
+from odoo.exceptions import UserError, ValidationError
+from odoo.tests import TransactionCase, tagged
+from odoo.tools import mute_logger
+
+
+@tagged('post_install', '-at_install')
+class TestRecruitmentRequest(TransactionCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Request = cls.env['recruitment.request']
+        cls.stage_project_review = cls.env.ref('recruitment_workflow.stage_project_review')
+        cls.stage_operations_review = cls.env.ref('recruitment_workflow.stage_operations_review')
+        cls.stage_sponsorship_transfer = cls.env.ref('recruitment_workflow.stage_sponsorship_transfer')
+        cls.group_pm = cls.env.ref('recruitment_workflow.group_recruitment_workflow_project_manager')
+        cls.group_ops = cls.env.ref('recruitment_workflow.group_recruitment_workflow_operations')
+        cls.group_manager = cls.env.ref('recruitment_workflow.group_recruitment_workflow_manager')
+
+    def _create_request(self, **kwargs):
+        vals = {
+            'employee_name': 'موظف تجريبي',
+            'identification_id': '1234567890',
+            'mobile': '0501234567',
+            'email': 'test.request@example.com',
+        }
+        vals.update(kwargs)
+        return self.Request.create(vals)
+
+    # ------------------------------------------------------------------
+    # التحقق من صحة البيانات (identification_id / mobile)
+    # ------------------------------------------------------------------
+    def test_identification_id_must_be_digits(self):
+        with self.assertRaises(ValidationError):
+            self._create_request(identification_id='12A4567890')
+
+    def test_identification_id_must_be_10_digits(self):
+        with self.assertRaises(ValidationError):
+            self._create_request(identification_id='12345')
+
+    def test_identification_id_must_start_with_1_or_2(self):
+        with self.assertRaises(ValidationError):
+            self._create_request(identification_id='3123456789')
+
+    def test_identification_id_valid_passes(self):
+        request = self._create_request(identification_id='2123456780')
+        self.assertTrue(request)
+
+    def test_mobile_invalid_rejected(self):
+        with self.assertRaises(ValidationError):
+            self._create_request(identification_id='1123456781', mobile='0123456789')
+
+    def test_mobile_valid_formats_pass(self):
+        for i, mobile in enumerate(['0501234567', '966501234567', '+966501234567']):
+            request = self._create_request(
+                identification_id='11111111%02d' % (i + 10), mobile=mobile,
+            )
+            self.assertTrue(request)
+
+    def test_identification_id_uniqueness(self):
+        self._create_request(identification_id='1234567890', email='a@example.com')
+        with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError):
+            self._create_request(identification_id='1234567890', email='b@example.com')
+
+    # ------------------------------------------------------------------
+    # إغلاق ثغرة تجاوز المراحل عبر write() المباشر على stage_id
+    # ------------------------------------------------------------------
+    def test_write_stage_multi_step_skip_blocked(self):
+        """لا يُسمح بالقفز أكثر من مرحلة واحدة دفعة واحدة عبر write() مباشر
+        (مثلاً بالضغط على فقاعة متقدمة في شريط الحالة القابل للنقر) - حتى لو
+        كان المستخدم يملك كل صلاحيات الموافقة (مدير سير العمل) وكانت كل
+        الشروط الوسيطة مستوفاة تقنياً. الانتقال يجب أن يمر خطوة بخطوة عبر
+        الأزرار الصريحة."""
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
+        project = self.env['project.project'].create({'name': 'منصة تجريبية'})
+        request = self._create_request(project_id=project.id)
+        request.attachment_line_ids.write({'file': b'ZmFrZQ=='})
+        self.assertTrue(request.attachments_complete)
+
+        with self.assertRaises(UserError):
+            request.write({'stage_id': self.stage_operations_review.id})
+
+    def test_write_stage_single_step_blocked_without_approval_rights(self):
+        """انتقال خطوة واحدة فقط (المرحلة التالية مباشرة) من مرحلة تتطلب
+        موافقة ('project_review') لا يزال يتطلب صلاحية الموافقة عليها -
+        المستخدم الحالي (superuser بدون مجموعات مخصصة) لا يملكها."""
+        project = self.env['project.project'].create({'name': 'منصة تجريبية 2'})
+        request = self._create_request(
+            identification_id='1234567891', email='c@example.com', project_id=project.id,
+        )
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_project_review.id,
+        })
+        next_stage = request._next_stage()
+        self.assertEqual(next_stage, self.stage_operations_review)
+
+        with self.assertRaises(UserError):
+            request.write({'stage_id': next_stage.id})
+
+    def test_write_stage_single_step_blocked_by_unmet_requirement(self):
+        """حتى مستخدم يملك كل صلاحيات الموافقة (مدير سير العمل) لا يمكنه
+        الانتقال خطوة واحدة فقط من مرحلة "تم السداد" دون إصدار وسداد فاتورة
+        الرسوم - شرط العمل يبقى قائماً حتى في انتقال خطوة واحدة."""
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
+        project = self.env['project.project'].create({'name': 'منصة تجريبية 3'})
+        request = self._create_request(
+            identification_id='1234567895', email='g@example.com', project_id=project.id,
+        )
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
+        })
+
+        with self.assertRaises(UserError):
+            request.write({'stage_id': self.stage_sponsorship_transfer.id})
+
+    # ------------------------------------------------------------------
+    # الإرجاع لمرحلة سابقة مسموح فقط عبر معالج "إرجاع للتصحيح"
+    # ------------------------------------------------------------------
+    def test_write_stage_backward_blocked_without_wizard(self):
+        """النقر على فقاعة مرحلة سابقة في شريط الحالة القابل للنقر (أو أي
+        write() مباشر آخر) لا يجب أن يُرجع الطلب مباشرة - الإرجاع مسموح فقط
+        عبر action_return_to_stage (معالج "إرجاع للتصحيح") الذي يفرض تسجيل
+        السبب."""
+        project = self.env['project.project'].create({'name': 'منصة تجريبية 4'})
+        request = self._create_request(
+            identification_id='1234567893', email='e@example.com', project_id=project.id,
+        )
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_operations_review.id,
+        })
+
+        with self.assertRaises(UserError):
+            request.write({'stage_id': self.stage_project_review.id})
+
+    def test_action_return_to_stage_still_works(self):
+        """المسار الرسمي (معالج الإرجاع) يبقى يعمل رغم حظر الكتابة المباشرة
+        للخلف - لأنه يستخدم سياق skip_stage_validation عمداً."""
+        project = self.env['project.project'].create({'name': 'منصة تجريبية 5'})
+        request = self._create_request(
+            identification_id='1234567894', email='f@example.com', project_id=project.id,
+        )
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_operations_review.id,
+        })
+
+        request.action_return_to_stage(self.stage_project_review, 'بيانات ناقصة')
+        self.assertEqual(request.stage_id, self.stage_project_review)
+
+    # ------------------------------------------------------------------
+    # التحقق من تطبيق صلاحيات الموافقة الهرمية عبر action_approve
+    # ------------------------------------------------------------------
+    def test_approval_rights_hierarchy(self):
+        pm_user = self.env['res.users'].create({
+            'name': 'مسؤول مشروع تجريبي',
+            'login': 'pm_test_user',
+            'email': 'pm_test_user@example.com',
+            'group_ids': [(6, 0, [self.group_pm.id, self.env.ref('base.group_user').id])],
+        })
+        project = self.env['project.project'].create({'name': 'منصة تجريبية 3'})
+        request = self._create_request(
+            identification_id='1234567892', email='d@example.com', project_id=project.id,
+        )
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_project_review.id,
+        })
+
+        # مسؤول المشروع يستطيع الموافقة على مرحلته الخاصة
+        request.with_user(pm_user).action_approve()
+        self.assertEqual(request.stage_id, self.stage_operations_review)
+
+        # لكنه لا يملك صلاحية الموافقة على مرحلة مدير العمليات
+        with self.assertRaises(UserError):
+            request.with_user(pm_user).action_approve()
+
+    # ------------------------------------------------------------------
+    # أفعال حساسة أخرى يجب أن تتحقق من الصلاحية من جهة الخادم أيضاً
+    # (وليس فقط عبر إخفاء الأزرار في الواجهة) - action_reject,
+    # action_reset_to_draft, action_unarchive_request مقيّدة بمجموعة
+    # "مدير العمليات" في الواجهة.
+    # ------------------------------------------------------------------
+    def _create_plain_user(self, login):
+        return self.env['res.users'].create({
+            'name': login,
+            'login': login,
+            'email': '%s@example.com' % login,
+            'group_ids': [(6, 0, [self.env.ref('recruitment_workflow.group_recruitment_workflow_user').id,
+                                   self.env.ref('base.group_user').id])],
+        })
+
+    def test_action_reject_requires_operations_group(self):
+        plain_user = self._create_plain_user('reject_test_user')
+        request = self._create_request(identification_id='1234567896', email='h@example.com')
+
+        with self.assertRaises(UserError):
+            request.with_user(plain_user).action_reject(reason='سبب تجريبي')
+
+    def test_action_reset_to_draft_requires_operations_group(self):
+        plain_user = self._create_plain_user('reset_test_user')
+        request = self._create_request(identification_id='1234567897', email='i@example.com')
+        request.write({'state': 'rejected', 'active': False})
+
+        with self.assertRaises(UserError):
+            request.with_user(plain_user).action_reset_to_draft()
+
+    def test_action_unarchive_request_requires_operations_group(self):
+        plain_user = self._create_plain_user('unarchive_test_user')
+        request = self._create_request(identification_id='1234567898', email='j@example.com')
+        request.active = False
+
+        with self.assertRaises(UserError):
+            request.with_user(plain_user).action_unarchive_request()
+
+    def test_car_request_stage_exit_requires_project_manager(self):
+        """إنهاء مرحلة "طلب سيارة" (بعد تفويض الأسطول) يجب أن يبقى حصراً
+        لمسؤول المشروع، حتى عند استدعاء action_next_stage مباشرة."""
+        plain_user = self._create_plain_user('car_finish_test_user')
+        project = self.env['project.project'].create({'name': 'منصة تجريبية 6'})
+        brand = self.env['fleet.vehicle.model.brand'].create({'name': 'ماركة تجريبية'})
+        model = self.env['fleet.vehicle.model'].create({
+            'name': 'موديل تجريبي', 'brand_id': brand.id,
+        })
+        vehicle = self.env['fleet.vehicle'].create({
+            'model_id': model.id,
+            'recruitment_state': 'assigned',
+        })
+        request = self._create_request(
+            identification_id='1234567899', email='k@example.com', project_id=project.id,
+            vehicle_id=vehicle.id, car_request_state='authorized',
+        )
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.env.ref('recruitment_workflow.stage_car_request').id,
+        })
+
+        with self.assertRaises(UserError):
+            request.with_user(plain_user).action_next_stage()

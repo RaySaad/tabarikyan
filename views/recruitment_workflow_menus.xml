@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_recruitment_workflow_root"
+              name="سير عمل التوظيف"
+              parent="hr_recruitment.menu_hr_recruitment_root"
+              sequence="15"/>
+
+    <menuitem id="menu_recruitment_request"
+              name="طلبات التوظيف"
+              parent="menu_recruitment_workflow_root"
+              action="action_recruitment_request"
+              sequence="10"/>
+
+    <menuitem id="menu_hr_employee_platform_history"
+              name="تاريخ منصات المناديب"
+              parent="menu_recruitment_workflow_root"
+              action="action_hr_employee_platform_history"
+              sequence="20"/>
+
+    <menuitem id="menu_recruitment_config"
+              name="الإعدادات"
+              parent="menu_recruitment_workflow_root"
+              sequence="90"
+              groups="recruitment_workflow.group_recruitment_workflow_manager"/>
+
+    <menuitem id="menu_recruitment_stage"
+              name="المراحل"
+              parent="menu_recruitment_config"
+              action="action_recruitment_stage"
+              sequence="10"/>
+
+    <menuitem id="menu_recruitment_attachment_type"
+              name="أنواع المرفقات"
+              parent="menu_recruitment_config"
+              action="action_recruitment_attachment_type"
+              sequence="20"/>
+
+    <!-- تكاليف الموظفين (تجديد إقامة، نقل...) بيانات دورة حياة موظف مستمرة
+         طوال فترة عمله، وليست جزءاً من مسار التوظيف نفسه - لذا تظهر داخل
+         تطبيق الموظفين (Employees) بدل تطبيق التوظيف، بنفس منطق نقل طلبات
+         السيارات لتطبيق Fleet بالأسفل. -->
+    <menuitem id="menu_hr_employee_cost"
+              name="تكاليف الموظفين حسب المنصة"
+              parent="hr.menu_hr_root"
+              action="action_hr_employee_cost"
+              groups="recruitment_workflow.group_recruitment_workflow_user"
+              sequence="25"/>
+
+    <menuitem id="menu_hr_employee_cost_type"
+              name="أنواع تكاليف الموظفين"
+              parent="hr.menu_human_resources_configuration"
+              action="action_hr_employee_cost_type"
+              groups="recruitment_workflow.group_recruitment_workflow_manager"
+              sequence="25"/>
+
+    <!-- تكامل مع تطبيق Fleet: قائمة طلبات السيارات المعلّقة من التوظيف،
+         تظهر جوه تطبيق Fleet نفسه بدل ما يحتاج مسؤول الأسطول يفتح تطبيق
+         التوظيف. الأزرار (استلام/موافقة) تظهر تلقائياً حسب صلاحياته. -->
+    <menuitem id="menu_fleet_recruitment_requests"
+              name="طلبات السيارات (توظيف)"
+              parent="fleet.menu_root"
+              action="action_recruitment_request_fleet"
+              groups="recruitment_workflow.group_recruitment_workflow_fleet"
+              sequence="25"/>
+
+</odoo>

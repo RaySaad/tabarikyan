@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- دفتر يومية مخصص من نوع "مشتريات": قسم "المدفوعات الحكومية" في
+             تطبيق المحاسبة. تُنشأ عليه فواتير الموردين الخاصة بتكاليف
+             الموظفين المصنّفة "مدفوعات حكومية" (تجديد إقامة، نقل كفالة،
+             تأشيرات، GOSI...)، فيصير له سجل محاسبي مستقل ضمن شاشة فواتير
+             الموردين الطبيعية في المحاسبة - وليس قائمة منفصلة داخل التوظيف. -->
+        <record id="journal_government_payments" model="account.journal">
+            <field name="name">المدفوعات الحكومية</field>
+            <field name="code">GOVPAY</field>
+            <field name="type">purchase</field>
+        </record>
+
+    </data>
+</odoo>

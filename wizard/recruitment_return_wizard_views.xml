@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_recruitment_return_wizard_form" model="ir.ui.view">
+        <field name="name">recruitment.return.wizard.form</field>
+        <field name="model">recruitment.return.wizard</field>
+        <field name="arch" type="xml">
+            <form string="إرجاع للتصحيح">
+                <field name="request_id" invisible="1"/>
+                <field name="available_stage_ids" invisible="1"/>
+                <div class="alert alert-warning" role="alert">
+                    سيتم إرجاع الطلب للمرحلة المختارة للتصحيح، مع إشعار المسؤول وتسجيل السبب.
+                </div>
+                <group>
+                    <field name="target_stage_id"
+                           domain="[('id', 'in', available_stage_ids)]"
+                           options="{'no_create': True}"/>
+                    <field name="reason" placeholder="وضّح البيانات الناقصة أو غير الصحيحة المطلوب تصحيحها..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm_return" type="object"
+                            string="تأكيد الإرجاع" class="btn-warning"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>
