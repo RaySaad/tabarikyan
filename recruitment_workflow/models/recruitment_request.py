@@ -100,6 +100,13 @@ class RecruitmentRequest(models.Model):
              'راتب ثابت...). تُفلتَر الخيارات المتاحة هنا تلقائياً حسب '
              'المشروع/المنصة المختارة أعلاه.',
     )
+    # حقل مساعد (related) فقط لبناء domain حقل compensation_type_id في
+    # الواجهة - لا يمكن استخدام project_id.compensation_type_ids مباشرة
+    # داخل domain (لا يدعمه محرّك النطاقات في المتصفح لحقول Many2many).
+    project_compensation_type_ids = fields.Many2many(
+        related='project_id.compensation_type_ids',
+        string='أنظمة العمل المتاحة على المنصة',
+    )
     main_application = fields.Char(
         string='التطبيق الرئيسي',
         tracking=True,

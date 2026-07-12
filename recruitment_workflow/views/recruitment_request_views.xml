@@ -156,8 +156,9 @@
 
                     <group>
                         <group string="نظام العمل والتطبيق">
+                            <field name="project_compensation_type_ids" invisible="1"/>
                             <field name="compensation_type_id"
-                                   domain="[('id', 'in', project_id.compensation_type_ids)]"
+                                   domain="[('id', 'in', project_compensation_type_ids)]"
                                    options="{'no_create': True}"/>
                             <field name="main_application"/>
                         </group>
