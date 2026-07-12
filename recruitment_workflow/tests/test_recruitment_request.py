@@ -175,6 +175,44 @@ class TestRecruitmentRequest(TransactionCase):
         with self.assertRaises(UserError):
             request.with_user(pm_user).action_approve()
 
+    def test_project_review_requires_specific_assigned_manager(self):
+        """عند تعيين مسؤول مشروع محدّد على الطلب، الموافقة على مرحلة
+        "قيد المراجعة" يجب أن تقتصر عليه هو تحديداً - حتى لو كان مستخدم آخر
+        عضواً في نفس مجموعة "مسؤول المشروع" (أو حتى مديراً كامل الصلاحيات)."""
+        assigned_pm = self.env['res.users'].create({
+            'name': 'مسؤول المشروع المعيّن',
+            'login': 'assigned_pm_user',
+            'email': 'assigned_pm_user@example.com',
+            'group_ids': [(6, 0, [self.group_pm.id, self.env.ref('base.group_user').id])],
+        })
+        other_pm = self.env['res.users'].create({
+            'name': 'مسؤول مشروع آخر',
+            'login': 'other_pm_user',
+            'email': 'other_pm_user@example.com',
+            'group_ids': [(6, 0, [self.group_pm.id, self.env.ref('base.group_user').id])],
+        })
+        project = self.env['project.project'].create({'name': 'منصة تجريبية 4'})
+        request = self._create_request(
+            identification_id='1234567896', email='h@example.com',
+            project_id=project.id, project_manager_id=assigned_pm.id,
+        )
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_project_review.id,
+        })
+
+        # مسؤول مشروع آخر (نفس المجموعة) لا يستطيع الموافقة
+        with self.assertRaises(UserError):
+            request.with_user(other_pm).action_approve()
+
+        # حتى المدير كامل الصلاحيات لا يستطيع - المطلوب الشخص المعيّن تحديداً
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
+        with self.assertRaises(UserError):
+            request.action_approve()
+
+        # المسؤول المعيّن تحديداً يستطيع
+        request.with_user(assigned_pm).action_approve()
+        self.assertEqual(request.stage_id, self.stage_operations_review)
+
     # ------------------------------------------------------------------
     # أفعال حساسة أخرى يجب أن تتحقق من الصلاحية من جهة الخادم أيضاً
     # (وليس فقط عبر إخفاء الأزرار في الواجهة) - action_reject,

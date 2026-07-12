@@ -673,6 +673,15 @@ class RecruitmentRequest(models.Model):
         'car_request': 'recruitment_workflow.group_recruitment_workflow_project_manager',
     }
 
+    # المراحل التي يجب أن يوافق عليها الشخص المعيّن تحديداً على هذا الطلب
+    # (حقل مسؤول المشروع الخاص بالمشروع/المنصة نفسها) - وليس أي عضو آخر في
+    # مجموعة "مسؤول المشروع"، حتى لو كان مديراً عاماً أو مديراً كامل
+    # الصلاحيات. إن لم يكن الحقل معيّناً بعد، يُكتفى بالتحقق من المجموعة.
+    _STAGE_ASSIGNED_USER_FIELD = {
+        'project_review': 'project_manager_id',
+        'car_request': 'project_manager_id',
+    }
+
     def _check_approval_rights(self, stage=None):
         """التحقق من أن المستخدم الحالي مخوّل بالموافقة على المرحلة المحددة
         (المرحلة الحالية افتراضياً).
@@ -685,7 +694,20 @@ class RecruitmentRequest(models.Model):
         group_xmlid = self._STAGE_APPROVAL_GROUP.get(stage.code or '')
         if not group_xmlid:
             return  # مرحلة غير تقييمية، لا قيد
-        # المدير العام والمدير الكامل يملكان الصلاحية عبر التوارث
+
+        assigned_field = self._STAGE_ASSIGNED_USER_FIELD.get(stage.code or '')
+        assigned_user = self[assigned_field] if assigned_field else False
+        if assigned_user:
+            if self.env.user != assigned_user:
+                raise UserError(_(
+                    'ليست لديك الصلاحية للموافقة على هذه المرحلة (%(stage)s).\n'
+                    'هذه المرحلة تتطلب موافقة "%(assignee)s" تحديداً (مسؤول '
+                    'المشروع المعيّن على هذا الطلب).'
+                ) % {'stage': stage.name, 'assignee': assigned_user.name})
+            return
+
+        # لا يوجد شخص معيّن بعد لهذه المرحلة - نكتفي بالتحقق من المجموعة
+        # (المدير العام والمدير الكامل يملكان الصلاحية عبر التوارث)
         if not self.env.user.has_group(group_xmlid):
             raise UserError(_(
                 'ليست لديك الصلاحية للموافقة على هذه المرحلة (%s).\n'
