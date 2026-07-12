@@ -95,7 +95,7 @@ class RecruitmentWebsiteController(http.Controller):
             error = request.session.pop('recruitment_workflow_error')
             default = request.session.pop('recruitment_workflow_default')
         return request.render(
-            'recruitment_workflow.website_careers_register',
+            'recruitment_workflow_website.website_careers_register',
             self._form_context(error=error, default=default),
         )
 
@@ -133,4 +133,4 @@ class RecruitmentWebsiteController(http.Controller):
 
     @http.route('/careers/register/thank-you', type='http', auth='public', website=True, sitemap=False)
     def careers_register_thanks(self, **kwargs):
-        return request.render('recruitment_workflow.website_careers_thank_you', {})
+        return request.render('recruitment_workflow_website.website_careers_thank_you', {})

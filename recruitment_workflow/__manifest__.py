@@ -47,7 +47,6 @@
         'project',
         'analytic',
         'account',
-        'website',
     ],
     'data': [
         'security/recruitment_workflow_security.xml',
@@ -68,7 +67,6 @@
         'views/hr_employee_views.xml',
         'views/hr_employee_cost_views.xml',
         'views/recruitment_workflow_menus.xml',
-        'views/website_recruitment_templates.xml',
         'reports/recruitment_request_report.xml',
     ],
     'demo': [
