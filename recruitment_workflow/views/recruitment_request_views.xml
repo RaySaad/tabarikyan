@@ -70,7 +70,13 @@
                             groups="recruitment_workflow.group_recruitment_workflow_operations"
                             invisible="active"/>
 
-                    <field name="stage_id" widget="statusbar" options="{'clickable': '1'}"/>
+                    <!-- غير قابل للنقر عمداً: كل انتقال يجب أن يمر عبر الأزرار
+                         الصريحة (موافقة/الانتقال للمرحلة التالية/إرجاع)، لأن
+                         النقر المباشر على الشريط يتجاوز action_approve نفسها
+                         (لا رسالة "تمت الموافقة" ولا بريد إشعار)، رغم أن
+                         التحقق الأمني في write() يبقى يعمل بنفس الصرامة كطبقة
+                         حماية إضافية (Kanban drag/RPC مثلاً). -->
+                    <field name="stage_id" widget="statusbar"/>
                 </header>
                 <sheet>
                     <field name="active" invisible="1"/>
@@ -272,7 +278,7 @@
         <field name="name">recruitment.request.kanban</field>
         <field name="model">recruitment.request</field>
         <field name="arch" type="xml">
-            <kanban default_group_by="stage_id" class="o_kanban_small_column">
+            <kanban default_group_by="stage_id" class="o_kanban_small_column" records_draggable="false">
                 <field name="stage_id"/>
                 <field name="state"/>
                 <field name="color"/>
