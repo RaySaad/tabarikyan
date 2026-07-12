@@ -2,6 +2,7 @@
 from . import recruitment_analytic_mixin
 from . import recruitment_stage
 from . import recruitment_attachment_type
+from . import recruitment_compensation_type
 from . import recruitment_request
 from . import account_move
 from . import fleet_vehicle

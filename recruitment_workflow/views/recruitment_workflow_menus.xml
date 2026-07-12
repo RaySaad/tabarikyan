@@ -36,6 +36,12 @@
               action="action_recruitment_attachment_type"
               sequence="20"/>
 
+    <menuitem id="menu_recruitment_compensation_type"
+              name="أنظمة العمل"
+              parent="menu_recruitment_config"
+              action="action_recruitment_compensation_type"
+              sequence="25"/>
+
     <!-- تكاليف الموظفين (تجديد إقامة، نقل...) بيانات دورة حياة موظف مستمرة
          طوال فترة عمله، وليست جزءاً من مسار التوظيف نفسه - لذا تظهر داخل
          تطبيق الموظفين (Employees) بدل تطبيق التوظيف، بنفس منطق نقل طلبات

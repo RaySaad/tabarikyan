@@ -25,7 +25,7 @@
                             <tr><td><strong>البريد الإلكتروني</strong></td><td t-out="doc.email or ''"/></tr>
                             <tr><td><strong>الوظيفة</strong></td><td t-out="doc.job_id.name or ''"/></tr>
                             <tr><td><strong>القسم</strong></td><td t-out="doc.department_id.name or ''"/></tr>
-                            <tr><td><strong>نظام التشغيل</strong></td><td t-out="doc.operating_system or ''"/></tr>
+                            <tr><td><strong>نظام العمل</strong></td><td t-out="doc.compensation_type_id.name or ''"/></tr>
                             <tr><td><strong>التطبيق الرئيسي</strong></td><td t-out="doc.main_application or ''"/></tr>
                             <tr><td><strong>المرحلة الحالية</strong></td><td t-out="doc.stage_id.name or ''"/></tr>
                             <tr><td><strong>السيارة المخصصة</strong></td><td t-out="doc.vehicle_id.display_name or ''"/></tr>

@@ -9,6 +9,9 @@
             <field name="user_id" position="after">
                 <field name="default_job_id"
                        groups="recruitment_workflow.group_recruitment_workflow_user"/>
+                <field name="compensation_type_ids" widget="many2many_tags"
+                       options="{'no_create': True}"
+                       groups="recruitment_workflow.group_recruitment_workflow_user"/>
             </field>
         </field>
     </record>

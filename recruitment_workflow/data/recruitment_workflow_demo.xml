@@ -6,7 +6,6 @@
             <field name="identification_id">1098765432</field>
             <field name="mobile">0551234567</field>
             <field name="email">m.salem@example.com</field>
-            <field name="operating_system">windows</field>
             <field name="main_application">Odoo ERP</field>
         </record>
 
@@ -15,7 +14,6 @@
             <field name="identification_id">2123456789</field>
             <field name="mobile">0509876543</field>
             <field name="email">a.rashed@example.com</field>
-            <field name="operating_system">android</field>
             <field name="main_application">Field App</field>
         </record>
     </data>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_recruitment_compensation_type_list" model="ir.ui.view">
+        <field name="name">recruitment.compensation.type.list</field>
+        <field name="model">recruitment.compensation.type</field>
+        <field name="arch" type="xml">
+            <list string="أنظمة العمل" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="active" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_recruitment_compensation_type_form" model="ir.ui.view">
+        <field name="name">recruitment.compensation.type.form</field>
+        <field name="model">recruitment.compensation.type</field>
+        <field name="arch" type="xml">
+            <form string="نظام العمل">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <group string="ملاحظات">
+                        <field name="description" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_recruitment_compensation_type" model="ir.actions.act_window">
+        <field name="name">أنظمة العمل</field>
+        <field name="res_model">recruitment.compensation.type</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiley_face">
+                أنشئ أول نظام عمل
+            </p>
+            <p>
+                أنظمة العمل/الأجر (بالطلبات، بالعمولة، راتب ثابت...) التي
+                تُربَط لاحقاً بكل منصة/مشروع من سجل المشروع نفسه.
+            </p>
+        </field>
+    </record>
+
+</odoo>

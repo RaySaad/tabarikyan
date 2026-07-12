@@ -62,6 +62,7 @@
         'views/recruitment_request_views.xml',
         'views/recruitment_stage_views.xml',
         'views/recruitment_attachment_type_views.xml',
+        'views/recruitment_compensation_type_views.xml',
         'views/fleet_vehicle_views.xml',
         'views/project_project_views.xml',
         'views/hr_employee_views.xml',

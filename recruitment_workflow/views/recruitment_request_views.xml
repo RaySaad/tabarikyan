@@ -155,8 +155,10 @@
                     </group>
 
                     <group>
-                        <group string="نظام التشغيل والتطبيق">
-                            <field name="operating_system"/>
+                        <group string="نظام العمل والتطبيق">
+                            <field name="compensation_type_id"
+                                   domain="[('id', 'in', project_id.compensation_type_ids)]"
+                                   options="{'no_create': True}"/>
                             <field name="main_application"/>
                         </group>
                         <group string="العقد">

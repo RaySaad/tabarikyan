@@ -91,18 +91,14 @@ class RecruitmentRequest(models.Model):
     zip_code = fields.Char(string='الرمز البريدي')
     address_country_id = fields.Many2one('res.country', string='الدولة')
 
-    # نظام التشغيل والتطبيق الرئيسي (يحدد في الطلب الجديد)
-    operating_system = fields.Selection(
-        selection=[
-            ('windows', 'Windows'),
-            ('macos', 'macOS'),
-            ('linux', 'Linux'),
-            ('android', 'Android'),
-            ('ios', 'iOS'),
-        ],
-        string='نظام التشغيل',
+    # نظام العمل والتطبيق الرئيسي (يحدد في الطلب الجديد)
+    compensation_type_id = fields.Many2one(
+        'recruitment.compensation.type',
+        string='نظام العمل',
         tracking=True,
-        help='يحدده الموظف في الطلب الجديد.',
+        help='نظام العمل/الأجر الذي سيعمل به المندوب (بالطلبات، بالعمولة، '
+             'راتب ثابت...). تُفلتَر الخيارات المتاحة هنا تلقائياً حسب '
+             'المشروع/المنصة المختارة أعلاه.',
     )
     main_application = fields.Char(
         string='التطبيق الرئيسي',
@@ -294,6 +290,16 @@ class RecruitmentRequest(models.Model):
         """يقترح مسؤول المشروع (من project.project.user_id) والوظيفة
         والقسم (من الوظيفة الافتراضية المضبوطة على المنصة) تلقائياً عند
         اختيار المشروع - تبقى قابلة للتعديل يدوياً بعد ذلك."""
+        # نظام العمل مرتبط بالمنصة (domain في الواجهة) - إن كان النظام
+        # المختار سابقاً غير متاح على المنصة الجديدة (أو أُفرغ المشروع)
+        # نفرغه حتى لا يبقى محتفظاً بقيمة لم تعد صالحة. وإن كانت المنصة
+        # تدعم نظاماً واحداً فقط، نقترحه تلقائياً.
+        available_compensation = self.project_id.compensation_type_ids
+        if self.compensation_type_id and self.compensation_type_id not in available_compensation:
+            self.compensation_type_id = False
+        if len(available_compensation) == 1:
+            self.compensation_type_id = available_compensation
+
         if not self.project_id:
             return
         if self.project_id.user_id:
