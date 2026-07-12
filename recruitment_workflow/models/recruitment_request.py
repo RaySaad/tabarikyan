@@ -980,14 +980,43 @@ class RecruitmentRequest(models.Model):
                 raise UserError(_('يجب استلام الطلب أولاً قبل التفويض.'))
             rec.car_request_state = 'authorized'
             rec.vehicle_id.write({'recruitment_state': 'assigned'})
+            # نربط السيارة بالمرشّح كـ"سائق مستقبلي" (حقل Fleet القياسي) فور
+            # التفويض مباشرة - وليس فقط عند إنشاء سجل الموظف لاحقاً - حتى
+            # تظهر السيارة محجوزة بوضوح داخل تطبيق Fleet نفسه من هذه اللحظة.
+            candidate_partner = rec._get_or_create_candidate_partner()
+            if candidate_partner:
+                rec.vehicle_id.sudo().future_driver_id = candidate_partner.id
             rec.message_post(body=_(
                 'تم تفويض السيارة. الطلب الآن لدى مسؤول المشروع للمتابعة.'
             ))
 
+    def _get_or_create_candidate_partner(self):
+        """يوجد أو ينشئ partner خفيف يمثّل المرشّح قبل إنشاء سجل الموظف
+        الرسمي - يُستخدم لربطه كـ"سائق مستقبلي" على السيارة فور التفويض
+        (Fleet)، ثم يُعاد استخدامه لاحقاً كجهة اتصال العمل الرسمية للموظف
+        بدل إنشاء partner مكرر (انظر _create_employee)."""
+        self.ensure_one()
+        if self.vehicle_id.future_driver_id:
+            return self.vehicle_id.future_driver_id
+        if self.vehicle_id.driver_id:
+            return self.vehicle_id.driver_id
+        return self.env['res.partner'].sudo().create({
+            'name': self.employee_name,
+            'type': 'private',
+            'mobile': self.mobile,
+            'email': self.email,
+        })
+
     def _release_vehicle(self):
         self.ensure_one()
         if self.vehicle_id and self.vehicle_id.recruitment_state in ('reserved', 'assigned'):
-            self.vehicle_id.write({'recruitment_state': 'available'})
+            # نُفرغ حقلي السائق/السائق المستقبلي القياسيين أيضاً - وإلا بقيت
+            # السيارة تظهر "محجوزة" لهذا المرشّح في تطبيق Fleet رغم رفض طلبه.
+            self.vehicle_id.sudo().write({
+                'recruitment_state': 'available',
+                'future_driver_id': False,
+                'driver_id': False,
+            })
 
     # ------------------------------------------------------------------
     # إنشاء العقد الأوتوماتيكي
@@ -1010,6 +1039,12 @@ class RecruitmentRequest(models.Model):
         def set_if(field_name, value):
             if value and field_name in emp_fields:
                 employee_vals[field_name] = value
+
+        # إعادة استخدام partner "السائق المستقبلي" الذي رُبط بالسيارة عند
+        # التفويض (action_fleet_authorize) كجهة اتصال العمل الرسمية للموظف
+        # الجديد - بدل إنشاء partner مكرر له.
+        if self.vehicle_id and self.vehicle_id.future_driver_id:
+            set_if('work_contact_id', self.vehicle_id.future_driver_id.id)
 
         set_if('mobile_phone', self.mobile)
         set_if('work_email', self.email)
@@ -1046,6 +1081,18 @@ class RecruitmentRequest(models.Model):
                 note=_('فتح تلقائي عند مباشرة العمل من طلب التوظيف %s') % self.name,
             )
 
+        # ترقية "السائق المستقبلي" إلى "السائق" الفعلي على السيارة (حقلا
+        # Fleet القياسيان) الآن بعد أن باشر العمل فعلياً - وليس فقط منذ لحظة
+        # التفويض. driver_id هو ما تعرضه واجهات Fleet نفسها (بخلاف حقلنا
+        # المخصَّص recruitment_state المستخدَم داخلياً فقط لفلترة التوفر).
+        if self.vehicle_id:
+            driver_partner = self.vehicle_id.future_driver_id or self._get_employee_partner(employee)
+            if driver_partner:
+                self.vehicle_id.sudo().write({
+                    'driver_id': driver_partner.id,
+                    'future_driver_id': False,
+                })
+
         # ربط الحساب البنكي (IBAN) إن وُجد - محاط بحماية حتى لا يفشل الإنشاء
         try:
             self._create_employee_bank_account(employee)
@@ -1056,19 +1103,25 @@ class RecruitmentRequest(models.Model):
             ))
         return employee
 
+    def _get_employee_partner(self, employee):
+        """يحاول إيجاد partner الموظف الشخصي (لربط حساب بنكي أو تخصيص سيارة
+        كسائق) بعدة طرق احتياطية حسب ما هو متوفر في نظامك."""
+        emp_fields = employee._fields
+        if 'work_contact_id' in emp_fields and employee.work_contact_id:
+            return employee.work_contact_id
+        if 'address_home_id' in emp_fields and employee.address_home_id:
+            return employee.address_home_id
+        if employee.user_id and employee.user_id.partner_id:
+            return employee.user_id.partner_id
+        return False
+
     def _create_employee_bank_account(self, employee):
         """إنشاء/ربط حساب بنكي (res.partner.bank) بالموظف من الآيبان."""
         self.ensure_one()
         if not self.iban:
             return False
         emp_fields = employee._fields
-        partner = False
-        if 'work_contact_id' in emp_fields and employee.work_contact_id:
-            partner = employee.work_contact_id
-        elif 'address_home_id' in emp_fields and employee.address_home_id:
-            partner = employee.address_home_id
-        elif employee.user_id and employee.user_id.partner_id:
-            partner = employee.user_id.partner_id
+        partner = self._get_employee_partner(employee)
 
         if not partner:
             partner = self.env['res.partner'].sudo().create({
