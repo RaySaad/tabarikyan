@@ -108,4 +108,17 @@
         </t>
     </template>
 
+    <!-- رابط في قائمة تنقّل الموقع الرئيسية لصفحة التسجيل - بدون هذا لا
+         توجد أي طريقة للزائر العام ليصل للصفحة إلا بمعرفة الرابط مباشرة.
+         noupdate="1" حتى تبقى أي تعديلات يدوية عليه (إعادة تسمية، ترتيب،
+         حذف) عبر محرّر الموقع محفوظة رغم ترقيات الموديول لاحقاً. -->
+    <data noupdate="1">
+        <record id="website_menu_careers_register" model="website.menu">
+            <field name="name">انضم كمندوب</field>
+            <field name="url">/careers/register</field>
+            <field name="parent_id" ref="website.main_menu"/>
+            <field name="sequence">40</field>
+        </record>
+    </data>
+
 </odoo>
