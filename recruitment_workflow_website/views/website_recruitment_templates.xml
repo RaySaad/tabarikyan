@@ -15,6 +15,15 @@
                             <form action="/careers/register/submit" method="post">
                                 <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 
+                                <!-- فخ روبوتات (Honeypot): حقل حقيقي لكنه مخفي عن
+                                     الزوار الحقيقيين - الروبوتات التي تعبّئ كل
+                                     الحقول تلقائياً غالباً ستملأه، فنكتشفها. لا
+                                     تُزِل أو تُسمِّ هذا الحقل "website" شيء آخر. -->
+                                <div style="position:absolute; left:-9999px;" aria-hidden="true">
+                                    <label for="website">اتركه فارغاً</label>
+                                    <input type="text" id="website" name="website" tabindex="-1" autocomplete="off"/>
+                                </div>
+
                                 <div class="mb-3">
                                     <label class="form-label" for="employee_name">الاسم الكامل</label>
                                     <input type="text" id="employee_name" name="employee_name" required="required"

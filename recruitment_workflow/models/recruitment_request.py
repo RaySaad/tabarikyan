@@ -1071,7 +1071,10 @@ class RecruitmentRequest(models.Model):
         # _set_platform لضمان فتح سجل تاريخي (platform history) صحيح
         set_if('project_id', self.project_id.id)
         set_if('country_id', self.country_id.id)
+        # الحقل أُعيدت تسميته من gender إلى sex في نواة hr منذ Odoo 19 -
+        # نجرّب الاسمين حتى يعمل على أي إصدار/تخصيص محتمل يستخدم الاسم القديم.
         set_if('gender', self.gender)
+        set_if('sex', self.gender)
         set_if('marital', self.marital)
         set_if('passport_id', self.passport_no)
         # العنوان الخاص

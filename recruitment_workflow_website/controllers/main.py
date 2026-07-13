@@ -20,6 +20,12 @@ class RecruitmentWebsiteController(http.Controller):
         except (TypeError, ValueError):
             return None
 
+    def _is_spam(self, values):
+        """فخ بسيط ضد الروبوتات (Honeypot): حقل مخفي بالـCSS عن الزوار
+        الحقيقيين باسم مغرٍ (website) لكن الروبوتات التي تعبّئ كل حقول
+        النموذج تلقائياً تملؤه غالباً - أي قيمة فيه تعني تسجيلاً آلياً."""
+        return bool((values.get('website') or '').strip())
+
     def _validate(self, values):
         """يعيد قاموس أخطاء لكل حقل غير صالح - نفس قواعد التحقق المطبَّقة
         على recruitment.request (models/recruitment_request.py) لكن قبل
@@ -60,7 +66,9 @@ class RecruitmentWebsiteController(http.Controller):
             errors['country_id'] = _('الرجاء اختيار الجنسية.')
 
         project_id = self._to_int(values.get('project_id'))
-        if not project_id or not request.env['project.project'].sudo().browse(project_id).exists():
+        if not project_id or not request.env['project.project'].sudo().search_count([
+            ('id', '=', project_id), ('is_recruitment_open', '=', True),
+        ]):
             errors['project_id'] = _('الرجاء اختيار المشروع/المنصة.')
 
         if identification_id and identification_id.isdigit() and len(identification_id) == 10 \
@@ -83,7 +91,7 @@ class RecruitmentWebsiteController(http.Controller):
             'genders': request.env['recruitment.request']._fields['gender'].selection,
             'countries': request.env['res.country'].sudo().search([], order='name'),
             'projects': request.env['project.project'].sudo().search(
-                [('active', '=', True)], order='name',
+                [('is_recruitment_open', '=', True)], order='name',
             ),
         }
 
@@ -102,6 +110,11 @@ class RecruitmentWebsiteController(http.Controller):
     @http.route('/careers/register/submit', type='http', auth='public', website=True, methods=['POST'],
                 sitemap=False, csrf=True)
     def careers_register_submit(self, **post):
+        if self._is_spam(post):
+            # لا نُظهر أي خطأ يفيد الروبوت بأنه اكتُشف - نتظاهر بالنجاح
+            # دون إنشاء أي سجل فعلياً.
+            return request.redirect('/careers/register/thank-you')
+
         errors = self._validate(post)
         if errors:
             request.session['recruitment_workflow_error'] = errors

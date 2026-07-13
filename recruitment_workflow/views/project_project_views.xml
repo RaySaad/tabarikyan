@@ -12,6 +12,8 @@
                 <field name="compensation_type_ids" widget="many2many_tags"
                        options="{'no_create': True}"
                        groups="recruitment_workflow.group_recruitment_workflow_user"/>
+                <field name="is_recruitment_open"
+                       groups="recruitment_workflow.group_recruitment_workflow_user"/>
             </field>
         </field>
     </record>
