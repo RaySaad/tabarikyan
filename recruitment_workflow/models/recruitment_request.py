@@ -1015,7 +1015,10 @@ class RecruitmentRequest(models.Model):
             return self.vehicle_id.driver_id
         Partner = self.env['res.partner'].sudo()
         partner_fields = Partner._fields
-        partner_vals = {'name': self.employee_name, 'type': 'private'}
+        # ملاحظة: لا نضبط type='private' - هذه القيمة لم تعد موجودة ضمن
+        # خيارات res.partner.type في أودو 19 (تبقى contact/invoice/
+        # delivery/other فقط)؛ الافتراضي 'contact' مناسب هنا.
+        partner_vals = {'name': self.employee_name}
         # الحقل mobile حُذف من res.partner في أودو 19 (بقي phone فقط) - نتحقق
         # قبل الكتابة بدل افتراض وجوده، بنفس أسلوب set_if المستخدم في بقية
         # الموديول للتعامل مع اختلاف الحقول بين الإصدارات.
@@ -1149,7 +1152,6 @@ class RecruitmentRequest(models.Model):
         if not partner:
             partner = self.env['res.partner'].sudo().create({
                 'name': self.employee_name,
-                'type': 'private',
             })
             if 'work_contact_id' in emp_fields:
                 employee.work_contact_id = partner.id
