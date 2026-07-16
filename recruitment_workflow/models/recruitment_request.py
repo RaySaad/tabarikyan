@@ -936,44 +936,29 @@ class RecruitmentRequest(models.Model):
     # ------------------------------------------------------------------
     # منطق طلب السيارة (التكامل مع الأسطول)
     # ------------------------------------------------------------------
-    def action_open_car_request_wizard(self):
+    def action_send_car_request(self):
+        """إرسال طلب سيارة لقسم الأسطول - مسؤول المشروع يطلب سيارة فقط، ولا
+        يختار سيارة محدَّدة؛ اختيار السيارة تحديداً مسؤولية قسم الأسطول عند
+        الاستلام/التفويض (انظر action_fleet_authorize)."""
         self.ensure_one()
         self._check_group('recruitment_workflow.group_recruitment_workflow_project_manager')
         domain = [('recruitment_state', '=', 'available')]
         if self.project_id:
             domain += ['|', ('project_id', '=', self.project_id.id), ('project_id', '=', False)]
-        available = self.env['fleet.vehicle'].search_count(domain)
-        if not available:
+        if not self.env['fleet.vehicle'].search_count(domain):
             raise UserError(_(
                 'لا توجد سيارات متاحة في الأسطول حالياً (لنفس المنصة أو بدون منصة محددة). '
                 'لا يمكن متابعة الطلب حتى تتوفر سيارة.'
             ))
-        return {
-            'name': _('طلب سيارة'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'recruitment.request.car.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {'default_request_id': self.id},
-        }
-
-    def action_send_car_request(self, vehicle):
-        """إرسال طلب السيارة لقسم الأسطول."""
-        self.ensure_one()
-        self._check_group('recruitment_workflow.group_recruitment_workflow_project_manager')
         self.write({
-            'vehicle_id': vehicle.id,
             'car_requested': True,
             'car_request_state': 'requested',
         })
-        vehicle.write({'recruitment_state': 'reserved'})
-        self.message_post(
-            body=_('تم إرسال طلب السيارة %s إلى قسم الأسطول.') % vehicle.display_name,
-        )
+        self.message_post(body=_('تم إرسال طلب سيارة إلى قسم الأسطول.'))
         self._schedule_activity_for_group(
             'recruitment_workflow.group_recruitment_workflow_fleet',
-            'مطلوب منك: طلب سيارة جديد بانتظار الاستلام والموافقة',
-            note=_('الطلب: %s - السيارة: %s') % (self.name, vehicle.display_name),
+            'مطلوب منك: طلب سيارة جديد بانتظار الاستلام والتخصيص',
+            note=_('الطلب: %s') % self.name,
         )
 
     def action_fleet_receive(self):
@@ -986,11 +971,14 @@ class RecruitmentRequest(models.Model):
             rec.message_post(body=_('تم استلام طلب السيارة من قسم الأسطول.'))
 
     def action_fleet_authorize(self):
-        """قسم الأسطول يفوّض الطلب => يعود الطلب لمسؤول المشروع."""
+        """قسم الأسطول يختار السيارة المحدَّدة (حقل vehicle_id) ثم يفوّضها
+        => يعود الطلب لمسؤول المشروع."""
         for rec in self:
             rec._check_group('recruitment_workflow.group_recruitment_workflow_fleet')
             if rec.car_request_state != 'received':
                 raise UserError(_('يجب استلام الطلب أولاً قبل التفويض.'))
+            if not rec.vehicle_id:
+                raise UserError(_('يجب اختيار سيارة متاحة قبل التفويض.'))
             rec.car_request_state = 'authorized'
             rec.vehicle_id.write({'recruitment_state': 'assigned'})
             # نربط السيارة بالمرشّح كـ"سائق مستقبلي" (حقل Fleet القياسي) فور

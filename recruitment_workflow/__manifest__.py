@@ -56,7 +56,6 @@
         'data/account_journal_data.xml',
         'data/mail_templates.xml',
         'wizard/recruitment_reject_wizard_views.xml',
-        'wizard/recruitment_request_car_wizard_views.xml',
         'wizard/recruitment_return_wizard_views.xml',
         'wizard/hr_employee_platform_transfer_wizard_views.xml',
         'views/recruitment_request_views.xml',

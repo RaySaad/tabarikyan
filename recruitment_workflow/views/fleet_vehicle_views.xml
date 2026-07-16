@@ -57,7 +57,13 @@
                             <field name="project_id" readonly="1"/>
                         </group>
                         <group string="السيارة">
-                            <field name="vehicle_id" readonly="1"/>
+                            <!-- قابلة للتعديل هنا فقط - قسم الأسطول هو من
+                                 يختار السيارة المحدَّدة، وليس مسؤول المشروع
+                                 (الحقل للعرض فقط في نموذج التوظيف الرئيسي). -->
+                            <field name="vehicle_id"
+                                   domain="[('recruitment_state', '=', 'available'),
+                                            '|', ('project_id', '=', project_id), ('project_id', '=', False)]"
+                                   options="{'no_create': True}"/>
                             <field name="car_requested" readonly="1"/>
                         </group>
                     </group>

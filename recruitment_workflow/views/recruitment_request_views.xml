@@ -46,7 +46,7 @@
                             invisible="state in ('done','rejected') or stage_code in ('project_review','operations_review','gm_approval','car_request') or (stage_code == 'paid' and not fee_move_id)"/>
 
                     <!-- أزرار طلب السيارة -->
-                    <button name="action_open_car_request_wizard" type="object" string="طلب سيارة"
+                    <button name="action_send_car_request" type="object" string="طلب سيارة"
                             class="btn-primary"
                             groups="recruitment_workflow.group_recruitment_workflow_project_manager"
                             invisible="state in ('done','rejected') or stage_code != 'car_request' or car_requested"/>
@@ -224,7 +224,9 @@
                         <page string="السيارة / الأسطول" name="fleet">
                             <group>
                                 <group>
-                                    <field name="vehicle_id"/>
+                                    <!-- للعرض فقط - اختيار السيارة تحديداً مسؤولية
+                                         قسم الأسطول عند التفويض، وليس مسؤول المشروع. -->
+                                    <field name="vehicle_id" readonly="1"/>
                                     <field name="car_requested"/>
                                     <field name="car_request_state"/>
                                 </group>
