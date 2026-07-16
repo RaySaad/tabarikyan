@@ -1013,12 +1013,19 @@ class RecruitmentRequest(models.Model):
             return self.vehicle_id.future_driver_id
         if self.vehicle_id.driver_id:
             return self.vehicle_id.driver_id
-        return self.env['res.partner'].sudo().create({
-            'name': self.employee_name,
-            'type': 'private',
-            'mobile': self.mobile,
-            'email': self.email,
-        })
+        Partner = self.env['res.partner'].sudo()
+        partner_fields = Partner._fields
+        partner_vals = {'name': self.employee_name, 'type': 'private'}
+        # الحقل mobile حُذف من res.partner في أودو 19 (بقي phone فقط) - نتحقق
+        # قبل الكتابة بدل افتراض وجوده، بنفس أسلوب set_if المستخدم في بقية
+        # الموديول للتعامل مع اختلاف الحقول بين الإصدارات.
+        if 'mobile' in partner_fields:
+            partner_vals['mobile'] = self.mobile
+        elif 'phone' in partner_fields:
+            partner_vals['phone'] = self.mobile
+        if self.email and 'email' in partner_fields:
+            partner_vals['email'] = self.email
+        return Partner.create(partner_vals)
 
     def _release_vehicle(self):
         self.ensure_one()
