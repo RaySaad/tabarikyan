@@ -170,6 +170,11 @@ class HrEmployeeCost(models.Model):
 
     def action_view_move(self):
         self.ensure_one()
+        # حماية من جهة الخادم: عضو مجموعة "مستخدم" الأساسية يملك قراءة فقط
+        # على هذا النموذج، لكن دون هذا التحقق يستطيع فتح فاتورة المورد
+        # الفعلية في المحاسبة عبر هذا الزر رغم عدم امتلاكه صلاحية مالية.
+        if not self.env.user.has_group('recruitment_workflow.group_recruitment_workflow_operations'):
+            raise UserError(_('ليست لديك الصلاحية للاطّلاع على فاتورة المورد.'))
         if not self.move_id:
             raise UserError(_('لا يوجد فاتورة مورد مرتبطة بعد.'))
         return {

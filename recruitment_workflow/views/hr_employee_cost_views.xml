@@ -94,6 +94,7 @@
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_move" type="object"
                                 class="oe_stat_button" icon="fa-file-text-o"
+                                groups="recruitment_workflow.group_recruitment_workflow_operations"
                                 invisible="not move_id">
                             <div class="o_stat_info">
                                 <span class="o_stat_text">فاتورة المورد</span>

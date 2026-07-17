@@ -84,6 +84,7 @@
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_contract" type="object"
                                 class="oe_stat_button" icon="fa-file-text-o"
+                                groups="recruitment_workflow.group_recruitment_workflow_operations"
                                 invisible="not has_contract">
                             <div class="o_stat_info">
                                 <span class="o_stat_text">العقد</span>
@@ -91,6 +92,7 @@
                         </button>
                         <button name="action_view_fee_bill" type="object"
                                 class="oe_stat_button" icon="fa-money"
+                                groups="recruitment_workflow.group_recruitment_workflow_operations"
                                 invisible="not fee_move_id">
                             <div class="o_stat_info">
                                 <span class="o_stat_text">فاتورة الرسوم</span>

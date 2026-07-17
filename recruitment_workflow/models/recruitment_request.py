@@ -923,6 +923,7 @@ class RecruitmentRequest(models.Model):
 
     def action_view_fee_bill(self):
         self.ensure_one()
+        self._check_group('recruitment_workflow.group_recruitment_workflow_operations')
         if not self.fee_move_id:
             raise UserError(_('لا يوجد فاتورة رسوم مرتبطة بعد.'))
         return {
@@ -1384,6 +1385,7 @@ class RecruitmentRequest(models.Model):
 
     def action_view_contract(self):
         self.ensure_one()
+        self._check_group('recruitment_workflow.group_recruitment_workflow_operations')
         if not self.contract_ref:
             raise UserError(_('لا يوجد عقد مرتبط بهذا الطلب.'))
         return {
