@@ -45,19 +45,15 @@
                             class="btn-primary"
                             invisible="state in ('done','rejected') or stage_code in ('project_review','operations_review','gm_approval','car_request') or (stage_code == 'paid' and not fee_move_id)"/>
 
-                    <!-- أزرار طلب السيارة -->
+                    <!-- أزرار طلب السيارة: زرا الأسطول (استلام/تفويض) لا
+                         يظهران هنا عمداً - قسم الأسطول له نموذج مخصّص خاص
+                         به داخل تطبيق Fleet (view_recruitment_request_form_fleet)
+                         فيه هذان الزران فقط، بدل تكرارهما هنا وسط تفاصيل
+                         طلب التوظيف غير ذات الصلة بعمل الأسطول. -->
                     <button name="action_send_car_request" type="object" string="طلب سيارة"
                             class="btn-primary"
                             groups="recruitment_workflow.group_recruitment_workflow_project_manager"
                             invisible="state in ('done','rejected') or stage_code != 'car_request' or car_requested"/>
-                    <button name="action_fleet_receive" type="object" string="استلام الطلب (الأسطول)"
-                            class="btn-secondary"
-                            groups="recruitment_workflow.group_recruitment_workflow_fleet"
-                            invisible="car_request_state != 'requested'"/>
-                    <button name="action_fleet_authorize" type="object" string="موافقة مسؤول الأسطول (اعتماد نهائي)"
-                            class="btn-secondary"
-                            groups="recruitment_workflow.group_recruitment_workflow_fleet"
-                            invisible="car_request_state != 'received'"/>
                     <button name="action_next_stage" type="object" string="إنهاء طلب السيارة والمتابعة"
                             class="btn-primary"
                             groups="recruitment_workflow.group_recruitment_workflow_project_manager"
