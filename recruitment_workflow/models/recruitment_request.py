@@ -921,19 +921,6 @@ class RecruitmentRequest(models.Model):
                 note=_('الطلب: %s - المبلغ: %s') % (rec.name, rec.fee_amount),
             )
 
-    def action_view_fee_bill(self):
-        self.ensure_one()
-        self._check_group('recruitment_workflow.group_recruitment_workflow_operations')
-        if not self.fee_move_id:
-            raise UserError(_('لا يوجد فاتورة رسوم مرتبطة بعد.'))
-        return {
-            'name': _('فاتورة الرسوم'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'account.move',
-            'res_id': self.fee_move_id.id,
-            'view_mode': 'form',
-        }
-
     # ------------------------------------------------------------------
     # منطق طلب السيارة (التكامل مع الأسطول)
     # ------------------------------------------------------------------

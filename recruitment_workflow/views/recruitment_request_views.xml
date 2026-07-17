@@ -86,15 +86,17 @@
                                 <span class="o_stat_text">العقد</span>
                             </div>
                         </button>
-                        <button name="action_view_fee_bill" type="object"
-                                class="oe_stat_button" icon="fa-money"
-                                groups="recruitment_workflow.group_recruitment_workflow_operations"
-                                invisible="not fee_move_id">
+                        <!-- عرض فقط - بدون تنقّل لتطبيق المحاسبة، فقط حالة
+                             السداد (مدفوع/غير مدفوع) بنظرة سريعة. -->
+                        <div class="oe_stat_button" style="cursor:default;"
+                             groups="recruitment_workflow.group_recruitment_workflow_operations"
+                             invisible="not fee_move_id">
+                            <i class="fa fa-fw fa-money"/>
                             <div class="o_stat_info">
                                 <span class="o_stat_text">فاتورة الرسوم</span>
                                 <field name="fee_payment_state" widget="badge" class="o_stat_value"/>
                             </div>
-                        </button>
+                        </div>
                     </div>
 
                     <widget name="web_ribbon" title="مرفوض" bg_color="text-bg-danger"
