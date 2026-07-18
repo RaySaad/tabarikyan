@@ -2,7 +2,7 @@
 from psycopg2 import IntegrityError
 
 from odoo.exceptions import UserError, ValidationError
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import Form, TransactionCase, tagged
 from odoo.tools import mute_logger
 
 
@@ -64,6 +64,32 @@ class TestRecruitmentRequest(TransactionCase):
         self._create_request(identification_id='1234567890', email='a@example.com')
         with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError):
             self._create_request(identification_id='1234567890', email='b@example.com')
+
+    # ------------------------------------------------------------------
+    # اشتقاق الشركة من المشروع المختار (Multi-Company)
+    # ------------------------------------------------------------------
+    def test_company_synced_from_project_onchange(self):
+        """عند اختيار المشروع، تُشتَق الشركة تلقائياً من شركة ذلك المشروع -
+        ولا تتغيّر إلا بتغيير المشروع نفسه."""
+        # حقل company_id مقيَّد بـgroups="base.group_multi_company" في
+        # الواجهة - بدون هذه المجموعة لن يظهر الحقل أصلاً في Form ويفشل
+        # الاختبار بخطأ "حقل غير معروف".
+        self.env.user.write({
+            'group_ids': [(4, self.env.ref('base.group_multi_company').id)],
+        })
+        other_company = self.env['res.company'].create({'name': 'شركة تجريبية أخرى'})
+        project = self.env['project.project'].create({
+            'name': 'منصة شركة أخرى', 'company_id': other_company.id,
+        })
+        with Form(self.Request) as form:
+            form.employee_name = 'موظف تجريبي'
+            form.identification_id = '1234567898'
+            form.mobile = '0501234567'
+            form.email = 'company-sync@example.com'
+            form.project_id = project
+            self.assertEqual(form.company_id, other_company)
+        request = form.save()
+        self.assertEqual(request.company_id, other_company)
 
     # ------------------------------------------------------------------
     # إغلاق ثغرة تجاوز المراحل عبر write() المباشر على stage_id

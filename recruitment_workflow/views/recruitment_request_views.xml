@@ -124,7 +124,9 @@
                                    options="{'no_create': True}"/>
                             <field name="analytic_account_id" readonly="1"
                                    invisible="not analytic_account_id"/>
-                            <field name="company_id" groups="base.group_multi_company"/>
+                            <!-- للعرض فقط - تُشتَق تلقائياً من شركة المشروع
+                                 المختار أعلاه، لا تُعدَّل يدوياً. -->
+                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                         </group>
                     </group>
 
