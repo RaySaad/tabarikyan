@@ -55,6 +55,10 @@ class HrEmployeePlatformBulkAssignWizard(models.TransientModel):
         self.ensure_one()
         if not self.line_ids:
             raise UserError(_('لم يتم تحديد أي موظف.'))
+        if any(not line.employee_id for line in self.line_ids):
+            raise UserError(_(
+                'يوجد سطر بدون موظف محدد - احذفه قبل التأكيد.'
+            ))
         for line in self.line_ids:
             line.employee_id._open_platform_history(
                 self.project_id, note=self.note, date_start=line.date_start,
@@ -74,7 +78,10 @@ class HrEmployeePlatformBulkAssignWizardLine(models.TransientModel):
     employee_id = fields.Many2one(
         'hr.employee',
         string='الموظف',
-        required=True,
+        # ليس required=True عمداً: الحقل readonly في الواجهة ولا يُملأ إلا
+        # عبر default_get، لذا نتحقق من اكتماله بلطف في action_confirm_assign
+        # بدل الاصطدام برسالة قيد NOT NULL العامة من قاعدة البيانات لو
+        # وُجد سطر فارغ بأي شكل غير متوقع.
     )
     date_start = fields.Date(
         string='تاريخ بداية العمل على المنصة',

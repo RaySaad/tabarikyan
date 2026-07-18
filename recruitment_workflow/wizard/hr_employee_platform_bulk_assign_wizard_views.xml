@@ -16,7 +16,7 @@
                     <field name="note" placeholder="مثال: ربط رجعي - بيانات قديمة"/>
                 </group>
                 <field name="line_ids">
-                    <list editable="bottom">
+                    <list editable="bottom" create="0">
                         <field name="employee_id" readonly="1"/>
                         <field name="date_start"/>
                     </list>

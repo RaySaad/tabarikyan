@@ -80,6 +80,18 @@ class TestHrEmployeePlatformBulkAssign(TransactionCase):
         self.assertEqual(wizard.line_ids.employee_id, employee)
         self.assertEqual(wizard.line_ids.date_start, employee.create_date.date())
 
+    def test_bulk_assign_rejects_line_without_employee(self):
+        """سطر بدون موظف محدد (مثال: أُضيف يدوياً في الواجهة بدون تعبئة)
+        يجب أن يُرفض برسالة واضحة بدل انهيار قيد NOT NULL في قاعدة
+        البيانات."""
+        from odoo.exceptions import UserError
+
+        wizard = self.Wizard.create({'project_id': self.project.id})
+        wizard.line_ids = [(0, 0, {'date_start': date.today()})]
+
+        with self.assertRaises(UserError):
+            wizard.action_confirm_assign()
+
     def test_transfer_wizard_uses_selected_transfer_date(self):
         """معالج النقل الفردي يجب أن يستخدم فعلياً تاريخ النقل الذي يحدّده
         المستخدم، لا تاريخ اليوم دائماً."""
