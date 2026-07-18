@@ -46,12 +46,16 @@ class HrEmployee(models.Model):
         for rec in self:
             rec.currency_id = self.env.company.currency_id
 
-    @api.depends('cost_ids.state', 'cost_ids.amount')
+    @api.depends('cost_ids.move_state', 'cost_ids.amount')
     def _compute_cost_count(self):
         for rec in self:
             rec.cost_count = len(rec.cost_ids)
+            # "المرحّلة" تعني حالة الترحيل المحاسبي الفعلية لفاتورة المورد
+            # المرتبطة (move_state == 'posted') - وليس حقل state الخاص بسير
+            # عمل التكلفة نفسها (draft/submitted/cancelled)، الذي لا يملك
+            # قيمة 'posted' إطلاقاً أصلاً.
             rec.total_posted_cost = sum(
-                rec.cost_ids.filtered(lambda c: c.state == 'posted').mapped('amount')
+                rec.cost_ids.filtered(lambda c: c.move_state == 'posted').mapped('amount')
             )
 
     @api.depends('platform_history_ids')

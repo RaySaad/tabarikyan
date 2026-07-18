@@ -1152,8 +1152,14 @@ class RecruitmentRequest(models.Model):
             'acc_number': self.iban,
             'partner_id': partner.id,
         }
-        if self.bank_name and 'bank_name' in Bank._fields:
-            bank_vals['bank_name'] = self.bank_name
+        if self.bank_name and 'bank_id' in Bank._fields:
+            # bank_name حقل related عبر bank_id.name - الكتابة عليه مباشرة
+            # بدون وجود bank_id مسبقاً تُهمَل بصمت (سجل res.bank فارغ لا يوجد
+            # شيء تُكتب عليه القيمة). نوجد/ننشئ سجل res.bank الفعلي أولاً.
+            Bank_model = self.env['res.bank'].sudo()
+            bank = Bank_model.search([('name', '=', self.bank_name)], limit=1) \
+                or Bank_model.create({'name': self.bank_name})
+            bank_vals['bank_id'] = bank.id
         return Bank.create(bank_vals)
 
     def _get_contract_model_name(self):
