@@ -63,12 +63,16 @@ class HrEmployee(models.Model):
         for rec in self:
             rec.platform_history_count = len(rec.platform_history_ids)
 
-    def _open_platform_history(self, project, note=False):
+    def _open_platform_history(self, project, note=False, date_start=None):
         """يفتح فترة جديدة في تاريخ المنصات ويغلق الفترة المفتوحة الحالية
         (إن وُجدت)، ثم يحدّث المنصة الحالية للمندوب.
 
         تُستخدم هذه الدالة سواء عند أول تعيين للمندوب (من طلب التوظيف) أو
         عند نقله لاحقاً بين المنصات، مع الحفاظ الكامل على السجل التاريخي.
+
+        :param date_start: تاريخ بداية الفترة الجديدة - يُفترض اليوم إن لم
+            يُحدَّد. مهم عند الربط الرجعي لموظفين قدامى كانوا على المنصة
+            فعلياً منذ تاريخ سابق، وليس منذ اليوم.
         """
         self.ensure_one()
         if not project:
@@ -77,16 +81,16 @@ class HrEmployee(models.Model):
         # الفعلية لموديول التوظيف - قبل ما نعتمد عليه بمزامنة العقد بالأسفل.
         if not project.account_id:
             project._create_default_analytic_account()
-        today = fields.Date.context_today(self)
+        date_start = date_start or fields.Date.context_today(self)
         open_lines = self.platform_history_ids.filtered(lambda l: not l.date_end)
         # لا داعي لفتح فترة جديدة إن كانت نفس المنصة الحالية بدون تغيير فعلي
         if open_lines and open_lines[0].project_id.id == project.id:
             return open_lines[0]
-        open_lines.write({'date_end': today})
+        open_lines.write({'date_end': date_start})
         new_line = self.env['hr.employee.platform.history'].sudo().create({
             'employee_id': self.id,
             'project_id': project.id,
-            'date_start': today,
+            'date_start': date_start,
             'note': note or False,
         })
         self.project_id = project.id

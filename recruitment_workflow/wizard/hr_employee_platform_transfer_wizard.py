@@ -41,7 +41,7 @@ class HrEmployeePlatformTransferWizard(models.TransientModel):
     def action_confirm_transfer(self):
         self.ensure_one()
         self.employee_id._open_platform_history(
-            self.new_project_id, note=self.note,
+            self.new_project_id, note=self.note, date_start=self.transfer_date,
         )
         # السيارة تبقى مع المندوب (لا تتبع المنصة) حسب سياسة الشركة، لذا لا
         # يوجد أي تعديل هنا على fleet.vehicle عمداً.

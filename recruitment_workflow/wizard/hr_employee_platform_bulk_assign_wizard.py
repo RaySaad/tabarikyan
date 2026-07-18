@@ -22,6 +22,13 @@ class HrEmployeePlatformBulkAssignWizard(models.TransientModel):
         required=True,
         options="{'no_create': True}",
     )
+    date_start = fields.Date(
+        string='تاريخ بداية العمل على المنصة',
+        default=fields.Date.context_today,
+        required=True,
+        help='لو كانوا يعملون على هذه المنصة فعلياً منذ تاريخ سابق (ربط '
+             'رجعي لموظفين قدامى)، غيّر هذا التاريخ بدل تركه على اليوم.',
+    )
     note = fields.Char(
         string='ملاحظة',
         help='تُسجَّل في سجل تاريخ المنصات لكل موظف (مثال: "ربط رجعي - بيانات قديمة").',
@@ -37,5 +44,7 @@ class HrEmployeePlatformBulkAssignWizard(models.TransientModel):
         if not self.employee_ids:
             raise UserError(_('لم يتم تحديد أي موظف.'))
         for employee in self.employee_ids:
-            employee._open_platform_history(self.project_id, note=self.note)
+            employee._open_platform_history(
+                self.project_id, note=self.note, date_start=self.date_start,
+            )
         return {'type': 'ir.actions.act_window_close'}

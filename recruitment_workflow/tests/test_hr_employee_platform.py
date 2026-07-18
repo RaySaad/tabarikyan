@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datetime import date, timedelta
+
 from odoo.tests import TransactionCase, tagged
 
 
@@ -46,3 +48,33 @@ class TestHrEmployeePlatformBulkAssign(TransactionCase):
         wizard.action_confirm_assign()
 
         self.assertEqual(len(employee.platform_history_ids), 1)
+
+    def test_bulk_assign_uses_custom_start_date(self):
+        """تاريخ البداية يجب أن يعكس التاريخ الذي يحدّده المستخدم (ربط
+        رجعي) وليس دائماً تاريخ اليوم."""
+        employee = self.Employee.create({'name': 'موظف قديم بتاريخ رجعي'})
+        past_date = date.today() - timedelta(days=365)
+
+        wizard = self.Wizard.create({
+            'employee_ids': [(6, 0, employee.ids)],
+            'project_id': self.project.id,
+            'date_start': past_date,
+        })
+        wizard.action_confirm_assign()
+
+        self.assertEqual(employee.platform_history_ids.date_start, past_date)
+
+    def test_transfer_wizard_uses_selected_transfer_date(self):
+        """معالج النقل الفردي يجب أن يستخدم فعلياً تاريخ النقل الذي يحدّده
+        المستخدم، لا تاريخ اليوم دائماً."""
+        employee = self.Employee.create({'name': 'موظف للنقل'})
+        past_date = date.today() - timedelta(days=30)
+
+        transfer_wizard = self.env['hr.employee.platform.transfer.wizard'].create({
+            'employee_id': employee.id,
+            'new_project_id': self.project.id,
+            'transfer_date': past_date,
+        })
+        transfer_wizard.action_confirm_transfer()
+
+        self.assertEqual(employee.platform_history_ids.date_start, past_date)
