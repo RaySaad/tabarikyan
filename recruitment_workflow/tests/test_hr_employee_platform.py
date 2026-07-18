@@ -24,9 +24,12 @@ class TestHrEmployeePlatformBulkAssign(TransactionCase):
         self.assertFalse(employees.mapped('project_id').filtered(lambda p: p))
 
         wizard = self.Wizard.create({
-            'employee_ids': [(6, 0, employees.ids)],
             'project_id': self.project.id,
             'note': 'ربط رجعي - اختبار',
+            'line_ids': [
+                (0, 0, {'employee_id': employee.id, 'date_start': date.today()})
+                for employee in employees
+            ],
         })
         wizard.action_confirm_assign()
 
@@ -42,8 +45,8 @@ class TestHrEmployeePlatformBulkAssign(TransactionCase):
         self.assertEqual(len(employee.platform_history_ids), 1)
 
         wizard = self.Wizard.create({
-            'employee_ids': [(6, 0, employee.ids)],
             'project_id': self.project.id,
+            'line_ids': [(0, 0, {'employee_id': employee.id, 'date_start': date.today()})],
         })
         wizard.action_confirm_assign()
 
@@ -56,13 +59,26 @@ class TestHrEmployeePlatformBulkAssign(TransactionCase):
         past_date = date.today() - timedelta(days=365)
 
         wizard = self.Wizard.create({
-            'employee_ids': [(6, 0, employee.ids)],
             'project_id': self.project.id,
-            'date_start': past_date,
+            'line_ids': [(0, 0, {'employee_id': employee.id, 'date_start': past_date})],
         })
         wizard.action_confirm_assign()
 
         self.assertEqual(employee.platform_history_ids.date_start, past_date)
+
+    def test_bulk_assign_default_date_from_employee_create_date(self):
+        """عند فتح المعالج من قائمة الموظفين، التاريخ المقترح لكل سطر هو
+        تاريخ إنشاء سجل الموظف تلقائياً - وهو ما يعكس تاريخ تعيينه الفعلي
+        لهؤلاء الموظفين القدامى - مع بقائه قابلاً للتعديل يدوياً."""
+        employee = self.Employee.create({'name': 'موظف بتاريخ إنشاء محدد'})
+
+        wizard = self.Wizard.with_context(active_ids=employee.ids).create({
+            'project_id': self.project.id,
+        })
+
+        self.assertEqual(len(wizard.line_ids), 1)
+        self.assertEqual(wizard.line_ids.employee_id, employee)
+        self.assertEqual(wizard.line_ids.date_start, employee.create_date.date())
 
     def test_transfer_wizard_uses_selected_transfer_date(self):
         """معالج النقل الفردي يجب أن يستخدم فعلياً تاريخ النقل الذي يحدّده

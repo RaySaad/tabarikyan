@@ -8,15 +8,19 @@
             <form string="ربط عدة موظفين بمنصة">
                 <div class="alert alert-info" role="alert">
                     سيُربَط <field name="employee_count" class="fw-bold d-inline"/> موظف بالمنصة المختارة،
-                    مع فتح سجل تاريخ منصات جديد لكل واحد منهم (أو تحديث الحساب
-                    التحليلي إن كان لديهم بالفعل منصة نشطة مختلفة).
+                    كل واحد بتاريخ بداية خاص به (مقترح تلقائياً من تاريخ تعيينه،
+                    وقابل للتعديل لكل موظف قبل التأكيد).
                 </div>
                 <group>
-                    <field name="employee_ids" widget="many2many_tags" readonly="1"/>
                     <field name="project_id"/>
-                    <field name="date_start"/>
                     <field name="note" placeholder="مثال: ربط رجعي - بيانات قديمة"/>
                 </group>
+                <field name="line_ids">
+                    <list editable="bottom">
+                        <field name="employee_id" readonly="1"/>
+                        <field name="date_start"/>
+                    </list>
+                </field>
                 <footer>
                     <button name="action_confirm_assign" type="object"
                             string="تأكيد الربط" class="btn-primary"/>
@@ -36,7 +40,6 @@
         <field name="target">new</field>
         <field name="binding_model_id" ref="hr.model_hr_employee"/>
         <field name="binding_view_types">list</field>
-        <field name="context">{'default_employee_ids': active_ids}</field>
     </record>
 
 </odoo>
