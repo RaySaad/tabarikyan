@@ -1222,21 +1222,14 @@ class RecruitmentRequest(models.Model):
             contract_vals['job_id'] = self.job_id.id
         if self.department_id and 'department_id' in contract_fields:
             contract_vals['department_id'] = self.department_id.id
-        # ربط المشروع/المنصة والحساب التحليلي بالعقد إن كانت الحقول متوفرة
-        # (تختلف تسمية الحقل التحليلي حسب النسخة/التخصيص المثبت: الحقل
-        # الحديث analytic_distribution، أو Many2one قديم analytic_account_id/account_id)
+        # ربط المشروع/المنصة بالعقد إن كان الحقل متوفراً.
+        # ملاحظة: لا يوجد حقل تحليلي (analytic_distribution/analytic_account_id)
+        # على العقد/الإصدار في Odoo Enterprise Payroll (تحقّقنا من ذلك على
+        # البيئة الفعلية) - التوزيع التحليلي هناك يُدار على مستوى قواعد
+        # الراتب (Salary Rules) نفسها عند الترحيل المحاسبي، وليس حقلاً على
+        # العقد. لذا لا نحاول ربطه هنا لتفادي كود ميت يوحي بميزة غير فعّالة.
         if self.project_id and 'project_id' in contract_fields:
             contract_vals['project_id'] = self.project_id.id
-        if self.analytic_account_id:
-            if 'analytic_distribution' in contract_fields:
-                contract_vals['analytic_distribution'] = {
-                    str(self.analytic_account_id.id): 100.0,
-                }
-            else:
-                for analytic_field in ('analytic_account_id', 'account_id'):
-                    if analytic_field in contract_fields:
-                        contract_vals[analytic_field] = self.analytic_account_id.id
-                        break
 
         # ساعات العمل (resource_calendar_id) - حقل إجباري في hr.version بـ Odoo 19
         if 'resource_calendar_id' in contract_fields:

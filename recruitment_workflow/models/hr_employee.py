@@ -90,20 +90,20 @@ class HrEmployee(models.Model):
             'note': note or False,
         })
         self.project_id = project.id
-        self._sync_contract_analytic()
+        self._sync_contract_project()
         self.message_post(body=_(
             'تم نقل المندوب إلى المنصة: %s%s'
         ) % (project.display_name, (' — %s' % note) if note else ''))
         return new_line
 
-    def _sync_contract_analytic(self):
-        """يحدّث الحساب التحليلي/المشروع على عقد الموظف الحالي (hr.version
-        أو hr.contract) بعد كل تعيين أو نقل منصة، بحيث تُوزَّع الرواتب
-        (الرواتب المستقبلية) تلقائياً على حساب المنصة الجديدة عند الترحيل
-        المحاسبي في تطبيق الرواتب.
+    def _sync_contract_project(self):
+        """يحدّث حقل المشروع/المنصة على عقد الموظف الحالي (hr.version أو
+        hr.contract) بعد كل تعيين أو نقل منصة، إن كان الحقل متوفراً.
 
-        اعتماد مرن: يتحقق من وجود كل حقل قبل الكتابة، فلا يفشل إن كان إصدار
-        الرواتب المثبت لا يدعم التوزيع التحليلي على العقد مباشرة.
+        ملاحظة: لا نحاول ربط حساب تحليلي على العقد هنا - تحقّقنا على بيئة
+        Odoo Enterprise Payroll الفعلية أن لا يوجد حقل تحليلي على العقد/
+        الإصدار إطلاقاً؛ التوزيع التحليلي للرواتب هناك يُدار على مستوى
+        قواعد الراتب (Salary Rules) نفسها عند الترحيل المحاسبي.
         """
         self.ensure_one()
         contract = False
@@ -122,20 +122,8 @@ class HrEmployee(models.Model):
         if not contract:
             return False
 
-        cfields = contract._fields
-        vals = {}
-        analytic = self.analytic_account_id
-        if 'analytic_distribution' in cfields and analytic:
-            vals['analytic_distribution'] = {str(analytic.id): 100.0}
-        else:
-            for f in ('analytic_account_id', 'account_id'):
-                if f in cfields and analytic:
-                    vals[f] = analytic.id
-                    break
-        if 'project_id' in cfields and self.project_id:
-            vals['project_id'] = self.project_id.id
-        if vals:
-            contract.sudo().write(vals)
+        if 'project_id' in contract._fields and self.project_id:
+            contract.sudo().project_id = self.project_id.id
         return True
 
     def action_open_platform_transfer_wizard(self):
