@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_hr_employee_platform_bulk_assign_wizard_form" model="ir.ui.view">
+        <field name="name">hr.employee.platform.bulk.assign.wizard.form</field>
+        <field name="model">hr.employee.platform.bulk.assign.wizard</field>
+        <field name="arch" type="xml">
+            <form string="ربط عدة موظفين بمنصة">
+                <div class="alert alert-info" role="alert">
+                    سيُربَط <field name="employee_count" class="fw-bold d-inline"/> موظف بالمنصة المختارة،
+                    مع فتح سجل تاريخ منصات جديد لكل واحد منهم (أو تحديث الحساب
+                    التحليلي إن كان لديهم بالفعل منصة نشطة مختلفة).
+                </div>
+                <group>
+                    <field name="employee_ids" widget="many2many_tags" readonly="1"/>
+                    <field name="project_id"/>
+                    <field name="note" placeholder="مثال: ربط رجعي - بيانات قديمة"/>
+                </group>
+                <footer>
+                    <button name="action_confirm_assign" type="object"
+                            string="تأكيد الربط" class="btn-primary"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- إجراء جماعي يظهر في قائمة "الإجراءات" (⚙) عند تحديد عدة موظفين من
+         قائمة الموظفين في تطبيق Employees - بدل تكرار معالج النقل الفردي
+         موظفاً موظفاً. -->
+    <record id="action_hr_employee_platform_bulk_assign" model="ir.actions.act_window">
+        <field name="name">ربط بمنصة (دفعة واحدة)</field>
+        <field name="res_model">hr.employee.platform.bulk.assign.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="hr.model_hr_employee"/>
+        <field name="binding_view_types">list</field>
+        <field name="context">{'default_employee_ids': active_ids}</field>
+    </record>
+
+</odoo>

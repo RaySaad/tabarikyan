@@ -58,6 +58,7 @@
         'wizard/recruitment_reject_wizard_views.xml',
         'wizard/recruitment_return_wizard_views.xml',
         'wizard/hr_employee_platform_transfer_wizard_views.xml',
+        'wizard/hr_employee_platform_bulk_assign_wizard_views.xml',
         'views/recruitment_request_views.xml',
         'views/recruitment_stage_views.xml',
         'views/recruitment_attachment_type_views.xml',
