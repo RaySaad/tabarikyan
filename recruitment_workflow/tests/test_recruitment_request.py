@@ -300,3 +300,56 @@ class TestRecruitmentRequest(TransactionCase):
 
         with self.assertRaises(UserError):
             request.with_user(plain_user).action_next_stage()
+
+    # ------------------------------------------------------------------
+    # حماية project_manager_id + مزامنة تعديل المشروع مع الطلبات الجارية
+    # ------------------------------------------------------------------
+    def test_project_manager_id_cannot_be_written_alone(self):
+        """لا يمكن تعديل project_manager_id مباشرة بمعزل عن project_id -
+        هذا كان يسمح بانتحال هوية مسؤول المشروع المخصّص لموافقة معيّنة."""
+        other_pm = self.env['res.users'].create({
+            'name': 'مسؤول آخر', 'login': 'direct_write_pm', 'email': 'direct_write_pm@example.com',
+        })
+        request = self._create_request(identification_id='1234567801', email='l@example.com')
+
+        with self.assertRaises(UserError):
+            request.write({'project_manager_id': other_pm.id})
+
+    def test_project_edit_syncs_only_in_progress_requests(self):
+        """تعديل "مسؤول المشروع" على المشروع نفسه ينعكس تلقائياً على الطلبات
+        التي لا تزال قيد التنفيذ فقط - الطلبات المكتملة تحتفظ بالقيمة القديمة
+        كسجل تاريخي لا يتغيّر."""
+        original_pm = self.env['res.users'].create({
+            'name': 'مسؤول أصلي', 'login': 'sync_orig_pm', 'email': 'sync_orig_pm@example.com',
+        })
+        new_pm = self.env['res.users'].create({
+            'name': 'مسؤول جديد', 'login': 'sync_new_pm', 'email': 'sync_new_pm@example.com',
+        })
+        project = self.env['project.project'].create({
+            'name': 'منصة اختبار المزامنة', 'user_id': original_pm.id,
+        })
+        in_progress_request = self._create_request(
+            identification_id='1234567802', email='m@example.com',
+            project_id=project.id, project_manager_id=original_pm.id,
+        )
+        done_request = self._create_request(
+            identification_id='1234567803', email='n@example.com',
+            project_id=project.id, project_manager_id=original_pm.id,
+        )
+        done_request.state = 'done'
+
+        project.user_id = new_pm.id
+
+        self.assertEqual(in_progress_request.project_manager_id, new_pm)
+        self.assertEqual(done_request.project_manager_id, original_pm)
+
+    def test_action_reject_works_from_new_stage(self):
+        """يجب أن يكون رفض الطلب متاحاً من المرحلة الأولى (قبل رفع أي
+        مرفقات)، وليس فقط من مراحل الموافقة اللاحقة."""
+        request = self._create_request(identification_id='1234567804', email='o@example.com')
+        self.assertEqual(request.stage_id.code, 'new')
+
+        request.action_reject(reason='بيانات غير مكتملة')
+
+        self.assertEqual(request.state, 'rejected')
+        self.assertFalse(request.active)

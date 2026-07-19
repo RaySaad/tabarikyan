@@ -29,11 +29,11 @@
                             groups="recruitment_workflow.group_recruitment_workflow_operations"
                             invisible="state in ('done','rejected') or stage_code != 'paid' or fee_move_id"/>
 
-                    <!-- رفض - متاح لأصحاب مراحل الموافقة -->
+                    <!-- رفض - متاح من المرحلة الأولى (حتى قبل اكتمال المرفقات) ولأصحاب مراحل الموافقة -->
                     <button name="action_open_reject_wizard" type="object" string="رفض"
                             class="btn-danger"
                             groups="recruitment_workflow.group_recruitment_workflow_operations"
-                            invisible="state in ('done','rejected') or not stage_code in ('project_review','operations_review','gm_approval')"/>
+                            invisible="state in ('done','rejected') or not stage_code in ('new','project_review','operations_review','gm_approval')"/>
 
                     <!-- إرجاع للتصحيح - متاح في كل المراحل عدا الأولى والنهائية -->
                     <button name="action_open_return_wizard" type="object" string="إرجاع للتصحيح"

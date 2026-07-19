@@ -28,6 +28,42 @@ class ProjectProject(models.Model):
              'معلومات...) لن تظهر أبداً للزوار العامين.',
     )
 
+    def write(self, vals):
+        tracked = {'user_id', 'company_id'} & set(vals.keys())
+        res = super().write(vals)
+        if tracked:
+            self._sync_recruitment_requests_in_progress(tracked)
+        return res
+
+    def _sync_recruitment_requests_in_progress(self, tracked_fields):
+        """يحدّث "مسؤول المشروع"/"الشركة" على طلبات التوظيف المرتبطة بهذا
+        المشروع تلقائياً عند تعديلهما هنا - لكن فقط للطلبات التي لا تزال
+        قيد التنفيذ (state == 'in_progress')؛ الطلبات المكتملة أو المرفوضة
+        تبقى بالقيمة التي كانت سارية وقت إنجازها فعلياً، كسجل تاريخي.
+
+        sudo() لأن من يملك صلاحية تعديل المشروع (تطبيق Project) قد لا يملك
+        بالضرورة صلاحيات موديول التوظيف، والتحديث هنا نتيجة مباشرة لتعديله
+        هو للمشروع، وليس تجاوزاً لقيد موافقة.
+        """
+        Request = self.env['recruitment.request'].sudo()
+        for project in self:
+            requests = Request.search([
+                ('project_id', '=', project.id),
+                ('state', '=', 'in_progress'),
+            ])
+            if not requests:
+                continue
+            sync_vals = {'project_id': project.id}
+            if 'user_id' in tracked_fields:
+                sync_vals['project_manager_id'] = project.user_id.id
+            if 'company_id' in tracked_fields:
+                sync_vals['company_id'] = project.company_id.id
+            requests.write(sync_vals)
+            requests.message_post(body=_(
+                'تم تحديث بيانات المشروع تلقائياً (مسؤول المشروع/الشركة) '
+                'بعد تعديلها على المشروع "%s".'
+            ) % project.display_name)
+
     def _get_default_analytic_plan(self):
         """يحاول إيجاد خطة تحليلية مناسبة لربط حسابات المشاريع بها:
         1) خطة موجودة اسمها يحتوي "Project"/"مشروع"
