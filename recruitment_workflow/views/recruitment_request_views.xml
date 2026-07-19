@@ -43,7 +43,12 @@
                     <!-- زر الانتقال العام للمراحل غير التقييمية -->
                     <button name="action_next_stage" type="object" string="الانتقال للمرحلة التالية"
                             class="btn-primary"
-                            invisible="state in ('done','rejected') or stage_code in ('project_review','operations_review','gm_approval','car_request') or (stage_code == 'paid' and not fee_move_id)"/>
+                            invisible="state in ('done','rejected') or stage_code in ('project_review','operations_review','gm_approval','car_request','sponsorship_transfer','sponsorship_done') or (stage_code == 'paid' and not fee_move_id)"/>
+                    <!-- نقل الكفالة ومتابعة اكتمالها - قسم الموارد البشرية فقط -->
+                    <button name="action_next_stage" type="object" string="الانتقال للمرحلة التالية"
+                            class="btn-primary"
+                            groups="recruitment_workflow.group_recruitment_workflow_hr"
+                            invisible="state in ('done','rejected') or stage_code not in ('sponsorship_transfer','sponsorship_done')"/>
 
                     <!-- أزرار طلب السيارة: زرا الأسطول (استلام/تفويض) لا
                          يظهران هنا عمداً - قسم الأسطول له نموذج مخصّص خاص

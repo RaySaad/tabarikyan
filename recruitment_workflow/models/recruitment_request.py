@@ -691,6 +691,9 @@ class RecruitmentRequest(models.Model):
         # إنهاء مرحلة "طلب سيارة" (بعد تفويض الأسطول) مخصّص لمسؤول المشروع
         # فقط - يطابق تقييد زر "إنهاء طلب السيارة والمتابعة" في الواجهة.
         'car_request': 'recruitment_workflow.group_recruitment_workflow_project_manager',
+        # نقل الكفالة ومتابعته حتى الاكتمال مسؤولية قسم الموارد البشرية.
+        'sponsorship_transfer': 'recruitment_workflow.group_recruitment_workflow_hr',
+        'sponsorship_done': 'recruitment_workflow.group_recruitment_workflow_hr',
     }
 
     # المراحل التي يجب أن يوافق عليها الشخص المعيّن تحديداً على هذا الطلب

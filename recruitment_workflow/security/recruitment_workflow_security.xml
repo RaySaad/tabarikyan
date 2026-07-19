@@ -63,6 +63,14 @@
             <field name="implied_ids" eval="[(4, ref('group_recruitment_workflow_user'))]"/>
         </record>
 
+        <!-- الموارد البشرية: تتابع وتؤكد اكتمال نقل الكفالة -->
+        <record id="group_recruitment_workflow_hr" model="res.groups">
+            <field name="name">الموارد البشرية</field>
+            <field name="sequence">47</field>
+            <field name="privilege_id" ref="privilege_recruitment_workflow"/>
+            <field name="implied_ids" eval="[(4, ref('group_recruitment_workflow_user'))]"/>
+        </record>
+
         <!-- مدير النظام (كامل الصلاحيات) -->
         <record id="group_recruitment_workflow_manager" model="res.groups">
             <field name="name">مدير سير العمل (كامل الصلاحيات)</field>
@@ -72,6 +80,7 @@
                 (4, ref('group_recruitment_workflow_gm')),
                 (4, ref('group_recruitment_workflow_fleet')),
                 (4, ref('group_recruitment_workflow_accountant')),
+                (4, ref('group_recruitment_workflow_hr')),
             ]"/>
             <field name="user_ids" eval="[(4, ref('base.user_admin'))]"/>
         </record>
