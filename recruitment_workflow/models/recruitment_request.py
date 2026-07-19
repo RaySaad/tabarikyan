@@ -573,6 +573,18 @@ class RecruitmentRequest(models.Model):
         return True
 
     def write(self, vals):
+        # project_manager_id يُشتَق تلقائياً من project_id.user_id فقط (عبر
+        # _onchange_project_id) ويُحفظ ضمن نفس عملية الحفظ التي تغيّر
+        # project_id. أي محاولة لتغييره بمعزل عن project_id (مثلاً عبر RPC
+        # مباشر بعد تجاوز readonly في الواجهة) تعني محاولة انتحال هوية
+        # مسؤول المشروع المخصّص للموافقة على project_review/car_request -
+        # وهو بالضبط ما يمنعه _STAGE_ASSIGNED_USER_FIELD، فنمنعها هنا بصرامة.
+        if 'project_manager_id' in vals and 'project_id' not in vals:
+            raise UserError(_(
+                'لا يمكن تعديل "مسؤول المشروع" مباشرة على طلب التوظيف.\n'
+                'يُشتق تلقائياً من مسؤول المشروع/المنصة المختارة - لتصحيحه، '
+                'عدّل المسؤول على شاشة المشروع نفسه.'
+            ))
         # عند تغيير المرحلة يدوياً (Kanban drag & drop، شريط الحالة القابل
         # للنقر، أو أي استدعاء write() مباشر عبر RPC) نسمح فقط بالانتقال
         # خطوة واحدة للأمام (المرحلة التالية مباشرة)، مع التحقق من شروط
