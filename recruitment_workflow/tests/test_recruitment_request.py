@@ -332,6 +332,13 @@ class TestRecruitmentRequest(TransactionCase):
             identification_id='1234567802', email='m@example.com',
             project_id=project.id, project_manager_id=original_pm.id,
         )
+        # طلب ثانٍ لا يزال قيد التنفيذ على نفس المشروع - يتحقق أن المزامنة
+        # تعمل صحيحاً حين تكون النتيجة أكثر من سجل واحد (message_post مثلاً
+        # ينهار لو استُدعي على مجموعة سجلات بدل سجل واحد).
+        second_in_progress_request = self._create_request(
+            identification_id='1234567805', email='p@example.com',
+            project_id=project.id, project_manager_id=original_pm.id,
+        )
         done_request = self._create_request(
             identification_id='1234567803', email='n@example.com',
             project_id=project.id, project_manager_id=original_pm.id,
@@ -341,6 +348,7 @@ class TestRecruitmentRequest(TransactionCase):
         project.user_id = new_pm.id
 
         self.assertEqual(in_progress_request.project_manager_id, new_pm)
+        self.assertEqual(second_in_progress_request.project_manager_id, new_pm)
         self.assertEqual(done_request.project_manager_id, original_pm)
 
     def test_action_reject_works_from_new_stage(self):

@@ -59,10 +59,11 @@ class ProjectProject(models.Model):
             if 'company_id' in tracked_fields:
                 sync_vals['company_id'] = project.company_id.id
             requests.write(sync_vals)
-            requests.message_post(body=_(
-                'تم تحديث بيانات المشروع تلقائياً (مسؤول المشروع/الشركة) '
-                'بعد تعديلها على المشروع "%s".'
-            ) % project.display_name)
+            for request in requests:
+                request.message_post(body=_(
+                    'تم تحديث بيانات المشروع تلقائياً (مسؤول المشروع/الشركة) '
+                    'بعد تعديلها على المشروع "%s".'
+                ) % project.display_name)
 
     def _get_default_analytic_plan(self):
         """يحاول إيجاد خطة تحليلية مناسبة لربط حسابات المشاريع بها:
