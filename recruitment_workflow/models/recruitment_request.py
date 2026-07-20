@@ -812,9 +812,17 @@ class RecruitmentRequest(models.Model):
         """إرجاع الطلب لمرحلة سابقة مع تسجيل السبب وإشعار المسؤولين.
 
         الطلب يبقى حياً (لا أرشفة)؛ فقط يعود خطوة/خطوات للتصحيح.
+
+        متاح لمدير العمليات فما فوق دائماً، أو لمسؤول المشروع **المعيّن
+        تحديداً على هذا الطلب** (مثلاً لطلب وثائق ناقصة من المرشّح) - وليس
+        لأي مسؤول مشروع آخر في النظام، بنفس فلسفة _STAGE_ASSIGNED_USER_FIELD.
         """
         self.ensure_one()
-        self._check_group('recruitment_workflow.group_recruitment_workflow_operations')
+        is_assigned_pm = self.project_manager_id and self.env.user == self.project_manager_id
+        if not is_assigned_pm and not self.env.user.has_group(
+            'recruitment_workflow.group_recruitment_workflow_operations',
+        ):
+            raise UserError(_('ليست لديك الصلاحية للقيام بهذا الإجراء.'))
         old_stage = self.stage_id
         # السماح بالكتابة رغم أن الوجهة مرحلة سابقة (نتجاوز فحص الانتقال للأمام)
         self.with_context(skip_stage_validation=True).write({

@@ -35,10 +35,14 @@
                             groups="recruitment_workflow.group_recruitment_workflow_operations"
                             invisible="state in ('done','rejected') or not stage_code in ('new','project_review','operations_review','gm_approval')"/>
 
-                    <!-- إرجاع للتصحيح - متاح في كل المراحل عدا الأولى والنهائية -->
+                    <!-- إرجاع للتصحيح (مثلاً لطلب وثائق ناقصة) - متاح لمدير
+                         العمليات فما فوق دائماً، ولمسؤول المشروع المعيّن على
+                         هذا الطلب تحديداً (يُتحقق من كونه المعيّن فعلياً من
+                         جهة الخادم في action_return_to_stage). في كل المراحل
+                         عدا الأولى والنهائية. -->
                     <button name="action_open_return_wizard" type="object" string="إرجاع للتصحيح"
                             class="btn-warning"
-                            groups="recruitment_workflow.group_recruitment_workflow_operations"
+                            groups="recruitment_workflow.group_recruitment_workflow_operations,recruitment_workflow.group_recruitment_workflow_project_manager"
                             invisible="state in ('done','rejected') or stage_code == 'new'"/>
 
                     <!-- زر الانتقال العام للمراحل غير التقييمية -->

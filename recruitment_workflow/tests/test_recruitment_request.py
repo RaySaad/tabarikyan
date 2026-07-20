@@ -264,7 +264,8 @@ class TestRecruitmentRequest(TransactionCase):
     def test_action_return_to_stage_requires_operations_group(self):
         """إرجاع الطلب لمرحلة سابقة كان بدون أي تقييد صلاحية على الإطلاق -
         أي مستخدم أساسي يستطيع إرجاع أي طلب. يجب أن يقتصر على مدير العمليات
-        (أو من يتوارث مجموعته) مثل بقية الإجراءات التصحيحية."""
+        فما فوق، أو مسؤول المشروع المعيّن تحديداً على هذا الطلب (انظر
+        الاختبار التالي) - وليس أي مستخدم أساسي."""
         plain_user = self._create_plain_user('return_stage_test_user')
         project = self.env['project.project'].create({'name': 'منصة تجريبية 7'})
         request = self._create_request(
@@ -278,6 +279,41 @@ class TestRecruitmentRequest(TransactionCase):
             request.with_user(plain_user).action_return_to_stage(
                 self.stage_project_review, 'سبب تجريبي',
             )
+
+    def test_action_return_to_stage_allowed_for_assigned_project_manager(self):
+        """مسؤول المشروع المعيّن تحديداً على الطلب يستطيع إرجاعه للتصحيح
+        (مثلاً لطلب وثائق ناقصة من المرشّح) حتى لو لم يكن مديراً للعمليات -
+        لكن مسؤول مشروع آخر غير معيّن على هذا الطلب بالذات لا يستطيع."""
+        assigned_pm = self.env['res.users'].create({
+            'name': 'مسؤول مشروع معيّن للإرجاع',
+            'login': 'return_assigned_pm',
+            'email': 'return_assigned_pm@example.com',
+            'group_ids': [(6, 0, [self.group_pm.id, self.env.ref('base.group_user').id])],
+        })
+        other_pm = self.env['res.users'].create({
+            'name': 'مسؤول مشروع آخر للإرجاع',
+            'login': 'return_other_pm',
+            'email': 'return_other_pm@example.com',
+            'group_ids': [(6, 0, [self.group_pm.id, self.env.ref('base.group_user').id])],
+        })
+        project = self.env['project.project'].create({'name': 'منصة تجريبية 8'})
+        request = self._create_request(
+            identification_id='1234567807', email='r@example.com',
+            project_id=project.id, project_manager_id=assigned_pm.id,
+        )
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_operations_review.id,
+        })
+
+        with self.assertRaises(UserError):
+            request.with_user(other_pm).action_return_to_stage(
+                self.stage_project_review, 'سبب تجريبي',
+            )
+
+        request.with_user(assigned_pm).action_return_to_stage(
+            self.stage_project_review, 'وثائق ناقصة - يرجى إعادة الرفع',
+        )
+        self.assertEqual(request.stage_id, self.stage_project_review)
 
     def test_action_reset_to_draft_requires_operations_group(self):
         plain_user = self._create_plain_user('reset_test_user')
