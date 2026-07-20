@@ -29,11 +29,20 @@
                             groups="recruitment_workflow.group_recruitment_workflow_operations"
                             invisible="state in ('done','rejected') or stage_code != 'paid' or fee_move_id"/>
 
-                    <!-- رفض - متاح من المرحلة الأولى (حتى قبل اكتمال المرفقات) ولأصحاب مراحل الموافقة -->
+                    <!-- رفض - من مراحل الموافقة اللاحقة (مدير العمليات فما فوق فقط) -->
                     <button name="action_open_reject_wizard" type="object" string="رفض"
                             class="btn-danger"
                             groups="recruitment_workflow.group_recruitment_workflow_operations"
-                            invisible="state in ('done','rejected') or not stage_code in ('new','project_review','operations_review','gm_approval')"/>
+                            invisible="state in ('done','rejected') or not stage_code in ('project_review','operations_review','gm_approval')"/>
+
+                    <!-- رفض من المرحلة الأولى (قبل رفع المرفقات) - متاح أيضاً
+                         لمسؤول المشروع (يُتحقق من كونه المعيّن تحديداً من جهة
+                         الخادم)، ليفحص شروط الأهلية مبكراً قبل إضاعة وقت
+                         المرشّح في رفع المستندات. -->
+                    <button name="action_open_reject_wizard" type="object" string="رفض"
+                            class="btn-danger"
+                            groups="recruitment_workflow.group_recruitment_workflow_operations,recruitment_workflow.group_recruitment_workflow_project_manager"
+                            invisible="state in ('done','rejected') or stage_code != 'new'"/>
 
                     <!-- إرجاع للتصحيح (مثلاً لطلب وثائق ناقصة) - متاح لمدير
                          العمليات فما فوق دائماً، ولمسؤول المشروع المعيّن على

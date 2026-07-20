@@ -845,8 +845,18 @@ class RecruitmentRequest(models.Model):
         return True
 
     def action_reject(self, reason=None):
+        """رفض الطلب - مدير العمليات فما فوق يستطيع الرفض من أي مرحلة
+        موافقة. مسؤول المشروع المعيّن تحديداً على هذا الطلب يستطيع أيضاً
+        الرفض، لكن فقط من المرحلة الأولى (قبل رفع أي مرفقات) - ليتمكن من
+        فحص شروط الأهلية مبكراً قبل إضاعة وقت المرشّح في رفع المستندات."""
         for rec in self:
-            rec._check_group('recruitment_workflow.group_recruitment_workflow_operations')
+            is_assigned_pm_at_new = (
+                rec.stage_id.code == 'new'
+                and rec.project_manager_id
+                and rec.env.user == rec.project_manager_id
+            )
+            if not is_assigned_pm_at_new:
+                rec._check_group('recruitment_workflow.group_recruitment_workflow_operations')
             rec.write({
                 'state': 'rejected',
                 'rejection_reason': reason or rec.rejection_reason,

@@ -261,6 +261,58 @@ class TestRecruitmentRequest(TransactionCase):
         with self.assertRaises(UserError):
             request.with_user(plain_user).action_reject(reason='سبب تجريبي')
 
+    def test_action_reject_allowed_for_assigned_project_manager_at_new_only(self):
+        """مسؤول المشروع المعيّن تحديداً يستطيع الرفض من المرحلة الأولى فقط
+        (قبل رفع المرفقات) - ليس من أي مرحلة أخرى، وليس مسؤول مشروع آخر غير
+        معيّن على هذا الطلب."""
+        assigned_pm = self.env['res.users'].create({
+            'name': 'مسؤول مشروع معيّن للرفض',
+            'login': 'reject_assigned_pm',
+            'email': 'reject_assigned_pm@example.com',
+            'group_ids': [(6, 0, [self.group_pm.id, self.env.ref('base.group_user').id])],
+        })
+        other_pm = self.env['res.users'].create({
+            'name': 'مسؤول مشروع آخر للرفض',
+            'login': 'reject_other_pm',
+            'email': 'reject_other_pm@example.com',
+            'group_ids': [(6, 0, [self.group_pm.id, self.env.ref('base.group_user').id])],
+        })
+        project = self.env['project.project'].create({'name': 'منصة تجريبية 9'})
+        request = self._create_request(
+            identification_id='1234567808', email='s@example.com',
+            project_id=project.id, project_manager_id=assigned_pm.id,
+        )
+        self.assertEqual(request.stage_id.code, 'new')
+
+        # مسؤول مشروع آخر (نفس المجموعة لكن غير معيّن) لا يستطيع
+        with self.assertRaises(UserError):
+            request.with_user(other_pm).action_reject(reason='سبب تجريبي')
+
+        # المعيّن تحديداً يستطيع من المرحلة الأولى
+        request.with_user(assigned_pm).action_reject(reason='لا يستوفي الشروط')
+        self.assertEqual(request.state, 'rejected')
+
+    def test_action_reject_blocked_for_project_manager_past_new_stage(self):
+        """مسؤول المشروع المعيّن لا يستطيع الرفض بعد تجاوز المرحلة الأولى -
+        الرفض من مراحل الموافقة اللاحقة يبقى حصراً لمدير العمليات."""
+        assigned_pm = self.env['res.users'].create({
+            'name': 'مسؤول مشروع معيّن للرفض 2',
+            'login': 'reject_assigned_pm_2',
+            'email': 'reject_assigned_pm_2@example.com',
+            'group_ids': [(6, 0, [self.group_pm.id, self.env.ref('base.group_user').id])],
+        })
+        project = self.env['project.project'].create({'name': 'منصة تجريبية 10'})
+        request = self._create_request(
+            identification_id='1234567809', email='t@example.com',
+            project_id=project.id, project_manager_id=assigned_pm.id,
+        )
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_project_review.id,
+        })
+
+        with self.assertRaises(UserError):
+            request.with_user(assigned_pm).action_reject(reason='سبب تجريبي')
+
     def test_action_return_to_stage_requires_operations_group(self):
         """إرجاع الطلب لمرحلة سابقة كان بدون أي تقييد صلاحية على الإطلاق -
         أي مستخدم أساسي يستطيع إرجاع أي طلب. يجب أن يقتصر على مدير العمليات
