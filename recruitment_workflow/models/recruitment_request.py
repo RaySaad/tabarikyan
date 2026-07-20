@@ -814,6 +814,7 @@ class RecruitmentRequest(models.Model):
         الطلب يبقى حياً (لا أرشفة)؛ فقط يعود خطوة/خطوات للتصحيح.
         """
         self.ensure_one()
+        self._check_group('recruitment_workflow.group_recruitment_workflow_operations')
         old_stage = self.stage_id
         # السماح بالكتابة رغم أن الوجهة مرحلة سابقة (نتجاوز فحص الانتقال للأمام)
         self.with_context(skip_stage_validation=True).write({

@@ -261,6 +261,24 @@ class TestRecruitmentRequest(TransactionCase):
         with self.assertRaises(UserError):
             request.with_user(plain_user).action_reject(reason='سبب تجريبي')
 
+    def test_action_return_to_stage_requires_operations_group(self):
+        """إرجاع الطلب لمرحلة سابقة كان بدون أي تقييد صلاحية على الإطلاق -
+        أي مستخدم أساسي يستطيع إرجاع أي طلب. يجب أن يقتصر على مدير العمليات
+        (أو من يتوارث مجموعته) مثل بقية الإجراءات التصحيحية."""
+        plain_user = self._create_plain_user('return_stage_test_user')
+        project = self.env['project.project'].create({'name': 'منصة تجريبية 7'})
+        request = self._create_request(
+            identification_id='1234567806', email='q@example.com', project_id=project.id,
+        )
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_operations_review.id,
+        })
+
+        with self.assertRaises(UserError):
+            request.with_user(plain_user).action_return_to_stage(
+                self.stage_project_review, 'سبب تجريبي',
+            )
+
     def test_action_reset_to_draft_requires_operations_group(self):
         plain_user = self._create_plain_user('reset_test_user')
         request = self._create_request(identification_id='1234567897', email='i@example.com')

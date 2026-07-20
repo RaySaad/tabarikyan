@@ -38,6 +38,7 @@
                     <!-- إرجاع للتصحيح - متاح في كل المراحل عدا الأولى والنهائية -->
                     <button name="action_open_return_wizard" type="object" string="إرجاع للتصحيح"
                             class="btn-warning"
+                            groups="recruitment_workflow.group_recruitment_workflow_operations"
                             invisible="state in ('done','rejected') or stage_code == 'new'"/>
 
                     <!-- زر الانتقال العام للمراحل غير التقييمية -->
