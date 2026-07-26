@@ -513,3 +513,41 @@ class TestRecruitmentRequest(TransactionCase):
 
         self.assertEqual(request.state, 'rejected')
         self.assertFalse(request.active)
+
+    # ------------------------------------------------------------------
+    # طلب سيارة بدون توفر سيارة حالياً: ينبّه ولا يحجب الطلب
+    # ------------------------------------------------------------------
+    def test_send_car_request_without_available_vehicle_still_submits(self):
+        """عدم توفر سيارة حالياً يجب ألا يمنع إرسال الطلب لقسم الأسطول -
+        فقط يُظهر تنبيهاً غير معطِّل، والطلب يُرفع لهم بأي حال."""
+        project = self.env['project.project'].create({'name': 'منصة تجريبية 11'})
+        request = self._create_request(
+            identification_id='1234567812', email='v@example.com', project_id=project.id,
+        )
+
+        result = request.action_send_car_request()
+
+        self.assertTrue(request.car_requested)
+        self.assertEqual(request.car_request_state, 'requested')
+        self.assertEqual(result.get('tag'), 'display_notification')
+        self.assertEqual(result['params']['type'], 'warning')
+
+    def test_send_car_request_with_available_vehicle_no_notification(self):
+        """توفر سيارة يجب ألا يُظهر أي تنبيه - إرسال طلب عادي فقط."""
+        project = self.env['project.project'].create({'name': 'منصة تجريبية 12'})
+        brand = self.env['fleet.vehicle.model.brand'].create({'name': 'ماركة تجريبية 2'})
+        model = self.env['fleet.vehicle.model'].create({
+            'name': 'موديل تجريبي 2', 'brand_id': brand.id,
+        })
+        self.env['fleet.vehicle'].create({
+            'model_id': model.id, 'recruitment_state': 'available',
+        })
+        request = self._create_request(
+            identification_id='1234567813', email='w@example.com', project_id=project.id,
+        )
+
+        result = request.action_send_car_request()
+
+        self.assertTrue(request.car_requested)
+        self.assertEqual(request.car_request_state, 'requested')
+        self.assertFalse(result)

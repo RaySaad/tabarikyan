@@ -1001,27 +1001,44 @@ class RecruitmentRequest(models.Model):
     def action_send_car_request(self):
         """إرسال طلب سيارة لقسم الأسطول - مسؤول المشروع يطلب سيارة فقط، ولا
         يختار سيارة محدَّدة؛ اختيار السيارة تحديداً مسؤولية قسم الأسطول عند
-        الاستلام/التفويض (انظر action_fleet_authorize)."""
+        الاستلام/التفويض (انظر action_fleet_authorize).
+
+        عدم توفر سيارة حالياً لا يمنع إرسال الطلب - فقط ننبّه مسؤول المشروع
+        بذلك، والطلب يُرفع لقسم الأسطول بأي حال ليتابعوه فور توفر سيارة
+        مناسبة (بدل حجب الطلب بالكامل حتى تتوفر سيارة سلفاً)."""
         self.ensure_one()
         self._check_group('recruitment_workflow.group_recruitment_workflow_project_manager')
         domain = [('recruitment_state', '=', 'available')]
         if self.project_id:
             domain += ['|', ('project_id', '=', self.project_id.id), ('project_id', '=', False)]
-        if not self.env['fleet.vehicle'].search_count(domain):
-            raise UserError(_(
-                'لا توجد سيارات متاحة في الأسطول حالياً (لنفس المنصة أو بدون منصة محددة). '
-                'لا يمكن متابعة الطلب حتى تتوفر سيارة.'
-            ))
+        no_vehicles_available = not self.env['fleet.vehicle'].search_count(domain)
+
         self.write({
             'car_requested': True,
             'car_request_state': 'requested',
         })
-        self.message_post(body=_('تم إرسال طلب سيارة إلى قسم الأسطول.'))
+        self.message_post(body=_('تم إرسال طلب سيارة إلى قسم الأسطول.') + (
+            _(' تنبيه: لا توجد سيارة متاحة حالياً - سيتابع الأسطول الطلب فور توفرها.')
+            if no_vehicles_available else ''
+        ))
         self._schedule_activity_for_group(
             'recruitment_workflow.group_recruitment_workflow_fleet',
             'مطلوب منك: طلب سيارة جديد بانتظار الاستلام والتخصيص',
             note=_('الطلب: %s') % self.name,
         )
+        if no_vehicles_available:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('لا توجد سيارات متاحة حالياً'),
+                    'message': _(
+                        'تم إرسال الطلب لقسم الأسطول رغم ذلك، وسيتابعونه فور توفر سيارة مناسبة.'
+                    ),
+                    'type': 'warning',
+                    'sticky': True,
+                },
+            }
 
     def action_fleet_receive(self):
         """قسم الأسطول يستلم الطلب."""
