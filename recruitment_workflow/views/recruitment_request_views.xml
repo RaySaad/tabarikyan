@@ -210,20 +210,11 @@
                                 </group>
                                 <group string="الحساب البنكي">
                                     <field name="iban" placeholder="SA00 0000 0000 0000 0000 0000"/>
-                                    <field name="bank_name"/>
+                                    <field name="bank_id" options="{'no_create': True}"/>
                                 </group>
                             </group>
-                            <group string="العنوان الخاص">
-                                <group>
-                                    <field name="street"/>
-                                    <field name="street2"/>
-                                    <field name="city"/>
-                                </group>
-                                <group>
-                                    <field name="state_address_id"/>
-                                    <field name="zip_code"/>
-                                    <field name="address_country_id"/>
-                                </group>
+                            <group string="العنوان الوطني">
+                                <field name="short_national_address" placeholder="RRRD2929"/>
                             </group>
                         </page>
 

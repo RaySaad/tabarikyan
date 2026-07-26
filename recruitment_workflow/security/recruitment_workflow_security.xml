@@ -31,12 +31,25 @@
             <field name="implied_ids" eval="[(4, ref('group_recruitment_workflow_user'))]"/>
         </record>
 
-        <!-- مدير العمليات -->
+        <!-- الموارد البشرية: تتابع وتؤكد اكتمال نقل الكفالة -->
+        <record id="group_recruitment_workflow_hr" model="res.groups">
+            <field name="name">الموارد البشرية</field>
+            <field name="sequence">25</field>
+            <field name="privilege_id" ref="privilege_recruitment_workflow"/>
+            <field name="implied_ids" eval="[(4, ref('group_recruitment_workflow_user'))]"/>
+        </record>
+
+        <!-- مدير العمليات - في هذه المؤسسة نفس الشخص مسؤول عن الموارد
+             البشرية أيضاً، فمنحه هذه المجموعة يمنحه صلاحياتها تلقائياً دون
+             حاجة لإضافته يدوياً لمجموعة "الموارد البشرية" بشكل منفصل. -->
         <record id="group_recruitment_workflow_operations" model="res.groups">
             <field name="name">مدير العمليات</field>
             <field name="sequence">30</field>
             <field name="privilege_id" ref="privilege_recruitment_workflow"/>
-            <field name="implied_ids" eval="[(4, ref('group_recruitment_workflow_project_manager'))]"/>
+            <field name="implied_ids" eval="[
+                (4, ref('group_recruitment_workflow_project_manager')),
+                (4, ref('group_recruitment_workflow_hr')),
+            ]"/>
         </record>
 
         <!-- المحاسب: يعتمد سداد الرسوم قبل المتابعة -->
@@ -59,14 +72,6 @@
         <record id="group_recruitment_workflow_fleet" model="res.groups">
             <field name="name">قسم الأسطول</field>
             <field name="sequence">50</field>
-            <field name="privilege_id" ref="privilege_recruitment_workflow"/>
-            <field name="implied_ids" eval="[(4, ref('group_recruitment_workflow_user'))]"/>
-        </record>
-
-        <!-- الموارد البشرية: تتابع وتؤكد اكتمال نقل الكفالة -->
-        <record id="group_recruitment_workflow_hr" model="res.groups">
-            <field name="name">الموارد البشرية</field>
-            <field name="sequence">47</field>
             <field name="privilege_id" ref="privilege_recruitment_workflow"/>
             <field name="implied_ids" eval="[(4, ref('group_recruitment_workflow_user'))]"/>
         </record>

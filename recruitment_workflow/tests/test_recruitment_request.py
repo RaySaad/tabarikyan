@@ -65,6 +65,18 @@ class TestRecruitmentRequest(TransactionCase):
         with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError):
             self._create_request(identification_id='1234567890', email='b@example.com')
 
+    def test_short_national_address_invalid_rejected(self):
+        with self.assertRaises(ValidationError):
+            self._create_request(
+                identification_id='1123456782', short_national_address='1234RRRD',
+            )
+
+    def test_short_national_address_valid_passes(self):
+        request = self._create_request(
+            identification_id='1123456783', short_national_address='RRRD2929',
+        )
+        self.assertTrue(request)
+
     # ------------------------------------------------------------------
     # اشتقاق الشركة من المشروع المختار (Multi-Company)
     # ------------------------------------------------------------------

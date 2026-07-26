@@ -81,15 +81,14 @@ class RecruitmentRequest(models.Model):
 
     # --- الحساب البنكي ---
     iban = fields.Char(string='رقم الآيبان (IBAN)', tracking=True)
-    bank_name = fields.Char(string='اسم البنك')
+    bank_id = fields.Many2one('res.bank', string='البنك')
 
-    # --- العنوان الخاص ---
-    street = fields.Char(string='الشارع')
-    street2 = fields.Char(string='الشارع 2')
-    city = fields.Char(string='المدينة')
-    state_address_id = fields.Many2one('res.country.state', string='المنطقة / الولاية')
-    zip_code = fields.Char(string='الرمز البريدي')
-    address_country_id = fields.Many2one('res.country', string='الدولة')
+    # --- العنوان الوطني ---
+    short_national_address = fields.Char(
+        string='العنوان الوطني المختصر',
+        help='الرمز المختصر للعنوان الوطني السعودي (مثال: RRRD2929) - 4 '
+             'أحرف تليها 4 أرقام.',
+    )
 
     # نظام العمل والتطبيق الرئيسي (يحدد في الطلب الجديد)
     compensation_type_id = fields.Many2one(
@@ -430,6 +429,18 @@ class RecruitmentRequest(models.Model):
                 raise ValidationError(_(
                     'رقم الجوال غير صالح. يجب أن يكون رقم جوال سعودي صحيح '
                     'يبدأ بـ 05 أو 9665 أو +9665 ويتكون من العدد الصحيح من الأرقام.'
+                ))
+
+    @api.constrains('short_national_address')
+    def _check_short_national_address(self):
+        pattern = re.compile(r'^[A-Za-z]{4}\d{4}$')
+        for rec in self:
+            if not rec.short_national_address:
+                continue
+            if not pattern.match(rec.short_national_address.strip()):
+                raise ValidationError(_(
+                    'صيغة العنوان الوطني المختصر غير صحيحة. يجب أن يتكون من '
+                    '4 أحرف إنجليزية تليها 4 أرقام (مثال: RRRD2929).'
                 ))
 
     _sql_constraints = [
@@ -1154,13 +1165,6 @@ class RecruitmentRequest(models.Model):
         set_if('sex', self.gender)
         set_if('marital', self.marital)
         set_if('passport_id', self.passport_no)
-        # العنوان الخاص
-        set_if('private_street', self.street)
-        set_if('private_street2', self.street2)
-        set_if('private_city', self.city)
-        set_if('private_state_id', self.state_address_id.id)
-        set_if('private_zip', self.zip_code)
-        set_if('private_country_id', self.address_country_id.id)
 
         employee = Employee.create(employee_vals)
         self.employee_id = employee.id
@@ -1236,14 +1240,8 @@ class RecruitmentRequest(models.Model):
             'acc_number': self.iban,
             'partner_id': partner.id,
         }
-        if self.bank_name and 'bank_id' in Bank._fields:
-            # bank_name حقل related عبر bank_id.name - الكتابة عليه مباشرة
-            # بدون وجود bank_id مسبقاً تُهمَل بصمت (سجل res.bank فارغ لا يوجد
-            # شيء تُكتب عليه القيمة). نوجد/ننشئ سجل res.bank الفعلي أولاً.
-            Bank_model = self.env['res.bank'].sudo()
-            bank = Bank_model.search([('name', '=', self.bank_name)], limit=1) \
-                or Bank_model.create({'name': self.bank_name})
-            bank_vals['bank_id'] = bank.id
+        if self.bank_id and 'bank_id' in Bank._fields:
+            bank_vals['bank_id'] = self.bank_id.id
         return Bank.create(bank_vals)
 
     def _get_contract_model_name(self):
