@@ -117,6 +117,26 @@ class TestRecruitmentRequest(TransactionCase):
         self.assertEqual(request.company_id, other_company)
         self.assertEqual(request.project_manager_id, pm_user)
 
+    def test_company_and_pm_derived_on_write_without_onchange(self):
+        """نفس الاشتقاق مطلوب أيضاً عند write() لتغيير project_id على طلب
+        موجود، وليس فقط create() - حتى لو أرسل المتصفح project_id فقط
+        بمعزل عن company_id/project_manager_id (حقول readonly قد لا
+        يرسلها المتصفح ضمن قيم الحفظ رغم تحديثها بصرياً عبر onchange)."""
+        other_company = self.env['res.company'].create({'name': 'شركة تجريبية ثالثة'})
+        pm_user = self.env['res.users'].create({
+            'name': 'مسؤول مشروع لتعديل الطلب', 'login': 'write_pm_user',
+            'email': 'write_pm_user@example.com',
+        })
+        project = self.env['project.project'].create({
+            'name': 'منصة تعديل الطلب', 'company_id': other_company.id, 'user_id': pm_user.id,
+        })
+        request = self._create_request(identification_id='1234567811', email='u@example.com')
+
+        request.write({'project_id': project.id})
+
+        self.assertEqual(request.company_id, other_company)
+        self.assertEqual(request.project_manager_id, pm_user)
+
     # ------------------------------------------------------------------
     # إغلاق ثغرة تجاوز المراحل عبر write() المباشر على stage_id
     # ------------------------------------------------------------------

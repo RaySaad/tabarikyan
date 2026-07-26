@@ -467,6 +467,34 @@ class RecruitmentRequest(models.Model):
     # ------------------------------------------------------------------
     # إنشاء السجل
     # ------------------------------------------------------------------
+    def _fill_project_derived_vals(self, vals):
+        """يشتق مسؤول المشروع/الشركة/الوظيفة/القسم/نظام العمل من المشروع
+        المحدد في vals['project_id'] ويضيفها لـvals مباشرة (بدون تجاوز أي
+        قيمة مُمرَّرة صراحة أصلاً).
+
+        هذا هو نفس منطق _onchange_project_id، لكن onchange لا يُستدعى
+        تلقائياً في مسارين: (1) create() المباشر بمعزل عن نموذج الواجهة
+        (تحكم تسجيل الموقع الإلكتروني العام، أو أي API/سكربت آخر)، (2)
+        حتى من داخل نموذج الواجهة نفسه، لأن هذه الحقول كلها readonly، وقد
+        لا يُرسلها المتصفح ضمن قيم الحفظ حتى لو حدّثها onchange بصرياً
+        فقط. فنضمن الاشتقاق هنا صراحة في كلا create() و write()، بغض
+        النظر عن مصدر الإنشاء/التعديل أو سلوك المتصفح.
+        """
+        if not vals.get('project_id'):
+            return
+        project = self.env['project.project'].browse(vals['project_id'])
+        if 'company_id' not in vals and project.company_id:
+            vals['company_id'] = project.company_id.id
+        if 'project_manager_id' not in vals and project.user_id:
+            vals['project_manager_id'] = project.user_id.id
+        if 'job_id' not in vals and project.default_job_id:
+            vals['job_id'] = project.default_job_id.id
+            vals.setdefault('department_id', project.default_job_id.department_id.id)
+        if 'compensation_type_id' not in vals:
+            available_compensation = project.compensation_type_ids
+            if len(available_compensation) == 1:
+                vals['compensation_type_id'] = available_compensation.id
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -474,25 +502,7 @@ class RecruitmentRequest(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'recruitment.request'
                 ) or _('جديد')
-            # _onchange_project_id لا يُستدعى تلقائياً عند الإنشاء المباشر
-            # (create() من تحكم تسجيل الموقع الإلكتروني العام، أو أي API/
-            # سكربت آخر لا يمر بنموذج الواجهة) - فنشتق نفس القيم هنا صراحة
-            # لضمان ربط الطلب بالشركة/مسؤول المشروع الصحيحين دائماً، بغض
-            # النظر عن مصدر الإنشاء. لو كانت القيمة مُمرَّرة صراحة أصلاً
-            # (مثلاً من نموذج الواجهة) لا نتجاوزها.
-            if vals.get('project_id'):
-                project = self.env['project.project'].browse(vals['project_id'])
-                if 'company_id' not in vals and project.company_id:
-                    vals['company_id'] = project.company_id.id
-                if 'project_manager_id' not in vals and project.user_id:
-                    vals['project_manager_id'] = project.user_id.id
-                if 'job_id' not in vals and project.default_job_id:
-                    vals['job_id'] = project.default_job_id.id
-                    vals.setdefault('department_id', project.default_job_id.department_id.id)
-                if 'compensation_type_id' not in vals:
-                    available_compensation = project.compensation_type_ids
-                    if len(available_compensation) == 1:
-                        vals['compensation_type_id'] = available_compensation.id
+            self._fill_project_derived_vals(vals)
         records = super().create(vals_list)
         for rec in records:
             rec._populate_attachment_lines()
@@ -604,6 +614,10 @@ class RecruitmentRequest(models.Model):
                 'يُشتق تلقائياً من مسؤول المشروع/المنصة المختارة - لتصحيحه، '
                 'عدّل المسؤول على شاشة المشروع نفسه.'
             ))
+        # عند تغيير project_id نشتق الحقول المرتبطة به (الشركة/مسؤول
+        # المشروع/الوظيفة...) صراحة أيضاً - انظر شرح _fill_project_derived_vals
+        # أعلاه لماذا هذا ضروري حتى من داخل نموذج الواجهة نفسه.
+        self._fill_project_derived_vals(vals)
         # عند تغيير المرحلة يدوياً (Kanban drag & drop، شريط الحالة القابل
         # للنقر، أو أي استدعاء write() مباشر عبر RPC) نسمح فقط بالانتقال
         # خطوة واحدة للأمام (المرحلة التالية مباشرة)، مع التحقق من شروط
