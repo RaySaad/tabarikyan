@@ -474,6 +474,25 @@ class RecruitmentRequest(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'recruitment.request'
                 ) or _('جديد')
+            # _onchange_project_id لا يُستدعى تلقائياً عند الإنشاء المباشر
+            # (create() من تحكم تسجيل الموقع الإلكتروني العام، أو أي API/
+            # سكربت آخر لا يمر بنموذج الواجهة) - فنشتق نفس القيم هنا صراحة
+            # لضمان ربط الطلب بالشركة/مسؤول المشروع الصحيحين دائماً، بغض
+            # النظر عن مصدر الإنشاء. لو كانت القيمة مُمرَّرة صراحة أصلاً
+            # (مثلاً من نموذج الواجهة) لا نتجاوزها.
+            if vals.get('project_id'):
+                project = self.env['project.project'].browse(vals['project_id'])
+                if 'company_id' not in vals and project.company_id:
+                    vals['company_id'] = project.company_id.id
+                if 'project_manager_id' not in vals and project.user_id:
+                    vals['project_manager_id'] = project.user_id.id
+                if 'job_id' not in vals and project.default_job_id:
+                    vals['job_id'] = project.default_job_id.id
+                    vals.setdefault('department_id', project.default_job_id.department_id.id)
+                if 'compensation_type_id' not in vals:
+                    available_compensation = project.compensation_type_ids
+                    if len(available_compensation) == 1:
+                        vals['compensation_type_id'] = available_compensation.id
         records = super().create(vals_list)
         for rec in records:
             rec._populate_attachment_lines()

@@ -91,6 +91,32 @@ class TestRecruitmentRequest(TransactionCase):
         request = form.save()
         self.assertEqual(request.company_id, other_company)
 
+    def test_company_and_pm_derived_on_direct_create_without_onchange(self):
+        """create() المباشر (كما يفعل تحكم تسجيل الموقع الإلكتروني العام،
+        الذي لا يمر بنموذج الواجهة ولا يستدعي onchange إطلاقاً) يجب أن
+        يشتق الشركة ومسؤول المشروع من المشروع نفسه أيضاً - وليس فقط
+        الإنشاء عبر Form. هذا كان يسبب ربط طلبات الموقع بشركة المستخدم/
+        الموقع الحالية بدل شركة المشروع الفعلية."""
+        other_company = self.env['res.company'].create({'name': 'شركة تجريبية ثانية'})
+        pm_user = self.env['res.users'].create({
+            'name': 'مسؤول مشروع للموقع', 'login': 'website_pm_user',
+            'email': 'website_pm_user@example.com',
+        })
+        project = self.env['project.project'].create({
+            'name': 'منصة تسجيل الموقع', 'company_id': other_company.id, 'user_id': pm_user.id,
+        })
+
+        request = self.Request.create({
+            'employee_name': 'مرشّح من الموقع',
+            'identification_id': '1234567810',
+            'mobile': '0501234567',
+            'email': 'website-candidate@example.com',
+            'project_id': project.id,
+        })
+
+        self.assertEqual(request.company_id, other_company)
+        self.assertEqual(request.project_manager_id, pm_user)
+
     # ------------------------------------------------------------------
     # إغلاق ثغرة تجاوز المراحل عبر write() المباشر على stage_id
     # ------------------------------------------------------------------
