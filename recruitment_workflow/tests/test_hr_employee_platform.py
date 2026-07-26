@@ -106,3 +106,55 @@ class TestHrEmployeePlatformBulkAssign(TransactionCase):
         transfer_wizard.action_confirm_transfer()
 
         self.assertEqual(employee.platform_history_ids.date_start, past_date)
+
+    # ------------------------------------------------------------------
+    # مزامنة نموذج التوزيع التحليلي لشريك المندوب الشخصي مع منصته الحالية
+    # ------------------------------------------------------------------
+    def test_open_platform_history_syncs_partner_analytic_distribution(self):
+        """ربط أول مرة بمنصة يجب أن ينشئ نموذج توزيع تحليلي (account.
+        analytic.distribution.model) لشريك المندوب الشخصي، يقترح حساب
+        المنصة تلقائياً على أي فاتورة/قيد مستقبلي لهذا الشريك."""
+        partner = self.env['res.partner'].create({'name': 'شريك مندوب تجريبي'})
+        employee = self.Employee.create({
+            'name': 'مندوب له شريك شخصي', 'work_contact_id': partner.id,
+        })
+
+        employee._open_platform_history(self.project)
+
+        self.assertTrue(self.project.account_id)
+        DistModel = self.env['account.analytic.distribution.model']
+        distribution = DistModel.search([('partner_id', '=', partner.id)])
+        self.assertEqual(len(distribution), 1)
+        self.assertEqual(
+            distribution.analytic_distribution,
+            {str(self.project.account_id.id): 100.0},
+        )
+
+    def test_platform_transfer_updates_existing_partner_analytic_distribution(self):
+        """النقل لمنصة أخرى يجب أن يحدّث نفس نموذج التوزيع التحليلي
+        (وليس إنشاء نموذج مكرر) ليعكس حساب المنصة الجديدة."""
+        partner = self.env['res.partner'].create({'name': 'شريك مندوب منقول'})
+        employee = self.Employee.create({
+            'name': 'مندوب سينتقل', 'work_contact_id': partner.id,
+        })
+        other_project = self.env['project.project'].create({'name': 'منصة أخرى للنقل'})
+
+        employee._open_platform_history(self.project)
+        employee._open_platform_history(other_project)
+
+        DistModel = self.env['account.analytic.distribution.model']
+        distribution = DistModel.search([('partner_id', '=', partner.id)])
+        self.assertEqual(len(distribution), 1)
+        self.assertEqual(
+            distribution.analytic_distribution,
+            {str(other_project.account_id.id): 100.0},
+        )
+
+    def test_open_platform_history_no_crash_without_personal_partner(self):
+        """موظف بدون أي شريك شخصي (لا work_contact_id ولا مستخدم مرتبط)
+        لا يجب أن يتسبب في أي خطأ - فقط يتخطى إنشاء نموذج التوزيع."""
+        employee = self.Employee.create({'name': 'مندوب بدون شريك'})
+
+        employee._open_platform_history(self.project)
+
+        self.assertEqual(employee.project_id, self.project)

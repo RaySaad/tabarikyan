@@ -95,10 +95,50 @@ class HrEmployee(models.Model):
         })
         self.project_id = project.id
         self._sync_contract_project()
+        self._sync_partner_analytic_distribution(project)
         self.message_post(body=_(
             'تم نقل المندوب إلى المنصة: %s%s'
         ) % (project.display_name, (' — %s' % note) if note else ''))
         return new_line
+
+    def _get_personal_partner(self):
+        """يجد partner المندوب الشخصي (وليس partner العمل/الشركة) بنفس
+        الترتيب الاحتياطي المستخدم في recruitment_request.py."""
+        self.ensure_one()
+        if 'work_contact_id' in self._fields and self.work_contact_id:
+            return self.work_contact_id
+        if 'address_home_id' in self._fields and self.address_home_id:
+            return self.address_home_id
+        if self.user_id and self.user_id.partner_id:
+            return self.user_id.partner_id
+        return self.env['res.partner']
+
+    def _sync_partner_analytic_distribution(self, project):
+        """يحدّث (أو ينشئ) نموذج توزيع تحليلي (account.analytic.distribution
+        .model) لشريك المندوب الشخصي، بحيث يُقترح حساب المنصة الحالية
+        تلقائياً على أي فاتورة/قيد محاسبي مستقبلي يُنشأ لهذا الشريك تحديداً
+        (خصم، غرامة، مستحقات...) - بدل إدخاله يدوياً في كل مرة. يُستدعى من
+        نفس نقطة تحديث المنصة (_open_platform_history) ليبقى متزامناً مع
+        كل نقل بين المنصات تلقائياً.
+        """
+        self.ensure_one()
+        partner = self._get_personal_partner()
+        if not partner or not project.account_id:
+            return
+        Model = self.env['account.analytic.distribution.model'].sudo()
+        distribution = {str(project.account_id.id): 100.0}
+        existing = Model.search([('partner_id', '=', partner.id)], limit=1)
+        if existing:
+            existing.write({
+                'analytic_distribution': distribution,
+                'company_id': project.company_id.id,
+            })
+        else:
+            Model.create({
+                'partner_id': partner.id,
+                'analytic_distribution': distribution,
+                'company_id': project.company_id.id,
+            })
 
     def _sync_contract_project(self):
         """يحدّث حقل المشروع/المنصة على عقد الموظف الحالي (hr.version أو
