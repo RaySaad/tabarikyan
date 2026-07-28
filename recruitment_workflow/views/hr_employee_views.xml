@@ -29,6 +29,20 @@
         </field>
     </record>
 
+    <!-- إضافة "تجميع حسب المنصة" في بحث الموظفين - يسمح بعرض الموظفين
+         مجمّعين ككيتا/هنقرستيشن... بدل قائمة مسطّحة واحدة -->
+    <record id="view_employee_filter_inherit_recruitment" model="ir.ui.view">
+        <field name="name">hr.employee.search.recruitment.platform</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_filter"/>
+        <field name="arch" type="xml">
+            <filter name="group_department" position="after">
+                <filter name="group_recruitment_platform" string="المنصة"
+                        domain="[]" context="{'group_by': 'project_id'}"/>
+            </filter>
+        </field>
+    </record>
+
     <!-- قائمة/فورم تاريخ المنصات -->
     <record id="view_hr_employee_platform_history_list" model="ir.ui.view">
         <field name="name">hr.employee.platform.history.list</field>
