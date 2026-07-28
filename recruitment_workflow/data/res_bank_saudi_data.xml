@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- أبرز البنوك التجارية المرخّصة من ساما (البنك المركزي السعودي) -
+         تُنشأ فقط إن لم تكن موجودة أصلاً (noupdate يمنع الكتابة فوق أي
+         تعديل يدوي لاحق)، لتعبئة القائمة المنسدلة لحقل bank_id افتراضياً
+         بدل تركها فارغة تماماً. لم نُدرج رموز BIC/Swift لتفادي إدخال رموز
+         غير مؤكدة الدقة - يمكن إضافتها يدوياً لاحقاً من بطاقة كل بنك إن
+         احتجتموها فعلياً. -->
+    <data noupdate="1">
+
+        <record id="res_bank_sa_snb" model="res.bank">
+            <field name="name">البنك الأهلي السعودي (SNB)</field>
+            <field name="country" ref="base.sa"/>
+        </record>
+
+        <record id="res_bank_sa_rajhi" model="res.bank">
+            <field name="name">مصرف الراجحي</field>
+            <field name="country" ref="base.sa"/>
+        </record>
+
+        <record id="res_bank_sa_riyad" model="res.bank">
+            <field name="name">بنك الرياض</field>
+            <field name="country" ref="base.sa"/>
+        </record>
+
+        <record id="res_bank_sa_fransi" model="res.bank">
+            <field name="name">البنك السعودي الفرنسي</field>
+            <field name="country" ref="base.sa"/>
+        </record>
+
+        <record id="res_bank_sa_sabb" model="res.bank">
+            <field name="name">البنك السعودي البريطاني (ساب)</field>
+            <field name="country" ref="base.sa"/>
+        </record>
+
+        <record id="res_bank_sa_anb" model="res.bank">
+            <field name="name">البنك العربي الوطني</field>
+            <field name="country" ref="base.sa"/>
+        </record>
+
+        <record id="res_bank_sa_aljazira" model="res.bank">
+            <field name="name">بنك الجزيرة</field>
+            <field name="country" ref="base.sa"/>
+        </record>
+
+        <record id="res_bank_sa_albilad" model="res.bank">
+            <field name="name">بنك البلاد</field>
+            <field name="country" ref="base.sa"/>
+        </record>
+
+        <record id="res_bank_sa_alinma" model="res.bank">
+            <field name="name">مصرف الإنماء</field>
+            <field name="country" ref="base.sa"/>
+        </record>
+
+        <record id="res_bank_sa_saib" model="res.bank">
+            <field name="name">البنك السعودي للاستثمار</field>
+            <field name="country" ref="base.sa"/>
+        </record>
+
+        <record id="res_bank_sa_gib" model="res.bank">
+            <field name="name">بنك الخليج الدولي - السعودية</field>
+            <field name="country" ref="base.sa"/>
+        </record>
+
+    </data>
+</odoo>

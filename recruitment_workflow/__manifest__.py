@@ -53,6 +53,7 @@
         'security/ir.model.access.csv',
         'data/recruitment_workflow_sequence.xml',
         'data/recruitment_workflow_data.xml',
+        'data/res_bank_saudi_data.xml',
         'data/account_journal_data.xml',
         'data/mail_templates.xml',
         'wizard/recruitment_reject_wizard_views.xml',

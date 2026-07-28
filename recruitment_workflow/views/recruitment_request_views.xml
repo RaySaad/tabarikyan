@@ -243,9 +243,12 @@
                         <page string="السيارة / الأسطول" name="fleet">
                             <group>
                                 <group>
-                                    <!-- للعرض فقط - اختيار السيارة تحديداً مسؤولية
-                                         قسم الأسطول عند التفويض، وليس مسؤول المشروع. -->
-                                    <field name="vehicle_id" readonly="1"/>
+                                    <!-- السيارة نفسها لا تظهر إلا لقسم الأسطول - هم من
+                                         يتحكمون بها بالكامل؛ مسؤول المشروع يرى فقط
+                                         حالة الطلب (تم الإرسال/الاستلام/التفويض) دون
+                                         الحاجة لمعرفة السيارة المخصصة تحديداً. -->
+                                    <field name="vehicle_id" readonly="1"
+                                           groups="recruitment_workflow.group_recruitment_workflow_fleet"/>
                                     <field name="car_requested"/>
                                     <field name="car_request_state"/>
                                 </group>
@@ -286,7 +289,8 @@
                 <field name="job_id"/>
                 <field name="project_id"/>
                 <field name="stage_id"/>
-                <field name="vehicle_id" optional="hide"/>
+                <field name="vehicle_id" optional="hide"
+                       groups="recruitment_workflow.group_recruitment_workflow_fleet"/>
                 <field name="attachment_progress" widget="progressbar" optional="show"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'done'"
@@ -368,7 +372,7 @@
                 <field name="mobile"/>
                 <field name="job_id"/>
                 <field name="stage_id"/>
-                <field name="vehicle_id"/>
+                <field name="vehicle_id" groups="recruitment_workflow.group_recruitment_workflow_fleet"/>
                 <field name="state"/>
                 <field name="project_manager_id"/>
                 <field name="project_id"/>
