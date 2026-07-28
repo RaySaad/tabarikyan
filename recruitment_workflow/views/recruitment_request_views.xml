@@ -44,6 +44,13 @@
                             groups="recruitment_workflow.group_recruitment_workflow_operations,recruitment_workflow.group_recruitment_workflow_project_manager"
                             invisible="state in ('done','rejected') or stage_code != 'new'"/>
 
+                    <!-- رفض من مرحلتي نقل الكفالة - يغطي حالة رفض الموظف
+                         نفسه لنقل الكفالة فعلياً - متاح للموارد البشرية. -->
+                    <button name="action_open_reject_wizard" type="object" string="رفض"
+                            class="btn-danger"
+                            groups="recruitment_workflow.group_recruitment_workflow_operations,recruitment_workflow.group_recruitment_workflow_hr"
+                            invisible="state in ('done','rejected') or not stage_code in ('sponsorship_transfer','sponsorship_done')"/>
+
                     <!-- إرجاع للتصحيح (مثلاً لطلب وثائق ناقصة) - متاح لمدير
                          العمليات فما فوق دائماً، ولمسؤول المشروع المعيّن على
                          هذا الطلب تحديداً (يُتحقق من كونه المعيّن فعلياً من

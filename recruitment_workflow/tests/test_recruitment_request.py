@@ -384,6 +384,37 @@ class TestRecruitmentRequest(TransactionCase):
         with self.assertRaises(UserError):
             request.with_user(assigned_pm).action_reject(reason='سبب تجريبي')
 
+    def test_action_reject_allowed_for_hr_at_sponsorship_stages(self):
+        """الموارد البشرية تستطيع رفض الطلب من مرحلتي نقل الكفالة تحديداً -
+        يغطي حالة رفض الموظف نفسه لنقل الكفالة فعلياً."""
+        hr_user = self._create_plain_user('reject_hr_user')
+        hr_user.write({
+            'group_ids': [(4, self.env.ref('recruitment_workflow.group_recruitment_workflow_hr').id)],
+        })
+        request = self._create_request(identification_id='1234567810', email='u2@example.com')
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_sponsorship_transfer.id,
+        })
+
+        request.with_user(hr_user).action_reject(reason='رفض الموظف نقل الكفالة')
+
+        self.assertEqual(request.state, 'rejected')
+
+    def test_action_reject_blocked_for_hr_outside_sponsorship_stages(self):
+        """الموارد البشرية لا تستطيع الرفض من مراحل أخرى غير مرحلتي نقل
+        الكفالة."""
+        hr_user = self._create_plain_user('reject_hr_user_2')
+        hr_user.write({
+            'group_ids': [(4, self.env.ref('recruitment_workflow.group_recruitment_workflow_hr').id)],
+        })
+        request = self._create_request(identification_id='1234567811', email='u3@example.com')
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_project_review.id,
+        })
+
+        with self.assertRaises(UserError):
+            request.with_user(hr_user).action_reject(reason='سبب تجريبي')
+
     def test_action_return_to_stage_requires_operations_group(self):
         """إرجاع الطلب لمرحلة سابقة كان بدون أي تقييد صلاحية على الإطلاق -
         أي مستخدم أساسي يستطيع إرجاع أي طلب. يجب أن يقتصر على مدير العمليات
