@@ -171,6 +171,12 @@ class RecruitmentRequest(models.Model):
         copy=False,
         index=True,
         default=lambda self: self._default_stage_id(),
+        # الافتراضي في أودو لحقل غير إلزامي هو ondelete='set null' - يعني
+        # حذف مرحلة مرتبطة بطلبات فعلية كان سيُفرغ حقل المرحلة فيها بصمت
+        # بدل منع الحذف، مما يُسقط كل فحص صلاحيات الموافقة عن تلك الطلبات
+        # تحديداً (stage.code فارغ = "مرحلة غير تقييمية" في _check_approval_
+        # rights). restrict يمنع الحذف بالكامل طالما توجد طلبات مرتبطة.
+        ondelete='restrict',
     )
     stage_code = fields.Char(related='stage_id.code', string='رمز المرحلة', store=True)
     state = fields.Selection(

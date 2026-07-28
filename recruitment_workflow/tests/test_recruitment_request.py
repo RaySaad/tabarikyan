@@ -65,6 +65,19 @@ class TestRecruitmentRequest(TransactionCase):
         with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError):
             self._create_request(identification_id='1234567890', email='b@example.com')
 
+    def test_stage_cannot_be_deleted_while_in_use(self):
+        """حذف مرحلة مرتبطة بطلبات فعلية يجب أن يُمنع تماماً (ondelete=
+        restrict) - وليس تفريغ حقل المرحلة بصمت، وهو ما كان يُسقط فحص
+        صلاحيات الموافقة بالكامل عن الطلبات المتأثرة."""
+        stage = self.env['recruitment.stage'].create({
+            'name': 'مرحلة تجريبية للحذف', 'code': 'test_delete_stage',
+        })
+        request = self._create_request(identification_id='1123456784', email='x@example.com')
+        request.with_context(skip_stage_validation=True).write({'stage_id': stage.id})
+
+        with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError):
+            stage.unlink()
+
     def test_short_national_address_invalid_rejected(self):
         with self.assertRaises(ValidationError):
             self._create_request(
