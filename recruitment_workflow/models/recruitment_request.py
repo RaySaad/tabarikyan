@@ -933,6 +933,17 @@ class RecruitmentRequest(models.Model):
             rec.active = False
         return True
 
+    def unlink(self):
+        # طلبات التوظيف سجل تدقيق ومراجعة دائم - يُمنع حذفها نهائياً حتى
+        # لممن يملك صلاحية الحذف على مستوى ir.model.access (مثلاً المدير
+        # الفني عبر الواجهة التقنية)، حفاظاً على السجل التاريخي الكامل.
+        # الأرشفة (عبر الرفض أو الإجراءات المخصصة) هي البديل الوحيد.
+        raise UserError(_(
+            'لا يمكن حذف طلبات التوظيف نهائياً، للحفاظ على سجل تدقيق '
+            'ومراجعة كامل. استخدم "رفض" لأرشفة الطلب بدلاً من ذلك - '
+            'يبقى السجل محفوظاً ويمكن استرجاعه من الأرشيف لاحقاً.'
+        ))
+
     def action_reset_to_draft(self):
         for rec in self:
             rec._check_group('recruitment_workflow.group_recruitment_workflow_operations')

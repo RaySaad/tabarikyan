@@ -78,6 +78,16 @@ class TestRecruitmentRequest(TransactionCase):
         with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError):
             stage.unlink()
 
+    def test_request_cannot_be_deleted_even_by_manager(self):
+        """طلبات التوظيف سجل تدقيق دائم - يُمنع حذفها نهائياً حتى لمن يملك
+        صلاحية الحذف على مستوى ir.model.access (مدير سير العمل كامل
+        الصلاحيات)؛ الأرشفة هي البديل الوحيد."""
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
+        request = self._create_request(identification_id='1123456785', email='y@example.com')
+
+        with self.assertRaises(UserError):
+            request.unlink()
+
     def test_short_national_address_invalid_rejected(self):
         with self.assertRaises(ValidationError):
             self._create_request(
