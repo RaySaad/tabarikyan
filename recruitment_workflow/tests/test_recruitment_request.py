@@ -65,6 +65,17 @@ class TestRecruitmentRequest(TransactionCase):
         with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError):
             self._create_request(identification_id='1234567890', email='b@example.com')
 
+    def test_identification_id_uniqueness_across_companies(self):
+        """رقم الهوية يمثّل شخصاً حقيقياً واحداً - يجب أن يُمنع تكراره حتى
+        عبر شركات مختلفة، وليس فقط داخل نفس الشركة."""
+        other_company = self.env['res.company'].create({'name': 'شركة تجريبية للتكرار'})
+        self._create_request(identification_id='1234567816', email='z1@example.com')
+        with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError):
+            self._create_request(
+                identification_id='1234567816', email='z2@example.com',
+                company_id=other_company.id,
+            )
+
     def test_stage_cannot_be_deleted_while_in_use(self):
         """حذف مرحلة مرتبطة بطلبات فعلية يجب أن يُمنع تماماً (ondelete=
         restrict) - وليس تفريغ حقل المرحلة بصمت، وهو ما كان يُسقط فحص

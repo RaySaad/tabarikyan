@@ -456,8 +456,9 @@ class RecruitmentRequest(models.Model):
     _sql_constraints = [
         (
             'identification_uniq',
-            'unique(identification_id, company_id)',
-            'يوجد طلب توظيف آخر بنفس رقم الهوية في هذه الشركة!',
+            'unique(identification_id)',
+            'يوجد طلب توظيف آخر بنفس رقم الهوية! رقم الهوية يمثّل شخصاً '
+            'حقيقياً واحداً ولا يمكن أن يتكرر عبر أي شركة/منصة.',
         ),
     ]
 
