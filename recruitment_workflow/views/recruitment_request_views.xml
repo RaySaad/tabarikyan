@@ -155,15 +155,13 @@
                                  لتصحيح مسؤول مشروع خاطئ، عدّله من شاشة
                                  المشروع نفسه. -->
                             <field name="project_manager_id" readonly="1"/>
-                            <!-- مقيّد بنفس علامة "متاحة للتسجيل العام على
-                                 الموقع" (is_recruitment_open) - حتى لا تظهر
-                                 مشاريع الشركة غير المتعلقة بالتوظيف (محاسبة،
-                                 تقنية معلومات، Internal...) كخيار هنا. نفس
-                                 القائمة المستخدمة في نموذج تسجيل الموقع
-                                 تماماً، لضمان اتساق قائمة "المنصات" الحقيقية
-                                 في كل مكان. -->
+                            <!-- مستبعد فقط ما حُدِّد صراحة كـ"استبعاد من قائمة
+                                 التوظيف" (recruitment_hidden) - مستقل تماماً
+                                 عن علامة الموقع الإلكتروني، حتى تبقى منصة
+                                 متاحة هنا للموظفين حتى لو لم تُنشر على الموقع
+                                 العام بعد. -->
                             <field name="project_id" required="stage_code == 'new'"
-                                   domain="[('is_recruitment_open', '=', True)]"
+                                   domain="[('recruitment_hidden', '=', False)]"
                                    options="{'no_create': True}"/>
                             <field name="analytic_account_id" readonly="1"
                                    invisible="not analytic_account_id"/>
