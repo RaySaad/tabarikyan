@@ -152,6 +152,51 @@ class TestRecruitmentRequest(TransactionCase):
         self.assertEqual(request.company_id, other_company)
         self.assertEqual(request.project_manager_id, pm_user)
 
+    def test_department_derived_directly_from_project_over_job(self):
+        """قسم المشروع المباشر (project.department_id) له الأولوية دائماً
+        على قسم الوظيفة الافتراضية عند اشتقاق قسم الطلب."""
+        department_direct = self.env['hr.department'].create({'name': 'قسم مباشر على المشروع'})
+        department_via_job = self.env['hr.department'].create({'name': 'قسم عبر الوظيفة'})
+        job = self.env['hr.job'].create({
+            'name': 'وظيفة تجريبية', 'department_id': department_via_job.id,
+        })
+        project = self.env['project.project'].create({
+            'name': 'منصة بقسم مباشر',
+            'department_id': department_direct.id,
+            'default_job_id': job.id,
+        })
+
+        request = self.Request.create({
+            'employee_name': 'مرشّح لاختبار القسم',
+            'identification_id': '1234567814',
+            'mobile': '0501234567',
+            'email': 'department-test@example.com',
+            'project_id': project.id,
+        })
+
+        self.assertEqual(request.department_id, department_direct)
+
+    def test_department_falls_back_to_job_department_without_direct_one(self):
+        """بدون قسم مباشر على المشروع، يُشتق القسم من قسم الوظيفة
+        الافتراضية كما كان سابقاً."""
+        department_via_job = self.env['hr.department'].create({'name': 'قسم عبر الوظيفة فقط'})
+        job = self.env['hr.job'].create({
+            'name': 'وظيفة تجريبية 2', 'department_id': department_via_job.id,
+        })
+        project = self.env['project.project'].create({
+            'name': 'منصة بدون قسم مباشر', 'default_job_id': job.id,
+        })
+
+        request = self.Request.create({
+            'employee_name': 'مرشّح لاختبار القسم 2',
+            'identification_id': '1234567815',
+            'mobile': '0501234567',
+            'email': 'department-test-2@example.com',
+            'project_id': project.id,
+        })
+
+        self.assertEqual(request.department_id, department_via_job)
+
     def test_company_and_pm_derived_on_write_without_onchange(self):
         """نفس الاشتقاق مطلوب أيضاً عند write() لتغيير project_id على طلب
         موجود، وليس فقط create() - حتى لو أرسل المتصفح project_id فقط

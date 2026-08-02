@@ -144,7 +144,9 @@
                         </group>
                         <group string="بيانات الوظيفة">
                             <field name="job_id"/>
-                            <field name="department_id"/>
+                            <!-- للعرض فقط - تُشتَق من قسم المشروع مباشرة إن
+                                 وُجد، وإلا من قسم الوظيفة الافتراضية. -->
+                            <field name="department_id" readonly="1"/>
                             <!-- للعرض فقط - تُشتَق تلقائياً من المسؤول المعيّن
                                  على المشروع المختار (project.user_id)، ولا
                                  تُعدَّل يدوياً هنا: تعديلها هنا كان يسمح لأي
@@ -153,7 +155,15 @@
                                  لتصحيح مسؤول مشروع خاطئ، عدّله من شاشة
                                  المشروع نفسه. -->
                             <field name="project_manager_id" readonly="1"/>
+                            <!-- مقيّد بنفس علامة "متاحة للتسجيل العام على
+                                 الموقع" (is_recruitment_open) - حتى لا تظهر
+                                 مشاريع الشركة غير المتعلقة بالتوظيف (محاسبة،
+                                 تقنية معلومات، Internal...) كخيار هنا. نفس
+                                 القائمة المستخدمة في نموذج تسجيل الموقع
+                                 تماماً، لضمان اتساق قائمة "المنصات" الحقيقية
+                                 في كل مكان. -->
                             <field name="project_id" required="stage_code == 'new'"
+                                   domain="[('is_recruitment_open', '=', True)]"
                                    options="{'no_create': True}"/>
                             <field name="analytic_account_id" readonly="1"
                                    invisible="not analytic_account_id"/>

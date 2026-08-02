@@ -326,6 +326,10 @@ class RecruitmentRequest(models.Model):
         if self.project_id.default_job_id:
             self.job_id = self.project_id.default_job_id
             self.department_id = self.project_id.default_job_id.department_id
+        # القسم المباشر على المشروع له الأولوية دائماً على قسم الوظيفة
+        # الافتراضية - أدق لأنه لا يعتمد على وجود وظيفة افتراضية أصلاً.
+        if self.project_id.department_id:
+            self.department_id = self.project_id.department_id
 
     # ------------------------------------------------------------------
     # الحسابات
@@ -504,9 +508,15 @@ class RecruitmentRequest(models.Model):
             vals['company_id'] = project.company_id.id
         if 'project_manager_id' not in vals and project.user_id:
             vals['project_manager_id'] = project.user_id.id
+        department_explicitly_given = 'department_id' in vals
         if 'job_id' not in vals and project.default_job_id:
             vals['job_id'] = project.default_job_id.id
-            vals.setdefault('department_id', project.default_job_id.department_id.id)
+            if not department_explicitly_given:
+                vals['department_id'] = project.default_job_id.department_id.id
+        # القسم المباشر على المشروع له الأولوية دائماً على قسم الوظيفة
+        # الافتراضية أعلاه - أدق لأنه لا يعتمد على وجود وظيفة افتراضية.
+        if not department_explicitly_given and project.department_id:
+            vals['department_id'] = project.department_id.id
         if 'compensation_type_id' not in vals:
             available_compensation = project.compensation_type_ids
             if len(available_compensation) == 1:
