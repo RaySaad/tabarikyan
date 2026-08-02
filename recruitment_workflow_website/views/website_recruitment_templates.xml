@@ -88,7 +88,7 @@
                                             t-attf-class="form-select #{error.get('project_id') and 'is-invalid'}">
                                         <option value="">اختر...</option>
                                         <t t-foreach="projects" t-as="p">
-                                            <option t-att-value="p.id" t-att-selected="default.get('project_id') == str(p.id)" t-out="p.name"/>
+                                            <option t-att-value="p.id" t-att-selected="default.get('project_id') == str(p.id)" t-out="p.recruitment_display_name or p.name"/>
                                         </t>
                                     </select>
                                     <div class="invalid-feedback" t-if="error.get('project_id')" t-out="error['project_id']"/>

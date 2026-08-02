@@ -35,6 +35,39 @@ class ProjectProject(models.Model):
              '(/careers/register). باقي المشاريع في النظام (محاسبة، تقنية '
              'معلومات...) لن تظهر أبداً للزوار العامين.',
     )
+    recruitment_display_name = fields.Char(
+        string='الاسم المعروض للمتقدمين (اختياري)',
+        help='استخدمه لدمج أكثر من فرع/شركة داخلية لنفس المنصة تحت اسم '
+             'واحد ظاهر للمتقدمين على الموقع (مثال: "جاهز" و"جاهز1" '
+             'كلاهما يظهران للمتقدم كخيار واحد باسم "جاهز" فقط). اتركه '
+             'فارغاً لاستخدام اسم المشروع نفسه.',
+    )
+    is_recruitment_default = fields.Boolean(
+        string='الفرع الافتراضي عند تعدد الفروع النشطة',
+        default=False,
+        help='عند وجود أكثر من فرع نشط (متاح للتسجيل) بنفس "الاسم المعروض '
+             'للمتقدمين"، يُختار الفرع المحدَّد هنا كوجهة تلقائية لطلبات '
+             'الموقع الجديدة. إن لم يُحدَّد أي فرع كافتراضي، يُختار الأقدم.',
+    )
+
+    @api.model
+    def _get_public_recruitment_projects(self):
+        """يعيد فرعاً واحداً فقط (سجل project.project) لكل "اسم معروض
+        للمتقدمين" فريد، من بين كل المنصات المتاحة للتسجيل العام حالياً -
+        يمنع ظهور نفس المنصة أكثر من مرة في نموذج تسجيل الموقع عندما تكون
+        مقسّمة داخلياً لأكثر من فرع/شركة (مثال: جاهز وجاهز1).
+
+        عند تعدد الفروع النشطة لنفس الاسم: يُفضَّل الفرع المحدَّد كـ
+        "افتراضي" (is_recruitment_default) إن وُجد، وإلا الأقدم (أول id).
+        """
+        open_projects = self.search([('is_recruitment_open', '=', True)], order='id')
+        by_display_name = {}
+        for project in open_projects:
+            key = project.recruitment_display_name or project.name
+            chosen = by_display_name.get(key)
+            if not chosen or (project.is_recruitment_default and not chosen.is_recruitment_default):
+                by_display_name[key] = project
+        return self.concat(*by_display_name.values()).sorted('name')
 
     def write(self, vals):
         tracked = {'user_id', 'company_id'} & set(vals.keys())

@@ -16,6 +16,12 @@
                        groups="recruitment_workflow.group_recruitment_workflow_user"/>
                 <field name="is_recruitment_open"
                        groups="recruitment_workflow.group_recruitment_workflow_user"/>
+                <field name="recruitment_display_name"
+                       invisible="not is_recruitment_open"
+                       groups="recruitment_workflow.group_recruitment_workflow_user"/>
+                <field name="is_recruitment_default"
+                       invisible="not is_recruitment_open"
+                       groups="recruitment_workflow.group_recruitment_workflow_user"/>
             </field>
         </field>
     </record>

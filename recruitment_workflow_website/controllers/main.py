@@ -90,9 +90,7 @@ class RecruitmentWebsiteController(http.Controller):
             'default': default or {},
             'genders': request.env['recruitment.request']._fields['gender'].selection,
             'countries': request.env['res.country'].sudo().search([], order='name'),
-            'projects': request.env['project.project'].sudo().search(
-                [('is_recruitment_open', '=', True)], order='name',
-            ),
+            'projects': request.env['project.project'].sudo()._get_public_recruitment_projects(),
         }
 
     @http.route('/careers/register', type='http', auth='public', website=True, sitemap=True)
