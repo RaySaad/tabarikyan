@@ -51,6 +51,13 @@
                     </header>
                     <sheet>
                         <div class="oe_button_box" name="button_box">
+                            <button name="action_view_move" type="object"
+                                    class="oe_stat_button" icon="fa-file-text-o"
+                                    invisible="not move_id">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">قيد الجهة الحكومية</span>
+                                </div>
+                            </button>
                             <button name="action_view_employee_move" type="object"
                                     class="oe_stat_button" icon="fa-file-text-o"
                                     invisible="not employee_move_id">

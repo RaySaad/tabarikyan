@@ -255,6 +255,21 @@ class BankSettlementMixin(models.AbstractModel):
         move = self.env['account.move'].create(move_vals)
         return move.id
 
+    def action_view_move(self):
+        """يفتح القيد/الفاتورة المحاسبية الرئيسية المرتبطة بهذا السداد -
+        بدون هذا الزر، القيد يُنشأ فعلياً عند الإتمام لكن لا توجد وسيلة
+        مباشرة للوصول إليه من شاشة السداد نفسها."""
+        self.ensure_one()
+        if not self.move_id:
+            raise UserError('لا يوجد قيد محاسبي مرتبط بعد.')
+        return {
+            'name': 'القيد المحاسبي',
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'res_id': self.move_id.id,
+            'view_mode': 'form',
+        }
+
     def action_view_attachments(self):
         self.ensure_one()
         return {
