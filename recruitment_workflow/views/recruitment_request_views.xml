@@ -29,6 +29,13 @@
                             groups="recruitment_workflow.group_recruitment_workflow_operations"
                             invisible="state in ('done','rejected') or stage_code != 'paid' or fee_move_id"/>
 
+                    <!-- إصدار فاتورة حصة الموظف من رسوم نقل الكفالة الحكومية -
+                         مطلوبة قبل مغادرة هذه المرحلة إن حُدِّدت حصة للموظف. -->
+                    <button name="action_create_gov_fee_employee_invoice" type="object"
+                            string="إصدار فاتورة حصة الموظف" class="btn-primary"
+                            groups="recruitment_workflow.group_recruitment_workflow_hr"
+                            invisible="state in ('done','rejected') or stage_code != 'sponsorship_transfer' or gov_fee_employee_move_id or not gov_fee_employee_amount"/>
+
                     <!-- رفض - من مراحل الموافقة اللاحقة (مدير العمليات فما فوق فقط) -->
                     <button name="action_open_reject_wizard" type="object" string="رفض"
                             class="btn-danger"
@@ -180,6 +187,22 @@
                             <field name="fee_amount" readonly="fee_move_id"/>
                             <field name="currency_id" invisible="1"/>
                             <field name="fee_payment_state" readonly="1" invisible="not fee_move_id"/>
+                        </group>
+                    </group>
+
+                    <!-- رسوم نقل الكفالة الحكومية - قد يتحمل الموظف جزءاً منها.
+                         فاتورة حصته تُصدَر مباشرة لشريك المرشّح (لا حاجة
+                         لانتظار إنشاء سجل الموظف الرسمي المتأخر لآخر مرحلة). -->
+                    <group string="الرسوم الحكومية (نقل الكفالة)"
+                           invisible="not stage_code or stage_code not in ('sponsorship_transfer','sponsorship_done','car_request','started')">
+                        <group>
+                            <field name="gov_fee_amount" readonly="gov_fee_employee_move_id"/>
+                            <field name="gov_fee_employee_amount" readonly="gov_fee_employee_move_id"/>
+                            <field name="gov_fee_company_amount"/>
+                        </group>
+                        <group>
+                            <field name="gov_fee_employee_payment_state" readonly="1"
+                                   invisible="not gov_fee_employee_move_id"/>
                         </group>
                     </group>
 

@@ -673,3 +673,53 @@ class TestRecruitmentRequest(TransactionCase):
         self.assertTrue(request.car_requested)
         self.assertEqual(request.car_request_state, 'requested')
         self.assertFalse(result)
+
+    # ------------------------------------------------------------------
+    # حصة الموظف من رسوم نقل الكفالة الحكومية
+    # ------------------------------------------------------------------
+    def test_gov_fee_company_amount_computed(self):
+        """مبلغ الشركة = الإجمالي ناقص حصة الموظف، محسوب تلقائياً."""
+        request = self._create_request(identification_id='1234567817', email='aa@example.com')
+        request.write({'gov_fee_amount': 1000.0, 'gov_fee_employee_amount': 300.0})
+        self.assertEqual(request.gov_fee_company_amount, 700.0)
+
+    def test_gov_fee_employee_invoice_created_against_candidate_partner(self):
+        """فاتورة حصة الموظف تُصدَر لشريك المرشّح مباشرة (لا حاجة لموظف
+        رسمي بعد)، بالمبلغ الصحيح."""
+        request = self._create_request(
+            identification_id='1234567818', email='ab@example.com',
+            gov_fee_amount=1000.0, gov_fee_employee_amount=300.0,
+        )
+
+        request.action_create_gov_fee_employee_invoice()
+
+        self.assertTrue(request.gov_fee_employee_move_id)
+        self.assertEqual(request.gov_fee_employee_move_id.move_type, 'out_invoice')
+        self.assertEqual(request.gov_fee_employee_move_id.amount_total, 300.0)
+
+    def test_stage_exit_blocked_without_gov_fee_invoice_when_employee_amount_set(self):
+        """لا يمكن مغادرة مرحلة "جاري نقل الكفالة" بدون إصدار فاتورة حصة
+        الموظف، إن حُدِّدت حصة له."""
+        request = self._create_request(
+            identification_id='1234567819', email='ac@example.com',
+            gov_fee_employee_amount=200.0,
+        )
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_sponsorship_transfer.id,
+        })
+
+        with self.assertRaises(UserError):
+            request.action_next_stage()
+
+    def test_stage_exit_allowed_without_gov_fee_invoice_when_no_employee_amount(self):
+        """لا قيد إطلاقاً لو لم تُحدَّد حصة للموظف (الشركة تتحمل كل شيء)."""
+        request = self._create_request(
+            identification_id='1234567820', email='ad@example.com',
+        )
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_sponsorship_transfer.id,
+        })
+
+        request.action_next_stage()
+
+        self.assertEqual(request.stage_id.code, 'sponsorship_done')
