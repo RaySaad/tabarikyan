@@ -48,4 +48,8 @@ recruitment_workflow لبيانات المناديب (hr.employee) والمنص�
     'installable': True,
     'application': False,
     'auto_install': False,
+    # يُعاد ربط القائمة الجذرية تلقائياً تحت تطبيق "المحاسبة" الحقيقي
+    # (Enterprise: موديول accountant) إن كان مثبتاً، بدل "الفوترة"
+    # الافتراضية في Community - انظر hooks.py.
+    'post_init_hook': '_post_init_hook',
 }

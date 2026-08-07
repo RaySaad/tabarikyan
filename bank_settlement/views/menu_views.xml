@@ -27,5 +27,10 @@
                   parent="menu_bank_settlement_root"
                   action="action_bank_settlement_representative" sequence="50"/>
 
+        <!-- يُعاد ربط الجذر أعلاه تحت تطبيق "المحاسبة" الحقيقي (Enterprise)
+             إن وُجد، بدل "الفوترة" الافتراضية - يعمل عند كل تثبيت/ترقية،
+             وليس عند التثبيت الأول فقط. -->
+        <function model="ir.ui.menu" name="_bank_settlement_fix_root_menu_parent" eval="[]"/>
+
     </data>
 </odoo>
