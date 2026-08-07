@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_bank_settlement_medical_insurance_list" model="ir.ui.view">
+            <field name="name">bank.settlement.medical.insurance.list</field>
+            <field name="model">bank.settlement.medical.insurance</field>
+            <field name="arch" type="xml">
+                <list string="التأمين الطبي" decoration-success="state == 'done'">
+                    <field name="name"/>
+                    <field name="fee_type"/>
+                    <field name="employee_id"/>
+                    <field name="vendor_id"/>
+                    <field name="amount"/>
+                    <field name="tax_amount"/>
+                    <field name="total_amount" sum="الإجمالي"/>
+                    <field name="state" widget="badge"
+                           decoration-success="state == 'done'"
+                           decoration-info="state == 'confirmed'"
+                           decoration-muted="state == 'draft'"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_bank_settlement_medical_insurance_form" model="ir.ui.view">
+            <field name="name">bank.settlement.medical.insurance.form</field>
+            <field name="model">bank.settlement.medical.insurance</field>
+            <field name="arch" type="xml">
+                <form string="تأمين / فحص طبي">
+                    <header>
+                        <button name="action_submit_review" string="إرسال للمراجعة"
+                                type="object" class="btn-primary"
+                                invisible="state != 'draft'"/>
+                        <button name="action_confirm" string="اعتماد التحويل"
+                                type="object" class="btn-primary"
+                                groups="bank_settlement.group_bank_settlement_manager"
+                                invisible="state != 'under_review'"/>
+                        <button name="action_create_insurance_transfer"
+                                string="إنشاء تحويل التأمين" type="object"
+                                class="btn-primary"
+                                groups="bank_settlement.group_bank_settlement_reviewer"
+                                invisible="state != 'confirmed'"/>
+                        <button name="action_reset_draft" string="إعادة لمسودة"
+                                type="object" invisible="state not in ('under_review', 'confirmed')"/>
+                        <button name="action_cancel" string="إلغاء"
+                                type="object" invisible="state in ('done', 'cancel')"/>
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="draft,under_review,confirmed,done"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1><field name="name" readonly="1"/></h1>
+                        </div>
+                        <group>
+                            <group string="بيانات التأمين">
+                                <field name="fee_type"/>
+                                <field name="vendor_id"/>
+                                <field name="company_iban"/>
+                                <field name="transfer_date"/>
+                            </group>
+                            <group string="المبالغ">
+                                <field name="currency_id" invisible="1"/>
+                                <field name="amount"/>
+                                <field name="tax_amount"/>
+                                <field name="total_amount"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group string="بيانات المندوب">
+                                <field name="employee_id" string="اسم المندوب"/>
+                                <field name="residency_number"/>
+                            </group>
+                            <group string="المنصة">
+                                <field name="project_id" string="التطبيق"/>
+                                <field name="analytic_account_id" readonly="1"/>
+                                <field name="operating_system" string="نظام التشغيل"/>
+                            </group>
+                        </group>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_bank_settlement_medical_insurance" model="ir.actions.act_window">
+            <field name="name">التأمين الطبي</field>
+            <field name="res_model">bank.settlement.medical.insurance</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+    </data>
+</odoo>

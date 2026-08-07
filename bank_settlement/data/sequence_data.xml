@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="seq_bank_settlement_advance" model="ir.sequence">
+            <field name="name">السلف - Advance</field>
+            <field name="code">bank.settlement.advance</field>
+            <field name="prefix">REQ/</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_bank_settlement_government_fee" model="ir.sequence">
+            <field name="name">الرسوم الحكومية - Government Fee</field>
+            <field name="code">bank.settlement.government.fee</field>
+            <field name="prefix">Gov/Fee/</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_bank_settlement_vehicle_transfer" model="ir.sequence">
+            <field name="name">تحويلات المركبات - Vehicle Transfer</field>
+            <field name="code">bank.settlement.vehicle.transfer</field>
+            <field name="prefix">Veh/Trf/</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_bank_settlement_medical_insurance" model="ir.sequence">
+            <field name="name">التأمين الطبي - Medical Insurance</field>
+            <field name="code">bank.settlement.medical.insurance</field>
+            <field name="prefix">Ins/</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_bank_settlement_representative" model="ir.sequence">
+            <field name="name">تصفيات المناديب - Representative Settlement</field>
+            <field name="code">bank.settlement.representative</field>
+            <field name="prefix">Del/sett/</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+    </data>
+</odoo>

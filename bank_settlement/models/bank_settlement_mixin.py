@@ -1,0 +1,267 @@
+# -*- coding: utf-8 -*-
+from odoo import api, fields, models
+from odoo.exceptions import UserError
+
+
+class BankSettlementMixin(models.AbstractModel):
+    """
+    Mixin مشترك بين كل نماذج السداد البنكي (السلف، الرسوم الحكومية،
+    تحويلات المركبات، التأمين الطبي، تصفيات المناديب).
+
+    يوفر:
+    - دورة حياة موحّدة (مسودة -> تحت المراجعة -> مؤكدة -> منفّذة)
+    - الربط بالموظف/المندوب وبيانات الإقامة
+    - الربط بالمنصة (كيتا/هنقرستيشن/جاهز) عبر الحساب التحليلي
+      (نفس منطق العزل المالي المستخدم في recruitment_workflow)
+    - بيانات السداد البنكي (تاريخ التحويل، رقم السداد، مرفق الإثبات)
+    - تتبع كامل عبر mail.thread (Chatter)
+
+    ملاحظة: هذا mixin تجريدي (AbstractModel) — كل نموذج فرعي يحدد
+    قيم/تسميات حقل state الخاصة به حسب سياقه (مثال: "تم الصرف" للسلف
+    مقابل "تم التحويل" لتحويلات المركبات).
+    """
+    _name = 'bank.settlement.mixin'
+    _description = 'Bank Settlement Mixin'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _order = 'create_date desc'
+
+    name = fields.Char(
+        string='الكود', required=True, copy=False, readonly=True,
+        default=lambda self: ('New'),
+    )
+
+    # -- بيانات الموظف / المندوب --------------------------------------
+    # يستخدم recruitment_workflow نموذج hr.employee القياسي مباشرة (لا يوجد
+    # نموذج "مندوب" مخصص منفصل) - المنصة الحالية للمندوب متاحة عبر
+    # employee_id.project_id، وشريكه الشخصي عبر employee_id._get_personal_partner().
+    employee_id = fields.Many2one(
+        'hr.employee', string='اسم الموظف', required=True, tracking=True,
+    )
+    # رقم الإقامة يُشتق مباشرة من hr.version (عبر _inherits على hr.employee)
+    # - نفس الرقم المستخدم في recruitment_workflow (identification_id) -
+    # وليس حقلاً مدخلاً يدوياً منفصلاً قد يتعارض مع ملف الموظف الفعلي.
+    residency_number = fields.Char(
+        string='رقم الإقامة', related='employee_id.identification_id',
+        store=True, readonly=True,
+    )
+    employee_category = fields.Selection(
+        selection=[
+            ('full_time_rep', 'Full Time مندوب'),
+            ('foreign_admin', 'موظف إداري أجنبي'),
+        ],
+        string='نوع الموظف', tracking=True,
+    )
+
+    # -- الربط بالمنصة (كيتا / هنقرستيشن / جاهز) -----------------------
+    # المنصة في recruitment_workflow هي project.project (وليست حساباً
+    # تحليلياً مباشرة) - كل منصة لها حساب تحليلي خاص بها (project_id.
+    # account_id) يُشتق منه تلقائياً هنا، بدل اختيار الحساب التحليلي يدوياً
+    # بمعزل عن المنصة الفعلية.
+    project_id = fields.Many2one(
+        'project.project', string='المنصة', tracking=True,
+        help='المنصة (كيتا/هنقرستيشن/جاهز) - تُقترح تلقائياً من المنصة '
+             'الحالية للموظف المختار، ويمكن تغييرها يدوياً إن لزم.',
+    )
+    analytic_account_id = fields.Many2one(
+        'account.analytic.account', string='الحساب التحليلي',
+        related='project_id.account_id', store=True, readonly=True,
+        help='يُشتق تلقائياً من المنصة المختارة أعلاه - لتحقيق العزل '
+             'المالي لكل منصة في القيود المحاسبية.',
+    )
+    operating_system = fields.Char(string='نظام التشغيل')
+
+    @api.onchange('employee_id')
+    def _onchange_employee_id(self):
+        if self.employee_id and self.employee_id.project_id:
+            self.project_id = self.employee_id.project_id
+
+    # -- المبالغ والعملة -------------------------------------------------
+    amount = fields.Monetary(string='المبلغ', tracking=True)
+    tax_amount = fields.Monetary(string='مبلغ الضريبة')
+    total_amount = fields.Monetary(
+        string='الإجمالي', compute='_compute_total_amount', store=True,
+    )
+    currency_id = fields.Many2one(
+        'res.currency', string='العملة',
+        default=lambda self: self.env.company.currency_id,
+    )
+    company_id = fields.Many2one(
+        'res.company', string='الشركة', default=lambda self: self.env.company,
+    )
+
+    # -- المحاسبة ---------------------------------------------------------
+    linked_account_id = fields.Many2one(
+        'account.account', string='الحساب المرتبط',
+        help='حساب الأستاذ العام المرتبط بهذا النوع من المصروفات',
+    )
+    journal_id = fields.Many2one(
+        'account.journal', string='دفتر اليومية البنكي',
+        domain="[('type', '=', 'bank'), ('company_id', '=', company_id)]",
+        help='دفتر اليومية البنكي الذي سيُسدَّد منه هذا المبلغ - يُحدَّد '
+             'صراحة بدل اختيار أول دفتر بنكي متاح تلقائياً، خصوصاً إن '
+             'كانت الشركة تملك أكثر من حساب/دفتر بنكي.',
+    )
+    move_id = fields.Many2one(
+        'account.move', string='القيد المحاسبي', readonly=True, copy=False,
+    )
+
+    # -- السداد البنكي -----------------------------------------------------
+    transfer_date = fields.Date(string='تاريخ التحويل', tracking=True)
+    bank_reference = fields.Char(string='رقم السداد البنكي')
+    attachment_count = fields.Integer(
+        string='عدد المرفقات', compute='_compute_attachment_count',
+    )
+
+    notes = fields.Text(string='ملاحظات')
+
+    state = fields.Selection(
+        selection=[
+            ('draft', 'مسودة'),
+            ('under_review', 'تحت المراجعة'),
+            ('confirmed', 'مؤكدة'),
+            ('done', 'منفّذة'),
+            ('cancel', 'ملغاة'),
+        ],
+        string='الحالة', default='draft', tracking=True, copy=False,
+    )
+
+    @api.depends('amount', 'tax_amount')
+    def _compute_total_amount(self):
+        for rec in self:
+            rec.total_amount = (rec.amount or 0.0) + (rec.tax_amount or 0.0)
+
+    def _compute_attachment_count(self):
+        for rec in self:
+            rec.attachment_count = self.env['ir.attachment'].search_count([
+                ('res_model', '=', rec._name), ('res_id', '=', rec.id),
+            ])
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('name', 'New') == 'New':
+                vals['name'] = self._get_sequence_code_for_create(vals)
+        return super().create(vals_list)
+
+    def _get_sequence_code_for_create(self, vals):
+        """كل نموذج فرعي يجب أن يحدد كود التسلسل الخاص به."""
+        seq_code = self._sequence_code()
+        return self.env['ir.sequence'].next_by_code(seq_code) or 'New'
+
+    def _sequence_code(self):
+        raise NotImplementedError(
+            'يجب تعريف _sequence_code() في كل نموذج فرعي'
+        )
+
+    # -- انتقالات الحالة ----------------------------------------------------
+    def _check_group(self, *group_xmlids):
+        """طبقة حماية من جهة الخادم للانتقالات الحساسة - لا تعتمد فقط على
+        إخفاء الأزرار في الواجهة (والتي يمكن تجاوزها عبر RPC/API مباشرة)."""
+        self.ensure_one()
+        if not any(self.env.user.has_group(g) for g in group_xmlids):
+            raise UserError('ليست لديك الصلاحية للقيام بهذا الإجراء.')
+
+    def action_submit_review(self):
+        for rec in self:
+            if rec.state != 'draft':
+                raise UserError('يمكن إرسال السجلات في حالة "مسودة" فقط للمراجعة.')
+        self.write({'state': 'under_review'})
+
+    def action_confirm(self):
+        """التأكيد (تحت المراجعة -> مؤكدة) - يقتصر على المدير العام، حسب
+        سير العمل الفعلي المطلوب."""
+        for rec in self:
+            if rec.state != 'under_review':
+                raise UserError('يمكن تأكيد السجلات في حالة "تحت المراجعة" فقط.')
+            rec._check_group('bank_settlement.group_bank_settlement_manager')
+        self.write({'state': 'confirmed'})
+
+    def action_done(self):
+        """إتمام السداد/التحويل — ينشئ القيد المحاسبي إن لم يكن موجوداً.
+        متاح للمراجع/المحاسب فما فوق (بعد اعتماد المدير العام مسبقاً)."""
+        for rec in self:
+            if rec.state != 'confirmed':
+                raise UserError('يجب تأكيد السجل أولاً قبل إتمامه.')
+            rec._check_group(
+                'bank_settlement.group_bank_settlement_reviewer',
+                'bank_settlement.group_bank_settlement_manager',
+            )
+            if not rec.move_id:
+                rec.move_id = rec._create_settlement_move()
+        self.write({'state': 'done'})
+
+    def action_reset_draft(self):
+        for rec in self:
+            # القيد المحاسبي (إن وُجد) يعني أن السداد وثّق فعلياً محاسبياً -
+            # لا يجوز إعادة السجل لمسودة وترك ذلك القيد معلّقاً بلا مرجع.
+            # يجب عكس/إلغاء القيد أولاً من شاشة المحاسبة نفسها.
+            if rec.move_id:
+                raise UserError(
+                    'لا يمكن إعادة هذا السجل لمسودة - يوجد قيد محاسبي مرتبط '
+                    'به بالفعل (%s). ألغِ/اعكس القيد أولاً من المحاسبة.'
+                    % rec.move_id.name
+                )
+        self.write({'state': 'draft'})
+
+    def action_cancel(self):
+        for rec in self:
+            if rec.move_id and rec.move_id.state == 'posted':
+                raise UserError(
+                    'لا يمكن إلغاء هذا السجل - القيد المحاسبي المرتبط به '
+                    'مرحّل بالفعل (%s). ألغِه/اعكسه من المحاسبة أولاً.'
+                    % rec.move_id.name
+                )
+        self.write({'state': 'cancel'})
+
+    def _create_settlement_move(self):
+        """ينشئ قيد محاسبي (account.move) لتوثيق عملية السداد، بدفتر
+        اليومية البنكي المحدَّد صراحة وحسابه المقابل الرسمي، مع توزيع
+        تحليلي على حساب المنصة المشتق من الموظف/المشروع."""
+        self.ensure_one()
+        if not self.linked_account_id:
+            raise UserError(
+                'لا يمكن إنشاء القيد المحاسبي بدون تحديد "الحساب المرتبط".'
+            )
+        if not self.journal_id:
+            raise UserError(
+                'لا يمكن إنشاء القيد المحاسبي بدون تحديد "دفتر اليومية البنكي".'
+            )
+
+        move_vals = {
+            'journal_id': self.journal_id.id,
+            'date': self.transfer_date or fields.Date.context_today(self),
+            'ref': self.name,
+            'line_ids': [
+                (0, 0, {
+                    'name': self.name,
+                    'account_id': self.linked_account_id.id,
+                    'partner_id': self.employee_id._get_personal_partner().id
+                        if self.employee_id else False,
+                    'debit': self.total_amount,
+                    'credit': 0.0,
+                    'analytic_distribution': (
+                        {str(self.analytic_account_id.id): 100}
+                        if self.analytic_account_id else False
+                    ),
+                }),
+                (0, 0, {
+                    'name': self.name,
+                    'account_id': self.journal_id.default_account_id.id,
+                    'debit': 0.0,
+                    'credit': self.total_amount,
+                }),
+            ],
+        }
+        move = self.env['account.move'].create(move_vals)
+        return move.id
+
+    def action_view_attachments(self):
+        self.ensure_one()
+        return {
+            'name': 'المرفقات',
+            'type': 'ir.actions.act_window',
+            'res_model': 'ir.attachment',
+            'view_mode': 'list,form',
+            'domain': [('res_model', '=', self._name), ('res_id', '=', self.id)],
+            'context': {'default_res_model': self._name, 'default_res_id': self.id},
+        }

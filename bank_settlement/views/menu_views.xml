@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- مدموج داخل تطبيق المحاسبة نفسه (وليس تطبيقاً منفصلاً) - يفتحه
+             المحاسب من قائمته المعتادة مباشرة، تماماً كموديول التوظيف. -->
+        <menuitem id="menu_bank_settlement_root" name="السداد البنكي"
+                  parent="account.menu_finance" sequence="15"/>
+
+        <menuitem id="menu_bank_settlement_advance" name="السلف"
+                  parent="menu_bank_settlement_root"
+                  action="action_bank_settlement_advance" sequence="10"/>
+
+        <menuitem id="menu_bank_settlement_government_fee" name="الرسوم الحكومية"
+                  parent="menu_bank_settlement_root"
+                  action="action_bank_settlement_government_fee" sequence="20"/>
+
+        <menuitem id="menu_bank_settlement_vehicle_transfer" name="تحويلات المركبات"
+                  parent="menu_bank_settlement_root"
+                  action="action_bank_settlement_vehicle_transfer" sequence="30"/>
+
+        <menuitem id="menu_bank_settlement_medical_insurance" name="التأمين الطبي"
+                  parent="menu_bank_settlement_root"
+                  action="action_bank_settlement_medical_insurance" sequence="40"/>
+
+        <menuitem id="menu_bank_settlement_representative" name="تصفيات المناديب"
+                  parent="menu_bank_settlement_root"
+                  action="action_bank_settlement_representative" sequence="50"/>
+
+    </data>
+</odoo>

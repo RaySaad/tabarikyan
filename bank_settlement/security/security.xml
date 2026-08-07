@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- فئة التطبيق (Module Category) -->
+        <record id="module_category_bank_settlement" model="ir.module.category">
+            <field name="name">السداد البنكي</field>
+            <field name="description">صلاحيات إدارة السلف والرسوم الحكومية وتحويلات المركبات والتأمين الطبي وتصفيات المناديب</field>
+            <field name="sequence">21</field>
+        </record>
+
+        <!-- صلاحية المجموعة (res.groups.privilege) - جديد في Odoo 19، نفس
+             النمط المستخدم في recruitment_workflow لضمان ظهور المجموعات
+             تحت فئة تطبيق واضحة بدل "Extra Rights". -->
+        <record id="privilege_bank_settlement" model="res.groups.privilege">
+            <field name="name">السداد البنكي</field>
+            <field name="sequence">21</field>
+            <field name="category_id" ref="module_category_bank_settlement"/>
+        </record>
+
+        <record id="group_bank_settlement_user" model="res.groups">
+            <field name="name">السداد البنكي / مستخدم</field>
+            <field name="sequence">10</field>
+            <field name="privilege_id" ref="privilege_bank_settlement"/>
+        </record>
+
+        <record id="group_bank_settlement_reviewer" model="res.groups">
+            <field name="name">السداد البنكي / مراجع</field>
+            <field name="sequence">20</field>
+            <field name="privilege_id" ref="privilege_bank_settlement"/>
+            <field name="implied_ids" eval="[(4, ref('group_bank_settlement_user'))]"/>
+        </record>
+
+        <record id="group_bank_settlement_manager" model="res.groups">
+            <field name="name">السداد البنكي / مدير عام</field>
+            <field name="sequence">30</field>
+            <field name="privilege_id" ref="privilege_bank_settlement"/>
+            <field name="implied_ids" eval="[(4, ref('group_bank_settlement_reviewer'))]"/>
+            <field name="user_ids" eval="[(4, ref('base.user_admin'))]"/>
+        </record>
+
+        <!--
+            توزيع الصلاحيات الفعلي على الإجراءات (وليس فقط CRUD) مطبَّق في
+            كود Python (bank_settlement_mixin._check_group) وأزرار الواجهة:
+            - "مستخدم": ينشئ السجل ويرسله للمراجعة (action_submit_review).
+            - "مراجع" (ويتوارثه "مدير عام"): ينفّذ السداد الفعلي بعد الاعتماد
+              (action_done / action_create_insurance_transfer).
+            - "مدير عام" فقط: يعتمد السجل (action_confirm)، حسب الفيديو.
+            لا توجد Record Rules بعد (كل من يملك المجموعة يرى كل السجلات
+            بغض النظر عن من أنشأها) - أضفها لاحقاً إن احتجت عزلاً بين
+            المستخدمين/الفروع.
+        -->
+
+    </data>
+</odoo>
