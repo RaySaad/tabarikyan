@@ -2,7 +2,7 @@
 {
     'name': 'السداد البنكي - Bank Settlement',
     'version': '19.0.1.0.0',
-    'category': 'Human Resources',
+    'category': 'Accounting/Accounting',
     'summary': 'إدارة السلف، الرسوم الحكومية، تحويلات المركبات، التأمين الطبي، وتصفيات المناديب',
     'description': """
 السداد البنكي (Bank Settlement)
