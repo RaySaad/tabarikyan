@@ -266,11 +266,14 @@ class TestRecruitmentRequest(TransactionCase):
     def test_write_stage_single_step_blocked_by_unmet_requirement(self):
         """حتى مستخدم يملك كل صلاحيات الموافقة (مدير سير العمل) لا يمكنه
         الانتقال خطوة واحدة فقط من مرحلة "تم السداد" دون إصدار وسداد فاتورة
-        الرسوم - شرط العمل يبقى قائماً حتى في انتقال خطوة واحدة."""
+        الرسوم - شرط العمل يبقى قائماً حتى في انتقال خطوة واحدة (فقط عند
+        استخدام آلية "رسوم التوظيف" الخارجية فعلياً، أي عند تحديد
+        fee_amount - من لا يستخدمها إطلاقاً لا يخضع لهذا الشرط)."""
         self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         project = self.env['project.project'].create({'name': 'منصة تجريبية 3'})
         request = self._create_request(
             identification_id='1234567895', email='g@example.com', project_id=project.id,
+            fee_amount=500.0,
         )
         request.with_context(skip_stage_validation=True).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
@@ -278,6 +281,22 @@ class TestRecruitmentRequest(TransactionCase):
 
         with self.assertRaises(UserError):
             request.write({'stage_id': self.stage_sponsorship_transfer.id})
+
+    def test_write_stage_paid_free_without_fee_amount(self):
+        """من لا يستخدم آلية "رسوم التوظيف" الخارجية إطلاقاً (fee_amount
+        يبقى صفراً) يمكنه مغادرة مرحلة "تم السداد" دون أي فاتورة - الشرط
+        مشروط بوجود مبلغ فعلي، وليس مفروضاً دائماً."""
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
+        project = self.env['project.project'].create({'name': 'منصة تجريبية 3ب'})
+        request = self._create_request(
+            identification_id='1234567896', email='g2@example.com', project_id=project.id,
+        )
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
+        })
+
+        request.write({'stage_id': self.stage_sponsorship_transfer.id})
+        self.assertEqual(request.stage_id.code, 'sponsorship_transfer')
 
     # ------------------------------------------------------------------
     # الإرجاع لمرحلة سابقة مسموح فقط عبر معالج "إرجاع للتصحيح"
@@ -685,10 +704,11 @@ class TestRecruitmentRequest(TransactionCase):
 
     def test_gov_fee_employee_invoice_created_against_candidate_partner(self):
         """فاتورة حصة الموظف تُصدَر لشريك المرشّح مباشرة (لا حاجة لموظف
-        رسمي بعد)، بالمبلغ الصحيح."""
+        رسمي بعد)، بالمبلغ الصحيح - فقط عند اختيار طريقة السداد "نقداً"."""
         request = self._create_request(
             identification_id='1234567818', email='ab@example.com',
             gov_fee_amount=1000.0, gov_fee_employee_amount=300.0,
+            gov_fee_employee_payment_method='cash',
         )
 
         request.action_create_gov_fee_employee_invoice()
@@ -696,13 +716,46 @@ class TestRecruitmentRequest(TransactionCase):
         self.assertTrue(request.gov_fee_employee_move_id)
         self.assertEqual(request.gov_fee_employee_move_id.move_type, 'out_invoice')
         self.assertEqual(request.gov_fee_employee_move_id.amount_total, 300.0)
+        self.assertTrue(request.gov_fee_settled)
 
-    def test_stage_exit_blocked_without_gov_fee_invoice_when_employee_amount_set(self):
-        """لا يمكن مغادرة مرحلة "جاري نقل الكفالة" بدون إصدار فاتورة حصة
-        الموظف، إن حُدِّدت حصة له."""
+    def test_gov_fee_requires_payment_method_when_employee_amount_set(self):
+        """لا يمكن تسجيل الرسوم الحكومية بدون تحديد طريقة سداد حصة الموظف
+        (سلفة/نقداً) إن وُجدت حصة له."""
+        request = self._create_request(
+            identification_id='1234567821', email='ae@example.com',
+            gov_fee_amount=1000.0, gov_fee_employee_amount=300.0,
+        )
+        with self.assertRaises(UserError):
+            request.action_create_gov_fee_employee_invoice()
+
+    def test_gov_fee_advance_method_does_not_create_invoice(self):
+        """اختيار "سلفة" لا يُصدر فاتورة على مستوى recruitment_workflow -
+        تُنشأ السلفة الفعلية من bank_settlement (انظر تجاوز
+        _settle_gov_fee_employee_share هناك)."""
+        request = self._create_request(
+            identification_id='1234567822', email='af@example.com',
+            gov_fee_amount=1000.0, gov_fee_employee_amount=300.0,
+            gov_fee_employee_payment_method='advance',
+        )
+        request.action_create_gov_fee_employee_invoice()
+        self.assertFalse(request.gov_fee_employee_move_id)
+        self.assertTrue(request.gov_fee_settled)
+
+    def test_gov_fee_cannot_be_settled_twice(self):
+        request = self._create_request(
+            identification_id='1234567823', email='ag@example.com',
+            gov_fee_amount=1000.0,
+        )
+        request.action_create_gov_fee_employee_invoice()
+        with self.assertRaises(UserError):
+            request.action_create_gov_fee_employee_invoice()
+
+    def test_stage_exit_blocked_without_gov_fee_settled_when_amount_set(self):
+        """لا يمكن مغادرة مرحلة "جاري نقل الكفالة" بدون تسجيل/تسوية
+        الرسوم الحكومية، إن حُدِّد مبلغ لها."""
         request = self._create_request(
             identification_id='1234567819', email='ac@example.com',
-            gov_fee_employee_amount=200.0,
+            gov_fee_amount=1000.0, gov_fee_employee_amount=200.0,
         )
         request.with_context(skip_stage_validation=True).write({
             'stage_id': self.stage_sponsorship_transfer.id,
@@ -711,8 +764,8 @@ class TestRecruitmentRequest(TransactionCase):
         with self.assertRaises(UserError):
             request.action_next_stage()
 
-    def test_stage_exit_allowed_without_gov_fee_invoice_when_no_employee_amount(self):
-        """لا قيد إطلاقاً لو لم تُحدَّد حصة للموظف (الشركة تتحمل كل شيء)."""
+    def test_stage_exit_allowed_without_gov_fee_settled_when_no_amount(self):
+        """لا قيد إطلاقاً لو لم يُحدَّد أي مبلغ للرسوم الحكومية أصلاً."""
         request = self._create_request(
             identification_id='1234567820', email='ad@example.com',
         )

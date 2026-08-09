@@ -189,6 +189,26 @@ class RecruitmentRequest(models.Model):
         string='حالة سداد حصة الموظف',
         readonly=True,
     )
+    gov_fee_employee_payment_method = fields.Selection(
+        selection=[
+            ('advance', 'سلفة (تُخصم من راتبه لاحقاً)'),
+            ('cash', 'دفعها نقداً وقت النقل'),
+        ],
+        string='طريقة سداد حصة الموظف', tracking=True,
+        help='سلفة: تُنشأ تلقائياً كسلفة موظف في السداد البنكي لتُخصم '
+             'لاحقاً من راتبه. نقداً: تُصدَر له فاتورة عميل مباشرة.',
+    )
+    gov_fee_employee_paid = fields.Selection(
+        selection=[('unpaid', 'غير مدفوع'), ('paid', 'مدفوع')],
+        string='حالة سداد حصة الموظف (تأكيد يدوي)', default='unpaid', tracking=True,
+        help='تأكيد يدوي من الموارد البشرية لاستلام المبلغ فعلياً - مستقل '
+             'عن حالة السداد المحاسبية للفاتورة/السلفة التي قد تتأخر.',
+    )
+    gov_fee_settled = fields.Boolean(
+        string='تمت تسوية الرسوم الحكومية', default=False, copy=False,
+        help='يُضبط تلقائياً بعد تسجيل الرسوم الحكومية - يمنع تكرار '
+             'العملية لهذا الطلب.',
+    )
 
     @api.depends('gov_fee_amount', 'gov_fee_employee_amount')
     def _compute_gov_fee_company_amount(self):
@@ -628,7 +648,11 @@ class RecruitmentRequest(models.Model):
 
         # مرحلة "تم السداد": التحقق الفعلي من سداد فاتورة الرسوم من المحاسبة
         # (وليس مجرد تأكيد يدوي) - يمنع تجاوز الفحص عبر Kanban/API أيضاً.
-        if current_stage.code == 'paid':
+        # مشروط بوجود مبلغ رسوم فعلي (fee_amount) - لمن لا يستخدم آلية
+        # "رسوم التوظيف" (فاتورة مورّد خارجي) إطلاقاً، لا يُطبَّق أي شرط
+        # هنا؛ الشرط الفعلي لديهم مرتبط بالرسوم الحكومية (انظر تجاوز هذه
+        # الدالة في bank_settlement إن كان مثبتاً).
+        if current_stage.code == 'paid' and self.fee_amount > 0:
             if not self.fee_move_id:
                 raise UserError(_(
                     'لا يمكن الانتقال للمرحلة التالية. يجب إصدار فاتورة '
@@ -641,15 +665,15 @@ class RecruitmentRequest(models.Model):
                     'تطبيق المحاسبة أولاً.'
                 ))
 
-        # مرحلة "جاري نقل الكفالة": لو حُدِّدت حصة للموظف من الرسوم
-        # الحكومية، يجب إصدار فاتورتها فعلياً قبل المتابعة (لا يُشترط
-        # سدادها بعد - فقط إصدارها).
-        if current_stage.code == 'sponsorship_transfer' and self.gov_fee_employee_amount > 0 \
-                and not self.gov_fee_employee_move_id:
+        # مرحلة "جاري نقل الكفالة": لو حُدِّد مبلغ للرسوم الحكومية، يجب
+        # تسجيلها/تسويتها فعلياً قبل المتابعة (زر "تسجيل الرسوم الحكومية")
+        # - يشمل ذلك تسوية حصة الموظف إن وُجدت (فاتورة أو سلفة حسب طريقة
+        # السداد المختارة)، لا يُشترط سداد فعلي بعد - فقط التسجيل.
+        if current_stage.code == 'sponsorship_transfer' and self.gov_fee_amount > 0 \
+                and not self.gov_fee_settled:
             raise UserError(_(
-                'لا يمكن الانتقال للمرحلة التالية. يجب إصدار فاتورة حصة '
-                'الموظف من الرسوم الحكومية أولاً (زر "إصدار فاتورة حصة '
-                'الموظف").'
+                'لا يمكن الانتقال للمرحلة التالية. يجب تسجيل الرسوم '
+                'الحكومية أولاً (زر "تسجيل الرسوم الحكومية").'
             ))
 
         if current_stage.require_car:
@@ -1088,47 +1112,65 @@ class RecruitmentRequest(models.Model):
             )
 
     def action_create_gov_fee_employee_invoice(self):
-        """يصدر فاتورة عميل (ذمم مدينة) بحصة الموظف من رسوم نقل الكفالة
-        الحكومية، مرتبطة بشريك المرشّح نفسه - يُنشأ هذا الشريك هنا مباشرة
-        إن لم يكن موجوداً بعد (نفس الآلية المستخدمة لتفويض السيارة)، دون
-        الحاجة لانتظار إنشاء سجل الموظف الرسمي الذي لا يحدث إلا في آخر
-        مرحلة ("تم مباشرة العمل")."""
+        """يسجّل/يسوّي الرسوم الحكومية لنقل الكفالة على هذا الطلب: إجمالي
+        المبلغ (يُسدَّد للجهة الحكومية خارج هذا النظام)، وإن وُجدت حصة
+        للموظف منها، تُسوّى حسب طريقة السداد المختارة عبر
+        _settle_gov_fee_employee_share() (فاتورة إن كانت نقداً، أو سلفة
+        إن كانت "سلفة" - انظر تجاوز الدالة في bank_settlement)."""
         for rec in self:
             rec._check_group('recruitment_workflow.group_recruitment_workflow_hr')
-            if rec.gov_fee_employee_move_id:
-                raise UserError(_('تم إصدار فاتورة حصة الموظف لهذا الطلب من قبل.'))
-            if not rec.gov_fee_employee_amount or rec.gov_fee_employee_amount <= 0:
+            if rec.gov_fee_settled:
+                raise UserError(_('تم تسجيل/تسوية الرسوم الحكومية لهذا الطلب من قبل.'))
+            if not rec.gov_fee_amount or rec.gov_fee_amount <= 0:
                 raise UserError(_(
-                    'حدد حصة الموظف من الرسوم الحكومية قبل إصدار الفاتورة.'
+                    'حدد المبلغ الإجمالي للرسوم الحكومية قبل التسجيل.'
                 ))
-            partner = rec._get_or_create_candidate_partner()
+            if rec.gov_fee_employee_amount > 0 and not rec.gov_fee_employee_payment_method:
+                raise UserError(_(
+                    'حدد طريقة سداد حصة الموظف (سلفة أو دفعة نقدية) قبل التسجيل.'
+                ))
+            rec._settle_gov_fee_employee_share()
+            rec.gov_fee_settled = True
 
-            distribution = {}
-            if rec.analytic_account_id:
-                distribution = {str(rec.analytic_account_id.id): 100.0}
+    def _settle_gov_fee_employee_share(self):
+        """يسوّي حصة الموظف من الرسوم الحكومية حسب طريقة السداد المختارة.
+        الحالة النقدية فقط منفَّذة هنا: تُصدَر فاتورة عميل (ذمم مدينة)
+        مرتبطة بشريك المرشّح نفسه - يُنشأ هذا الشريك هنا مباشرة إن لم يكن
+        موجوداً بعد (نفس الآلية المستخدمة لتفويض السيارة)، دون الحاجة
+        لانتظار إنشاء سجل الموظف الرسمي المتأخر لآخر مرحلة. حالة "سلفة"
+        لا تُنشئ فاتورة هنا إطلاقاً - ينفّذها bank_settlement بإنشاء سجل
+        سلفة بدلاً منها (انظر تجاوز هذه الدالة هناك)."""
+        self.ensure_one()
+        if self.gov_fee_employee_amount <= 0 or self.gov_fee_employee_payment_method != 'cash':
+            return
+        partner = self._get_or_create_candidate_partner()
 
-            line_vals = {
-                'name': _('حصة الموظف من رسوم نقل الكفالة - %s') % (rec.employee_name or rec.name),
-                'quantity': 1.0,
-                'price_unit': rec.gov_fee_employee_amount,
-            }
-            if distribution:
-                line_vals['analytic_distribution'] = distribution
+        distribution = {}
+        if self.analytic_account_id:
+            distribution = {str(self.analytic_account_id.id): 100.0}
 
-            move_vals = {
-                'move_type': 'out_invoice',
-                'partner_id': partner.id,
-                'invoice_date': fields.Date.context_today(rec),
-                'ref': _('حصة الموظف - نقل الكفالة - %s') % rec.name,
-                'company_id': rec.company_id.id if 'company_id' in rec._fields else self.env.company.id,
-                'invoice_line_ids': [(0, 0, line_vals)],
-            }
-            move = self.env['account.move'].sudo().create(move_vals)
-            rec.gov_fee_employee_move_id = move.id
-            rec.message_post(body=_(
-                'تم إصدار فاتورة حصة الموظف من رسوم نقل الكفالة %(move)s '
-                'بمبلغ %(amount)s.'
-            ) % {'move': move.display_name, 'amount': rec.gov_fee_employee_amount})
+        line_vals = {
+            'name': _('حصة الموظف من رسوم نقل الكفالة - %s') % (self.employee_name or self.name),
+            'quantity': 1.0,
+            'price_unit': self.gov_fee_employee_amount,
+        }
+        if distribution:
+            line_vals['analytic_distribution'] = distribution
+
+        move_vals = {
+            'move_type': 'out_invoice',
+            'partner_id': partner.id,
+            'invoice_date': fields.Date.context_today(self),
+            'ref': _('حصة الموظف - نقل الكفالة - %s') % self.name,
+            'company_id': self.company_id.id if 'company_id' in self._fields else self.env.company.id,
+            'invoice_line_ids': [(0, 0, line_vals)],
+        }
+        move = self.env['account.move'].sudo().create(move_vals)
+        self.gov_fee_employee_move_id = move.id
+        self.message_post(body=_(
+            'تم إصدار فاتورة حصة الموظف من رسوم نقل الكفالة %(move)s '
+            'بمبلغ %(amount)s.'
+        ) % {'move': move.display_name, 'amount': self.gov_fee_employee_amount})
 
     # ------------------------------------------------------------------
     # منطق طلب السيارة (التكامل مع الأسطول)

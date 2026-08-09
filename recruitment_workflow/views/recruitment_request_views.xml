@@ -23,18 +23,12 @@
                             class="btn-primary"
                             groups="recruitment_workflow.group_recruitment_workflow_gm"
                             invisible="state in ('done','rejected') or stage_code != 'gm_approval'"/>
-                    <!-- إصدار فاتورة الرسوم (بدل التأكيد اليدوي) -->
-                    <button name="action_create_fee_bill" type="object" string="إصدار فاتورة الرسوم"
-                            class="btn-primary"
-                            groups="recruitment_workflow.group_recruitment_workflow_operations"
-                            invisible="state in ('done','rejected') or stage_code != 'paid' or fee_move_id"/>
-
-                    <!-- إصدار فاتورة حصة الموظف من رسوم نقل الكفالة الحكومية -
-                         مطلوبة قبل مغادرة هذه المرحلة إن حُدِّدت حصة للموظف. -->
+                    <!-- تسجيل/تسوية الرسوم الحكومية - مطلوبة قبل مغادرة
+                         مرحلة "جاري نقل الكفالة" إن حُدِّد مبلغ لها. -->
                     <button name="action_create_gov_fee_employee_invoice" type="object"
-                            string="إصدار فاتورة حصة الموظف" class="btn-primary"
+                            string="تسجيل الرسوم الحكومية" class="btn-primary"
                             groups="recruitment_workflow.group_recruitment_workflow_hr"
-                            invisible="state in ('done','rejected') or not stage_code or stage_code not in ('gm_approval','paid','sponsorship_transfer','sponsorship_done','car_request','started') or gov_fee_employee_move_id or not gov_fee_employee_amount"/>
+                            invisible="state in ('done','rejected') or not stage_code or stage_code not in ('gm_approval','paid','sponsorship_transfer','sponsorship_done','car_request','started') or gov_fee_settled or not gov_fee_amount"/>
 
                     <!-- رفض - من مراحل الموافقة اللاحقة (مدير العمليات فما فوق فقط) -->
                     <button name="action_open_reject_wizard" type="object" string="رفض"
@@ -68,10 +62,14 @@
                             groups="recruitment_workflow.group_recruitment_workflow_operations,recruitment_workflow.group_recruitment_workflow_project_manager"
                             invisible="state in ('done','rejected') or stage_code == 'new'"/>
 
-                    <!-- زر الانتقال العام للمراحل غير التقييمية -->
+                    <!-- زر الانتقال العام للمراحل غير التقييمية - شرط
+                         السداد الفعلي (رسوم عامة أو رسوم حكومية) يبقى
+                         مفروضاً من _validate_stage_exit من جهة الخادم حتى
+                         لو ضُغِط هذا الزر مبكراً؛ سيظهر خطأ واضح بدل حجب
+                         الزر بشرط ثابت هنا لا يناسب كل الحالات. -->
                     <button name="action_next_stage" type="object" string="الانتقال للمرحلة التالية"
                             class="btn-primary"
-                            invisible="state in ('done','rejected') or stage_code in ('project_review','operations_review','gm_approval','car_request','sponsorship_transfer','sponsorship_done') or (stage_code == 'paid' and not fee_move_id)"/>
+                            invisible="state in ('done','rejected') or stage_code in ('project_review','operations_review','gm_approval','car_request','sponsorship_transfer','sponsorship_done')"/>
                     <!-- نقل الكفالة ومتابعة اكتمالها - قسم الموارد البشرية فقط -->
                     <button name="action_next_stage" type="object" string="الانتقال للمرحلة التالية"
                             class="btn-primary"
@@ -178,29 +176,23 @@
                         </group>
                     </group>
 
-                    <group string="رسوم التوظيف" invisible="not stage_code or stage_code not in ('gm_approval','paid','sponsorship_transfer','sponsorship_done','car_request','started')">
-                        <group>
-                            <field name="fee_cost_type_id" readonly="fee_move_id"/>
-                            <field name="fee_partner_id" readonly="fee_move_id" options="{'no_create': True}"/>
-                        </group>
-                        <group>
-                            <field name="fee_amount" readonly="fee_move_id"/>
-                            <field name="currency_id" invisible="1"/>
-                            <field name="fee_payment_state" readonly="1" invisible="not fee_move_id"/>
-                        </group>
-                    </group>
-
-                    <!-- رسوم نقل الكفالة الحكومية - قد يتحمل الموظف جزءاً منها.
-                         فاتورة حصته تُصدَر مباشرة لشريك المرشّح (لا حاجة
+                    <!-- رسوم نقل الكفالة الحكومية - قد يتحمل الموظف جزءاً منها،
+                         إما كسلفة تُخصم من راتبه لاحقاً أو دفعة نقدية وقت
+                         النقل (فاتورة تُصدَر مباشرة لشريك المرشّح، دون حاجة
                          لانتظار إنشاء سجل الموظف الرسمي المتأخر لآخر مرحلة). -->
                     <group string="الرسوم الحكومية (نقل الكفالة)"
                            invisible="not stage_code or stage_code not in ('gm_approval','paid','sponsorship_transfer','sponsorship_done','car_request','started')">
                         <group>
-                            <field name="gov_fee_amount" readonly="gov_fee_employee_move_id"/>
-                            <field name="gov_fee_employee_amount" readonly="gov_fee_employee_move_id"/>
+                            <field name="gov_fee_amount" readonly="gov_fee_settled"/>
+                            <field name="gov_fee_employee_amount" readonly="gov_fee_settled"/>
                             <field name="gov_fee_company_amount"/>
+                            <field name="currency_id" invisible="1"/>
                         </group>
                         <group>
+                            <field name="gov_fee_employee_payment_method" readonly="gov_fee_settled"
+                                   invisible="not gov_fee_employee_amount"/>
+                            <field name="gov_fee_employee_paid"
+                                   invisible="not gov_fee_employee_amount"/>
                             <field name="gov_fee_employee_payment_state" readonly="1"
                                    invisible="not gov_fee_employee_move_id"/>
                         </group>
