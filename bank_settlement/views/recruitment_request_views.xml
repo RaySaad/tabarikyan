@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_recruitment_request_form_inherit_bank_settlement" model="ir.ui.view">
+            <field name="name">recruitment.request.form.inherit.bank.settlement</field>
+            <field name="model">recruitment.request</field>
+            <field name="inherit_id" ref="recruitment_workflow.view_recruitment_request_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//div[@name='button_box']" position="inside">
+                    <button name="action_view_bank_settlement_gov_fee" type="object"
+                            class="oe_stat_button" icon="fa-university"
+                            groups="bank_settlement.group_bank_settlement_user"
+                            invisible="not bank_settlement_gov_fee_id">
+                        <div class="o_stat_info">
+                            <span class="o_stat_text">الرسوم الحكومية</span>
+                        </div>
+                    </button>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

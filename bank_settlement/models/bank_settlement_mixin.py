@@ -34,8 +34,13 @@ class BankSettlementMixin(models.AbstractModel):
     # يستخدم recruitment_workflow نموذج hr.employee القياسي مباشرة (لا يوجد
     # نموذج "مندوب" مخصص منفصل) - المنصة الحالية للمندوب متاحة عبر
     # employee_id.project_id، وشريكه الشخصي عبر employee_id._get_personal_partner().
+    # ليس required=True على مستوى Python عمداً - يبقى إلزامياً في كل
+    # الشاشات (required="1" في كل عروض الفورم) لمن يُنشئ السجل يدوياً، لكن
+    # هذا يسمح لكود آلي محدَّد (bank.settlement.government.fee المُنشأ
+    # تلقائياً من recruitment.request قبل وجود سجل الموظف الرسمي) بإنشاء
+    # السجل بدون موظف مؤقتاً، ثم إكمال الحقل تلقائياً لاحقاً.
     employee_id = fields.Many2one(
-        'hr.employee', string='اسم الموظف', required=True, tracking=True,
+        'hr.employee', string='اسم الموظف', tracking=True,
     )
     # رقم الإقامة يُشتق مباشرة من hr.version (عبر _inherits على hr.employee)
     # - نفس الرقم المستخدم في recruitment_workflow (identification_id) -

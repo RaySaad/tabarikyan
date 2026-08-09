@@ -63,7 +63,7 @@
                         </div>
                         <group>
                             <group string="بيانات الموظف">
-                                <field name="employee_id"/>
+                                <field name="employee_id" required="1"/>
                                 <field name="residency_number"/>
                                 <field name="employee_category"/>
                             </group>

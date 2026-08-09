@@ -41,6 +41,13 @@ class BankSettlementGovernmentFee(models.Model):
         related='employee_move_id.payment_state', string='حالة سداد الموظف',
         readonly=True,
     )
+    recruitment_request_id = fields.Many2one(
+        'recruitment.request', string='طلب التوظيف المرتبط',
+        readonly=True, copy=False,
+        help='إن أُنشئ هذا السجل تلقائياً من طلب توظيف (مرحلة نقل الكفالة) '
+             'قبل وجود سجل الموظف الرسمي، يُربَط هنا - ويُكمَل حقل '
+             '"اسم الموظف" أعلاه تلقائياً بمجرد إنشاء ذلك السجل لاحقاً.',
+    )
 
     state = fields.Selection(
         selection=[

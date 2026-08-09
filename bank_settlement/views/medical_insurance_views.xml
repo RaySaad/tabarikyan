@@ -76,7 +76,7 @@
                         </group>
                         <group>
                             <group string="بيانات المندوب">
-                                <field name="employee_id" string="اسم المندوب"/>
+                                <field name="employee_id" string="اسم المندوب" required="1"/>
                                 <field name="residency_number"/>
                             </group>
                             <group string="المنصة">

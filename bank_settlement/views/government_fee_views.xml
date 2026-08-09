@@ -78,7 +78,7 @@
                             </group>
                             <group string="بيانات الموظف">
                                 <field name="employee_category"/>
-                                <field name="employee_id"/>
+                                <field name="employee_id" required="1"/>
                                 <field name="residency_number"/>
                             </group>
                         </group>

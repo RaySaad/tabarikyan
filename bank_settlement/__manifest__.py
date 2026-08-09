@@ -43,6 +43,7 @@ recruitment_workflow لبيانات المناديب (hr.employee) والمنص�
         'views/vehicle_transfer_views.xml',
         'views/medical_insurance_views.xml',
         'views/representative_settlement_views.xml',
+        'views/recruitment_request_views.xml',
         'views/menu_views.xml',
     ],
     'installable': True,
