@@ -191,8 +191,6 @@
                         <group>
                             <field name="gov_fee_employee_payment_method" readonly="gov_fee_settled"
                                    invisible="not gov_fee_employee_amount"/>
-                            <field name="gov_fee_employee_paid"
-                                   invisible="not gov_fee_employee_amount"/>
                             <field name="gov_fee_employee_payment_state" readonly="1"
                                    invisible="not gov_fee_employee_move_id"/>
                         </group>

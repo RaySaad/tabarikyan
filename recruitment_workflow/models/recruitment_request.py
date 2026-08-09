@@ -198,12 +198,6 @@ class RecruitmentRequest(models.Model):
         help='سلفة: تُنشأ تلقائياً كسلفة موظف في السداد البنكي لتُخصم '
              'لاحقاً من راتبه. نقداً: تُصدَر له فاتورة عميل مباشرة.',
     )
-    gov_fee_employee_paid = fields.Selection(
-        selection=[('unpaid', 'غير مدفوع'), ('paid', 'مدفوع')],
-        string='حالة سداد حصة الموظف (تأكيد يدوي)', default='unpaid', tracking=True,
-        help='تأكيد يدوي من الموارد البشرية لاستلام المبلغ فعلياً - مستقل '
-             'عن حالة السداد المحاسبية للفاتورة/السلفة التي قد تتأخر.',
-    )
     gov_fee_settled = fields.Boolean(
         string='تمت تسوية الرسوم الحكومية', default=False, copy=False,
         help='يُضبط تلقائياً بعد تسجيل الرسوم الحكومية - يمنع تكرار '
