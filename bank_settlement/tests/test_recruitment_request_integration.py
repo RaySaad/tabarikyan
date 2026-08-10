@@ -71,6 +71,31 @@ class TestRecruitmentRequestIntegration(TransactionCase):
         # سجل الرسوم الحكومية يُنشأ أيضاً بغض النظر عن طريقة سداد الموظف
         self.assertTrue(request.bank_settlement_gov_fee_id)
 
+    def test_advance_method_no_invoice_created_even_after_gov_fee_done(self):
+        """اكتمال سجل "الرسوم الحكومية" (منفّذة) لا يجب أن يُصدر فاتورة
+        عميل لحصة الموظف عند اختيار "سلفة" - كان هذا خللاً موروثاً في
+        action_done() يتجاهل طريقة السداد المختارة من طلب التوظيف."""
+        request = self._create_request(
+            identification_id='1234567837', email='bs7@example.com',
+            gov_fee_employee_payment_method='advance',
+        )
+        request.action_create_gov_fee_employee_invoice()
+        gov_fee = request.bank_settlement_gov_fee_id
+
+        gov_fee.write({
+            'linked_account_id': self.env['account.account'].search([], limit=1).id,
+            'journal_id': self.env['account.journal'].search(
+                [('company_id', '=', gov_fee.company_id.id)], limit=1).id,
+        })
+        gov_fee.action_submit_review()
+        gov_fee.action_confirm()
+        gov_fee.action_done()
+
+        self.assertEqual(gov_fee.state, 'done')
+        self.assertFalse(gov_fee.employee_move_id)
+        self.assertFalse(request.gov_fee_employee_move_id)
+        self.assertTrue(request.bank_settlement_advance_id)
+
     def test_employee_backfilled_once_hr_employee_created(self):
         """بمجرد إنشاء سجل الموظف الرسمي (_create_employee، عند مباشرة
         العمل)، تُكمَل حقول "اسم الموظف" تلقائياً على سجلي الرسوم

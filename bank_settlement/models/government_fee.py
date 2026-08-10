@@ -65,10 +65,16 @@ class BankSettlementGovernmentFee(models.Model):
 
     def action_done(self):
         """يُكمِّل تنفيذ المسار الأساسي في mixin (قيد الجهة الحكومية)، ثم
-        يُصدر فاتورة مستقلة لحصة الموظف إن وُجدت، مرتبطة بشريكه الشخصي."""
+        يُصدر فاتورة مستقلة لحصة الموظف إن وُجدت، مرتبطة بشريكه الشخصي -
+        فقط للسجلات المُنشأة يدوياً مباشرة من هذا الموديول (بلا طلب توظيف
+        مرتبط). السجلات المُنشأة تلقائياً من طلب توظيف (recruitment_request_id
+        موجود) تكون حصة الموظف فيها قد سُوِّيت مسبقاً هناك بالكامل - إما
+        فاتورة (نقداً) أو سلفة (سجل bank.settlement.advance مستقل) - فلا
+        يجوز إصدار فاتورة إضافية هنا حتى لو بقي employee_move_id فارغاً
+        عمداً (حالة "سلفة")."""
         super().action_done()
         for rec in self:
-            if rec.employee_amount and not rec.employee_move_id:
+            if rec.employee_amount and not rec.employee_move_id and not rec.recruitment_request_id:
                 rec.employee_move_id = rec._create_employee_receivable_move()
 
     def _create_employee_receivable_move(self):
