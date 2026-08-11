@@ -48,6 +48,7 @@
                                statusbar_visible="draft,under_review,confirmed,done"/>
                     </header>
                     <sheet>
+                        <field name="recruitment_request_id" invisible="1"/>
                         <div class="oe_button_box" name="button_box">
                             <button name="action_view_move" type="object"
                                     class="oe_stat_button" icon="fa-file-text-o"
@@ -68,7 +69,7 @@
                             </group>
                             <group string="بيانات الموظف">
                                 <field name="employee_category"/>
-                                <field name="employee_id" required="1"/>
+                                <field name="employee_id" required="not recruitment_request_id"/>
                                 <field name="residency_number"/>
                                 <field name="partner_id"/>
                             </group>
