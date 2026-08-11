@@ -69,6 +69,11 @@ class RecruitmentRequest(models.Model):
             'amount': self.gov_fee_amount,
             'recruitment_request_id': self.id,
             'partner_id': partner.id,
+            # الشركة صراحة من طلب التوظيف نفسه (مُشتقة أصلاً من المشروع/
+            # المنصة المختارة) - بدل تركها تُحسب من الشركة النشطة لمن
+            # يضغط زر "تسجيل الرسوم الحكومية"، والتي قد تختلف عن فرع
+            # المشروع الفعلي.
+            'company_id': self.company_id.id,
             'project_id': self.project_id.id,
             'transfer_date': fields.Date.context_today(self),
         }).id

@@ -101,12 +101,15 @@ class BankSettlementMixin(models.AbstractModel):
     )
     journal_id = fields.Many2one(
         'account.journal', string='دفتر اليومية',
-        domain="[('company_id', '=', company_id)]",
+        domain="[('company_id', 'parent_of', company_id)]",
         help='الدفتر الذي سيُسجَّل فيه هذا القيد - يُحدَّد صراحة بدل '
              'اختيار أول دفتر بنكي متاح تلقائياً. غير مقيَّد بنوع "بنكي" '
              'فقط، حتى تختار دفاتر مخصصة موجودة أصلاً لديكم (مثل "المدفوعات '
              'الحكومية")، دون الحاجة لفاتورة مورد أو شريك محدَّد - القيد '
-             'يُسجَّل مباشرة بلا حاجة لربطه بجهة/شريك معيّن.',
+             'يُسجَّل مباشرة بلا حاجة لربطه بجهة/شريك معيّن. تشمل القائمة '
+             'أيضاً دفاتر الشركة الرئيسية (الأعلى في تسلسل الفروع) - '
+             'نفس منطق الفروع المستخدم في كل شاشات المحاسبة القياسية '
+             'بـ Odoo، لا تقتصر على دفاتر فرعكم فقط.',
     )
     move_id = fields.Many2one(
         'account.move', string='القيد المحاسبي', readonly=True, copy=False,
@@ -244,6 +247,12 @@ class BankSettlementMixin(models.AbstractModel):
 
         move_vals = {
             'journal_id': self.journal_id.id,
+            # نضبط الشركة صراحة من شركة السجل نفسها (المُشتقة من المشروع/
+            # الحساب التحليلي) بدل تركها تُحسب تلقائياً من الشركة النشطة
+            # في جلسة من يضغط الزر - حتى يُسجَّل القيد دائماً على الفرع
+            # الصحيح بشكل حتمي، حتى لو استخدم دفتر يومية الشركة الرئيسية
+            # المشتركة (انظر domain حقل journal_id أعلاه).
+            'company_id': self.company_id.id,
             'date': self.transfer_date or fields.Date.context_today(self),
             'ref': self.name,
             'line_ids': [

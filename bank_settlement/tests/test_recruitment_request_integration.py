@@ -46,6 +46,7 @@ class TestRecruitmentRequestIntegration(TransactionCase):
         self.assertFalse(gov_fee.employee_id)
         self.assertTrue(gov_fee.partner_id)
         self.assertEqual(gov_fee.partner_id, request.candidate_partner_id)
+        self.assertEqual(gov_fee.company_id, request.company_id)
 
     def test_employee_backfilled_once_hr_employee_created(self):
         """بمجرد إنشاء سجل الموظف الرسمي (_create_employee، عند مباشرة
@@ -92,6 +93,12 @@ class TestRecruitmentRequestIntegration(TransactionCase):
         gov_fee.action_confirm()
         gov_fee.action_done()
         self.assertEqual(gov_fee.state, 'done')
+        self.assertTrue(gov_fee.move_id)
+        self.assertEqual(
+            gov_fee.move_id.company_id, request.company_id,
+            'القيد المحاسبي يجب أن يُسجَّل على شركة طلب التوظيف الفعلية '
+            '(المُشتقة من المشروع)، وليس على أي شركة أخرى.',
+        )
 
         request.action_next_stage()
         self.assertEqual(request.stage_id.code, 'sponsorship_done')
