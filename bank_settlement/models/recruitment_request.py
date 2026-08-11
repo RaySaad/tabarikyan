@@ -18,6 +18,10 @@ class RecruitmentRequest(models.Model):
         'bank.settlement.government.fee', string='سجل الرسوم الحكومية',
         readonly=True, copy=False,
     )
+    bank_settlement_gov_fee_state = fields.Selection(
+        related='bank_settlement_gov_fee_id.state', string='حالة سداد الرسوم الحكومية',
+        readonly=True,
+    )
 
     def action_register_gov_fee(self):
         result = super().action_register_gov_fee()
@@ -87,13 +91,3 @@ class RecruitmentRequest(models.Model):
                 'partner_id': employee._get_personal_partner().id,
             })
         return employee
-
-    def action_view_bank_settlement_gov_fee(self):
-        self.ensure_one()
-        return {
-            'name': 'الرسوم الحكومية',
-            'type': 'ir.actions.act_window',
-            'res_model': 'bank.settlement.government.fee',
-            'res_id': self.bank_settlement_gov_fee_id.id,
-            'view_mode': 'form',
-        }

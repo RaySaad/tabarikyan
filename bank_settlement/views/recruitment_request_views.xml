@@ -8,14 +8,18 @@
             <field name="inherit_id" ref="recruitment_workflow.view_recruitment_request_form"/>
             <field name="arch" type="xml">
                 <xpath expr="//div[@name='button_box']" position="inside">
-                    <button name="action_view_bank_settlement_gov_fee" type="object"
-                            class="oe_stat_button" icon="fa-university"
-                            groups="bank_settlement.group_bank_settlement_user"
-                            invisible="not bank_settlement_gov_fee_id">
+                    <!-- عرض فقط - بدون تنقّل للسداد البنكي، فقط حالة سداد
+                         الرسوم الحكومية بنظرة سريعة (بنفس أسلوب "فاتورة
+                         الرسوم" المجاورة). -->
+                    <div class="oe_stat_button" style="cursor:default;"
+                         groups="bank_settlement.group_bank_settlement_user"
+                         invisible="not bank_settlement_gov_fee_id">
+                        <i class="fa fa-fw fa-university"/>
                         <div class="o_stat_info">
                             <span class="o_stat_text">الرسوم الحكومية</span>
+                            <field name="bank_settlement_gov_fee_state" widget="badge" class="o_stat_value"/>
                         </div>
-                    </button>
+                    </div>
                 </xpath>
             </field>
         </record>
