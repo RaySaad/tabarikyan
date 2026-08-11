@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class BankSettlementVehicleTransfer(models.Model):
@@ -40,6 +40,23 @@ class BankSettlementVehicleTransfer(models.Model):
     employee_id = fields.Many2one(
         'hr.employee', string='اسم الموظف', required=False, tracking=True,
     )
+    # يُستخدم فقط لتقييد قائمة السيارات أدناه بسيارات الموظف المختار -
+    # غير مخزَّن، حقل مساعد للعرض فقط.
+    employee_partner_id = fields.Many2one(
+        'res.partner', compute='_compute_employee_partner_id',
+    )
+    vehicle_id = fields.Many2one(
+        'fleet.vehicle', string='السيارة',
+        help='السيارة المرتبطة بهذا التحويل (مثال: مصروف وقود لسيارة '
+             'محددة) - تُقيَّد القائمة تلقائياً بسيارات الموظف المختار '
+             'أعلاه (سائقها الحالي أو المستقبلي)، ويمكن تركها فارغة إن '
+             'كان التحويل عاماً غير مرتبط بسيارة بعينها.',
+    )
+
+    @api.depends('employee_id')
+    def _compute_employee_partner_id(self):
+        for rec in self:
+            rec.employee_partner_id = rec.employee_id._get_personal_partner() if rec.employee_id else False
 
     state = fields.Selection(
         selection=[

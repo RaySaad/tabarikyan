@@ -10,6 +10,7 @@
                     <field name="name"/>
                     <field name="transfer_type"/>
                     <field name="employee_id"/>
+                    <field name="vehicle_id" optional="show"/>
                     <field name="amount" sum="الإجمالي"/>
                     <field name="tax_amount"/>
                     <field name="state" widget="badge"
@@ -61,6 +62,9 @@
                             <group>
                                 <field name="transfer_type"/>
                                 <field name="employee_id"/>
+                                <field name="employee_partner_id" invisible="1"/>
+                                <field name="vehicle_id"
+                                       domain="['|', ('driver_id', '=', employee_partner_id), ('future_driver_id', '=', employee_partner_id)] if employee_partner_id else []"/>
                                 <field name="project_id"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="linked_account_id"/>
