@@ -25,7 +25,7 @@
                             invisible="state in ('done','rejected') or stage_code != 'gm_approval'"/>
                     <!-- تسجيل/تسوية الرسوم الحكومية - مطلوبة قبل مغادرة
                          مرحلة "جاري نقل الكفالة" إن حُدِّد مبلغ لها. -->
-                    <button name="action_create_gov_fee_employee_invoice" type="object"
+                    <button name="action_register_gov_fee" type="object"
                             string="تسجيل الرسوم الحكومية" class="btn-primary"
                             groups="recruitment_workflow.group_recruitment_workflow_hr"
                             invisible="state in ('done','rejected') or not stage_code or stage_code not in ('gm_approval','paid','sponsorship_transfer','sponsorship_done','car_request','started') or gov_fee_settled or not gov_fee_amount"/>
@@ -176,24 +176,12 @@
                         </group>
                     </group>
 
-                    <!-- رسوم نقل الكفالة الحكومية - قد يتحمل الموظف جزءاً منها،
-                         إما كسلفة تُخصم من راتبه لاحقاً أو دفعة نقدية وقت
-                         النقل (فاتورة تُصدَر مباشرة لشريك المرشّح، دون حاجة
-                         لانتظار إنشاء سجل الموظف الرسمي المتأخر لآخر مرحلة). -->
+                    <!-- رسوم نقل الكفالة الحكومية - المبلغ الإجمالي فقط،
+                         يُسدَّد للجهة الحكومية خارج هذا النظام. -->
                     <group string="الرسوم الحكومية (نقل الكفالة)"
                            invisible="not stage_code or stage_code not in ('gm_approval','paid','sponsorship_transfer','sponsorship_done','car_request','started')">
-                        <group>
-                            <field name="gov_fee_amount" readonly="gov_fee_settled"/>
-                            <field name="gov_fee_employee_amount" readonly="gov_fee_settled"/>
-                            <field name="gov_fee_company_amount"/>
-                            <field name="currency_id" invisible="1"/>
-                        </group>
-                        <group>
-                            <field name="gov_fee_employee_payment_method" readonly="gov_fee_settled"
-                                   invisible="not gov_fee_employee_amount"/>
-                            <field name="gov_fee_employee_payment_state" readonly="1"
-                                   invisible="not gov_fee_employee_move_id"/>
-                        </group>
+                        <field name="gov_fee_amount" readonly="gov_fee_settled"/>
+                        <field name="currency_id" invisible="1"/>
                     </group>
 
                     <group>

@@ -16,14 +16,6 @@ class BankSettlementAdvance(models.Model):
         ],
         string='سبب السلفة', required=True, tracking=True,
     )
-    recruitment_request_id = fields.Many2one(
-        'recruitment.request', string='طلب التوظيف المرتبط',
-        readonly=True, copy=False,
-        help='إن أُنشئت هذه السلفة تلقائياً من طلب توظيف (حصة الموظف من '
-             'رسوم نقل الكفالة الحكومية) قبل وجود سجل الموظف الرسمي، '
-             'تُربَط هنا - ويُكمَل حقل "اسم الموظف" أعلاه تلقائياً بمجرد '
-             'إنشاء ذلك السجل لاحقاً.',
-    )
 
     # حالة خاصة بالسلف كما ظهرت بالفيديو: بانتظار الموافقة / تمت الموافقة / تم الصرف
     state = fields.Selection(

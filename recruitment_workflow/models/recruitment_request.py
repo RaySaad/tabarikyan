@@ -162,52 +162,18 @@ class RecruitmentRequest(models.Model):
         readonly=True,
     )
 
-    # -- رسوم نقل الكفالة الحكومية (قد يتحمل الموظف جزءاً منها) -----------
+    # -- رسوم نقل الكفالة الحكومية (المبلغ الإجمالي فقط - لا يُتتبَّع
+    # تقسيم حصة الموظف من هذا النظام) ------------------------------------
     gov_fee_amount = fields.Monetary(
         string='مبلغ الرسوم الحكومية الإجمالي', currency_field='currency_id', tracking=True,
         help='إجمالي رسوم نقل الكفالة الحكومية (تُسدَّد للجهة الحكومية '
-             'خارج هذا النظام - هذا فقط لتسجيل المبلغ وتقسيمه).',
-    )
-    gov_fee_employee_amount = fields.Monetary(
-        string='حصة الموظف من الرسوم الحكومية', currency_field='currency_id', tracking=True,
-        help='الجزء الذي يتحمله الموظف نفسه (يُسدَّد نقداً/تحويلاً '
-             'للشركة) - تُصدَر له عنه فاتورة مستقلة قبل الانتقال للمرحلة '
-             'التالية.',
-    )
-    gov_fee_company_amount = fields.Monetary(
-        string='مبلغ الشركة من الرسوم الحكومية',
-        compute='_compute_gov_fee_company_amount', store=True,
-        currency_field='currency_id',
-        help='الجزء الذي تتحمله الشركة = الإجمالي ناقص حصة الموظف.',
-    )
-    gov_fee_employee_move_id = fields.Many2one(
-        'account.move', string='فاتورة حصة الموظف من الرسوم الحكومية',
-        readonly=True, copy=False,
-    )
-    gov_fee_employee_payment_state = fields.Selection(
-        related='gov_fee_employee_move_id.payment_state',
-        string='حالة سداد حصة الموظف',
-        readonly=True,
-    )
-    gov_fee_employee_payment_method = fields.Selection(
-        selection=[
-            ('advance', 'سلفة (تُخصم من راتبه لاحقاً)'),
-            ('cash', 'دفعها نقداً وقت النقل'),
-        ],
-        string='طريقة سداد حصة الموظف', tracking=True,
-        help='سلفة: تُنشأ تلقائياً كسلفة موظف في السداد البنكي لتُخصم '
-             'لاحقاً من راتبه. نقداً: تُصدَر له فاتورة عميل مباشرة.',
+             'خارج هذا النظام - هذا فقط لتسجيل المبلغ).',
     )
     gov_fee_settled = fields.Boolean(
         string='تمت تسوية الرسوم الحكومية', default=False, copy=False,
         help='يُضبط تلقائياً بعد تسجيل الرسوم الحكومية - يمنع تكرار '
              'العملية لهذا الطلب.',
     )
-
-    @api.depends('gov_fee_amount', 'gov_fee_employee_amount')
-    def _compute_gov_fee_company_amount(self):
-        for rec in self:
-            rec.gov_fee_company_amount = (rec.gov_fee_amount or 0.0) - (rec.gov_fee_employee_amount or 0.0)
 
     # الحالة والمرحلة
     stage_id = fields.Many2one(
@@ -1105,66 +1071,20 @@ class RecruitmentRequest(models.Model):
                 note=_('الطلب: %s - المبلغ: %s') % (rec.name, rec.fee_amount),
             )
 
-    def action_create_gov_fee_employee_invoice(self):
-        """يسجّل/يسوّي الرسوم الحكومية لنقل الكفالة على هذا الطلب: إجمالي
-        المبلغ (يُسدَّد للجهة الحكومية خارج هذا النظام)، وإن وُجدت حصة
-        للموظف منها، تُسوّى حسب طريقة السداد المختارة عبر
-        _settle_gov_fee_employee_share() (فاتورة إن كانت نقداً، أو سلفة
-        إن كانت "سلفة" - انظر تجاوز الدالة في bank_settlement)."""
+    def action_register_gov_fee(self):
+        """يسجّل الرسوم الحكومية لنقل الكفالة على هذا الطلب - المبلغ
+        الإجمالي فقط (لا تُتتبَّع حصة الموظف من هذا النظام). ينشئ سجلاً
+        مرتبطاً في السداد البنكي (bank_settlement) إن كان مثبتاً - انظر
+        تجاوز هذه الدالة هناك."""
         for rec in self:
             rec._check_group('recruitment_workflow.group_recruitment_workflow_hr')
             if rec.gov_fee_settled:
-                raise UserError(_('تم تسجيل/تسوية الرسوم الحكومية لهذا الطلب من قبل.'))
+                raise UserError(_('تم تسجيل الرسوم الحكومية لهذا الطلب من قبل.'))
             if not rec.gov_fee_amount or rec.gov_fee_amount <= 0:
                 raise UserError(_(
                     'حدد المبلغ الإجمالي للرسوم الحكومية قبل التسجيل.'
                 ))
-            if rec.gov_fee_employee_amount > 0 and not rec.gov_fee_employee_payment_method:
-                raise UserError(_(
-                    'حدد طريقة سداد حصة الموظف (سلفة أو دفعة نقدية) قبل التسجيل.'
-                ))
-            rec._settle_gov_fee_employee_share()
             rec.gov_fee_settled = True
-
-    def _settle_gov_fee_employee_share(self):
-        """يسوّي حصة الموظف من الرسوم الحكومية حسب طريقة السداد المختارة.
-        الحالة النقدية فقط منفَّذة هنا: تُصدَر فاتورة عميل (ذمم مدينة)
-        مرتبطة بشريك المرشّح نفسه - يُنشأ هذا الشريك هنا مباشرة إن لم يكن
-        موجوداً بعد (نفس الآلية المستخدمة لتفويض السيارة)، دون الحاجة
-        لانتظار إنشاء سجل الموظف الرسمي المتأخر لآخر مرحلة. حالة "سلفة"
-        لا تُنشئ فاتورة هنا إطلاقاً - ينفّذها bank_settlement بإنشاء سجل
-        سلفة بدلاً منها (انظر تجاوز هذه الدالة هناك)."""
-        self.ensure_one()
-        if self.gov_fee_employee_amount <= 0 or self.gov_fee_employee_payment_method != 'cash':
-            return
-        partner = self._get_or_create_candidate_partner()
-
-        distribution = {}
-        if self.analytic_account_id:
-            distribution = {str(self.analytic_account_id.id): 100.0}
-
-        line_vals = {
-            'name': _('حصة الموظف من رسوم نقل الكفالة - %s') % (self.employee_name or self.name),
-            'quantity': 1.0,
-            'price_unit': self.gov_fee_employee_amount,
-        }
-        if distribution:
-            line_vals['analytic_distribution'] = distribution
-
-        move_vals = {
-            'move_type': 'out_invoice',
-            'partner_id': partner.id,
-            'invoice_date': fields.Date.context_today(self),
-            'ref': _('حصة الموظف - نقل الكفالة - %s') % self.name,
-            'company_id': self.company_id.id if 'company_id' in self._fields else self.env.company.id,
-            'invoice_line_ids': [(0, 0, line_vals)],
-        }
-        move = self.env['account.move'].sudo().create(move_vals)
-        self.gov_fee_employee_move_id = move.id
-        self.message_post(body=_(
-            'تم إصدار فاتورة حصة الموظف من رسوم نقل الكفالة %(move)s '
-            'بمبلغ %(amount)s.'
-        ) % {'move': move.display_name, 'amount': self.gov_fee_employee_amount})
 
     # ------------------------------------------------------------------
     # منطق طلب السيارة (التكامل مع الأسطول)

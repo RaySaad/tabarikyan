@@ -694,68 +694,38 @@ class TestRecruitmentRequest(TransactionCase):
         self.assertFalse(result)
 
     # ------------------------------------------------------------------
-    # حصة الموظف من رسوم نقل الكفالة الحكومية
+    # الرسوم الحكومية (نقل الكفالة) - المبلغ الإجمالي فقط
     # ------------------------------------------------------------------
-    def test_gov_fee_company_amount_computed(self):
-        """مبلغ الشركة = الإجمالي ناقص حصة الموظف، محسوب تلقائياً."""
-        request = self._create_request(identification_id='1234567817', email='aa@example.com')
-        request.write({'gov_fee_amount': 1000.0, 'gov_fee_employee_amount': 300.0})
-        self.assertEqual(request.gov_fee_company_amount, 700.0)
-
-    def test_gov_fee_employee_invoice_created_against_candidate_partner(self):
-        """فاتورة حصة الموظف تُصدَر لشريك المرشّح مباشرة (لا حاجة لموظف
-        رسمي بعد)، بالمبلغ الصحيح - فقط عند اختيار طريقة السداد "نقداً"."""
+    def test_gov_fee_registered_marks_settled(self):
         request = self._create_request(
             identification_id='1234567818', email='ab@example.com',
-            gov_fee_amount=1000.0, gov_fee_employee_amount=300.0,
-            gov_fee_employee_payment_method='cash',
+            gov_fee_amount=1000.0,
         )
 
-        request.action_create_gov_fee_employee_invoice()
+        request.action_register_gov_fee()
 
-        self.assertTrue(request.gov_fee_employee_move_id)
-        self.assertEqual(request.gov_fee_employee_move_id.move_type, 'out_invoice')
-        self.assertEqual(request.gov_fee_employee_move_id.amount_total, 300.0)
         self.assertTrue(request.gov_fee_settled)
 
-    def test_gov_fee_requires_payment_method_when_employee_amount_set(self):
-        """لا يمكن تسجيل الرسوم الحكومية بدون تحديد طريقة سداد حصة الموظف
-        (سلفة/نقداً) إن وُجدت حصة له."""
-        request = self._create_request(
-            identification_id='1234567821', email='ae@example.com',
-            gov_fee_amount=1000.0, gov_fee_employee_amount=300.0,
-        )
+    def test_gov_fee_requires_amount_before_registering(self):
+        request = self._create_request(identification_id='1234567821', email='ae@example.com')
         with self.assertRaises(UserError):
-            request.action_create_gov_fee_employee_invoice()
-
-    def test_gov_fee_advance_method_does_not_create_invoice(self):
-        """اختيار "سلفة" لا يُصدر فاتورة على مستوى recruitment_workflow -
-        تُنشأ السلفة الفعلية من bank_settlement (انظر تجاوز
-        _settle_gov_fee_employee_share هناك)."""
-        request = self._create_request(
-            identification_id='1234567822', email='af@example.com',
-            gov_fee_amount=1000.0, gov_fee_employee_amount=300.0,
-            gov_fee_employee_payment_method='advance',
-        )
-        request.action_create_gov_fee_employee_invoice()
-        self.assertFalse(request.gov_fee_employee_move_id)
-        self.assertTrue(request.gov_fee_settled)
+            request.action_register_gov_fee()
 
     def test_gov_fee_cannot_be_settled_twice(self):
         request = self._create_request(
             identification_id='1234567823', email='ag@example.com',
             gov_fee_amount=1000.0,
         )
-        request.action_create_gov_fee_employee_invoice()
+        request.action_register_gov_fee()
         with self.assertRaises(UserError):
-            request.action_create_gov_fee_employee_invoice()
+            request.action_register_gov_fee()
 
     def test_stage_exit_blocked_without_gov_fee_settled_when_amount_set(self):
-        """لا يمكن مغادرة مرحلة "جاري نقل الكفالة" بدون تسجيل/تسوية
-        الرسوم الحكومية، إن حُدِّد مبلغ لها."""
+        """لا يمكن مغادرة مرحلة "جاري نقل الكفالة" بدون تسجيل الرسوم
+        الحكومية، إن حُدِّد مبلغ لها."""
         request = self._create_request(
             identification_id='1234567819', email='ac@example.com',
-            gov_fee_amount=1000.0, gov_fee_employee_amount=200.0,
+            gov_fee_amount=1000.0,
         )
         request.with_context(skip_stage_validation=True).write({
             'stage_id': self.stage_sponsorship_transfer.id,
