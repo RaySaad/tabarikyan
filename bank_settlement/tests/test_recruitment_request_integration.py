@@ -31,7 +31,9 @@ class TestRecruitmentRequestIntegration(TransactionCase):
 
     def test_registering_gov_fee_creates_linked_record(self):
         """تسجيل الرسوم الحكومية يُنشئ فوراً سجل "رسوم حكومية" مرتبطاً
-        بنفس المبلغ، بدون موظف رسمي بعد (لم تُنشأ hr.employee)."""
+        بنفس المبلغ، بدون موظف رسمي بعد (لم تُنشأ hr.employee) - لكن
+        بشريك (جهة اتصال المرشّح) مربوط فوراً حتى لا يُنشأ القيد
+        المحاسبي بلا شريك عند وصوله لمرحلة "منفّذة" لاحقاً."""
         request = self._create_request(identification_id='1234567831', email='bs1@example.com')
 
         request.action_register_gov_fee()
@@ -42,19 +44,25 @@ class TestRecruitmentRequestIntegration(TransactionCase):
         self.assertEqual(gov_fee.fee_type, 'sponsorship_transfer')
         self.assertEqual(gov_fee.amount, 1000.0)
         self.assertFalse(gov_fee.employee_id)
+        self.assertTrue(gov_fee.partner_id)
+        self.assertEqual(gov_fee.partner_id, request.candidate_partner_id)
 
     def test_employee_backfilled_once_hr_employee_created(self):
         """بمجرد إنشاء سجل الموظف الرسمي (_create_employee، عند مباشرة
         العمل)، يُكمَل حقل "اسم الموظف" تلقائياً على سجل الرسوم الحكومية
-        المرتبط - دون الحاجة لتدخل يدوي."""
+        المرتبط دون الحاجة لتدخل يدوي، والشريك يبقى نفسه (جهة اتصال
+        المرشّح تُعاد استخدامها كجهة اتصال عمل الموظف الرسمية)."""
         request = self._create_request(identification_id='1234567832', email='bs2@example.com')
         request.action_register_gov_fee()
         gov_fee = request.bank_settlement_gov_fee_id
+        candidate_partner = gov_fee.partner_id
         self.assertFalse(gov_fee.employee_id)
 
         employee = request._create_employee()
 
         self.assertEqual(gov_fee.employee_id, employee)
+        self.assertEqual(gov_fee.partner_id, candidate_partner)
+        self.assertEqual(employee.work_contact_id, candidate_partner)
 
     def test_no_gov_fee_record_created_without_registration(self):
         """بدون الضغط على زر تسجيل الرسوم الحكومية، لا يُنشأ أي سجل

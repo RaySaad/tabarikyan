@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class BankSettlementGovernmentFee(models.Model):
@@ -7,6 +7,14 @@ class BankSettlementGovernmentFee(models.Model):
     _name = 'bank.settlement.government.fee'
     _description = 'رسوم حكومية'
     _inherit = ['bank.settlement.mixin']
+
+    partner_id = fields.Many2one(
+        'res.partner', string='الشريك', tracking=True,
+        help='الشريك الذي يُسجَّل على القيد المحاسبي لهذه الرسوم - '
+             'يُشتق تلقائياً من الموظف المختار، أو يُضبط مبكراً (جهة '
+             'اتصال المرشّح) عند إنشاء السجل تلقائياً من طلب توظيف قبل '
+             'وجود سجل موظف رسمي بعد. يمكن تعديله يدوياً عند الحاجة.',
+    )
 
     # TODO: تحويلها لاحقاً إلى Many2one على نموذج "الجهات الحكومية" مخصص
     # بدلاً من Selection إذا كانت القائمة طويلة/قابلة للتوسع من المستخدم
@@ -46,3 +54,11 @@ class BankSettlementGovernmentFee(models.Model):
 
     def _sequence_code(self):
         return 'bank.settlement.government.fee'
+
+    @api.onchange('employee_id')
+    def _onchange_employee_id_partner(self):
+        if self.employee_id:
+            self.partner_id = self.employee_id._get_personal_partner()
+
+    def _get_settlement_partner_id(self):
+        return self.partner_id.id if self.partner_id else super()._get_settlement_partner_id()

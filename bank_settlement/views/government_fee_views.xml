@@ -70,6 +70,7 @@
                                 <field name="employee_category"/>
                                 <field name="employee_id" required="1"/>
                                 <field name="residency_number"/>
+                                <field name="partner_id"/>
                             </group>
                         </group>
                         <group string="بيانات السداد البنكي">

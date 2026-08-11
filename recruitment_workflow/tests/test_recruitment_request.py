@@ -694,6 +694,32 @@ class TestRecruitmentRequest(TransactionCase):
         self.assertFalse(result)
 
     # ------------------------------------------------------------------
+    # جهة اتصال المرشّح الخفيفة (candidate_partner_id) - يجب ألا تتكرر
+    # ------------------------------------------------------------------
+    def test_get_or_create_candidate_partner_reused_across_calls(self):
+        """استدعاء _get_or_create_candidate_partner() أكثر من مرة لنفس
+        الطلب (من أي جهة - سيارة، رسوم حكومية...) يجب أن يعيد نفس الشريك
+        دائماً، لا أن ينشئ شريكاً جديداً في كل مرة."""
+        request = self._create_request(identification_id='1234567838', email='ah@example.com')
+
+        first = request._get_or_create_candidate_partner()
+        second = request._get_or_create_candidate_partner()
+
+        self.assertEqual(first, second)
+        self.assertEqual(request.candidate_partner_id, first)
+
+    def test_create_employee_reuses_candidate_partner_as_work_contact(self):
+        """جهة اتصال المرشّح المُنشأة مبكراً (مثلاً عند تسجيل رسوم حكومية)
+        تُعاد استخدامها كجهة اتصال العمل الرسمية للموظف عند إنشائه، بدل
+        إنشاء شريك مكرر."""
+        request = self._create_request(identification_id='1234567839', email='ai@example.com')
+        partner = request._get_or_create_candidate_partner()
+
+        employee = request._create_employee()
+
+        self.assertEqual(employee.work_contact_id, partner)
+
+    # ------------------------------------------------------------------
     # الرسوم الحكومية (نقل الكفالة) - المبلغ الإجمالي فقط
     # ------------------------------------------------------------------
     def test_gov_fee_registered_marks_settled(self):

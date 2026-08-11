@@ -275,6 +275,14 @@ class RecruitmentRequest(models.Model):
         readonly=True,
         copy=False,
     )
+    candidate_partner_id = fields.Many2one(
+        'res.partner', string='جهة اتصال المرشّح', readonly=True, copy=False,
+        help='جهة اتصال خفيفة تمثّل المرشّح قبل إنشاء سجل الموظف الرسمي - '
+             'تُنشأ عند أول حاجة إليها (تفويض سيارة، تسجيل رسوم حكومية، '
+             'إلخ) عبر _get_or_create_candidate_partner()، وتُعاد نفسها '
+             'في كل استخدام لاحق بدل إنشاء جهات اتصال مكررة - ثم تُعاد '
+             'استخدامها كجهة اتصال العمل الرسمية للموظف عند إنشائه.',
+    )
     contract_start_date = fields.Date(
         string='تاريخ بدء العقد',
         default=fields.Date.context_today,
@@ -1164,13 +1172,23 @@ class RecruitmentRequest(models.Model):
     def _get_or_create_candidate_partner(self):
         """يوجد أو ينشئ partner خفيف يمثّل المرشّح قبل إنشاء سجل الموظف
         الرسمي - يُستخدم لربطه كـ"سائق مستقبلي" على السيارة فور التفويض
-        (Fleet)، ثم يُعاد استخدامه لاحقاً كجهة اتصال العمل الرسمية للموظف
-        بدل إنشاء partner مكرر (انظر _create_employee)."""
+        (Fleet)، أو كشريك على سجلات مالية مبكرة (الرسوم الحكومية مثلاً في
+        bank_settlement)، ثم يُعاد استخدامه لاحقاً كجهة اتصال العمل
+        الرسمية للموظف بدل إنشاء partner مكرر (انظر _create_employee).
+
+        يُخزَّن في candidate_partner_id فور إنشائه أول مرة، ويُعاد نفسه في
+        كل استدعاء لاحق - بغض النظر عن الجهة المستدعية - لضمان استخدام
+        نفس الشريك في كل مكان بدل تكراره (كان يُعاد إنشاؤه في كل استدعاء
+        قبل ربط سيارة فعلياً، لأن الاعتماد كان فقط على حقلي السيارة)."""
         self.ensure_one()
+        if self.candidate_partner_id:
+            return self.candidate_partner_id
         if self.vehicle_id.future_driver_id:
-            return self.vehicle_id.future_driver_id
+            self.candidate_partner_id = self.vehicle_id.future_driver_id.id
+            return self.candidate_partner_id
         if self.vehicle_id.driver_id:
-            return self.vehicle_id.driver_id
+            self.candidate_partner_id = self.vehicle_id.driver_id.id
+            return self.candidate_partner_id
         Partner = self.env['res.partner'].sudo()
         partner_fields = Partner._fields
         # ملاحظة: لا نضبط type='private' - هذه القيمة لم تعد موجودة ضمن
@@ -1186,7 +1204,9 @@ class RecruitmentRequest(models.Model):
             partner_vals['phone'] = self.mobile
         if self.email and 'email' in partner_fields:
             partner_vals['email'] = self.email
-        return Partner.create(partner_vals)
+        partner = Partner.create(partner_vals)
+        self.candidate_partner_id = partner.id
+        return partner
 
     def _release_vehicle(self):
         self.ensure_one()
@@ -1221,11 +1241,11 @@ class RecruitmentRequest(models.Model):
             if value and field_name in emp_fields:
                 employee_vals[field_name] = value
 
-        # إعادة استخدام partner "السائق المستقبلي" الذي رُبط بالسيارة عند
-        # التفويض (action_fleet_authorize) كجهة اتصال العمل الرسمية للموظف
-        # الجديد - بدل إنشاء partner مكرر له.
-        if self.vehicle_id and self.vehicle_id.future_driver_id:
-            set_if('work_contact_id', self.vehicle_id.future_driver_id.id)
+        # إعادة استخدام جهة اتصال المرشّح (candidate_partner_id) - إن وُجدت
+        # من أي مصدر سابق (تفويض سيارة، تسجيل رسوم حكومية...) - كجهة
+        # اتصال العمل الرسمية للموظف الجديد، بدل إنشاء partner مكرر له.
+        if self.candidate_partner_id:
+            set_if('work_contact_id', self.candidate_partner_id.id)
 
         set_if('mobile_phone', self.mobile)
         set_if('work_email', self.email)

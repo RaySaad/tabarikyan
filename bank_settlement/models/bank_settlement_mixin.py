@@ -220,6 +220,14 @@ class BankSettlementMixin(models.AbstractModel):
                 )
         self.write({'state': 'cancel'})
 
+    def _get_settlement_partner_id(self):
+        """الشريك المستخدَم على سطر القيد المحاسبي - افتراضياً شريك
+        الموظف الشخصي إن كان محدَّداً. النماذج الفرعية قد تتجاوزها إن
+        احتاجت شريكاً آخر (مثال: bank.settlement.government.fee يفضّل
+        حقل partner_id صريحاً قد يُضبط قبل وجود سجل الموظف الرسمي)."""
+        self.ensure_one()
+        return self.employee_id._get_personal_partner().id if self.employee_id else False
+
     def _create_settlement_move(self):
         """ينشئ قيد محاسبي (account.move) لتوثيق عملية السداد، بدفتر
         اليومية البنكي المحدَّد صراحة وحسابه المقابل الرسمي، مع توزيع
@@ -242,8 +250,7 @@ class BankSettlementMixin(models.AbstractModel):
                 (0, 0, {
                     'name': self.name,
                     'account_id': self.linked_account_id.id,
-                    'partner_id': self.employee_id._get_personal_partner().id
-                        if self.employee_id else False,
+                    'partner_id': self._get_settlement_partner_id(),
                     'debit': self.total_amount,
                     'credit': 0.0,
                     'analytic_distribution': (

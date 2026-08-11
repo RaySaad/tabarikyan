@@ -50,20 +50,25 @@ class RecruitmentRequest(models.Model):
 
     def _create_bank_settlement_gov_fee_record(self):
         """ينشئ سجل "رسوم حكومية" في السداد البنكي فوراً، معبَّأً بنفس
-        المبلغ الإجمالي المسجَّل على طلب التوظيف - بدون موظف بعد (لا سجل
-        hr.employee رسمي وقت نقل الكفالة)؛ يُكمَل لاحقاً تلقائياً في
-        _create_employee() أدناه.
+        المبلغ الإجمالي المسجَّل على طلب التوظيف - بدون موظف رسمي بعد (لا
+        سجل hr.employee وقت نقل الكفالة)، لكن مرتبطاً فوراً بجهة اتصال
+        المرشّح الخفيفة (candidate_partner_id) كشريك على القيد المحاسبي -
+        بدل بقاء القيد بلا شريك حتى إنشاء سجل الموظف الرسمي المتأخر لآخر
+        مرحلة. يُكمَل حقل الموظف نفسه لاحقاً تلقائياً في _create_employee()
+        أدناه.
 
         ملاحظة: "الجهة الحكومية" تُضبط افتراضياً بـ"وزارة الداخلية (مقيم)"
         - عدّلها يدوياً من سجل الرسوم نفسه في السداد البنكي إن كانت جهة
         نقل الكفالة الفعلية مختلفة (مثال: قوى/مساند).
         """
         self.ensure_one()
+        partner = self._get_or_create_candidate_partner()
         return self.env['bank.settlement.government.fee'].sudo().create({
             'government_entity': 'mol_resident',
             'fee_type': 'sponsorship_transfer',
             'amount': self.gov_fee_amount,
             'recruitment_request_id': self.id,
+            'partner_id': partner.id,
             'project_id': self.project_id.id,
             'transfer_date': fields.Date.context_today(self),
         }).id
@@ -72,7 +77,10 @@ class RecruitmentRequest(models.Model):
         employee = super()._create_employee()
         self.ensure_one()
         if self.bank_settlement_gov_fee_id and not self.bank_settlement_gov_fee_id.employee_id:
-            self.bank_settlement_gov_fee_id.employee_id = employee.id
+            self.bank_settlement_gov_fee_id.write({
+                'employee_id': employee.id,
+                'partner_id': employee._get_personal_partner().id,
+            })
         return employee
 
     def action_view_bank_settlement_gov_fee(self):
