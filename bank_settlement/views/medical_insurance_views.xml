@@ -80,6 +80,7 @@
                             <group string="بيانات المندوب">
                                 <field name="employee_id" string="اسم المندوب" required="1"/>
                                 <field name="residency_number"/>
+                                <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                             <group string="المنصة">
                                 <field name="project_id" string="التطبيق"/>

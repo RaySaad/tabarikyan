@@ -69,6 +69,7 @@
                                        domain="['|', ('driver_id', '=', employee_partner_id), ('future_driver_id', '=', employee_partner_id)] if employee_partner_id else []"/>
                                 <field name="project_id"/>
                                 <field name="analytic_account_id" readonly="1"/>
+                                <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                                 <field name="linked_account_id" readonly="move_id"/>
                             </group>
                             <group>

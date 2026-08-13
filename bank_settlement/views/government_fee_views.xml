@@ -74,6 +74,7 @@
                                 <field name="employee_id" required="not recruitment_request_id"/>
                                 <field name="residency_number"/>
                                 <field name="partner_id"/>
+                                <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                         </group>
                         <group string="بيانات السداد البنكي">

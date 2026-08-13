@@ -72,3 +72,24 @@ class TestBankSettlementMixin(TransactionCase):
         gov_fee._onchange_employee_id()
 
         self.assertEqual(gov_fee.company_id, branch)
+
+    def test_company_derived_server_side_on_create_without_onchange(self):
+        """يجب أن يعمل الاشتقاق من جهة الخادم مباشرة (create()/write())
+        بدون الاعتماد على onchange إطلاقاً - يغطي: (1) الحقل غير معروض
+        في بعض الشاشات فيُهمَل تحديثه المرئي عند الحفظ، (2) أي إنشاء عبر
+        RPC/API مباشر لا يمر بـ onchange أصلاً."""
+        branch = self.env['res.company'].create({
+            'name': 'فرع تجريبي - سداد بنكي 2', 'parent_id': self.env.company.id,
+        })
+        employee = self.env['hr.employee'].create({
+            'name': 'موظف فرع تجريبي 2', 'company_id': branch.id,
+        })
+
+        gov_fee = self.GovFee.create({
+            'government_entity': 'mol_resident',
+            'fee_type': 'sponsorship_transfer',
+            'amount': 500.0,
+            'employee_id': employee.id,
+        })
+
+        self.assertEqual(gov_fee.company_id, branch)

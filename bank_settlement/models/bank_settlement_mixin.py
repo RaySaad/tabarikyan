@@ -151,11 +151,27 @@ class BankSettlementMixin(models.AbstractModel):
                 ('res_model', '=', rec._name), ('res_id', '=', rec.id),
             ])
 
+    def _fill_employee_derived_vals(self, vals):
+        """يشتق المشروع/الشركة من الموظف المحدَّد في vals['employee_id']
+        صراحة، بنفس منطق _onchange_employee_id أعلاه - لكن من جهة
+        الخادم مباشرة، بدل الاعتماد فقط على onchange في نموذج الواجهة.
+        ضروري لأن onchange وحده لا يكفي: (1) الحقل قد لا يكون معروضاً في
+        كل الشاشات فيُهمَل التحديث المرئي عند الحفظ، (2) create()/write()
+        القادمة من RPC/API مباشرة لا تمر بـ onchange إطلاقاً."""
+        if not vals.get('employee_id'):
+            return
+        employee = self.env['hr.employee'].browse(vals['employee_id'])
+        if 'project_id' not in vals and employee.project_id:
+            vals['project_id'] = employee.project_id.id
+        if 'company_id' not in vals and employee.company_id:
+            vals['company_id'] = employee.company_id.id
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('name', 'New') == 'New':
                 vals['name'] = self._get_sequence_code_for_create(vals)
+            self._fill_employee_derived_vals(vals)
         return super().create(vals_list)
 
     def _get_locked_fields_after_move(self):
@@ -178,6 +194,7 @@ class BankSettlementMixin(models.AbstractModel):
                         'المحاسبة إن احتجت تصحيح المبلغ.'
                         % rec.move_id.name
                     )
+        self._fill_employee_derived_vals(vals)
         return super().write(vals)
 
     def _get_sequence_code_for_create(self, vals):

@@ -68,6 +68,7 @@
                                 <field name="employee_id" string="اسم المندوب" required="1"/>
                                 <field name="residency_number"/>
                                 <field name="iban"/>
+                                <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                             <group string="بيانات المنصة">
                                 <field name="project_id" string="اسم التطبيق"/>
