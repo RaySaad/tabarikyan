@@ -41,6 +41,29 @@ class TestApprovalPermissions(TransactionCase):
             'amount': 500.0,
         })
 
+    def test_settlement_move_created_without_native_accounting_group(self):
+        """لا يجوز أن يحتاج مستخدم/مراجع السداد البنكي عضوية حقيقية في
+        مجموعة محاسبية أصلية بـ Odoo (فوترة/محاسب) لإكمال السداد - هذا
+        كان يفتح لهم رؤية بقية تطبيق المحاسبة رغم أنهم لا يحتاجونها.
+        reviewer_user هنا عضو فقط في مجموعات السداد البنكي + المستخدم
+        الأساسي، بلا أي مجموعة محاسبية أصلية إطلاقاً."""
+        gov_fee = self._create_gov_fee().with_user(self.manager_user)
+        gov_fee.write({
+            'linked_account_id': self.env['account.account'].search([], limit=1).id,
+            'journal_id': self.env['account.journal'].search(
+                [('company_id', '=', gov_fee.company_id.id)], limit=1).id,
+        })
+        gov_fee.action_submit_review()
+        gov_fee.action_confirm()
+
+        gov_fee.with_user(self.reviewer_user).action_done()
+
+        self.assertEqual(gov_fee.state, 'done')
+        self.assertTrue(gov_fee.move_id)
+        # المراجع يقدر يفتح القيد ويقرأه (زر "عرض القيد") رغم عدم عضويته
+        # في أي مجموعة محاسبية أصلية.
+        gov_fee.with_user(self.reviewer_user).move_id.read(['name', 'state'])
+
     def test_reset_draft_requires_manager(self):
         gov_fee = self._create_gov_fee().with_user(self.manager_user)
         gov_fee.action_submit_review()

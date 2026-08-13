@@ -327,7 +327,13 @@ class BankSettlementMixin(models.AbstractModel):
                 }),
             ],
         }
-        move = self.env['account.move'].create(move_vals)
+        # sudo(): إنشاء القيد نفسه لا يجب أن يشترط عضوية "مستخدم/مراجع
+        # السداد البنكي" في إحدى مجموعات المحاسبة الأصلية بـ Odoo (فوترة،
+        # محاسب...) - الصلاحية الفعلية لهذا الإجراء محكومة بالفعل عبر
+        # _check_group في action_done قبل الوصول هنا. اشتراط عضوية
+        # محاسبية حقيقية كان يفتح لهم أيضاً رؤية بقية تطبيق المحاسبة
+        # (عملاء/موردين/فواتير) رغم أنهم لا يحتاجونها.
+        move = self.env['account.move'].sudo().create(move_vals)
         return move.id
 
     def action_view_move(self):
