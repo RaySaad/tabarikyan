@@ -26,5 +26,5 @@ def _post_init_hook(env):
     bank_settlement_user_group = env.ref(
         'bank_settlement.group_bank_settlement_user', raise_if_not_found=False,
     )
-    if bank_settlement_user_group and bank_settlement_user_group not in accounting_root_menu.groups_id:
-        accounting_root_menu.groups_id = [(4, bank_settlement_user_group.id)]
+    if bank_settlement_user_group and bank_settlement_user_group not in accounting_root_menu.group_ids:
+        accounting_root_menu.group_ids = [(4, bank_settlement_user_group.id)]
