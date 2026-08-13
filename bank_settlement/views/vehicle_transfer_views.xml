@@ -62,24 +62,27 @@
                         </div>
                         <group>
                             <group>
-                                <field name="transfer_type_id"/>
-                                <field name="employee_id"/>
+                                <field name="transfer_type_id"
+                                       readonly="state not in ('draft', 'under_review')"/>
+                                <field name="employee_id"
+                                       readonly="state not in ('draft', 'under_review')"/>
                                 <field name="employee_partner_id" invisible="1"/>
                                 <field name="vehicle_id"
+                                       readonly="state not in ('draft', 'under_review')"
                                        domain="['|', ('driver_id', '=', employee_partner_id), ('future_driver_id', '=', employee_partner_id)] if employee_partner_id else []"/>
                                 <field name="project_id"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
-                                <field name="linked_account_id" readonly="move_id"/>
+                                <field name="linked_account_id" readonly="state not in ('draft', 'under_review')"/>
                             </group>
                             <group>
                                 <field name="currency_id" invisible="1"/>
-                                <field name="amount" readonly="move_id"/>
-                                <field name="tax_amount" readonly="move_id"/>
+                                <field name="amount" readonly="state not in ('draft', 'under_review')"/>
+                                <field name="tax_amount" readonly="state not in ('draft', 'under_review')"/>
                                 <field name="total_amount"/>
                                 <field name="transfer_date"/>
                                 <field name="bank_reference"/>
-                                <field name="journal_id" readonly="move_id"/>
+                                <field name="journal_id" readonly="state not in ('draft', 'under_review')"/>
                             </group>
                         </group>
                         <group string="ملاحظات">

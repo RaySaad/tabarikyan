@@ -88,7 +88,12 @@ class RecruitmentRequest(models.Model):
         employee = super()._create_employee()
         self.ensure_one()
         if self.bank_settlement_gov_fee_id and not self.bank_settlement_gov_fee_id.employee_id:
-            self.bank_settlement_gov_fee_id.write({
+            # يتجاوز قفل "لا تعديل بعد الاعتماد" عمداً - هذا استكمال
+            # لنفس المرشّح المعتمَد أصلاً، وليس تغييراً فعلياً لهوية من
+            # يخصّه السداد (انظر bank_settlement_mixin.write()).
+            self.bank_settlement_gov_fee_id.with_context(
+                bank_settlement_skip_approval_lock=True,
+            ).write({
                 'employee_id': employee.id,
                 'partner_id': employee._get_personal_partner().id,
             })

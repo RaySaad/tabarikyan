@@ -21,7 +21,7 @@ class TestBankSettlementMixin(TransactionCase):
             'amount': 500.0,
         })
 
-    def _complete_to_done(self, rec):
+    def _complete_to_confirmed(self, rec):
         rec.write({
             'linked_account_id': self.env['account.account'].search([], limit=1).id,
             'journal_id': self.env['account.journal'].search(
@@ -29,18 +29,43 @@ class TestBankSettlementMixin(TransactionCase):
         })
         rec.action_submit_review()
         rec.action_confirm()
+
+    def _complete_to_done(self, rec):
+        self._complete_to_confirmed(rec)
         rec.action_done()
 
-    def test_amount_locked_after_move_created(self):
+    def test_amount_locked_after_approval_even_before_move_created(self):
+        """القفل يبدأ فور اعتماد المدير العام (تأكيد) - وليس فقط بعد
+        إنشاء القيد المحاسبي فعلياً، حتى لا يُعتمَد على مبلغ ثم يُغيَّر
+        قبل السداد الفعلي."""
         gov_fee = self._create_gov_fee()
-        self._complete_to_done(gov_fee)
-        self.assertTrue(gov_fee.move_id)
+        self._complete_to_confirmed(gov_fee)
+        self.assertFalse(gov_fee.move_id)
 
         with self.assertRaises(UserError):
             gov_fee.write({'amount': 999.0})
         with self.assertRaises(UserError):
             gov_fee.write({'journal_id': self.env['account.journal'].search(
                 [('id', '!=', gov_fee.journal_id.id)], limit=1).id})
+
+    def test_employee_locked_after_approval(self):
+        """الموظف (الشخص) يُقفل هو أيضاً بعد الاعتماد - وليس فقط المبلغ."""
+        other_employee = self.env['hr.employee'].create({'name': 'موظف آخر'})
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+
+        with self.assertRaises(UserError):
+            gov_fee.write({'employee_id': other_employee.id})
+
+    def test_type_fields_locked_after_approval(self):
+        """نوع الرسوم/الجهة الحكومية يُقفلان هما أيضاً بعد الاعتماد."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+
+        with self.assertRaises(UserError):
+            gov_fee.write({
+                'fee_type_id': self.env.ref('bank_settlement.government_fee_type_office_fee').id,
+            })
 
     def test_settlement_move_flagged_for_restricted_visibility(self):
         """القيد الناتج عن السداد البنكي يُعلَّم بـ is_bank_settlement_move
@@ -51,16 +76,38 @@ class TestBankSettlementMixin(TransactionCase):
 
         self.assertTrue(gov_fee.move_id.is_bank_settlement_move)
 
-    def test_amount_editable_before_move_created(self):
+    def test_amount_editable_before_approval(self):
         gov_fee = self._create_gov_fee()
         gov_fee.write({'amount': 750.0})
         self.assertEqual(gov_fee.amount, 750.0)
 
-    def test_representative_settlement_amount_locked_after_move(self):
+    def test_reset_draft_reopens_editing(self):
+        """بعد "إعادة لمسودة" (مدير عام فقط، ولا قيد محاسبي بعد) يعود
+        التعديل ممكناً مجدداً."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+        gov_fee.action_reset_draft()
+
+        gov_fee.write({'amount': 999.0})
+        self.assertEqual(gov_fee.amount, 999.0)
+
+    def test_approval_lock_bypassed_with_explicit_context_flag(self):
+        """آلية الاستكمال التلقائي لحقل الموظف (candidate → hr.employee
+        رسمي) يجب أن تتجاوز القفل عمداً عبر السياق الصريح."""
+        other_employee = self.env['hr.employee'].create({'name': 'موظف استكمال'})
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+
+        gov_fee.with_context(bank_settlement_skip_approval_lock=True).write({
+            'employee_id': other_employee.id,
+        })
+        self.assertEqual(gov_fee.employee_id, other_employee)
+
+    def test_representative_settlement_amount_locked_after_approval(self):
         """settlement_amount هو الاسم البديل لـ amount في هذا النموذج -
         يجب أن يُقفل هو أيضاً، وليس فقط amount مباشرة."""
         rep = self.Representative.create({'settlement_amount': 400.0})
-        self._complete_to_done(rep)
+        self._complete_to_confirmed(rep)
 
         with self.assertRaises(UserError):
             rep.write({'settlement_amount': 999.0})

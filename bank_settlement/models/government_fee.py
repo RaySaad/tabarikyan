@@ -54,6 +54,11 @@ class BankSettlementGovernmentFee(models.Model):
     def _get_settlement_partner_id(self):
         return self.partner_id.id if self.partner_id else super()._get_settlement_partner_id()
 
+    def _get_locked_fields_after_approval(self):
+        return super()._get_locked_fields_after_approval() + [
+            'government_entity_id', 'fee_type_id', 'partner_id',
+        ]
+
     _GOVERNMENT_ENTITY_MIGRATION_MAP = {
         'mol_resident': 'bank_settlement.government_entity_mol_resident',
         'hrsd_expat': 'bank_settlement.government_entity_hrsd_expat',

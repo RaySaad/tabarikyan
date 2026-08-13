@@ -68,6 +68,28 @@ class TestRecruitmentRequestIntegration(TransactionCase):
         self.assertEqual(gov_fee.partner_id, candidate_partner)
         self.assertEqual(employee.work_contact_id, candidate_partner)
 
+    def test_employee_backfilled_even_after_gov_fee_confirmed(self):
+        """السيناريو الواقعي عندكم: "تم السداد" يحدث قبل "تم مباشرة
+        العمل" - فسجل الرسوم الحكومية قد يكون معتمَداً (مؤكدة/منفّذة)
+        قبل وجود سجل الموظف الرسمي بوقت طويل. الاستكمال التلقائي يجب أن
+        يعمل رغم قفل "لا تعديل بعد الاعتماد" العام (عبر تجاوز صريح -
+        انظر bank_settlement_mixin.write())."""
+        request = self._create_request(identification_id='1234567838', email='bs8@example.com')
+        request.action_register_gov_fee()
+        gov_fee = request.bank_settlement_gov_fee_id
+        gov_fee.write({
+            'linked_account_id': self.env['account.account'].search([], limit=1).id,
+            'journal_id': self.env['account.journal'].search(
+                [('company_id', '=', gov_fee.company_id.id)], limit=1).id,
+        })
+        gov_fee.action_submit_review()
+        gov_fee.action_confirm()
+        self.assertEqual(gov_fee.state, 'confirmed')
+
+        employee = request._create_employee()
+
+        self.assertEqual(gov_fee.employee_id, employee)
+
     def test_no_gov_fee_record_created_without_registration(self):
         """بدون الضغط على زر تسجيل الرسوم الحكومية، لا يُنشأ أي سجل
         تلقائياً."""

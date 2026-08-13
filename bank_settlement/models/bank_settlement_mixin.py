@@ -174,25 +174,40 @@ class BankSettlementMixin(models.AbstractModel):
             self._fill_employee_derived_vals(vals)
         return super().create(vals_list)
 
-    def _get_locked_fields_after_move(self):
-        """الحقول التي تُحدِّد محتوى القيد المحاسبي فعلياً - لا يجوز
-        تعديلها بعد إنشاء القيد (move_id) وإلا أصبح القيد المرحَّل غير
-        مطابق لبيانات السجل، بصمت. النماذج الفرعية التي تُسمّي حقلاً
-        مرتبطاً بـ amount باسم مختلف (representative_settlement مثلاً)
-        تُضيفه هنا عبر تجاوز هذه الدالة."""
-        return ['amount', 'tax_amount', 'linked_account_id', 'journal_id']
+    def _get_locked_fields_after_approval(self):
+        """الحقول التي تُحدِّد هوية الطرف والمبلغ الفعلي للسداد - لا يجوز
+        تعديلها بعد اعتماد المدير العام (تأكيد) فما فوق، بغض النظر عمّن
+        أنشأ السجل أو من يحاول التعديل، وبغض النظر عن وجود قيد محاسبي من
+        عدمه بعد - وإلا أصبحت الموافقة نفسها بلا معنى (يُعتمَد على مبلغ/
+        شخص، ثم يُغيَّران بعد الاعتماد مباشرة). النماذج الفرعية التي لها
+        حقول هوية/مبلغ إضافية خاصة بها (نوع الرسوم، الجهة، السيارة...)
+        تُضيفها هنا عبر تجاوز هذه الدالة."""
+        return ['employee_id', 'amount', 'tax_amount', 'linked_account_id', 'journal_id']
+
+    def _get_editable_states(self):
+        """الحالات التي يُسمح فيها بتعديل الحقول الحساسة أعلاه - قبل
+        اعتماد المدير العام. النماذج التي تُسمّي حالاتها بأسماء مختلفة
+        (advance.py مثلاً: waiting_approval بدل under_review) تُجاوز هذه
+        الدالة."""
+        return ('draft', 'under_review')
 
     def write(self, vals):
-        locked = self._get_locked_fields_after_move()
-        if any(f in vals for f in locked):
+        locked = self._get_locked_fields_after_approval()
+        # يُتجاوز القفل عمداً لعملية نظامية واحدة: إكمال حقل الموظف
+        # تلقائياً بمجرد إنشاء سجله الرسمي (hr.employee) في recruitment_
+        # workflow - يستهدف نفس الشخص المرشّح بالضبط (لا تغيير فعلي "لمن")،
+        # وليس تعديلاً يدوياً حقيقياً. انظر bank_settlement/models/
+        # recruitment_request.py: _create_employee().
+        if any(f in vals for f in locked) and not self.env.context.get(
+            'bank_settlement_skip_approval_lock'
+        ):
             for rec in self:
-                if rec.move_id:
+                if rec.state not in rec._get_editable_states():
                     raise UserError(
-                        'لا يمكن تعديل مبلغ/حساب/دفتر السداد بعد إنشاء '
-                        'القيد المحاسبي المرتبط به (%s) - سيصبح القيد غير '
-                        'مطابق لبيانات السجل. ألغِ/اعكس القيد أولاً من '
-                        'المحاسبة إن احتجت تصحيح المبلغ.'
-                        % rec.move_id.name
+                        'لا يمكن تعديل بيانات السداد الأساسية (الموظف/'
+                        'المبلغ/الحساب/الدفتر) بعد اعتماد المدير العام - '
+                        'أعد السجل لمسودة أولاً (زر "إعادة لمسودة") إن '
+                        'احتجت تصحيحها.'
                     )
         self._fill_employee_derived_vals(vals)
         return super().write(vals)

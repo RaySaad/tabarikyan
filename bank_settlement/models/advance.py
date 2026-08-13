@@ -29,6 +29,14 @@ class BankSettlementAdvance(models.Model):
     def _sequence_code(self):
         return 'bank.settlement.advance'
 
+    def _get_locked_fields_after_approval(self):
+        return super()._get_locked_fields_after_approval() + ['advance_reason_id']
+
+    def _get_editable_states(self):
+        # نفس مفهوم (مسودة/تحت المراجعة) بالمخزون الأساسي، لكن بأسماء
+        # حالات مختلفة خاصة بالسلف.
+        return ('draft', 'waiting_approval')
+
     def action_submit_review(self):
         for rec in self:
             if rec.state != 'draft':

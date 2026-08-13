@@ -33,6 +33,11 @@ class BankSettlementMedicalInsurance(models.Model):
     def _sequence_code(self):
         return 'bank.settlement.medical.insurance'
 
+    def _get_locked_fields_after_approval(self):
+        return super()._get_locked_fields_after_approval() + [
+            'fee_type_id', 'vendor_id',
+        ]
+
     _FEE_TYPE_MIGRATION_MAP = {
         'medical_insurance': 'bank_settlement.medical_insurance_type_medical_insurance',
         'medical_checkup': 'bank_settlement.medical_insurance_type_medical_checkup',

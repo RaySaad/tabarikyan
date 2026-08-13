@@ -50,6 +50,11 @@ class BankSettlementVehicleTransfer(models.Model):
     def _sequence_code(self):
         return 'bank.settlement.vehicle.transfer'
 
+    def _get_locked_fields_after_approval(self):
+        return super()._get_locked_fields_after_approval() + [
+            'transfer_type_id', 'vehicle_id',
+        ]
+
     _TRANSFER_TYPE_MIGRATION_MAP = {
         'sticker_purchase': 'bank_settlement.vehicle_transfer_type_sticker_purchase',
         'sticker_install': 'bank_settlement.vehicle_transfer_type_sticker_install',
