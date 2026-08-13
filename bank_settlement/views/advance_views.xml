@@ -12,7 +12,7 @@
                     <field name="employee_id"/>
                     <field name="residency_number"/>
                     <field name="employee_category"/>
-                    <field name="advance_reason"/>
+                    <field name="advance_reason_id"/>
                     <field name="amount" sum="الإجمالي"/>
                     <field name="state" widget="badge"
                            decoration-success="state == 'paid'"
@@ -71,7 +71,7 @@
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                             <group string="بيانات السلفة">
-                                <field name="advance_reason"/>
+                                <field name="advance_reason_id"/>
                                 <field name="currency_id" invisible="1"/>
                                 <field name="amount" readonly="move_id"/>
                                 <field name="linked_account_id" readonly="move_id"/>

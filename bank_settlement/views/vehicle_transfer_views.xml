@@ -8,7 +8,7 @@
             <field name="arch" type="xml">
                 <list string="تحويلات المركبات" decoration-success="state == 'done'">
                     <field name="name"/>
-                    <field name="transfer_type"/>
+                    <field name="transfer_type_id"/>
                     <field name="employee_id"/>
                     <field name="vehicle_id" optional="show"/>
                     <field name="amount" sum="الإجمالي"/>
@@ -62,7 +62,7 @@
                         </div>
                         <group>
                             <group>
-                                <field name="transfer_type"/>
+                                <field name="transfer_type_id"/>
                                 <field name="employee_id"/>
                                 <field name="employee_partner_id" invisible="1"/>
                                 <field name="vehicle_id"

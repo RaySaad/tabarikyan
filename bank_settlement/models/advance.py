@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 
@@ -9,12 +9,9 @@ class BankSettlementAdvance(models.Model):
     _description = 'سلفة موظف'
     _inherit = ['bank.settlement.mixin']
 
-    advance_reason = fields.Selection(
-        selection=[
-            ('salary_advance', 'سلفة راتب'),
-            ('emergency', 'طارئة'),
-        ],
-        string='سبب السلفة', required=True, tracking=True,
+    advance_reason_id = fields.Many2one(
+        'bank.settlement.advance.reason', string='سبب السلفة',
+        required=True, tracking=True,
     )
 
     # حالة خاصة بالسلف كما ظهرت بالفيديو: بانتظار الموافقة / تمت الموافقة / تم الصرف
@@ -85,3 +82,29 @@ class BankSettlementAdvance(models.Model):
                 'bank_settlement.group_bank_settlement_manager',
             )
         self.write({'state': 'cancel'})
+
+    _ADVANCE_REASON_MIGRATION_MAP = {
+        'salary_advance': 'bank_settlement.advance_reason_salary_advance',
+        'emergency': 'bank_settlement.advance_reason_emergency',
+    }
+
+    @api.model
+    def _migrate_selection_fields_to_many2one(self):
+        """يهاجر القيم القديمة (كانت Selection نصي) لحقل "سبب السلفة" -
+        انظر نفس الشرح في government_fee._migrate_selection_fields_to_many2one."""
+        self.env.cr.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'bank_settlement_advance'
+            AND column_name = 'advance_reason'
+        """)
+        if not self.env.cr.fetchone():
+            return
+        self.env.cr.execute("""
+            SELECT id, advance_reason FROM bank_settlement_advance
+            WHERE advance_reason_id IS NULL AND advance_reason IS NOT NULL
+        """)
+        for rec_id, old_value in self.env.cr.fetchall():
+            xmlid = self._ADVANCE_REASON_MIGRATION_MAP.get(old_value)
+            new_record = self.env.ref(xmlid, raise_if_not_found=False) if xmlid else False
+            if new_record:
+                self.browse(rec_id).advance_reason_id = new_record.id

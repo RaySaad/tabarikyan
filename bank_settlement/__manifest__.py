@@ -41,6 +41,8 @@ recruitment_workflow لبيانات المناديب (hr.employee) والمنص�
         'security/security.xml',
         'security/ir.model.access.csv',
         'data/sequence_data.xml',
+        'data/type_data.xml',
+        'views/type_views.xml',
         'views/advance_views.xml',
         'views/government_fee_views.xml',
         'views/vehicle_transfer_views.xml',

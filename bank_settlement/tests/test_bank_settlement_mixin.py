@@ -16,8 +16,8 @@ class TestBankSettlementMixin(TransactionCase):
 
     def _create_gov_fee(self):
         return self.GovFee.create({
-            'government_entity': 'mol_resident',
-            'fee_type': 'sponsorship_transfer',
+            'government_entity_id': self.env.ref('bank_settlement.government_entity_mol_resident').id,
+            'fee_type_id': self.env.ref('bank_settlement.government_fee_type_sponsorship_transfer').id,
             'amount': 500.0,
         })
 
@@ -95,8 +95,8 @@ class TestBankSettlementMixin(TransactionCase):
         })
 
         gov_fee = self.GovFee.create({
-            'government_entity': 'mol_resident',
-            'fee_type': 'sponsorship_transfer',
+            'government_entity_id': self.env.ref('bank_settlement.government_entity_mol_resident').id,
+            'fee_type_id': self.env.ref('bank_settlement.government_fee_type_sponsorship_transfer').id,
             'amount': 500.0,
             'employee_id': employee.id,
         })

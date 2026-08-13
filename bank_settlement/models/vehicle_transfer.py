@@ -8,31 +8,9 @@ class BankSettlementVehicleTransfer(models.Model):
     _description = 'تحويل مركبة'
     _inherit = ['bank.settlement.mixin']
 
-    # TODO: يفضّل نقلها لجدول "أنواع التحويل" مخصص (قابل للإضافة من الإعدادات)
-    # بدلاً من Selection ثابت، لأن القائمة طويلة جداً وقابلة للتوسع.
-    transfer_type = fields.Selection(
-        selection=[
-            ('sticker_purchase', 'شراء استيكرات'),
-            ('sticker_install', 'تركيب استيكر'),
-            ('vehicle_transfer', 'نقل مركبة'),
-            ('new_reg_public', 'تسجيل سيارة جديدة نقل عام'),
-            ('new_reg_private', 'تسجيل سيارة جديد نقل خصوصي'),
-            ('ownership_transfer_car', 'نقل ملكية سيارة'),
-            ('ownership_transfer_bike', 'نقل ملكية دباب'),
-            ('fuel_oil', 'وقود وزيوت'),
-            ('bike_plate_issue', 'أصدار لوحات دباب'),
-            ('bike_form_issue', 'اصدار استمارة دباب'),
-            ('form_issue_lost', 'اصدار استمارة بدل فاقد'),
-            ('other', 'اخري'),
-            ('plate_issue_lost', 'أصدار لوحة بدل فاقد'),
-            ('plate_change', 'تغيير لوحات سيارة'),
-            ('public_transport_authority', 'هيئة النقل العام'),
-            ('car_rental', 'ايجار سيارة'),
-            ('driving_license', 'رخصة قيادة'),
-            ('traffic_violation', 'مخالفة مرور'),
-            ('movement_officer_custody', 'عهدة مسؤول حركة'),
-        ],
-        string='نوع التحويل', required=True, tracking=True,
+    transfer_type_id = fields.Many2one(
+        'bank.settlement.vehicle.transfer.type', string='نوع التحويل',
+        required=True, tracking=True,
     )
 
     # لاحظ في الفيديو أن هذا النموذج لا يحمل بالضرورة موظف/مندوب مرتبط
@@ -71,3 +49,46 @@ class BankSettlementVehicleTransfer(models.Model):
 
     def _sequence_code(self):
         return 'bank.settlement.vehicle.transfer'
+
+    _TRANSFER_TYPE_MIGRATION_MAP = {
+        'sticker_purchase': 'bank_settlement.vehicle_transfer_type_sticker_purchase',
+        'sticker_install': 'bank_settlement.vehicle_transfer_type_sticker_install',
+        'vehicle_transfer': 'bank_settlement.vehicle_transfer_type_vehicle_transfer',
+        'new_reg_public': 'bank_settlement.vehicle_transfer_type_new_reg_public',
+        'new_reg_private': 'bank_settlement.vehicle_transfer_type_new_reg_private',
+        'ownership_transfer_car': 'bank_settlement.vehicle_transfer_type_ownership_transfer_car',
+        'ownership_transfer_bike': 'bank_settlement.vehicle_transfer_type_ownership_transfer_bike',
+        'fuel_oil': 'bank_settlement.vehicle_transfer_type_fuel_oil',
+        'bike_plate_issue': 'bank_settlement.vehicle_transfer_type_bike_plate_issue',
+        'bike_form_issue': 'bank_settlement.vehicle_transfer_type_bike_form_issue',
+        'form_issue_lost': 'bank_settlement.vehicle_transfer_type_form_issue_lost',
+        'other': 'bank_settlement.vehicle_transfer_type_other',
+        'plate_issue_lost': 'bank_settlement.vehicle_transfer_type_plate_issue_lost',
+        'plate_change': 'bank_settlement.vehicle_transfer_type_plate_change',
+        'public_transport_authority': 'bank_settlement.vehicle_transfer_type_public_transport_authority',
+        'car_rental': 'bank_settlement.vehicle_transfer_type_car_rental',
+        'driving_license': 'bank_settlement.vehicle_transfer_type_driving_license',
+        'traffic_violation': 'bank_settlement.vehicle_transfer_type_traffic_violation',
+        'movement_officer_custody': 'bank_settlement.vehicle_transfer_type_movement_officer_custody',
+    }
+
+    @api.model
+    def _migrate_selection_fields_to_many2one(self):
+        """يهاجر القيم القديمة (كانت Selection نصي) لحقل "نوع التحويل" -
+        انظر نفس الشرح في government_fee._migrate_selection_fields_to_many2one."""
+        self.env.cr.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'bank_settlement_vehicle_transfer'
+            AND column_name = 'transfer_type'
+        """)
+        if not self.env.cr.fetchone():
+            return
+        self.env.cr.execute("""
+            SELECT id, transfer_type FROM bank_settlement_vehicle_transfer
+            WHERE transfer_type_id IS NULL AND transfer_type IS NOT NULL
+        """)
+        for rec_id, old_value in self.env.cr.fetchall():
+            xmlid = self._TRANSFER_TYPE_MIGRATION_MAP.get(old_value)
+            new_record = self.env.ref(xmlid, raise_if_not_found=False) if xmlid else False
+            if new_record:
+                self.browse(rec_id).transfer_type_id = new_record.id

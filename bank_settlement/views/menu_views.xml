@@ -33,5 +33,33 @@
                   parent="menu_bank_settlement_root"
                   action="action_bank_settlement_representative" sequence="50"/>
 
+        <!-- الإعدادات: قوائم أنواع/أسباب الرسوم القابلة للتعديل والإضافة
+             من المستخدم نفسه (بدل قوائم ثابتة بالكود) - مقصورة على مدير
+             عام السداد البنكي، مثل بقية شاشات الإعدادات المعتادة. -->
+        <menuitem id="menu_bank_settlement_config" name="الإعدادات"
+                  parent="menu_bank_settlement_root"
+                  groups="bank_settlement.group_bank_settlement_manager"
+                  sequence="90"/>
+
+        <menuitem id="menu_bank_settlement_config_government_entity" name="الجهات الحكومية"
+                  parent="menu_bank_settlement_config"
+                  action="action_bank_settlement_government_entity" sequence="10"/>
+
+        <menuitem id="menu_bank_settlement_config_government_fee_type" name="أنواع الرسوم الحكومية"
+                  parent="menu_bank_settlement_config"
+                  action="action_bank_settlement_government_fee_type" sequence="20"/>
+
+        <menuitem id="menu_bank_settlement_config_vehicle_transfer_type" name="أنواع تحويل المركبات"
+                  parent="menu_bank_settlement_config"
+                  action="action_bank_settlement_vehicle_transfer_type" sequence="30"/>
+
+        <menuitem id="menu_bank_settlement_config_medical_insurance_type" name="أنواع رسوم التأمين الطبي"
+                  parent="menu_bank_settlement_config"
+                  action="action_bank_settlement_medical_insurance_type" sequence="40"/>
+
+        <menuitem id="menu_bank_settlement_config_advance_reason" name="أسباب السلف"
+                  parent="menu_bank_settlement_config"
+                  action="action_bank_settlement_advance_reason" sequence="50"/>
+
     </data>
 </odoo>

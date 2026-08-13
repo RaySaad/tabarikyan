@@ -8,8 +8,8 @@
             <field name="arch" type="xml">
                 <list string="الرسوم الحكومية" decoration-success="state == 'done'">
                     <field name="name"/>
-                    <field name="government_entity"/>
-                    <field name="fee_type"/>
+                    <field name="government_entity_id"/>
+                    <field name="fee_type_id"/>
                     <field name="employee_category"/>
                     <field name="employee_id"/>
                     <field name="residency_number"/>
@@ -65,8 +65,8 @@
                         </div>
                         <group>
                             <group string="بيانات الرسوم">
-                                <field name="government_entity"/>
-                                <field name="fee_type"/>
+                                <field name="government_entity_id"/>
+                                <field name="fee_type_id"/>
                                 <field name="linked_account_id" readonly="move_id"/>
                             </group>
                             <group string="بيانات الموظف">

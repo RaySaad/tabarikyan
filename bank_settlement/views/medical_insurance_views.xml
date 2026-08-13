@@ -8,7 +8,7 @@
             <field name="arch" type="xml">
                 <list string="التأمين الطبي" decoration-success="state == 'done'">
                     <field name="name"/>
-                    <field name="fee_type"/>
+                    <field name="fee_type_id"/>
                     <field name="employee_id"/>
                     <field name="vendor_id"/>
                     <field name="amount"/>
@@ -64,7 +64,7 @@
                         </div>
                         <group>
                             <group string="بيانات التأمين">
-                                <field name="fee_type"/>
+                                <field name="fee_type_id"/>
                                 <field name="vendor_id"/>
                                 <field name="company_iban"/>
                                 <field name="transfer_date"/>

@@ -41,7 +41,10 @@ class TestRecruitmentRequestIntegration(TransactionCase):
         gov_fee = request.bank_settlement_gov_fee_id
         self.assertTrue(gov_fee)
         self.assertEqual(gov_fee.recruitment_request_id, request)
-        self.assertEqual(gov_fee.fee_type, 'sponsorship_transfer')
+        self.assertEqual(
+            gov_fee.fee_type_id,
+            self.env.ref('bank_settlement.government_fee_type_sponsorship_transfer'),
+        )
         self.assertEqual(gov_fee.amount, 1000.0)
         self.assertFalse(gov_fee.employee_id)
         self.assertTrue(gov_fee.partner_id)

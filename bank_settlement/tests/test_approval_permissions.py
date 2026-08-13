@@ -36,8 +36,8 @@ class TestApprovalPermissions(TransactionCase):
 
     def _create_gov_fee(self):
         return self.env['bank.settlement.government.fee'].create({
-            'government_entity': 'mol_resident',
-            'fee_type': 'sponsorship_transfer',
+            'government_entity_id': self.env.ref('bank_settlement.government_entity_mol_resident').id,
+            'fee_type_id': self.env.ref('bank_settlement.government_fee_type_sponsorship_transfer').id,
             'amount': 500.0,
         })
 
@@ -103,7 +103,7 @@ class TestApprovalPermissions(TransactionCase):
         """السلفة (advance.py) تتجاوز هذه الدوال بنسخة خاصة بها - نفس
         القيد يجب أن يُطبَّق هناك أيضاً."""
         advance = self.env['bank.settlement.advance'].create({
-            'advance_reason': 'salary_advance', 'amount': 300.0,
+            'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id, 'amount': 300.0,
         }).with_user(self.manager_user)
         advance.action_submit_review()
         advance.action_confirm()
@@ -116,7 +116,7 @@ class TestApprovalPermissions(TransactionCase):
 
     def test_advance_cancel_requires_reviewer(self):
         advance = self.env['bank.settlement.advance'].create({
-            'advance_reason': 'salary_advance', 'amount': 300.0,
+            'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id, 'amount': 300.0,
         })
 
         with self.assertRaises(UserError):

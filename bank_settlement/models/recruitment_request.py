@@ -68,8 +68,10 @@ class RecruitmentRequest(models.Model):
         self.ensure_one()
         partner = self._get_or_create_candidate_partner()
         return self.env['bank.settlement.government.fee'].sudo().create({
-            'government_entity': 'mol_resident',
-            'fee_type': 'sponsorship_transfer',
+            'government_entity_id': self.env.ref(
+                'bank_settlement.government_entity_mol_resident').id,
+            'fee_type_id': self.env.ref(
+                'bank_settlement.government_fee_type_sponsorship_transfer').id,
             'amount': self.gov_fee_amount,
             'recruitment_request_id': self.id,
             'partner_id': partner.id,

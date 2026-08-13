@@ -16,22 +16,13 @@ class BankSettlementGovernmentFee(models.Model):
              'وجود سجل موظف رسمي بعد. يمكن تعديله يدوياً عند الحاجة.',
     )
 
-    # TODO: تحويلها لاحقاً إلى Many2one على نموذج "الجهات الحكومية" مخصص
-    # بدلاً من Selection إذا كانت القائمة طويلة/قابلة للتوسع من المستخدم
-    government_entity = fields.Selection(
-        selection=[
-            ('mol_resident', 'وزارة الداخلية ( مقيم )'),
-            ('hrsd_expat', 'وزارة التنمية و الموارد البشرية ( قوى & أجير )'),
-        ],
-        string='الجهة الحكومية', required=True, tracking=True,
+    government_entity_id = fields.Many2one(
+        'bank.settlement.government.entity', string='الجهة الحكومية',
+        required=True, tracking=True,
     )
-    fee_type = fields.Selection(
-        selection=[
-            ('office_fee', 'رسوم مكتب العمل'),
-            ('passport_fee', 'رسوم الجوازات'),
-            ('sponsorship_transfer', 'رسوم نقل كفالة'),
-        ],
-        string='نوع الرسوم', required=True, tracking=True,
+    fee_type_id = fields.Many2one(
+        'bank.settlement.government.fee.type', string='نوع الرسوم',
+        required=True, tracking=True,
     )
     recruitment_request_id = fields.Many2one(
         'recruitment.request', string='طلب التوظيف المرتبط',
@@ -62,3 +53,51 @@ class BankSettlementGovernmentFee(models.Model):
 
     def _get_settlement_partner_id(self):
         return self.partner_id.id if self.partner_id else super()._get_settlement_partner_id()
+
+    _GOVERNMENT_ENTITY_MIGRATION_MAP = {
+        'mol_resident': 'bank_settlement.government_entity_mol_resident',
+        'hrsd_expat': 'bank_settlement.government_entity_hrsd_expat',
+    }
+    _FEE_TYPE_MIGRATION_MAP = {
+        'office_fee': 'bank_settlement.government_fee_type_office_fee',
+        'passport_fee': 'bank_settlement.government_fee_type_passport_fee',
+        'sponsorship_transfer': 'bank_settlement.government_fee_type_sponsorship_transfer',
+    }
+
+    @api.model
+    def _migrate_selection_fields_to_many2one(self):
+        """يهاجر القيم القديمة (كانت Selection نصي) لحقلي "الجهة الحكومية"
+        و"نوع الرسوم" إلى الحقلين الجديدين القابلين للتعديل من المستخدم
+        (Many2one). العمودان القديمان لا يزالان موجودين فعلياً في قاعدة
+        البيانات - أودو لا يحذف أعمدة الحقول المحذوفة تلقائياً - فنقرأهما
+        مباشرة عبر SQL خام لأن النموذج نفسه لم يعد يعرّفهما. تعمل هذه
+        الدالة بأمان حتى لو استُدعيت أكثر من مرة (لا تُعيد كتابة سجل
+        مُهاجَر بالفعل)."""
+        self.env.cr.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'bank_settlement_government_fee'
+            AND column_name IN ('government_entity', 'fee_type')
+        """)
+        existing_columns = {row[0] for row in self.env.cr.fetchall()}
+
+        if 'government_entity' in existing_columns:
+            self.env.cr.execute("""
+                SELECT id, government_entity FROM bank_settlement_government_fee
+                WHERE government_entity_id IS NULL AND government_entity IS NOT NULL
+            """)
+            for rec_id, old_value in self.env.cr.fetchall():
+                xmlid = self._GOVERNMENT_ENTITY_MIGRATION_MAP.get(old_value)
+                new_record = self.env.ref(xmlid, raise_if_not_found=False) if xmlid else False
+                if new_record:
+                    self.browse(rec_id).government_entity_id = new_record.id
+
+        if 'fee_type' in existing_columns:
+            self.env.cr.execute("""
+                SELECT id, fee_type FROM bank_settlement_government_fee
+                WHERE fee_type_id IS NULL AND fee_type IS NOT NULL
+            """)
+            for rec_id, old_value in self.env.cr.fetchall():
+                xmlid = self._FEE_TYPE_MIGRATION_MAP.get(old_value)
+                new_record = self.env.ref(xmlid, raise_if_not_found=False) if xmlid else False
+                if new_record:
+                    self.browse(rec_id).fee_type_id = new_record.id

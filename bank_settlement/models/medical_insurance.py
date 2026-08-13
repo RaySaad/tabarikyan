@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 
@@ -9,12 +9,9 @@ class BankSettlementMedicalInsurance(models.Model):
     _description = 'تأمين / فحص طبي'
     _inherit = ['bank.settlement.mixin']
 
-    fee_type = fields.Selection(
-        selection=[
-            ('medical_insurance', 'تأمين طبي'),
-            ('medical_checkup', 'فحص طبي'),
-        ],
-        string='نوع الرسوم', required=True, tracking=True,
+    fee_type_id = fields.Many2one(
+        'bank.settlement.medical.insurance.type', string='نوع الرسوم',
+        required=True, tracking=True,
     )
     vendor_id = fields.Many2one(
         'res.partner', string='المورد', domain=[('supplier_rank', '>', 0)],
@@ -35,6 +32,32 @@ class BankSettlementMedicalInsurance(models.Model):
 
     def _sequence_code(self):
         return 'bank.settlement.medical.insurance'
+
+    _FEE_TYPE_MIGRATION_MAP = {
+        'medical_insurance': 'bank_settlement.medical_insurance_type_medical_insurance',
+        'medical_checkup': 'bank_settlement.medical_insurance_type_medical_checkup',
+    }
+
+    @api.model
+    def _migrate_selection_fields_to_many2one(self):
+        """يهاجر القيم القديمة (كانت Selection نصي) لحقل "نوع الرسوم" -
+        انظر نفس الشرح في government_fee._migrate_selection_fields_to_many2one."""
+        self.env.cr.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'bank_settlement_medical_insurance'
+            AND column_name = 'fee_type'
+        """)
+        if not self.env.cr.fetchone():
+            return
+        self.env.cr.execute("""
+            SELECT id, fee_type FROM bank_settlement_medical_insurance
+            WHERE fee_type_id IS NULL AND fee_type IS NOT NULL
+        """)
+        for rec_id, old_value in self.env.cr.fetchall():
+            xmlid = self._FEE_TYPE_MIGRATION_MAP.get(old_value)
+            new_record = self.env.ref(xmlid, raise_if_not_found=False) if xmlid else False
+            if new_record:
+                self.browse(rec_id).fee_type_id = new_record.id
 
     def action_create_insurance_transfer(self):
         """ينشئ فاتورة مورد (Vendor Bill) فعلية على المورد المحدَّد، بدل
