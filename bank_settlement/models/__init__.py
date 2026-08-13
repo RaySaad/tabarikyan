@@ -1,4 +1,3 @@
-from . import ir_ui_menu
 from . import account_move
 from . import bank_settlement_mixin
 from . import advance
