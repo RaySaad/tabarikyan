@@ -31,3 +31,8 @@ class BankSettlementRepresentative(models.Model):
 
     def _sequence_code(self):
         return 'bank.settlement.representative'
+
+    def _get_locked_fields_after_move(self):
+        # settlement_amount اسم بديل لحقل amount نفسه (related) - يُقفل
+        # هو أيضاً بعد إنشاء القيد، تماماً كما لو كُتب على amount مباشرة.
+        return super()._get_locked_fields_after_move() + ['settlement_amount']

@@ -79,6 +79,11 @@ class BankSettlementMixin(models.AbstractModel):
     def _onchange_employee_id(self):
         if self.employee_id and self.employee_id.project_id:
             self.project_id = self.employee_id.project_id
+        # الشركة تُشتق من فرع الموظف نفسه - بدل تركها على الشركة النشطة
+        # افتراضياً في جلسة من ينشئ السجل (غالباً الشركة الرئيسية إن لم
+        # يُبدّلها المستخدم يدوياً)، والتي قد تختلف عن فرع الموظف الفعلي.
+        if self.employee_id and self.employee_id.company_id:
+            self.company_id = self.employee_id.company_id
 
     # -- المبالغ والعملة -------------------------------------------------
     amount = fields.Monetary(string='المبلغ', tracking=True)
@@ -152,6 +157,28 @@ class BankSettlementMixin(models.AbstractModel):
             if vals.get('name', 'New') == 'New':
                 vals['name'] = self._get_sequence_code_for_create(vals)
         return super().create(vals_list)
+
+    def _get_locked_fields_after_move(self):
+        """الحقول التي تُحدِّد محتوى القيد المحاسبي فعلياً - لا يجوز
+        تعديلها بعد إنشاء القيد (move_id) وإلا أصبح القيد المرحَّل غير
+        مطابق لبيانات السجل، بصمت. النماذج الفرعية التي تُسمّي حقلاً
+        مرتبطاً بـ amount باسم مختلف (representative_settlement مثلاً)
+        تُضيفه هنا عبر تجاوز هذه الدالة."""
+        return ['amount', 'tax_amount', 'linked_account_id', 'journal_id']
+
+    def write(self, vals):
+        locked = self._get_locked_fields_after_move()
+        if any(f in vals for f in locked):
+            for rec in self:
+                if rec.move_id:
+                    raise UserError(
+                        'لا يمكن تعديل مبلغ/حساب/دفتر السداد بعد إنشاء '
+                        'القيد المحاسبي المرتبط به (%s) - سيصبح القيد غير '
+                        'مطابق لبيانات السجل. ألغِ/اعكس القيد أولاً من '
+                        'المحاسبة إن احتجت تصحيح المبلغ.'
+                        % rec.move_id.name
+                    )
+        return super().write(vals)
 
     def _get_sequence_code_for_create(self, vals):
         """كل نموذج فرعي يجب أن يحدد كود التسلسل الخاص به."""

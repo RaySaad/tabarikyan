@@ -67,7 +67,7 @@
                             <group string="بيانات الرسوم">
                                 <field name="government_entity"/>
                                 <field name="fee_type"/>
-                                <field name="linked_account_id"/>
+                                <field name="linked_account_id" readonly="move_id"/>
                             </group>
                             <group string="بيانات الموظف">
                                 <field name="employee_category"/>
@@ -80,9 +80,9 @@
                             <group>
                                 <field name="transfer_date"/>
                                 <field name="bank_reference"/>
-                                <field name="journal_id"/>
+                                <field name="journal_id" readonly="move_id"/>
                                 <field name="currency_id" invisible="1"/>
-                                <field name="amount"/>
+                                <field name="amount" readonly="move_id"/>
                             </group>
                             <group>
                                 <field name="project_id"/>

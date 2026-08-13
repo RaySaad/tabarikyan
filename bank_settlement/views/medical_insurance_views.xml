@@ -71,8 +71,8 @@
                             </group>
                             <group string="المبالغ">
                                 <field name="currency_id" invisible="1"/>
-                                <field name="amount"/>
-                                <field name="tax_amount"/>
+                                <field name="amount" readonly="move_id"/>
+                                <field name="tax_amount" readonly="move_id"/>
                                 <field name="total_amount"/>
                             </group>
                         </group>
