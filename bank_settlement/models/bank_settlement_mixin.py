@@ -201,6 +201,8 @@ class BankSettlementMixin(models.AbstractModel):
         self.write({'state': 'done'})
 
     def action_reset_draft(self):
+        """إعادة لمسودة - تُلغي فعلياً أي اعتماد سابق (المدير العام)،
+        فتتطلب نفس صلاحيته تحديداً - وليست متاحة لمن ينشئ السجل فقط."""
         for rec in self:
             # القيد المحاسبي (إن وُجد) يعني أن السداد وثّق فعلياً محاسبياً -
             # لا يجوز إعادة السجل لمسودة وترك ذلك القيد معلّقاً بلا مرجع.
@@ -211,9 +213,11 @@ class BankSettlementMixin(models.AbstractModel):
                     'به بالفعل (%s). ألغِ/اعكس القيد أولاً من المحاسبة.'
                     % rec.move_id.name
                 )
+            rec._check_group('bank_settlement.group_bank_settlement_manager')
         self.write({'state': 'draft'})
 
     def action_cancel(self):
+        """إلغاء - متاح للمراجع فما فوق (وليس لمن ينشئ السجل فقط)."""
         for rec in self:
             if rec.move_id and rec.move_id.state == 'posted':
                 raise UserError(
@@ -221,6 +225,10 @@ class BankSettlementMixin(models.AbstractModel):
                     'مرحّل بالفعل (%s). ألغِه/اعكسه من المحاسبة أولاً.'
                     % rec.move_id.name
                 )
+            rec._check_group(
+                'bank_settlement.group_bank_settlement_reviewer',
+                'bank_settlement.group_bank_settlement_manager',
+            )
         self.write({'state': 'cancel'})
 
     def _get_settlement_partner_id(self):

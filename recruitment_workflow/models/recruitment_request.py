@@ -803,6 +803,10 @@ class RecruitmentRequest(models.Model):
         # نقل الكفالة ومتابعته حتى الاكتمال مسؤولية قسم الموارد البشرية.
         'sponsorship_transfer': 'recruitment_workflow.group_recruitment_workflow_hr',
         'sponsorship_done': 'recruitment_workflow.group_recruitment_workflow_hr',
+        # "تم السداد" تؤكد سداد الرسوم فعلياً (شرط مالي حقيقي محمي أصلاً في
+        # _validate_stage_exit) - لكن "من يحق له الضغط" لم يكن مقيَّداً
+        # كبقية المراحل التقييمية؛ نفس مستوى مراجعة العمليات.
+        'paid': 'recruitment_workflow.group_recruitment_workflow_operations',
     }
 
     # المراحل التي يجب أن يوافق عليها الشخص المعيّن تحديداً على هذا الطلب

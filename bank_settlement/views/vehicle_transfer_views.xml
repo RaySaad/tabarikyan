@@ -39,9 +39,11 @@
                                 groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state != 'confirmed'"/>
                         <button name="action_reset_draft" string="إعادة لمسودة"
-                                type="object" invisible="state not in ('under_review', 'confirmed')"/>
+                                type="object" groups="bank_settlement.group_bank_settlement_manager"
+                                invisible="state not in ('under_review', 'confirmed')"/>
                         <button name="action_cancel" string="إلغاء"
-                                type="object" invisible="state in ('done', 'cancel')"/>
+                                type="object" groups="bank_settlement.group_bank_settlement_reviewer"
+                                invisible="state in ('done', 'cancel')"/>
                         <field name="state" widget="statusbar"
                                statusbar_visible="draft,under_review,confirmed,done"/>
                     </header>

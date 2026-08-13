@@ -69,7 +69,13 @@
                          الزر بشرط ثابت هنا لا يناسب كل الحالات. -->
                     <button name="action_next_stage" type="object" string="الانتقال للمرحلة التالية"
                             class="btn-primary"
-                            invisible="state in ('done','rejected') or stage_code in ('project_review','operations_review','gm_approval','car_request','sponsorship_transfer','sponsorship_done')"/>
+                            invisible="state in ('done','rejected') or stage_code in ('project_review','operations_review','gm_approval','paid','car_request','sponsorship_transfer','sponsorship_done')"/>
+                    <!-- "تم السداد": تؤكد سداد الرسوم فعلياً - مدير العمليات
+                         فما فوق، بنفس مستوى مراجعة العمليات الأخرى. -->
+                    <button name="action_next_stage" type="object" string="الانتقال للمرحلة التالية"
+                            class="btn-primary"
+                            groups="recruitment_workflow.group_recruitment_workflow_operations"
+                            invisible="state in ('done','rejected') or stage_code != 'paid'"/>
                     <!-- نقل الكفالة ومتابعة اكتمالها - قسم الموارد البشرية فقط -->
                     <button name="action_next_stage" type="object" string="الانتقال للمرحلة التالية"
                             class="btn-primary"

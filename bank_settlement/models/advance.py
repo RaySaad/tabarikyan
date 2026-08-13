@@ -59,6 +59,8 @@ class BankSettlementAdvance(models.Model):
         self.write({'state': 'paid'})
 
     def action_reset_draft(self):
+        """إعادة لمسودة - تُلغي فعلياً اعتماد المدير العام السابق، فتتطلب
+        نفس صلاحيته تحديداً - وليست متاحة لمن أنشأ السلفة فقط."""
         for rec in self:
             if rec.move_id:
                 raise UserError(
@@ -66,9 +68,11 @@ class BankSettlementAdvance(models.Model):
                     'بها بالفعل (%s). ألغِ/اعكس القيد أولاً من المحاسبة.'
                     % rec.move_id.name
                 )
+            rec._check_group('bank_settlement.group_bank_settlement_manager')
         self.write({'state': 'draft'})
 
     def action_cancel(self):
+        """إلغاء - متاح للمراجع فما فوق (وليس لمن أنشأ السلفة فقط)."""
         for rec in self:
             if rec.move_id and rec.move_id.state == 'posted':
                 raise UserError(
@@ -76,4 +80,8 @@ class BankSettlementAdvance(models.Model):
                     'مرحّل بالفعل (%s). ألغِه/اعكسه من المحاسبة أولاً.'
                     % rec.move_id.name
                 )
+            rec._check_group(
+                'bank_settlement.group_bank_settlement_reviewer',
+                'bank_settlement.group_bank_settlement_manager',
+            )
         self.write({'state': 'cancel'})

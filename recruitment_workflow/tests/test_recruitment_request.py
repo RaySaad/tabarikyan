@@ -417,6 +417,22 @@ class TestRecruitmentRequest(TransactionCase):
         with self.assertRaises(UserError):
             request.with_user(plain_user).action_reject(reason='سبب تجريبي')
 
+    def test_leaving_paid_stage_requires_operations_group(self):
+        """مغادرة مرحلة "تم السداد" تتطلب مدير العمليات فما فوق - لا يكفي
+        أن يكون المستخدم من مستخدمي التطبيق الأساسيين فقط."""
+        plain_user = self._create_plain_user('paid_stage_test_user')
+        request = self._create_request(identification_id='1234567897', email='paidstage@example.com')
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
+        })
+
+        with self.assertRaises(UserError):
+            request.with_user(plain_user).action_next_stage()
+
+        self.env.user.write({'group_ids': [(4, self.group_ops.id)]})
+        request.action_next_stage()
+        self.assertEqual(request.stage_id.code, 'sponsorship_transfer')
+
     def test_action_reject_allowed_for_assigned_project_manager_at_new_only(self):
         """مسؤول المشروع المعيّن تحديداً يستطيع الرفض من المرحلة الأولى فقط
         (قبل رفع المرفقات) - ليس من أي مرحلة أخرى، وليس مسؤول مشروع آخر غير
