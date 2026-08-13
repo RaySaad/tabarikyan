@@ -50,9 +50,18 @@ class BankSettlementMedicalInsurance(models.Model):
         )
         if not self.vendor_id:
             raise UserError('يجب تحديد المورد أولاً لإنشاء تحويل التأمين.')
-        move = self.env['account.move'].create({
+        # sudo(): نفس منطق _create_settlement_move في المixin - لا يجوز أن
+        # يشترط إنشاء الفاتورة عضوية محاسبية أصلية بـ Odoo؛ الصلاحية الفعلية
+        # محكومة بالفعل عبر _check_group أعلاه.
+        move = self.env['account.move'].sudo().create({
             'move_type': 'in_invoice',
             'partner_id': self.vendor_id.id,
+            # الشركة صراحة من شركة السجل نفسها - بدل تركها تُحسب من الشركة
+            # النشطة لمن يضغط الزر (انظر نفس المنطق في _create_settlement_move).
+            'company_id': self.company_id.id,
+            # يُستخدم لحصر رؤية "مستخدم/مراجع" السداد البنكي على قيودهم فقط
+            # عبر ir.rule - دون كشف بقية فواتير الشركة.
+            'is_bank_settlement_move': True,
             'ref': self.name,
             'invoice_date': self.transfer_date or fields.Date.context_today(self),
             'invoice_line_ids': [(0, 0, {

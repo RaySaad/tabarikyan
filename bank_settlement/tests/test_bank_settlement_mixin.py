@@ -42,6 +42,15 @@ class TestBankSettlementMixin(TransactionCase):
             gov_fee.write({'journal_id': self.env['account.journal'].search(
                 [('id', '!=', gov_fee.journal_id.id)], limit=1).id})
 
+    def test_settlement_move_flagged_for_restricted_visibility(self):
+        """القيد الناتج عن السداد البنكي يُعلَّم بـ is_bank_settlement_move
+        - يُستخدم لحصر رؤية "مستخدم/مراجع" السداد البنكي عليه فقط، دون
+        كشف بقية قيود المحاسبة (انظر ir.rule في security.xml)."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_done(gov_fee)
+
+        self.assertTrue(gov_fee.move_id.is_bank_settlement_move)
+
     def test_amount_editable_before_move_created(self):
         gov_fee = self._create_gov_fee()
         gov_fee.write({'amount': 750.0})

@@ -20,3 +20,11 @@ def _post_init_hook(env):
     )
     if bank_settlement_menu:
         bank_settlement_menu.parent_id = accounting_root_menu.id
+    # "مستخدم/مراجع" السداد البنكي لا يملكون أي مجموعة محاسبية أصلية -
+    # بدون هذا لن يروا أيقونة "المحاسبة" نفسها إطلاقاً (انظر نفس الشرح
+    # في ir_ui_menu.py._bank_settlement_fix_root_menu_parent).
+    bank_settlement_user_group = env.ref(
+        'bank_settlement.group_bank_settlement_user', raise_if_not_found=False,
+    )
+    if bank_settlement_user_group and bank_settlement_user_group not in accounting_root_menu.groups_id:
+        accounting_root_menu.groups_id = [(4, bank_settlement_user_group.id)]

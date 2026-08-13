@@ -46,10 +46,31 @@
             - "مراجع" (ويتوارثه "مدير عام"): ينفّذ السداد الفعلي بعد الاعتماد
               (action_done / action_create_insurance_transfer).
             - "مدير عام" فقط: يعتمد السجل (action_confirm)، حسب الفيديو.
-            لا توجد Record Rules بعد (كل من يملك المجموعة يرى كل السجلات
-            بغض النظر عن من أنشأها) - أضفها لاحقاً إن احتجت عزلاً بين
-            المستخدمين/الفروع.
+            لا توجد Record Rules على نماذج السداد البنكي نفسها بعد (كل من
+            يملك المجموعة يرى كل سجلاتها بغض النظر عن من أنشأها) - أضفها
+            لاحقاً إن احتجت عزلاً بين المستخدمين/الفروع. يوجد Record Rule
+            واحد فقط أدناه على account.move نفسه (وليس نماذج السداد
+            البنكي) - انظر شرحه.
         -->
+
+        <!-- "مستخدم/مراجع" السداد البنكي يحتاجون صلاحية قراءة على
+             account.move (لعرض القيد الناتج عبر زر "عرض القيد") ودخول
+             تطبيق المحاسبة نفسه لرؤية قائمة "السداد البنكي" المدموجة
+             فيه - وهذا يعني بلا قاعدة إضافية أنهم يقدرون تصفح كل قيود/
+             فواتير الشركة الأخرى (عملاء، موردين...) رغم عدم حاجتهم لها.
+             هذه القاعدة تحصر رؤيتهم على القيود التي أنشأها السداد البنكي
+             نفسه فقط (is_bank_settlement_move) - أي محاولة لفتح "العملاء
+             ← الفواتير" أو أي قائمة محاسبية أخرى ستظهر فارغة لهم عملياً. -->
+        <record id="account_move_bank_settlement_rule" model="ir.rule">
+            <field name="name">قيود السداد البنكي فقط - مستخدم/مراجع السداد البنكي</field>
+            <field name="model_id" ref="account.model_account_move"/>
+            <field name="groups" eval="[(4, ref('group_bank_settlement_user'))]"/>
+            <field name="domain_force">[('is_bank_settlement_move', '=', True)]</field>
+            <field name="perm_read">1</field>
+            <field name="perm_write">0</field>
+            <field name="perm_create">0</field>
+            <field name="perm_unlink">0</field>
+        </record>
 
     </data>
 </odoo>

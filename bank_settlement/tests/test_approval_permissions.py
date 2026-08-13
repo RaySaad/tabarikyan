@@ -64,6 +64,19 @@ class TestApprovalPermissions(TransactionCase):
         # في أي مجموعة محاسبية أصلية.
         gov_fee.with_user(self.reviewer_user).move_id.read(['name', 'state'])
 
+    def test_user_cannot_read_unrelated_account_move(self):
+        """"مستخدم" السداد البنكي يقدر يقرأ فقط القيود التي أنشأها
+        السداد البنكي نفسه (is_bank_settlement_move) - أي قيد محاسبي آخر
+        في الشركة (فاتورة عميل عادية مثلاً) يجب أن يبقى مخفياً عنه تماماً
+        رغم صلاحية القراءة الممنوحة له على نموذج account.move نفسه."""
+        unrelated_move = self.env['account.move'].create({'ref': 'قيد غير مرتبط بالسداد البنكي'})
+        self.assertFalse(unrelated_move.is_bank_settlement_move)
+
+        found = self.env['account.move'].with_user(self.plain_user).search(
+            [('id', '=', unrelated_move.id)]
+        )
+        self.assertFalse(found, 'يجب ألا يرى مستخدم السداد البنكي قيوداً غير مرتبطة به')
+
     def test_reset_draft_requires_manager(self):
         gov_fee = self._create_gov_fee().with_user(self.manager_user)
         gov_fee.action_submit_review()

@@ -24,3 +24,15 @@ class IrUiMenu(models.Model):
         )
         if bank_settlement_menu and bank_settlement_menu.parent_id != accounting_root_menu:
             bank_settlement_menu.parent_id = accounting_root_menu.id
+        # "مستخدم/مراجع" السداد البنكي لا يملكون أي مجموعة محاسبية أصلية
+        # (وليس مطلوباً منهم ذلك) - بدون هذا، لن يروا أيقونة "المحاسبة"
+        # نفسها إطلاقاً حتى لو كانت لديهم صلاحية كاملة على قائمة "السداد
+        # البنكي" المتفرعة تحتها، لأن جذر القائمة نفسه مقيَّد بمجموعة
+        # محاسبية. نضيف مجموعتنا كخيار إضافي (لا نحذف/نستبدل الموجود) -
+        # ما يرونه فعلياً بعد الدخول محصور بدوره عبر account_move_bank
+        # _settlement_rule (ir.rule في security.xml).
+        bank_settlement_user_group = self.env.ref(
+            'bank_settlement.group_bank_settlement_user', raise_if_not_found=False,
+        )
+        if bank_settlement_user_group and bank_settlement_user_group not in accounting_root_menu.groups_id:
+            accounting_root_menu.groups_id = [(4, bank_settlement_user_group.id)]

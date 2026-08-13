@@ -305,6 +305,9 @@ class BankSettlementMixin(models.AbstractModel):
             # الصحيح بشكل حتمي، حتى لو استخدم دفتر يومية الشركة الرئيسية
             # المشتركة (انظر domain حقل journal_id أعلاه).
             'company_id': self.company_id.id,
+            # يُستخدم لحصر رؤية "مستخدم/مراجع" السداد البنكي على قيودهم
+            # فقط عبر ir.rule - دون كشف بقية قيود المحاسبة في الشركة.
+            'is_bank_settlement_move': True,
             'date': self.transfer_date or fields.Date.context_today(self),
             'ref': self.name,
             'line_ids': [
