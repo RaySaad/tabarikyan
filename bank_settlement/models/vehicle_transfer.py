@@ -96,4 +96,8 @@ class BankSettlementVehicleTransfer(models.Model):
             xmlid = self._TRANSFER_TYPE_MIGRATION_MAP.get(old_value)
             new_record = self.env.ref(xmlid, raise_if_not_found=False) if xmlid else False
             if new_record:
-                self.browse(rec_id).transfer_type_id = new_record.id
+                # يتجاوز قفل "لا تعديل بعد الاعتماد" عمداً - هجرة بيانات
+                # قديمة، وليست تعديلاً حقيقياً لقيمة مختلفة.
+                self.browse(rec_id).with_context(
+                    bank_settlement_skip_approval_lock=True,
+                ).transfer_type_id = new_record.id

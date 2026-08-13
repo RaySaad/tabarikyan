@@ -62,7 +62,11 @@ class BankSettlementMedicalInsurance(models.Model):
             xmlid = self._FEE_TYPE_MIGRATION_MAP.get(old_value)
             new_record = self.env.ref(xmlid, raise_if_not_found=False) if xmlid else False
             if new_record:
-                self.browse(rec_id).fee_type_id = new_record.id
+                # يتجاوز قفل "لا تعديل بعد الاعتماد" عمداً - هجرة بيانات
+                # قديمة، وليست تعديلاً حقيقياً لقيمة مختلفة.
+                self.browse(rec_id).with_context(
+                    bank_settlement_skip_approval_lock=True,
+                ).fee_type_id = new_record.id
 
     def action_create_insurance_transfer(self):
         """ينشئ فاتورة مورد (Vendor Bill) فعلية على المورد المحدَّد، بدل

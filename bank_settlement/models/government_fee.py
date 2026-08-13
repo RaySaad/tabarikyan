@@ -94,7 +94,12 @@ class BankSettlementGovernmentFee(models.Model):
                 xmlid = self._GOVERNMENT_ENTITY_MIGRATION_MAP.get(old_value)
                 new_record = self.env.ref(xmlid, raise_if_not_found=False) if xmlid else False
                 if new_record:
-                    self.browse(rec_id).government_entity_id = new_record.id
+                    # يتجاوز قفل "لا تعديل بعد الاعتماد" عمداً - هجرة
+                    # بيانات قديمة (قد تخص سجلاً مُعتمَداً/منفَّذاً فعلاً)،
+                    # وليست تعديلاً حقيقياً لقيمة مختلفة.
+                    self.browse(rec_id).with_context(
+                        bank_settlement_skip_approval_lock=True,
+                    ).government_entity_id = new_record.id
 
         if 'fee_type' in existing_columns:
             self.env.cr.execute("""
@@ -105,4 +110,6 @@ class BankSettlementGovernmentFee(models.Model):
                 xmlid = self._FEE_TYPE_MIGRATION_MAP.get(old_value)
                 new_record = self.env.ref(xmlid, raise_if_not_found=False) if xmlid else False
                 if new_record:
-                    self.browse(rec_id).fee_type_id = new_record.id
+                    self.browse(rec_id).with_context(
+                        bank_settlement_skip_approval_lock=True,
+                    ).fee_type_id = new_record.id

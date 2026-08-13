@@ -115,4 +115,9 @@ class BankSettlementAdvance(models.Model):
             xmlid = self._ADVANCE_REASON_MIGRATION_MAP.get(old_value)
             new_record = self.env.ref(xmlid, raise_if_not_found=False) if xmlid else False
             if new_record:
-                self.browse(rec_id).advance_reason_id = new_record.id
+                # يتجاوز قفل "لا تعديل بعد الاعتماد" عمداً - هذه هجرة
+                # بيانات قديمة موجودة أصلاً (قد تخص سلفاً مُعتمَدة/مصروفة
+                # فعلاً)، وليست تعديلاً حقيقياً لقيمة مختلفة.
+                self.browse(rec_id).with_context(
+                    bank_settlement_skip_approval_lock=True,
+                ).advance_reason_id = new_record.id
