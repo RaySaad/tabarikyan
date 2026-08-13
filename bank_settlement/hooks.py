@@ -1,0 +1,22 @@
+# -*- coding: utf-8 -*-
+
+
+def _post_init_hook(env):
+    """يُعاد ربط قائمة "السداد البنكي" تلقائياً تحت تطبيق "المحاسبة" الحقيقي
+    (Enterprise، موديول accountant) إن كان مثبتاً، بدل تطبيق "الفوترة"
+    الأساسي (Community، account.menu_finance) المستخدم كاحتياط افتراضي في
+    XML. نبحث عن القائمة الجذرية للمحاسبة بأيقونتها المميزة بدل الاعتماد
+    على معرّف XML ثابت قد يختلف بين إصدارات أودو - أكثر أماناً من تعليق
+    تثبيت الموديول بالكامل لو كان المعرّف غير صحيح.
+    """
+    accounting_root_menu = env['ir.ui.menu'].search([
+        ('web_icon', 'like', 'accountant,%'),
+        ('parent_id', '=', False),
+    ], limit=1)
+    if not accounting_root_menu:
+        return
+    bank_settlement_menu = env.ref(
+        'bank_settlement.menu_bank_settlement_root', raise_if_not_found=False,
+    )
+    if bank_settlement_menu:
+        bank_settlement_menu.parent_id = accounting_root_menu.id

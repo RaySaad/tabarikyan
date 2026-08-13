@@ -1,3 +1,4 @@
+from . import ir_ui_menu
 from . import bank_settlement_mixin
 from . import advance
 from . import government_fee

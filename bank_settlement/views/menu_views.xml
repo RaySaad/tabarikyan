@@ -2,16 +2,10 @@
 <odoo>
     <data>
 
-        <!-- تطبيق مستقل بأيقونته الخاصة (وليس مدموجاً داخل المحاسبة) -
-             حتى لا يحتاج "مستخدم/مراجع" السداد البنكي أي صلاحية محاسبية
-             أصلية بـ Odoo للدخول، والتي كانت تفتح لهم أيضاً رؤية بقية
-             تطبيق المحاسبة (عملاء/موردين/فواتير) رغم عدم حاجتهم لها -
-             نفس صلاحية دخول هذا التطبيق مقصورة على مجموعات السداد
-             البنكي فقط. -->
+        <!-- مدموج داخل تطبيق المحاسبة نفسه (وليس تطبيقاً منفصلاً) - يفتحه
+             المحاسب من قائمته المعتادة مباشرة، تماماً كموديول التوظيف. -->
         <menuitem id="menu_bank_settlement_root" name="السداد البنكي"
-                  web_icon="bank_settlement,static/description/icon.png"
-                  groups="bank_settlement.group_bank_settlement_user"
-                  sequence="15"/>
+                  parent="account.menu_finance" sequence="15"/>
 
         <menuitem id="menu_bank_settlement_advance" name="السلف"
                   parent="menu_bank_settlement_root"
@@ -32,6 +26,11 @@
         <menuitem id="menu_bank_settlement_representative" name="تصفيات المناديب"
                   parent="menu_bank_settlement_root"
                   action="action_bank_settlement_representative" sequence="50"/>
+
+        <!-- يُعاد ربط الجذر أعلاه تحت تطبيق "المحاسبة" الحقيقي (Enterprise)
+             إن وُجد، بدل "الفوترة" الافتراضية - يعمل عند كل تثبيت/ترقية،
+             وليس عند التثبيت الأول فقط. -->
+        <function model="ir.ui.menu" name="_bank_settlement_fix_root_menu_parent" eval="[]"/>
 
     </data>
 </odoo>
