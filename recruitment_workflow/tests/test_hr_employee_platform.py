@@ -53,6 +53,23 @@ class TestHrEmployeePlatformBulkAssign(TransactionCase):
 
         self.assertEqual(len(employee.platform_history_ids), 1)
 
+    def test_bulk_assign_rejects_employee_already_on_different_platform(self):
+        """معالج الربط الجماعي مخصَّص لموظفين قدامى بلا منصة أصلاً - وليس
+        لنقل موظفين يعملون فعلاً على منصة أخرى (يجب أن يمر ذلك بخط سير
+        طلب النقل)، وإلا أمكن تجاوز الموافقة بالكامل بتحديد عدة موظفين
+        دفعة واحدة من قائمة الموظفين."""
+        other_project = self.env['project.project'].create({'name': 'منصة أخرى - ربط جماعي'})
+        employee = self.Employee.create({'name': 'موظف على منصة أخرى', 'project_id': other_project.id})
+
+        wizard = self.Wizard.create({
+            'project_id': self.project.id,
+            'line_ids': [(0, 0, {'employee_id': employee.id, 'date_start': date.today()})],
+        })
+
+        with self.assertRaises(UserError):
+            wizard.action_confirm_assign()
+        self.assertEqual(employee.project_id, other_project)
+
     def test_bulk_assign_uses_custom_start_date(self):
         """تاريخ البداية يجب أن يعكس التاريخ الذي يحدّده المستخدم (ربط
         رجعي) وليس دائماً تاريخ اليوم."""
