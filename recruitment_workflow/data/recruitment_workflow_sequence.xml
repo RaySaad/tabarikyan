@@ -8,5 +8,12 @@
             <field name="padding">5</field>
             <field name="company_id" eval="False"/>
         </record>
+        <record id="seq_hr_employee_platform_transfer_request" model="ir.sequence">
+            <field name="name">طلب نقل موظف بين المنصات</field>
+            <field name="code">hr.employee.platform.transfer.request</field>
+            <field name="prefix">TR/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
     </data>
 </odoo>

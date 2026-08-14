@@ -22,6 +22,14 @@ class HrEmployee(models.Model):
         string='عدد فترات المنصات',
         compute='_compute_platform_history_count',
     )
+    transfer_request_ids = fields.One2many(
+        'hr.employee.platform.transfer.request', 'employee_id',
+        string='طلبات نقل المنصة',
+    )
+    pending_transfer_request_count = fields.Integer(
+        string='طلبات نقل معلّقة',
+        compute='_compute_pending_transfer_request_count',
+    )
     cost_ids = fields.One2many(
         'hr.employee.cost',
         'employee_id',
@@ -62,6 +70,13 @@ class HrEmployee(models.Model):
     def _compute_platform_history_count(self):
         for rec in self:
             rec.platform_history_count = len(rec.platform_history_ids)
+
+    @api.depends('transfer_request_ids.state')
+    def _compute_pending_transfer_request_count(self):
+        for rec in self:
+            rec.pending_transfer_request_count = len(rec.transfer_request_ids.filtered(
+                lambda r: r.state not in ('done', 'cancel')
+            ))
 
     def _open_platform_history(self, project, note=False, date_start=None):
         """يفتح فترة جديدة في تاريخ المنصات ويغلق الفترة المفتوحة الحالية
@@ -170,18 +185,32 @@ class HrEmployee(models.Model):
             contract.sudo().project_id = self.project_id.id
         return True
 
-    def action_open_platform_transfer_wizard(self):
+    def action_open_platform_transfer_request(self):
+        """يفتح نموذج "طلب نقل" جديد (وليس تنفيذ النقل فوراً) - يمر
+        الطلب بخط سير موافقة (مسؤول المنصة الحالية ثم مدير العمليات)
+        قبل تنفيذ النقل الفعلي. انظر hr_employee_platform_transfer_request.py."""
         self.ensure_one()
         return {
-            'name': _('نقل لمنصة أخرى'),
+            'name': _('طلب نقل لمنصة أخرى'),
             'type': 'ir.actions.act_window',
-            'res_model': 'hr.employee.platform.transfer.wizard',
+            'res_model': 'hr.employee.platform.transfer.request',
             'view_mode': 'form',
             'target': 'new',
             'context': {
                 'default_employee_id': self.id,
                 'default_current_project_id': self.project_id.id,
             },
+        }
+
+    def action_view_transfer_requests(self):
+        self.ensure_one()
+        return {
+            'name': _('طلبات نقل المنصة - %s') % self.display_name,
+            'type': 'ir.actions.act_window',
+            'res_model': 'hr.employee.platform.transfer.request',
+            'view_mode': 'list,form',
+            'domain': [('employee_id', '=', self.id)],
+            'context': {'default_employee_id': self.id},
         }
 
     def action_view_platform_history(self):

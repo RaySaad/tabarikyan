@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from datetime import date, timedelta
 
+from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -84,28 +85,11 @@ class TestHrEmployeePlatformBulkAssign(TransactionCase):
         """سطر بدون موظف محدد (مثال: أُضيف يدوياً في الواجهة بدون تعبئة)
         يجب أن يُرفض برسالة واضحة بدل انهيار قيد NOT NULL في قاعدة
         البيانات."""
-        from odoo.exceptions import UserError
-
         wizard = self.Wizard.create({'project_id': self.project.id})
         wizard.line_ids = [(0, 0, {'date_start': date.today()})]
 
         with self.assertRaises(UserError):
             wizard.action_confirm_assign()
-
-    def test_transfer_wizard_uses_selected_transfer_date(self):
-        """معالج النقل الفردي يجب أن يستخدم فعلياً تاريخ النقل الذي يحدّده
-        المستخدم، لا تاريخ اليوم دائماً."""
-        employee = self.Employee.create({'name': 'موظف للنقل'})
-        past_date = date.today() - timedelta(days=30)
-
-        transfer_wizard = self.env['hr.employee.platform.transfer.wizard'].create({
-            'employee_id': employee.id,
-            'new_project_id': self.project.id,
-            'transfer_date': past_date,
-        })
-        transfer_wizard.action_confirm_transfer()
-
-        self.assertEqual(employee.platform_history_ids.date_start, past_date)
 
     # ------------------------------------------------------------------
     # مزامنة نموذج التوزيع التحليلي لشريك المندوب الشخصي مع منصته الحالية
@@ -158,3 +142,152 @@ class TestHrEmployeePlatformBulkAssign(TransactionCase):
         employee._open_platform_history(self.project)
 
         self.assertEqual(employee.project_id, self.project)
+
+
+@tagged('post_install', '-at_install')
+class TestHrEmployeePlatformTransferRequest(TransactionCase):
+    """يتحقق من خط سير طلب نقل الموظف بين المنصات - النقل لم يعد ينفَّذ
+    فوراً بضغطة واحدة، بل يمر بموافقتين: مسؤول المنصة الحالية للموظف
+    تحديداً، ثم مدير العمليات (وينفّذ النقل الفعلي عند نفس ضغطته)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Employee = cls.env['hr.employee']
+        cls.Request = cls.env['hr.employee.platform.transfer.request']
+        cls.pm_group = cls.env.ref('recruitment_workflow.group_recruitment_workflow_project_manager')
+        cls.ops_group = cls.env.ref('recruitment_workflow.group_recruitment_workflow_operations')
+        cls.current_project = cls.env['project.project'].create({'name': 'المنصة الحالية - طلب نقل'})
+        cls.new_project = cls.env['project.project'].create({'name': 'المنصة الجديدة - طلب نقل'})
+        cls.current_pm = cls.env['res.users'].create({
+            'name': 'مسؤول المنصة الحالية - طلب نقل',
+            'login': 'transfer_current_pm',
+            'email': 'transfer_current_pm@example.com',
+            'group_ids': [(6, 0, [cls.pm_group.id, cls.env.ref('base.group_user').id])],
+        })
+        cls.other_pm = cls.env['res.users'].create({
+            'name': 'مسؤول مشروع آخر - طلب نقل',
+            'login': 'transfer_other_pm',
+            'email': 'transfer_other_pm@example.com',
+            'group_ids': [(6, 0, [cls.pm_group.id, cls.env.ref('base.group_user').id])],
+        })
+        cls.ops_user = cls.env['res.users'].create({
+            'name': 'مدير العمليات - طلب نقل',
+            'login': 'transfer_ops_user',
+            'email': 'transfer_ops_user@example.com',
+            'group_ids': [(6, 0, [cls.ops_group.id, cls.env.ref('base.group_user').id])],
+        })
+        cls.current_project.user_id = cls.current_pm
+
+    def _create_request(self, employee):
+        return self.Request.create({
+            'employee_id': employee.id,
+            'new_project_id': self.new_project.id,
+        })
+
+    def test_full_approval_flow_executes_transfer_with_selected_date(self):
+        """المسار الكامل: مسودة ← بانتظار الموافقة ← وافق مسؤول المنصة
+        الحالية ← تم النقل - وباستخدام تاريخ النقل الذي يحدّده المستخدم
+        فعلياً، لا تاريخ اليوم دائماً."""
+        employee = self.Employee.create({'name': 'موظف للنقل', 'project_id': self.current_project.id})
+        past_date = date.today() - timedelta(days=30)
+        request = self._create_request(employee)
+        request.transfer_date = past_date
+        self.assertEqual(request.current_project_id, self.current_project)
+
+        request.action_submit_review()
+        self.assertEqual(request.state, 'waiting_approval')
+
+        request.with_user(self.current_pm).action_pm_approve()
+        self.assertEqual(request.state, 'pm_approved')
+
+        request.with_user(self.ops_user).action_confirm_transfer()
+        self.assertEqual(request.state, 'done')
+        self.assertEqual(employee.project_id, self.new_project)
+        self.assertEqual(employee.platform_history_ids.filtered('is_current').date_start, past_date)
+
+    def test_pm_approve_requires_specific_current_platform_manager(self):
+        """الموافقة تتطلب مسؤول المنصة الحالية للموظف تحديداً - وليس أي
+        عضو آخر في مجموعة مسؤولي المشاريع."""
+        employee = self.Employee.create({'name': 'موظف للنقل 2', 'project_id': self.current_project.id})
+        request = self._create_request(employee)
+        request.action_submit_review()
+
+        with self.assertRaises(UserError):
+            request.with_user(self.other_pm).action_pm_approve()
+
+        request.with_user(self.current_pm).action_pm_approve()
+        self.assertEqual(request.state, 'pm_approved')
+
+    def test_pm_approve_falls_back_to_operations_without_assigned_manager(self):
+        """موظف على منصة بلا مسؤول معيّن (أو بلا منصة أصلاً) - يُكتفى
+        بصلاحية مدير العمليات كحل احتياطي بدل تعطّل الطلب."""
+        employee = self.Employee.create({'name': 'موظف بلا منصة'})
+        request = self._create_request(employee)
+        self.assertFalse(request.current_project_id)
+        request.action_submit_review()
+
+        with self.assertRaises(UserError):
+            request.with_user(self.other_pm).action_pm_approve()
+
+        request.with_user(self.ops_user).action_pm_approve()
+        self.assertEqual(request.state, 'pm_approved')
+
+    def test_confirm_transfer_requires_pm_approval_first(self):
+        employee = self.Employee.create({'name': 'موظف للنقل 3', 'project_id': self.current_project.id})
+        request = self._create_request(employee)
+        request.action_submit_review()
+
+        with self.assertRaises(UserError):
+            request.with_user(self.ops_user).action_confirm_transfer()
+
+    def test_fields_locked_immediately_after_submit_review(self):
+        """القفل يبدأ فور "إرسال للمراجعة" مباشرة - قبل أي موافقة."""
+        employee = self.Employee.create({'name': 'موظف للنقل 4', 'project_id': self.current_project.id})
+        other_employee = self.Employee.create({'name': 'موظف آخر'})
+        request = self._create_request(employee)
+        request.action_submit_review()
+
+        with self.assertRaises(UserError):
+            request.write({'employee_id': other_employee.id})
+        with self.assertRaises(UserError):
+            request.write({'new_project_id': self.current_project.id})
+
+    def test_confirm_transfer_blocked_if_current_platform_changed_since_request(self):
+        """حارس ضد لقطة قديمة: إن تغيّرت المنصة الحالية للموظف فعلياً منذ
+        إنشاء الطلب (نُقل عبر طلب آخر أولاً) - يُرفض التنفيذ برسالة واضحة
+        بدل تنفيذ نقل مبني على بيانات لم تعد صحيحة."""
+        employee = self.Employee.create({'name': 'موظف للنقل 5', 'project_id': self.current_project.id})
+        request = self._create_request(employee)
+        request.action_submit_review()
+        request.with_user(self.current_pm).action_pm_approve()
+
+        # يُنقَل الموظف فعلياً لمنصة أخرى عبر مسار مختلف بينما هذا الطلب
+        # لا يزال معلَّقاً في حالة "وافق مسؤول المنصة الحالية".
+        third_project = self.env['project.project'].create({'name': 'منصة ثالثة'})
+        employee._open_platform_history(third_project)
+
+        with self.assertRaises(UserError):
+            request.with_user(self.ops_user).action_confirm_transfer()
+
+    def test_reset_draft_and_cancel_require_operations_group(self):
+        employee = self.Employee.create({'name': 'موظف للنقل 6', 'project_id': self.current_project.id})
+        request = self._create_request(employee)
+        request.action_submit_review()
+
+        with self.assertRaises(UserError):
+            request.with_user(self.current_pm).action_reset_draft()
+        with self.assertRaises(UserError):
+            request.with_user(self.current_pm).action_cancel()
+
+        request.with_user(self.ops_user).action_reset_draft()
+        self.assertEqual(request.state, 'draft')
+
+    def test_same_project_rejected(self):
+        """لا يجوز إنشاء طلب نقل لنفس المنصة الحالية للموظف."""
+        employee = self.Employee.create({'name': 'موظف للنقل 7', 'project_id': self.current_project.id})
+        with self.assertRaises(UserError):
+            self.Request.create({
+                'employee_id': employee.id,
+                'new_project_id': self.current_project.id,
+            })

@@ -119,5 +119,12 @@
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
         </record>
 
+        <record id="hr_employee_platform_transfer_request_company_rule" model="ir.rule">
+            <field name="name">طلبات نقل الموظفين بين المنصات: حسب الشركة</field>
+            <field name="model_id" ref="model_hr_employee_platform_transfer_request"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
     </data>
 </odoo>

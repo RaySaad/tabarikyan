@@ -12,6 +12,12 @@
               action="action_recruitment_request"
               sequence="10"/>
 
+    <menuitem id="menu_hr_employee_platform_transfer_request"
+              name="طلبات نقل المنصة"
+              parent="menu_recruitment_workflow_root"
+              action="action_hr_employee_platform_transfer_request"
+              sequence="15"/>
+
     <menuitem id="menu_hr_employee_platform_history"
               name="تاريخ منصات المناديب"
               parent="menu_recruitment_workflow_root"
