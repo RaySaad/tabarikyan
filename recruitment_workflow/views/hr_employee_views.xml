@@ -26,7 +26,8 @@
                 </button>
             </xpath>
             <xpath expr="//field[@name='job_id']" position="after">
-                <field name="project_id" string="المنصة الحالية" options="{'no_create': True}"/>
+                <field name="project_id" string="المنصة الحالية" readonly="1"
+                       options="{'no_create': True}"/>
                 <button name="action_open_platform_transfer_request" type="object"
                         string="طلب نقل لمنصة أخرى" class="btn-link"
                         icon="fa-exchange" invisible="not project_id"/>

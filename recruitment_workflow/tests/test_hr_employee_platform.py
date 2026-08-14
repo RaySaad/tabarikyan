@@ -185,6 +185,18 @@ class TestHrEmployeePlatformTransferRequest(TransactionCase):
             'new_project_id': self.new_project.id,
         })
 
+    def test_direct_write_to_employee_project_id_blocked(self):
+        """المنصة الحالية على سجل الموظف نفسه لا يجوز تعديلها مباشرة (شاشة
+        الموظف، تعديل جماعي، استيراد، أو RPC) - وإلا فُطلب نقل المنصة بخط
+        سير الموافقة بالكامل يصبح بلا معنى، يكفي فتح سجل الموظف وتغيير
+        الحقل يدوياً لتجاوزه تماماً."""
+        employee = self.Employee.create({'name': 'موظف - قفل المنصة المباشر', 'project_id': self.current_project.id})
+
+        with self.assertRaises(UserError):
+            employee.write({'project_id': self.new_project.id})
+        with self.assertRaises(UserError):
+            employee.project_id = self.new_project.id
+
     def test_full_approval_flow_executes_transfer_with_selected_date(self):
         """المسار الكامل: مسودة ← بانتظار الموافقة ← وافق مسؤول المنصة
         الحالية ← تم النقل - وباستخدام تاريخ النقل الذي يحدّده المستخدم

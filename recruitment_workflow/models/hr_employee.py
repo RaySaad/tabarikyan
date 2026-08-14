@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
+from odoo.exceptions import UserError
 
 
 class HrEmployee(models.Model):
@@ -9,9 +10,14 @@ class HrEmployee(models.Model):
         'project.project',
         string='المنصة الحالية',
         tracking=True,
+        # readonly في الواجهة فقط (انظر hr_employee_views.xml) - الحماية
+        # الفعلية من جهة الخادم في write() أدناه، وإلا يبقى الحقل قابلاً
+        # للتعديل المباشر عبر قائمة الموظفين (تعديل جماعي/inline)، الاستيراد،
+        # أو RPC مباشر - متجاوزاً خط سير الموافقة بالكامل رغم إخفاء الزر.
         help='المشروع/المنصة الحالية التي يعمل عليها المندوب (كيتا، '
              'هنقرستيشن...). تُستخدم لفصل المتابعة والحسابات لكل منصة. '
-             'استخدم زر "نقل لمنصة أخرى" لتغييرها مع الاحتفاظ بالتاريخ.',
+             'لا يمكن تعديلها مباشرة - استخدم زر "طلب نقل لمنصة أخرى" '
+             '(يمر بخط سير موافقة، مع الاحتفاظ بالتاريخ الكامل).',
     )
     platform_history_ids = fields.One2many(
         'hr.employee.platform.history',
@@ -78,6 +84,24 @@ class HrEmployee(models.Model):
                 lambda r: r.state not in ('done', 'cancel')
             ))
 
+    def write(self, vals):
+        # المنصة الحالية لا يجوز تعديلها إلا عبر _open_platform_history -
+        # البوابة الوحيدة المستخدمة من كل المسارات المخوَّلة (مباشرة العمل
+        # الأولى من طلب التوظيف، الربط الجماعي للموظفين القدامى، واعتماد
+        # طلب نقل المنصة). أي محاولة تعديل مباشرة لهذا الحقل (شاشة الموظف،
+        # تعديل جماعي من القائمة، استيراد بيانات، أو RPC مباشر) تعني تجاوز
+        # خط سير الموافقة بالكامل رغم إخفاء/تعطيل الزر في الواجهة فقط.
+        if 'project_id' in vals and not self.env.context.get(
+            'platform_history_internal_write'
+        ):
+            raise UserError(_(
+                'لا يمكن تعديل "المنصة الحالية" مباشرة.\n'
+                'استخدم زر "طلب نقل لمنصة أخرى" في سجل الموظف - يمر بخط '
+                'سير موافقة (مسؤول المنصة الحالية ثم مدير العمليات) بدل '
+                'التعديل المباشر.'
+            ))
+        return super().write(vals)
+
     def _open_platform_history(self, project, note=False, date_start=None):
         """يفتح فترة جديدة في تاريخ المنصات ويغلق الفترة المفتوحة الحالية
         (إن وُجدت)، ثم يحدّث المنصة الحالية للمندوب.
@@ -108,7 +132,7 @@ class HrEmployee(models.Model):
             'date_start': date_start,
             'note': note or False,
         })
-        self.project_id = project.id
+        self.with_context(platform_history_internal_write=True).project_id = project.id
         self._sync_contract_project()
         self._sync_partner_analytic_distribution(project)
         self.message_post(body=_(
