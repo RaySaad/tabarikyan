@@ -197,11 +197,11 @@ class BankSettlementMixin(models.AbstractModel):
         return ['employee_id', 'project_id', 'amount', 'tax_amount']
 
     def _get_editable_states(self):
-        """الحالات التي يُسمح فيها بتعديل الحقول الحساسة أعلاه - قبل
-        اعتماد المدير العام. النماذج التي تُسمّي حالاتها بأسماء مختلفة
-        (advance.py مثلاً: waiting_approval بدل under_review) تُجاوز هذه
-        الدالة."""
-        return ('draft', 'under_review')
+        """الحالات التي يُسمح فيها بتعديل الحقول الحساسة أعلاه - "مسودة"
+        فقط، أي أن القفل يبدأ فور "إرسال للمراجعة" مباشرة، قبل أي اعتماد
+        فعلي - بناءً على طلب صريح (بنفس قاعدة السلفة والتي كانت أشد من
+        بقية الشاشات، عُمِّمت الآن على الجميع)."""
+        return ('draft',)
 
     _BANK_FIELDS = ('linked_account_id', 'journal_id')
 

@@ -66,21 +66,21 @@
                             <group string="بيانات المندوب">
                                 <field name="date"/>
                                 <field name="employee_id" string="اسم المندوب" required="1"
-                                       readonly="state not in ('draft', 'under_review')"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="residency_number"/>
                                 <field name="iban"/>
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                             <group string="بيانات المنصة">
                                 <field name="project_id" string="اسم التطبيق"
-                                       readonly="state not in ('draft', 'under_review')"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="platform_employee_id" string="ID رقم"/>
                             </group>
                         </group>
                         <group string="مبلغ التصفية">
                             <field name="currency_id" invisible="1"/>
-                            <field name="settlement_amount" readonly="state not in ('draft', 'under_review')"/>
+                            <field name="settlement_amount" readonly="state != 'draft'"/>
                             <!-- الحساب المرتبط ودفتر اليومية لا يظهران إلا بعد
                                  اعتماد المدير العام، ويبقيان قابلين للتعبئة
                                  تحديداً في تلك الحالة (قبل تسجيل السداد الفعلي). -->

@@ -51,10 +51,9 @@ class BankSettlementAdvance(models.Model):
             'advance_reason_id', 'payment_method', 'employee_iban', 'stc_number',
         ]
 
-    def _get_editable_states(self):
-        # القفل يبدأ فور الإرسال للمراجعة مباشرة (وليس فقط بعد الاعتماد
-        # النهائي) - بناءً على طلب صريح.
-        return ('draft',)
+    # _get_editable_states غير مُجاوَزة هنا - القيمة الافتراضية بالـ mixin
+    # ('draft' فقط) أصبحت مطابقة لما كان خاصاً بالسلف سابقاً (عُمِّم على
+    # كل الشاشات لاحقاً - انظر bank_settlement_mixin.py).
 
     def _get_bank_fields_editable_state(self):
         # حالة اعتماد المدير العام في السلفة اسمها "approved" (تمت

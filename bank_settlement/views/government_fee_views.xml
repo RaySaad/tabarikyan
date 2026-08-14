@@ -66,9 +66,9 @@
                         <group>
                             <group string="بيانات الرسوم">
                                 <field name="government_entity_id"
-                                       readonly="state not in ('draft', 'under_review')"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="fee_type_id"
-                                       readonly="state not in ('draft', 'under_review')"/>
+                                       readonly="state != 'draft'"/>
                                 <!-- الحساب المرتبط لا يظهر إلا بعد اعتماد المدير
                                      العام، ويبقى قابلاً للتعبئة تحديداً في تلك
                                      الحالة (قبل تسجيل السداد الفعلي). -->
@@ -78,9 +78,9 @@
                             <group string="بيانات الموظف">
                                 <field name="employee_category"/>
                                 <field name="employee_id" required="not recruitment_request_id"
-                                       readonly="state not in ('draft', 'under_review')"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="residency_number"/>
-                                <field name="partner_id" readonly="state not in ('draft', 'under_review')"/>
+                                <field name="partner_id" readonly="state != 'draft'"/>
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                         </group>
@@ -93,11 +93,11 @@
                                 <field name="journal_id" readonly="state != 'confirmed'"
                                        invisible="state not in ('confirmed', 'done')"/>
                                 <field name="currency_id" invisible="1"/>
-                                <field name="amount" readonly="state not in ('draft', 'under_review')"/>
+                                <field name="amount" readonly="state != 'draft'"/>
                             </group>
                             <group>
                                 <field name="project_id"
-                                       readonly="state not in ('draft', 'under_review')"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="operating_system"/>
                             </group>

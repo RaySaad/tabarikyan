@@ -64,28 +64,28 @@
                         </div>
                         <group>
                             <group string="بيانات التأمين">
-                                <field name="fee_type_id" readonly="state not in ('draft', 'under_review')"/>
-                                <field name="vendor_id" readonly="state not in ('draft', 'under_review')"/>
+                                <field name="fee_type_id" readonly="state != 'draft'"/>
+                                <field name="vendor_id" readonly="state != 'draft'"/>
                                 <field name="company_iban"/>
                                 <field name="transfer_date"/>
                             </group>
                             <group string="المبالغ">
                                 <field name="currency_id" invisible="1"/>
-                                <field name="amount" readonly="state not in ('draft', 'under_review')"/>
-                                <field name="tax_amount" readonly="state not in ('draft', 'under_review')"/>
+                                <field name="amount" readonly="state != 'draft'"/>
+                                <field name="tax_amount" readonly="state != 'draft'"/>
                                 <field name="total_amount"/>
                             </group>
                         </group>
                         <group>
                             <group string="بيانات المندوب">
                                 <field name="employee_id" string="اسم المندوب" required="1"
-                                       readonly="state not in ('draft', 'under_review')"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="residency_number"/>
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                             <group string="المنصة">
                                 <field name="project_id" string="التطبيق"
-                                       readonly="state not in ('draft', 'under_review')"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="operating_system" string="نظام التشغيل"/>
                             </group>

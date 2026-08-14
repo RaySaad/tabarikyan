@@ -49,6 +49,20 @@ class TestBankSettlementMixin(TransactionCase):
         with self.assertRaises(UserError):
             gov_fee.write({'amount': 999.0})
 
+    def test_fields_locked_immediately_after_submit_review(self):
+        """القفل يبدأ فور "إرسال للمراجعة" مباشرة - قبل تأكيد المدير
+        العام بخطوة كاملة - في كل شاشات السداد البنكي (وليس السلفة
+        فقط)، بناءً على طلب صريح لتعميم نفس قاعدة السلفة."""
+        other_employee = self.env['hr.employee'].create({'name': 'موظف آخر - قفل مبكر'})
+        gov_fee = self._create_gov_fee()
+        gov_fee.action_submit_review()
+        self.assertEqual(gov_fee.state, 'under_review')
+
+        with self.assertRaises(UserError):
+            gov_fee.write({'amount': 999.0})
+        with self.assertRaises(UserError):
+            gov_fee.write({'employee_id': other_employee.id})
+
     def test_bank_fields_only_editable_after_gm_approval(self):
         """دفتر اليومية والحساب المرتبط: يُمنع تحديدهما قبل اعتماد المدير
         العام (لا يظهران أصلاً في الواجهة قبل ذلك)، يُسمح بتحديدهما في
