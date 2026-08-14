@@ -47,7 +47,16 @@ class BankSettlementAdvance(models.Model):
         return 'bank.settlement.advance'
 
     def _get_locked_fields_after_approval(self):
-        return super()._get_locked_fields_after_approval() + [
+        # دفتر اليومية والحساب المرتبط مستثنيان هنا عمداً من القفل العام
+        # (_get_editable_states = 'draft' فقط) - لهما نافذة تعديل خاصة
+        # تبدأ بعد اعتماد المدير العام تحديداً، تُطبَّق عبر write() أدناه
+        # بدل هذه القائمة. لا يظهران أصلاً في الواجهة قبل ذلك (انظر
+        # views/advance_views.xml)، فلا معنى لقفلهما بنفس شرط باقي الحقول.
+        base = [
+            f for f in super()._get_locked_fields_after_approval()
+            if f not in ('journal_id', 'linked_account_id')
+        ]
+        return base + [
             'advance_reason_id', 'payment_method', 'employee_iban', 'stc_number',
         ]
 
@@ -55,6 +64,25 @@ class BankSettlementAdvance(models.Model):
         # القفل يبدأ فور الإرسال للمراجعة مباشرة (وليس فقط بعد الاعتماد
         # النهائي) - بناءً على طلب صريح.
         return ('draft',)
+
+    # دفتر اليومية/الحساب المرتبط: لا يظهران إلا بعد اعتماد المدير العام
+    # ("تمت الموافقة")، ويجب أن يبقيا قابلين للتعبئة تحديداً في تلك
+    # الحالة (قبل الصرف الفعلي) - وليس فقط في "مسودة" كباقي الحقول.
+    _BANK_FIELDS_EDITABLE_STATE = 'approved'
+
+    def write(self, vals):
+        bank_fields = ('journal_id', 'linked_account_id')
+        if any(f in vals for f in bank_fields) and not self.env.context.get(
+            'bank_settlement_skip_approval_lock'
+        ):
+            for rec in self:
+                if rec.state != rec._BANK_FIELDS_EDITABLE_STATE:
+                    raise UserError(
+                        'دفتر اليومية والحساب المرتبط لا يمكن تحديدهما إلا '
+                        'بعد اعتماد المدير العام مباشرة (حالة "تمت الموافقة")، '
+                        'وقبل تسجيل الصرف الفعلي.'
+                    )
+        return super().write(vals)
 
     def action_submit_review(self):
         for rec in self:

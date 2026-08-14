@@ -149,6 +149,35 @@ class TestBankSettlementMixin(TransactionCase):
             advance.write({'employee_id': self.env['hr.employee'].create(
                 {'name': 'موظف سلفة آخر'}).id})
 
+    def test_advance_bank_fields_only_editable_after_gm_approval(self):
+        """دفتر اليومية والحساب المرتبط في السلفة تحديداً: يُمنع تحديدهما
+        قبل اعتماد المدير العام (حتى لو كان السجل لا يزال "مسودة")، ويجب
+        أن يكون تحديدهما ممكناً في حالة "تمت الموافقة" تحديداً - لا يجوز
+        أن يبقيا مقفولين لمجرّد أن السجل غادر "مسودة" (كان هذا خطأً سابقاً:
+        القفل العام لبقية حقول السلفة كان يشمل هذين الحقلين أيضاً رغم أنهما
+        لا يظهران أصلاً إلا بعد الاعتماد)."""
+        journal = self.env['account.journal'].search([], limit=1)
+        account = self.env['account.account'].search([], limit=1)
+        advance = self.Advance.create({
+            'advance_reason_id': self.env.ref(
+                'bank_settlement.advance_reason_salary_advance').id,
+            'amount': 300.0,
+        })
+
+        with self.assertRaises(UserError):
+            advance.write({'journal_id': journal.id})
+
+        advance.action_submit_review()
+        advance.action_pm_approve()
+        with self.assertRaises(UserError):
+            advance.write({'linked_account_id': account.id})
+
+        advance.action_confirm()
+        self.assertEqual(advance.state, 'approved')
+        advance.write({'journal_id': journal.id, 'linked_account_id': account.id})
+        self.assertEqual(advance.journal_id, journal)
+        self.assertEqual(advance.linked_account_id, account)
+
     def test_company_derived_server_side_on_create_without_onchange(self):
         """يجب أن يعمل الاشتقاق من جهة الخادم مباشرة (create()/write())
         بدون الاعتماد على onchange إطلاقاً - يغطي: (1) الحقل غير معروض
