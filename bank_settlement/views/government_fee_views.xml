@@ -89,7 +89,8 @@
                                 <field name="amount" readonly="state not in ('draft', 'under_review')"/>
                             </group>
                             <group>
-                                <field name="project_id"/>
+                                <field name="project_id"
+                                       readonly="state not in ('draft', 'under_review')"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="operating_system"/>
                             </group>

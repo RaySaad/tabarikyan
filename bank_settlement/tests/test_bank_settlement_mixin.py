@@ -58,6 +58,19 @@ class TestBankSettlementMixin(TransactionCase):
         with self.assertRaises(UserError):
             gov_fee.write({'employee_id': other_employee.id})
 
+    def test_project_locked_after_approval(self):
+        """المنصة (project_id) تُقفل هي أيضاً بعد الاعتماد - تُشتق من
+        الموظف المختار (وحساب المنصة التحليلي يُحسب منها)، فلا يجوز
+        تغييرها يدوياً بعد الاعتماد رغم بقاء الموظف نفسه مقفولاً هو
+        الآخر - وإلا أمكن تغيير العزل المالي بين المنصات لسجل معتمَد
+        فعلاً."""
+        other_project = self.env['project.project'].create({'name': 'منصة أخرى'})
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+
+        with self.assertRaises(UserError):
+            gov_fee.write({'project_id': other_project.id})
+
     def test_type_fields_locked_after_approval(self):
         """نوع الرسوم/الجهة الحكومية يُقفلان هما أيضاً بعد الاعتماد."""
         gov_fee = self._create_gov_fee()

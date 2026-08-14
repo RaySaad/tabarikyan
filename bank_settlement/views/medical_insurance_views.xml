@@ -84,7 +84,8 @@
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                             <group string="المنصة">
-                                <field name="project_id" string="التطبيق"/>
+                                <field name="project_id" string="التطبيق"
+                                       readonly="state not in ('draft', 'under_review')"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="operating_system" string="نظام التشغيل"/>
                             </group>

@@ -182,7 +182,16 @@ class BankSettlementMixin(models.AbstractModel):
         شخص، ثم يُغيَّران بعد الاعتماد مباشرة). النماذج الفرعية التي لها
         حقول هوية/مبلغ إضافية خاصة بها (نوع الرسوم، الجهة، السيارة...)
         تُضيفها هنا عبر تجاوز هذه الدالة."""
-        return ['employee_id', 'amount', 'tax_amount', 'linked_account_id', 'journal_id']
+        # project_id (المنصة) مقفول هنا مع employee_id عمداً - يُشتق تلقائياً
+        # من منصة الموظف المختار (انظر _fill_employee_derived_vals/
+        # _onchange_employee_id أعلاه)، وحساب المنصة التحليلي (analytic_
+        # account_id) يُحسَب منه مباشرة - فالسماح بتعديله يدوياً بعد
+        # الاعتماد يُتيح تغيير العزل المالي بين المنصات (كيتا/هنقرستيشن/
+        # جاهز) لسجل مُعتمَد فعلاً، رغم قفل الموظف نفسه.
+        return [
+            'employee_id', 'project_id', 'amount', 'tax_amount',
+            'linked_account_id', 'journal_id',
+        ]
 
     def _get_editable_states(self):
         """الحالات التي يُسمح فيها بتعديل الحقول الحساسة أعلاه - قبل

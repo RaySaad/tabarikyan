@@ -105,7 +105,7 @@
                                        invisible="state not in ('approved', 'paid')"/>
                             </group>
                             <group>
-                                <field name="project_id"/>
+                                <field name="project_id" readonly="state != 'draft'"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <!-- الحساب المرتبط لا يظهر إلا بعد اعتماد
                                      المدير العام، ويبقى قابلاً للتعبئة تحديداً

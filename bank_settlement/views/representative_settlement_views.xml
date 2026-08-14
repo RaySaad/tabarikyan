@@ -72,7 +72,8 @@
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                             <group string="بيانات المنصة">
-                                <field name="project_id" string="اسم التطبيق"/>
+                                <field name="project_id" string="اسم التطبيق"
+                                       readonly="state not in ('draft', 'under_review')"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="platform_employee_id" string="ID رقم"/>
                             </group>
