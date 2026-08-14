@@ -276,12 +276,58 @@ class TestHrEmployeePlatformTransferRequest(TransactionCase):
         request.action_submit_review()
 
         with self.assertRaises(UserError):
-            request.with_user(self.current_pm).action_reset_draft()
+            request.with_user(self.current_pm).action_reset_draft(reason='اختبار')
         with self.assertRaises(UserError):
             request.with_user(self.current_pm).action_cancel()
 
-        request.with_user(self.ops_user).action_reset_draft()
+        request.with_user(self.ops_user).action_reset_draft(reason='بيانات خاطئة')
         self.assertEqual(request.state, 'draft')
+
+    def test_reset_draft_requires_reason(self):
+        """الإرجاع لمسودة يفرض تسجيل سبب - نفس مبدأ "إرجاع للتصحيح" في
+        سير طلبات التوظيف (recruitment.return.wizard)."""
+        employee = self.Employee.create({'name': 'موظف للنقل 8', 'project_id': self.current_project.id})
+        request = self._create_request(employee)
+        request.action_submit_review()
+
+        with self.assertRaises(UserError):
+            request.with_user(self.ops_user).action_reset_draft()
+
+        message_count_before = len(request.message_ids)
+        request.with_user(self.ops_user).action_reset_draft(reason='سبب واضح')
+        self.assertEqual(request.state, 'draft')
+        self.assertGreater(len(request.message_ids), message_count_before)
+
+    def test_reset_to_draft_blocked_via_direct_write(self):
+        """الإرجاع لمسودة ممنوع مباشرة (نقر على شريط الحالة أو write() عبر
+        RPC) - يجب أن يمر حصراً عبر معالج الإرجاع الذي يفرض السبب."""
+        employee = self.Employee.create({'name': 'موظف للنقل 9', 'project_id': self.current_project.id})
+        request = self._create_request(employee)
+        request.action_submit_review()
+
+        with self.assertRaises(UserError):
+            request.write({'state': 'draft'})
+
+    def test_state_jump_more_than_one_step_blocked(self):
+        """لا يجوز القفز عدة مراحل دفعة واحدة عبر write() مباشر (مثلاً
+        النقر على فقاعة متقدمة في شريط الحالة) - حتى لو استُوفيت الشروط
+        الوسيطة تقنياً."""
+        employee = self.Employee.create({'name': 'موظف للنقل 10', 'project_id': self.current_project.id})
+        request = self._create_request(employee)
+
+        with self.assertRaises(UserError):
+            request.write({'state': 'pm_approved'})
+
+    def test_activity_scheduled_for_current_pm_on_submit(self):
+        """عند "إرسال للمراجعة"، يُجدوَل تنبيه (Activity) تلقائي لمسؤول
+        المنصة الحالية تحديداً - بدل تركه يكتشف الطلب بالصدفة."""
+        employee = self.Employee.create({'name': 'موظف للنقل 11', 'project_id': self.current_project.id})
+        request = self._create_request(employee)
+
+        request.action_submit_review()
+
+        self.assertTrue(request.activity_ids)
+        self.assertEqual(request.activity_ids[:1].user_id, self.current_pm)
 
     def test_same_project_rejected(self):
         """لا يجوز إنشاء طلب نقل لنفس المنصة الحالية للموظف."""

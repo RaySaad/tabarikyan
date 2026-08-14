@@ -16,6 +16,16 @@ class HrEmployeePlatformTransferRequest(models.Model):
     2. مدير العمليات - اعتماد نهائي، وينفّذ النقل الفعلي مباشرة عند نفس
        الضغطة (لا حاجة لخطوة تنفيذ منفصلة بعد الاعتماد النهائي - لا يوجد
        "تسليم فعلي" مادي يستوجب فاصلاً زمنياً كما في السداد البنكي).
+
+    مبني على نفس مبدأ سير طلبات التوظيف (recruitment_request.py) - حالات
+    ثابتة بالكود هنا (وليست نموذج مراحل قابل للتعديل مثل recruitment.stage،
+    فالطلب أبسط بكثير ولا يحتاج هذه المرونة)، لكن بنفس الآليات المساعدة:
+    - انتقال خطوة واحدة فقط للأمام عبر write() (يمنع القفز بالنقر المباشر
+      على شريط الحالة القابل للنقر).
+    - إشعار تلقائي (Activity) لصاحب القرار في كل مرحلة.
+    - "إعادة لمسودة" ممنوعة مباشرة، وتمر حصراً عبر معالج يفرض تسجيل السبب
+      (hr.employee.platform.transfer.reset.wizard) - بنفس مبدأ "إرجاع
+      للتصحيح" (recruitment.return.wizard).
     """
     _name = 'hr.employee.platform.transfer.request'
     _description = 'طلب نقل موظف بين المنصات'
@@ -58,6 +68,12 @@ class HrEmployeePlatformTransferRequest(models.Model):
         default='draft', tracking=True, copy=False,
     )
 
+    # ترتيب الحالات الطبيعي - يُستخدم فقط لمنع القفز عدة خطوات دفعة واحدة
+    # عبر write() مباشر (مثال: النقر على فقاعة متقدمة في شريط الحالة).
+    # ليس نموذج مراحل قابلاً للتعديل (خلافاً لـ recruitment.stage) - الطلب
+    # أبسط بكثير ولا يحتاج هذه المرونة.
+    _STATE_SEQUENCE = ['draft', 'waiting_approval', 'pm_approved', 'done']
+
     @api.constrains('new_project_id', 'current_project_id')
     def _check_different_project(self):
         for rec in self:
@@ -89,7 +105,76 @@ class HrEmployeePlatformTransferRequest(models.Model):
                         'الجديدة/التاريخ) بعد "إرسال للمراجعة" - أعد الطلب '
                         'لمسودة أولاً (زر "إعادة لمسودة") إن احتجت تصحيحها.'
                     ))
-        return super().write(vals)
+        if 'state' in vals and not self.env.context.get(
+            'platform_transfer_skip_state_guard'
+        ):
+            new_state = vals['state']
+            for rec in self:
+                if new_state == rec.state or new_state == 'cancel':
+                    # الإلغاء مسموح من أي حالة سابقة لـ"تم النقل" - الصلاحية
+                    # الفعلية تُتحقق منها action_cancel نفسها قبل الوصول هنا.
+                    continue
+                if new_state == 'draft':
+                    # الإرجاع لمسودة ممنوع مباشرة (نقر على شريط الحالة أو
+                    # write() مباشر عبر RPC) - يجب أن يمر حصراً عبر معالج
+                    # "إعادة لمسودة" الذي يفرض تسجيل سبب الإرجاع (انظر
+                    # action_reset_draft أدناه).
+                    raise UserError(_(
+                        'لا يمكن إعادة الطلب لمسودة مباشرة. استخدم زر '
+                        '"إعادة لمسودة" لتسجيل سبب الإرجاع.'
+                    ))
+                if rec.state not in self._STATE_SEQUENCE or new_state not in self._STATE_SEQUENCE:
+                    continue
+                old_index = self._STATE_SEQUENCE.index(rec.state)
+                new_index = self._STATE_SEQUENCE.index(new_state)
+                if new_index > old_index + 1:
+                    raise UserError(_(
+                        'لا يمكن القفز عدة مراحل دفعة واحدة (مثلاً بالنقر '
+                        'على فقاعة متقدمة في شريط الحالة). استخدم الأزرار '
+                        'الصريحة للانتقال خطوة بخطوة.'
+                    ))
+        res = super().write(vals)
+        if 'state' in vals:
+            for rec in self:
+                rec._schedule_stage_activity()
+        return res
+
+    def _get_first_group_user(self, group_xmlid):
+        group = self.env.ref(group_xmlid, raise_if_not_found=False)
+        return group.all_user_ids[:1] if group else self.env['res.users']
+
+    def _get_stage_responsible_user(self):
+        """المستخدم الذي يجب تنبيهه بضرورة اتخاذ إجراء في الحالة الحالية -
+        مسؤول المنصة الحالية تحديداً في "بانتظار الموافقة" إن كان معيّناً،
+        وإلا أول عضو بمجموعة مدير العمليات (نفس فلسفة action_pm_approve)."""
+        self.ensure_one()
+        if self.state == 'waiting_approval':
+            if self.current_project_id and self.current_project_id.user_id:
+                return self.current_project_id.user_id
+            return self._get_first_group_user(
+                'recruitment_workflow.group_recruitment_workflow_operations'
+            )
+        if self.state == 'pm_approved':
+            return self._get_first_group_user(
+                'recruitment_workflow.group_recruitment_workflow_operations'
+            )
+        return self.env['res.users']
+
+    def _schedule_stage_activity(self):
+        """يُنهي أي نشاط (Activity) سابق متعلق بهذا الطلب - الحالة تغيّرت
+        فالإجراء المطلوب سابقاً لم يعد ذا قيمة - ثم يجدول تنبيهاً جديداً
+        لصاحب القرار في الحالة الجديدة (إن وُجد)، بدل تركه يكتشف وجود طلب
+        بانتظاره بالصدفة."""
+        self.ensure_one()
+        self.activity_ids.action_feedback(feedback=_('تغيّرت حالة طلب النقل'))
+        user = self._get_stage_responsible_user()
+        if not user:
+            return
+        self.activity_schedule(
+            act_type_xmlid='mail.mail_activity_data_todo',
+            summary=_('مطلوب مراجعتك: طلب نقل موظف بين المنصات (%s)') % self.name,
+            user_id=user.id,
+        )
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -159,7 +244,25 @@ class HrEmployeePlatformTransferRequest(models.Model):
             )
         self.write({'state': 'done'})
 
-    def action_reset_draft(self):
+    def action_open_reset_wizard(self):
+        """يفتح معالج "إعادة لمسودة" (يفرض تسجيل السبب) - الزر في الواجهة
+        يستدعي هذه الدالة بدل action_reset_draft مباشرة."""
+        self.ensure_one()
+        return {
+            'name': _('إعادة طلب النقل لمسودة'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'hr.employee.platform.transfer.reset.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_request_id': self.id},
+        }
+
+    def action_reset_draft(self, reason=False):
+        """الإعادة الفعلية لمسودة - لا تُستدعى مباشرة من زر بالواجهة (انظر
+        action_open_reset_wizard أعلاه)، بل من hr.employee.platform.
+        transfer.reset.wizard فقط، الذي يفرض تمرير سبب الإرجاع."""
+        if not reason:
+            raise UserError(_('يجب توضيح سبب إعادة الطلب لمسودة.'))
         for rec in self:
             if rec.state == 'done':
                 raise UserError(_(
@@ -167,7 +270,11 @@ class HrEmployeePlatformTransferRequest(models.Model):
                     'أنشئ طلب نقل جديداً إن احتجت عكس النقل.'
                 ))
             rec._check_group('recruitment_workflow.group_recruitment_workflow_operations')
-        self.write({'state': 'draft'})
+        for rec in self:
+            rec.message_post(body=_(
+                'تمت إعادة طلب النقل لمسودة للتصحيح.<br/>السبب: %s'
+            ) % reason)
+        self.with_context(platform_transfer_skip_state_guard=True).write({'state': 'draft'})
 
     def action_cancel(self):
         for rec in self:

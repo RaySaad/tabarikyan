@@ -43,7 +43,7 @@
                                 type="object" class="btn-primary"
                                 groups="recruitment_workflow.group_recruitment_workflow_operations"
                                 invisible="state != 'pm_approved'"/>
-                        <button name="action_reset_draft" string="إعادة لمسودة"
+                        <button name="action_open_reset_wizard" string="إعادة لمسودة"
                                 type="object" groups="recruitment_workflow.group_recruitment_workflow_operations"
                                 invisible="state not in ('waiting_approval', 'pm_approved')"/>
                         <button name="action_cancel" string="إلغاء"
