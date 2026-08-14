@@ -106,6 +106,9 @@ class TestApprovalPermissions(TransactionCase):
             'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id, 'amount': 300.0,
         }).with_user(self.manager_user)
         advance.action_submit_review()
+        # لا موظف محدَّد على هذه السلفة، فتُطبَّق آلية الاحتياط (صلاحية
+        # المدير العام) بدل اشتراط مسؤول مشروع محدَّد.
+        advance.action_pm_approve()
         advance.action_confirm()
 
         with self.assertRaises(UserError):
@@ -124,3 +127,48 @@ class TestApprovalPermissions(TransactionCase):
 
         advance.with_user(self.reviewer_user).action_cancel()
         self.assertEqual(advance.state, 'cancel')
+
+    def test_advance_confirm_requires_pm_approval_first(self):
+        """اعتماد المدير العام لا يجوز إلا بعد موافقة مسؤول المشروع -
+        وليس مباشرة بعد الإرسال للمراجعة."""
+        advance = self.env['bank.settlement.advance'].create({
+            'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id, 'amount': 300.0,
+        }).with_user(self.manager_user)
+        advance.action_submit_review()
+
+        with self.assertRaises(UserError):
+            advance.action_confirm()
+
+    def test_advance_pm_approve_requires_specific_project_manager(self):
+        """موافقة مسؤول المشروع تتطلب مسؤول مشروع الموظف نفسه تحديداً -
+        وليس أي عضو آخر في مجموعة مسؤولي المشاريع."""
+        pm_group = self.env.ref('recruitment_workflow.group_recruitment_workflow_project_manager')
+        assigned_pm = self.env['res.users'].create({
+            'name': 'مسؤول مشروع معيّن - سلفة',
+            'login': 'advance_assigned_pm',
+            'email': 'advance_assigned_pm@example.com',
+            'group_ids': [(6, 0, [pm_group.id, self.env.ref('base.group_user').id])],
+        })
+        other_pm = self.env['res.users'].create({
+            'name': 'مسؤول مشروع آخر - سلفة',
+            'login': 'advance_other_pm',
+            'email': 'advance_other_pm@example.com',
+            'group_ids': [(6, 0, [pm_group.id, self.env.ref('base.group_user').id])],
+        })
+        project = self.env['project.project'].create({
+            'name': 'مشروع تجريبي - سلفة', 'user_id': assigned_pm.id,
+        })
+        employee = self.env['hr.employee'].create({
+            'name': 'موظف سلفة تجريبي', 'project_id': project.id,
+        })
+        advance = self.env['bank.settlement.advance'].create({
+            'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id,
+            'amount': 300.0, 'employee_id': employee.id,
+        })
+        advance.action_submit_review()
+
+        with self.assertRaises(UserError):
+            advance.with_user(other_pm).action_pm_approve()
+
+        advance.with_user(assigned_pm).action_pm_approve()
+        self.assertEqual(advance.state, 'pm_approved')

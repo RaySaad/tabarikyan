@@ -13,6 +13,7 @@ class TestBankSettlementMixin(TransactionCase):
         super().setUpClass()
         cls.GovFee = cls.env['bank.settlement.government.fee']
         cls.Representative = cls.env['bank.settlement.representative']
+        cls.Advance = cls.env['bank.settlement.advance']
 
     def _create_gov_fee(self):
         return self.GovFee.create({
@@ -128,6 +129,25 @@ class TestBankSettlementMixin(TransactionCase):
         gov_fee._onchange_employee_id()
 
         self.assertEqual(gov_fee.company_id, branch)
+
+    def test_advance_locked_immediately_after_submit_review(self):
+        """السلفة تحديداً: حالاتها القابلة للتعديل هي "مسودة" فقط - أي
+        القفل يبدأ فور "إرسال للمراجعة" مباشرة، قبل أي موافقة من مسؤول
+        المشروع أو المدير العام (أشد من النموذج الأساسي الذي يسمح
+        بالتعديل حتى مرحلة المراجعة)."""
+        advance = self.Advance.create({
+            'advance_reason_id': self.env.ref(
+                'bank_settlement.advance_reason_salary_advance').id,
+            'amount': 300.0,
+        })
+        advance.action_submit_review()
+        self.assertEqual(advance.state, 'waiting_approval')
+
+        with self.assertRaises(UserError):
+            advance.write({'amount': 999.0})
+        with self.assertRaises(UserError):
+            advance.write({'employee_id': self.env['hr.employee'].create(
+                {'name': 'موظف سلفة آخر'}).id})
 
     def test_company_derived_server_side_on_create_without_onchange(self):
         """يجب أن يعمل الاشتقاق من جهة الخادم مباشرة (create()/write())
