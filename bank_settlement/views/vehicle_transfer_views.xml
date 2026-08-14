@@ -74,7 +74,11 @@
                                        readonly="state not in ('draft', 'under_review')"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
-                                <field name="linked_account_id" readonly="state not in ('draft', 'under_review')"/>
+                                <!-- الحساب المرتبط لا يظهر إلا بعد اعتماد المدير
+                                     العام، ويبقى قابلاً للتعبئة تحديداً في تلك
+                                     الحالة (قبل تسجيل التحويل الفعلي). -->
+                                <field name="linked_account_id" readonly="state != 'confirmed'"
+                                       invisible="state not in ('confirmed', 'done')"/>
                             </group>
                             <group>
                                 <field name="currency_id" invisible="1"/>
@@ -83,7 +87,10 @@
                                 <field name="total_amount"/>
                                 <field name="transfer_date"/>
                                 <field name="bank_reference"/>
-                                <field name="journal_id" readonly="state not in ('draft', 'under_review')"/>
+                                <!-- دفتر اليومية لا يظهر إلا بعد اعتماد المدير
+                                     العام - لا حاجة له قبل ذلك. -->
+                                <field name="journal_id" readonly="state != 'confirmed'"
+                                       invisible="state not in ('confirmed', 'done')"/>
                             </group>
                         </group>
                         <group string="ملاحظات">

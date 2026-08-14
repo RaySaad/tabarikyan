@@ -81,8 +81,13 @@
                         <group string="مبلغ التصفية">
                             <field name="currency_id" invisible="1"/>
                             <field name="settlement_amount" readonly="state not in ('draft', 'under_review')"/>
-                            <field name="linked_account_id" readonly="state not in ('draft', 'under_review')"/>
-                            <field name="journal_id" readonly="state not in ('draft', 'under_review')"/>
+                            <!-- الحساب المرتبط ودفتر اليومية لا يظهران إلا بعد
+                                 اعتماد المدير العام، ويبقيان قابلين للتعبئة
+                                 تحديداً في تلك الحالة (قبل تسجيل السداد الفعلي). -->
+                            <field name="linked_account_id" readonly="state != 'confirmed'"
+                                   invisible="state not in ('confirmed', 'done')"/>
+                            <field name="journal_id" readonly="state != 'confirmed'"
+                                   invisible="state not in ('confirmed', 'done')"/>
                         </group>
                     </sheet>
                     <chatter/>

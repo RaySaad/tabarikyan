@@ -181,17 +181,20 @@ class BankSettlementMixin(models.AbstractModel):
         عدمه بعد - وإلا أصبحت الموافقة نفسها بلا معنى (يُعتمَد على مبلغ/
         شخص، ثم يُغيَّران بعد الاعتماد مباشرة). النماذج الفرعية التي لها
         حقول هوية/مبلغ إضافية خاصة بها (نوع الرسوم، الجهة، السيارة...)
-        تُضيفها هنا عبر تجاوز هذه الدالة."""
+        تُضيفها هنا عبر تجاوز هذه الدالة.
+
+        ملاحظة: linked_account_id/journal_id ليسا هنا عمداً - لهما نافذة
+        تعديل خاصة تبدأ بعد الاعتماد تحديداً (انظر _get_bank_fields_
+        editable_state أدناه)، بما أنهما لا يظهران أصلاً في الواجهة قبل
+        ذلك (لا معنى لقفلهما بنفس شرط "مسودة/تحت المراجعة" كباقي الحقول
+        هنا)."""
         # project_id (المنصة) مقفول هنا مع employee_id عمداً - يُشتق تلقائياً
         # من منصة الموظف المختار (انظر _fill_employee_derived_vals/
         # _onchange_employee_id أعلاه)، وحساب المنصة التحليلي (analytic_
         # account_id) يُحسَب منه مباشرة - فالسماح بتعديله يدوياً بعد
         # الاعتماد يُتيح تغيير العزل المالي بين المنصات (كيتا/هنقرستيشن/
         # جاهز) لسجل مُعتمَد فعلاً، رغم قفل الموظف نفسه.
-        return [
-            'employee_id', 'project_id', 'amount', 'tax_amount',
-            'linked_account_id', 'journal_id',
-        ]
+        return ['employee_id', 'project_id', 'amount', 'tax_amount']
 
     def _get_editable_states(self):
         """الحالات التي يُسمح فيها بتعديل الحقول الحساسة أعلاه - قبل
@@ -200,23 +203,42 @@ class BankSettlementMixin(models.AbstractModel):
         الدالة."""
         return ('draft', 'under_review')
 
+    _BANK_FIELDS = ('linked_account_id', 'journal_id')
+
+    def _get_bank_fields_editable_state(self):
+        """الحالة الوحيدة التي يُسمح فيها بتحديد دفتر اليومية/الحساب
+        المرتبط - بعد اعتماد المدير العام تحديداً (وهي أول مرة يظهران
+        فيها بالواجهة أصلاً، انظر الشاشات المختلفة) وقبل تسجيل السداد/
+        التحويل الفعلي (بعدها تُستخدَم قيمتهما لإنشاء القيد المحاسبي،
+        فلا معنى لتغييرهما). النماذج التي تُسمّي حالة الاعتماد باسم
+        مختلف (advance.py: 'approved' بدل 'confirmed') تُجاوز هذه
+        الدالة."""
+        return 'confirmed'
+
     def write(self, vals):
+        skip_lock = self.env.context.get('bank_settlement_skip_approval_lock')
         locked = self._get_locked_fields_after_approval()
         # يُتجاوز القفل عمداً لعملية نظامية واحدة: إكمال حقل الموظف
         # تلقائياً بمجرد إنشاء سجله الرسمي (hr.employee) في recruitment_
         # workflow - يستهدف نفس الشخص المرشّح بالضبط (لا تغيير فعلي "لمن")،
         # وليس تعديلاً يدوياً حقيقياً. انظر bank_settlement/models/
         # recruitment_request.py: _create_employee().
-        if any(f in vals for f in locked) and not self.env.context.get(
-            'bank_settlement_skip_approval_lock'
-        ):
+        if any(f in vals for f in locked) and not skip_lock:
             for rec in self:
                 if rec.state not in rec._get_editable_states():
                     raise UserError(
                         'لا يمكن تعديل بيانات السداد الأساسية (الموظف/'
-                        'المبلغ/الحساب/الدفتر) بعد اعتماد المدير العام - '
+                        'المنصة/المبلغ) بعد اعتماد المدير العام - '
                         'أعد السجل لمسودة أولاً (زر "إعادة لمسودة") إن '
                         'احتجت تصحيحها.'
+                    )
+        if any(f in vals for f in self._BANK_FIELDS) and not skip_lock:
+            for rec in self:
+                if rec.state != rec._get_bank_fields_editable_state():
+                    raise UserError(
+                        'دفتر اليومية والحساب المرتبط لا يمكن تحديدهما إلا '
+                        'بعد اعتماد المدير العام مباشرة، وقبل تسجيل السداد/'
+                        'التحويل الفعلي.'
                     )
         self._fill_employee_derived_vals(vals)
         return super().write(vals)

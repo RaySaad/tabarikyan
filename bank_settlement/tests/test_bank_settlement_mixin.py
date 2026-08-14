@@ -23,13 +23,16 @@ class TestBankSettlementMixin(TransactionCase):
         })
 
     def _complete_to_confirmed(self, rec):
+        # دفتر اليومية/الحساب المرتبط لا يُسمح بتحديدهما إلا بعد الاعتماد
+        # تحديداً (حالة "مؤكدة") - فيُضبطان بعد action_confirm() وليس
+        # قبله (انظر test_bank_fields_only_editable_after_gm_approval).
+        rec.action_submit_review()
+        rec.action_confirm()
         rec.write({
             'linked_account_id': self.env['account.account'].search([], limit=1).id,
             'journal_id': self.env['account.journal'].search(
                 [('company_id', '=', rec.company_id.id)], limit=1).id,
         })
-        rec.action_submit_review()
-        rec.action_confirm()
 
     def _complete_to_done(self, rec):
         self._complete_to_confirmed(rec)
@@ -45,9 +48,34 @@ class TestBankSettlementMixin(TransactionCase):
 
         with self.assertRaises(UserError):
             gov_fee.write({'amount': 999.0})
+
+    def test_bank_fields_only_editable_after_gm_approval(self):
+        """دفتر اليومية والحساب المرتبط: يُمنع تحديدهما قبل اعتماد المدير
+        العام (لا يظهران أصلاً في الواجهة قبل ذلك)، يُسمح بتحديدهما في
+        حالة "مؤكدة" تحديداً، ثم يُقفلان مجدداً بعد "منفّذة" (تم إنشاء
+        القيد المحاسبي فعلاً بقيمتيهما، فلا معنى لتغييرهما بعدها)."""
+        journal = self.env['account.journal'].search(
+            [('company_id', '=', self.env.company.id)], limit=1)
+        account = self.env['account.account'].search([], limit=1)
+        gov_fee = self._create_gov_fee()
+
         with self.assertRaises(UserError):
-            gov_fee.write({'journal_id': self.env['account.journal'].search(
-                [('id', '!=', gov_fee.journal_id.id)], limit=1).id})
+            gov_fee.write({'journal_id': journal.id})
+
+        gov_fee.action_submit_review()
+        with self.assertRaises(UserError):
+            gov_fee.write({'linked_account_id': account.id})
+
+        gov_fee.action_confirm()
+        self.assertEqual(gov_fee.state, 'confirmed')
+        gov_fee.write({'journal_id': journal.id, 'linked_account_id': account.id})
+        self.assertEqual(gov_fee.journal_id, journal)
+        self.assertEqual(gov_fee.linked_account_id, account)
+
+        gov_fee.action_done()
+        with self.assertRaises(UserError):
+            gov_fee.write({'linked_account_id': self.env['account.account'].search(
+                [('id', '!=', account.id)], limit=1).id})
 
     def test_employee_locked_after_approval(self):
         """الموظف (الشخص) يُقفل هو أيضاً بعد الاعتماد - وليس فقط المبلغ."""

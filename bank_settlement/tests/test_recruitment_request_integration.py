@@ -77,13 +77,15 @@ class TestRecruitmentRequestIntegration(TransactionCase):
         request = self._create_request(identification_id='1234567838', email='bs8@example.com')
         request.action_register_gov_fee()
         gov_fee = request.bank_settlement_gov_fee_id
+        gov_fee.action_submit_review()
+        gov_fee.action_confirm()
+        # دفتر اليومية/الحساب المرتبط لا يُسمح بتحديدهما إلا بعد الاعتماد
+        # تحديداً (حالة "مؤكدة").
         gov_fee.write({
             'linked_account_id': self.env['account.account'].search([], limit=1).id,
             'journal_id': self.env['account.journal'].search(
                 [('company_id', '=', gov_fee.company_id.id)], limit=1).id,
         })
-        gov_fee.action_submit_review()
-        gov_fee.action_confirm()
         self.assertEqual(gov_fee.state, 'confirmed')
 
         employee = request._create_employee()
@@ -110,12 +112,14 @@ class TestRecruitmentRequestIntegration(TransactionCase):
             request.action_next_stage()
 
         gov_fee = request.bank_settlement_gov_fee_id
+        gov_fee.action_submit_review()
+        gov_fee.action_confirm()
+        # دفتر اليومية/الحساب المرتبط لا يُسمح بتحديدهما إلا بعد الاعتماد
+        # تحديداً (حالة "مؤكدة").
         gov_fee.write({
             'linked_account_id': self.env['account.account'].search([], limit=1).id,
             'journal_id': self.env['account.journal'].search([('company_id', '=', gov_fee.company_id.id)], limit=1).id,
         })
-        gov_fee.action_submit_review()
-        gov_fee.action_confirm()
         gov_fee.action_done()
         self.assertEqual(gov_fee.state, 'done')
         self.assertTrue(gov_fee.move_id)

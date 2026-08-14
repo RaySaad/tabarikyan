@@ -48,13 +48,15 @@ class TestApprovalPermissions(TransactionCase):
         reviewer_user هنا عضو فقط في مجموعات السداد البنكي + المستخدم
         الأساسي، بلا أي مجموعة محاسبية أصلية إطلاقاً."""
         gov_fee = self._create_gov_fee().with_user(self.manager_user)
+        gov_fee.action_submit_review()
+        gov_fee.action_confirm()
+        # دفتر اليومية/الحساب المرتبط لا يُسمح بتحديدهما إلا بعد الاعتماد
+        # تحديداً (حالة "مؤكدة").
         gov_fee.write({
             'linked_account_id': self.env['account.account'].search([], limit=1).id,
             'journal_id': self.env['account.journal'].search(
                 [('company_id', '=', gov_fee.company_id.id)], limit=1).id,
         })
-        gov_fee.action_submit_review()
-        gov_fee.action_confirm()
 
         gov_fee.with_user(self.reviewer_user).action_done()
 
