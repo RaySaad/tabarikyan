@@ -233,6 +233,84 @@ class TestBankSettlementMixin(TransactionCase):
         self.assertEqual(advance.journal_id, journal)
         self.assertEqual(advance.linked_account_id, account)
 
+    def test_draft_record_can_be_deleted_but_submitted_cannot(self):
+        """سجل السداد البنكي سجل تدقيق دائم بعد مغادرة "مسودة" - لا يجوز
+        حذفه نهائياً حتى لمن يملك صلاحية الحذف (مدير عام السداد البنكي)،
+        للحفاظ على أثر كامل لكل سجل رُفع للمراجعة أو اعتُمد أو نُفِّذ."""
+        draft_fee = self._create_gov_fee()
+        draft_fee.unlink()
+        self.assertFalse(draft_fee.exists())
+
+        submitted_fee = self._create_gov_fee()
+        submitted_fee.action_submit_review()
+
+        with self.assertRaises(UserError):
+            submitted_fee.unlink()
+        self.assertTrue(submitted_fee.exists())
+
+    def test_transfer_date_and_bank_reference_locked_after_draft(self):
+        """تاريخ التحويل ورقم السداد البنكي - بيانات التحويل الفعلي - لم
+        يكونا مقفولين إطلاقاً سابقاً (ثغرة حقيقية)، رغم ارتباطهما بقيد
+        محاسبي حقيقي فور "منفّذة"."""
+        gov_fee = self._create_gov_fee()
+        gov_fee.action_submit_review()
+
+        with self.assertRaises(UserError):
+            gov_fee.write({'transfer_date': '2025-01-01'})
+        with self.assertRaises(UserError):
+            gov_fee.write({'bank_reference': 'REF-123'})
+
+    def test_negative_amount_rejected(self):
+        with self.assertRaises(UserError):
+            self._create_gov_fee().write({'amount': -100.0})
+        with self.assertRaises(UserError):
+            self.GovFee.create({
+                'government_entity_id': self.env.ref('bank_settlement.government_entity_mol_resident').id,
+                'fee_type_id': self.env.ref('bank_settlement.government_fee_type_sponsorship_transfer').id,
+                'amount': -100.0,
+            })
+
+    def test_zero_amount_blocks_submit_review(self):
+        """لا يجوز إرسال سجل بمبلغ صفري/فارغ للمراجعة - وإلا أمكن مروره
+        حتى "منفّذة" وإنشاء قيد محاسبي فعلي بمبلغ غير منطقي (ثغرة حقيقية
+        مكتشفة بمراجعة شاملة: لم يكن يوجد أي تحقق سابقاً)."""
+        gov_fee = self.GovFee.create({
+            'government_entity_id': self.env.ref('bank_settlement.government_entity_mol_resident').id,
+            'fee_type_id': self.env.ref('bank_settlement.government_fee_type_sponsorship_transfer').id,
+        })
+        with self.assertRaises(UserError):
+            gov_fee.action_submit_review()
+
+    def test_company_isolation_between_branches(self):
+        """مستخدم شركة/فرع لا يجب أن يرى سجلات سداد بنكي تخص فرعاً آخر -
+        كانت هذه ثغرة موثّقة صراحة في الكود (لا Record Rules على نماذج
+        السداد البنكي نفسها)."""
+        branch_a = self.env['res.company'].create({
+            'name': 'فرع أ - عزل سداد بنكي', 'parent_id': self.env.company.id,
+        })
+        branch_b = self.env['res.company'].create({
+            'name': 'فرع ب - عزل سداد بنكي', 'parent_id': self.env.company.id,
+        })
+        fee_a = self._create_gov_fee()
+        fee_a.company_id = branch_a.id
+        fee_b = self._create_gov_fee()
+        fee_b.company_id = branch_b.id
+
+        user_group = self.env.ref('bank_settlement.group_bank_settlement_user')
+        branch_a_user = self.env['res.users'].create({
+            'name': 'مستخدم فرع أ - سداد بنكي',
+            'login': 'branch_a_bank_settlement_user',
+            'email': 'branch_a_bank_settlement_user@example.com',
+            'company_ids': [(6, 0, [branch_a.id])],
+            'company_id': branch_a.id,
+            'group_ids': [(6, 0, [user_group.id, self.env.ref('base.group_user').id])],
+        })
+
+        visible = self.GovFee.with_user(branch_a_user).search([
+            ('id', 'in', (fee_a | fee_b).ids),
+        ])
+        self.assertEqual(visible, fee_a)
+
     def test_company_derived_server_side_on_create_without_onchange(self):
         """يجب أن يعمل الاشتقاق من جهة الخادم مباشرة (create()/write())
         بدون الاعتماد على onchange إطلاقاً - يغطي: (1) الحقل غير معروض
@@ -253,3 +331,32 @@ class TestBankSettlementMixin(TransactionCase):
         })
 
         self.assertEqual(gov_fee.company_id, branch)
+
+    def test_insurance_transfer_creation_is_idempotent(self):
+        """استدعاء action_create_insurance_transfer مرتين (نقرة مزدوجة/
+        RPC مكرر) يجب ألا ينشئ فاتورة مورد ثانية - كان بلا أي تحقق
+        سابقاً (بعكس action_done المشتركة)، فيُنشئ فاتورتين حقيقيتين
+        لنفس السجل."""
+        vendor = self.env['res.partner'].create({'name': 'مورد تأمين تجريبي'})
+        insurance = self.env['bank.settlement.medical.insurance'].create({
+            'fee_type_id': self.env.ref('bank_settlement.medical_insurance_type_medical_insurance').id,
+            'vendor_id': vendor.id,
+            'amount': 300.0,
+        })
+        insurance.action_submit_review()
+        insurance.action_confirm()
+
+        first_move = insurance.action_create_insurance_transfer()
+        second_move = insurance.action_create_insurance_transfer()
+
+        self.assertEqual(first_move, second_move)
+        self.assertEqual(insurance.state, 'done')
+
+    def test_config_list_rejects_duplicate_name(self):
+        from psycopg2 import IntegrityError
+        from odoo.tools import mute_logger
+
+        self.env['bank.settlement.advance.reason'].create({'name': 'سبب تجريبي فريد'})
+        with self.assertRaises(IntegrityError), mute_logger('odoo.sql_db'):
+            with self.env.cr.savepoint():
+                self.env['bank.settlement.advance.reason'].create({'name': 'سبب تجريبي فريد'})

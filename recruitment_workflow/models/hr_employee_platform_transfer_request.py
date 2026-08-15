@@ -139,6 +139,21 @@ class HrEmployeePlatformTransferRequest(models.Model):
                 rec._schedule_stage_activity()
         return res
 
+    def unlink(self):
+        # طلب نقل المنصة سجل تدقيق ومراجعة دائم (خصوصاً بعد كل القفل/منع
+        # القفز/إشعارات الموافقة المبنية عليه) - يُمنع حذفه نهائياً بعد
+        # مغادرة "مسودة" (حتى لمدير العمليات الذي يملك صلاحية الحذف)،
+        # بنفس مبدأ recruitment_request.unlink(). "إلغاء" هو البديل
+        # الوحيد لمن غادر "مسودة".
+        for rec in self:
+            if rec.state != 'draft':
+                raise UserError(_(
+                    'لا يمكن حذف طلب النقل نهائياً بعد مغادرة "مسودة" - '
+                    'للحفاظ على سجل تدقيق ومراجعة كامل. استخدم زر "إلغاء" '
+                    'بدلاً من ذلك.'
+                ))
+        return super().unlink()
+
     def _get_first_group_user(self, group_xmlid):
         group = self.env.ref(group_xmlid, raise_if_not_found=False)
         return group.all_user_ids[:1] if group else self.env['res.users']

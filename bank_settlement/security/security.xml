@@ -72,5 +72,46 @@
             <field name="perm_unlink">0</field>
         </record>
 
+        <!-- عزل حسب الشركة/الفرع على سجلات السداد البنكي نفسها - كان
+             مفقوداً سابقاً (أي عضو في مجموعات السداد البنكي يرى سجلات كل
+             الشركات/الفروع بلا استثناء)، بنفس نمط hr_employee_platform_
+             history_company_rule في recruitment_workflow. قاعدة واحدة
+             لكل نموذج من الخمسة (لا يمكن ربط ir.rule بالـ mixin
+             التجريدي مباشرة - لا جدول خاص به). -->
+        <record id="bank_settlement_advance_company_rule" model="ir.rule">
+            <field name="name">السلف: حسب الشركة</field>
+            <field name="model_id" ref="model_bank_settlement_advance"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="bank_settlement_government_fee_company_rule" model="ir.rule">
+            <field name="name">الرسوم الحكومية: حسب الشركة</field>
+            <field name="model_id" ref="model_bank_settlement_government_fee"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="bank_settlement_vehicle_transfer_company_rule" model="ir.rule">
+            <field name="name">تحويلات المركبات: حسب الشركة</field>
+            <field name="model_id" ref="model_bank_settlement_vehicle_transfer"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="bank_settlement_medical_insurance_company_rule" model="ir.rule">
+            <field name="name">التأمين الطبي: حسب الشركة</field>
+            <field name="model_id" ref="model_bank_settlement_medical_insurance"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="bank_settlement_representative_company_rule" model="ir.rule">
+            <field name="name">تصفيات المناديب: حسب الشركة</field>
+            <field name="model_id" ref="model_bank_settlement_representative"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
     </data>
 </odoo>

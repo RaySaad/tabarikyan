@@ -85,8 +85,8 @@
                                 <field name="amount" readonly="state != 'draft'"/>
                                 <field name="tax_amount" readonly="state != 'draft'"/>
                                 <field name="total_amount"/>
-                                <field name="transfer_date"/>
-                                <field name="bank_reference"/>
+                                <field name="transfer_date" readonly="state != 'draft'"/>
+                                <field name="bank_reference" readonly="state != 'draft'"/>
                                 <!-- دفتر اليومية لا يظهر إلا بعد اعتماد المدير
                                      العام - لا حاجة له قبل ذلك. -->
                                 <field name="journal_id" readonly="state != 'confirmed'"

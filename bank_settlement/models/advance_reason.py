@@ -12,3 +12,7 @@ class BankSettlementAdvanceReason(models.Model):
     name = fields.Char(string='الاسم', required=True)
     sequence = fields.Integer(string='الترتيب', default=10)
     active = fields.Boolean(default=True)
+
+    _sql_constraints = [
+        ('name_uniq', 'unique(name)', 'يوجد سبب سلفة آخر بنفس الاسم بالفعل.'),
+    ]

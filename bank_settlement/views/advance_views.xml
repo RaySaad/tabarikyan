@@ -76,7 +76,7 @@
                                 <field name="employee_id" required="1"
                                        readonly="state != 'draft'"/>
                                 <field name="residency_number"/>
-                                <field name="employee_category"/>
+                                <field name="employee_category" readonly="state != 'draft'"/>
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                             <group string="بيانات السلفة">
@@ -95,8 +95,8 @@
                         </group>
                         <group string="بيانات السداد البنكي">
                             <group>
-                                <field name="transfer_date"/>
-                                <field name="bank_reference"/>
+                                <field name="transfer_date" readonly="state != 'draft'"/>
+                                <field name="bank_reference" readonly="state != 'draft'"/>
                                 <!-- دفتر اليومية لا يظهر إلا بعد اعتماد المدير
                                      العام، ويبقى قابلاً للتعبئة تحديداً في تلك
                                      الحالة (قبل الصرف الفعلي) - وليس "مسودة"

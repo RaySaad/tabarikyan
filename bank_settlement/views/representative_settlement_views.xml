@@ -64,18 +64,19 @@
                         </div>
                         <group>
                             <group string="بيانات المندوب">
-                                <field name="date"/>
+                                <field name="date" readonly="state != 'draft'"/>
                                 <field name="employee_id" string="اسم المندوب" required="1"
                                        readonly="state != 'draft'"/>
                                 <field name="residency_number"/>
-                                <field name="iban"/>
+                                <field name="iban" readonly="state != 'draft'"/>
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                             <group string="بيانات المنصة">
                                 <field name="project_id" string="اسم التطبيق"
                                        readonly="state != 'draft'"/>
                                 <field name="analytic_account_id" readonly="1"/>
-                                <field name="platform_employee_id" string="ID رقم"/>
+                                <field name="platform_employee_id" string="ID رقم"
+                                       readonly="state != 'draft'"/>
                             </group>
                         </group>
                         <group string="مبلغ التصفية">

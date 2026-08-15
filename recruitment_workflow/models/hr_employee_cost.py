@@ -99,6 +99,29 @@ class HrEmployeeCost(models.Model):
                 rec.cost_type_id.name or _('تكلفة'), rec.employee_id.name or '',
             )
 
+    @api.constrains('amount')
+    def _check_amount_positive(self):
+        """يمنع مبلغاً سالباً أو صفرياً - كان بلا أي تحقق سابقاً، يمكن
+        رفع تكلفة بمبلغ سالب فعلياً كفاتورة مورد حقيقية (ثغرة مكتشفة
+        بمراجعة شاملة)."""
+        for rec in self:
+            if rec.amount <= 0:
+                raise UserError(_('المبلغ يجب أن يكون أكبر من صفر.'))
+
+    def unlink(self):
+        # تكاليف الموظفين سجل تدقيق ومراجعة دائم مرتبط بفواتير موردين
+        # حقيقية - يُمنع حذفها نهائياً بعد مغادرة "مسودة" (حتى لممن يملك
+        # صلاحية الحذف)، بنفس مبدأ recruitment_request.unlink(). "إلغاء"
+        # هو البديل الوحيد لمن غادر "مسودة".
+        for rec in self:
+            if rec.state != 'draft':
+                raise UserError(_(
+                    'لا يمكن حذف هذه التكلفة نهائياً بعد مغادرة "مسودة" - '
+                    'للحفاظ على سجل تدقيق ومراجعة كامل. استخدم "إلغاء" '
+                    'بدلاً من ذلك.'
+                ))
+        return super().unlink()
+
     @api.onchange('employee_id')
     def _onchange_employee_id(self):
         if self.employee_id and self.employee_id.project_id:

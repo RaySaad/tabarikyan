@@ -65,6 +65,7 @@ class BankSettlementAdvance(models.Model):
         for rec in self:
             if rec.state != 'draft':
                 raise UserError('يمكن إرسال السلف في حالة "مسودة" فقط للمراجعة.')
+        self._check_amount_positive_before_submit()
         self.write({'state': 'waiting_approval'})
 
     def action_pm_approve(self):

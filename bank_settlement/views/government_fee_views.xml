@@ -76,7 +76,7 @@
                                        invisible="state not in ('confirmed', 'done')"/>
                             </group>
                             <group string="بيانات الموظف">
-                                <field name="employee_category"/>
+                                <field name="employee_category" readonly="state != 'draft'"/>
                                 <field name="employee_id" required="not recruitment_request_id"
                                        readonly="state != 'draft'"/>
                                 <field name="residency_number"/>
@@ -86,8 +86,8 @@
                         </group>
                         <group string="بيانات السداد البنكي">
                             <group>
-                                <field name="transfer_date"/>
-                                <field name="bank_reference"/>
+                                <field name="transfer_date" readonly="state != 'draft'"/>
+                                <field name="bank_reference" readonly="state != 'draft'"/>
                                 <!-- دفتر اليومية لا يظهر إلا بعد اعتماد المدير
                                      العام - لا حاجة له قبل ذلك. -->
                                 <field name="journal_id" readonly="state != 'confirmed'"

@@ -151,6 +151,18 @@ class TestHrEmployeePlatformBulkAssign(TransactionCase):
             {str(other_project.account_id.id): 100.0},
         )
 
+    def test_platform_history_cannot_be_deleted(self):
+        """سجل تاريخ المنصات هو المرجع الرسمي الدائم لمن عمل على أي منصة
+        ومتى - يُمنع حذفه نهائياً بالكامل (لا مفهوم "مسودة" هنا)، حتى
+        لمدير سير العمل الذي يملك صلاحية الحذف على مستوى الوصول."""
+        employee = self.Employee.create({'name': 'موظف - تاريخ منصات لا يُحذف'})
+        employee._open_platform_history(self.project)
+        history = employee.platform_history_ids
+
+        with self.assertRaises(UserError):
+            history.unlink()
+        self.assertTrue(history.exists())
+
     def test_open_platform_history_no_crash_without_personal_partner(self):
         """موظف بدون أي شريك شخصي (لا work_contact_id ولا مستخدم مرتبط)
         لا يجب أن يتسبب في أي خطأ - فقط يتخطى إنشاء نموذج التوزيع."""
@@ -269,6 +281,23 @@ class TestHrEmployeePlatformTransferRequest(TransactionCase):
 
         with self.assertRaises(UserError):
             request.with_user(self.ops_user).action_confirm_transfer()
+
+    def test_draft_request_can_be_deleted_but_submitted_cannot(self):
+        """طلب النقل سجل تدقيق دائم بعد مغادرة "مسودة" - لا يجوز حذفه
+        نهائياً حتى لمدير العمليات الذي يملك صلاحية الحذف، للحفاظ على
+        أثر كامل لكل طلب رُفع للمراجعة أو اعتُمد فعلاً."""
+        employee = self.Employee.create({'name': 'موظف للنقل - حذف', 'project_id': self.current_project.id})
+        draft_request = self._create_request(employee)
+        draft_request.unlink()
+        self.assertFalse(draft_request.exists())
+
+        other_employee = self.Employee.create({'name': 'موظف للنقل - حذف 2', 'project_id': self.current_project.id})
+        submitted_request = self._create_request(other_employee)
+        submitted_request.action_submit_review()
+
+        with self.assertRaises(UserError):
+            submitted_request.with_user(self.ops_user).unlink()
+        self.assertTrue(submitted_request.exists())
 
     def test_fields_locked_immediately_after_submit_review(self):
         """القفل يبدأ فور "إرسال للمراجعة" مباشرة - قبل أي موافقة."""

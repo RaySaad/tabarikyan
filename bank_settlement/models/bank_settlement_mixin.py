@@ -145,6 +145,26 @@ class BankSettlementMixin(models.AbstractModel):
         for rec in self:
             rec.total_amount = (rec.amount or 0.0) + (rec.tax_amount or 0.0)
 
+    @api.constrains('amount', 'tax_amount')
+    def _check_amount_not_negative(self):
+        """يمنع أي مبلغ سالب في أي حالة - لا يوجد سيناريو مشروع لمبلغ/
+        ضريبة سالبين هنا (كانت ثغرة حقيقية: لا يوجد أي تحقق سابقاً، يمكن
+        تمرير مبلغ سالب حتى مرحلة "منفّذة" وإنشاء قيد محاسبي فعلي به)."""
+        for rec in self:
+            if rec.amount and rec.amount < 0:
+                raise UserError('المبلغ لا يمكن أن يكون سالباً.')
+            if rec.tax_amount and rec.tax_amount < 0:
+                raise UserError('مبلغ الضريبة لا يمكن أن يكون سالباً.')
+
+    def _check_amount_positive_before_submit(self):
+        """يتحقق من أن المبلغ موجب فعلياً (وليس صفراً أو فارغاً) قبل
+        إرسال السجل للمراجعة - النماذج التي تُسمّي إجراء الإرسال بأسلوب
+        مختلف (advance.py: state مختلف) تستدعيها صراحة قبل تنفيذ
+        الانتقال."""
+        for rec in self:
+            if not rec.amount or rec.amount <= 0:
+                raise UserError('يجب تحديد مبلغ أكبر من صفر قبل إرسال السجل للمراجعة.')
+
     def _compute_attachment_count(self):
         for rec in self:
             rec.attachment_count = self.env['ir.attachment'].search_count([
@@ -194,7 +214,14 @@ class BankSettlementMixin(models.AbstractModel):
         # account_id) يُحسَب منه مباشرة - فالسماح بتعديله يدوياً بعد
         # الاعتماد يُتيح تغيير العزل المالي بين المنصات (كيتا/هنقرستيشن/
         # جاهز) لسجل مُعتمَد فعلاً، رغم قفل الموظف نفسه.
-        return ['employee_id', 'project_id', 'amount', 'tax_amount']
+        # transfer_date/bank_reference: بيانات التحويل البنكي الفعلي - كان
+        # هذان الحقلان بلا أي قفل إطلاقاً في كل الشاشات سابقاً (ثغرة حقيقية
+        # مكتشفة بمراجعة شاملة)، قابلين للتعديل حتى بعد "منفّذة" مع وجود
+        # قيد محاسبي حقيقي مرتبط فعلاً بقيمتيهما وقت إنشائه.
+        return [
+            'employee_id', 'employee_category', 'project_id', 'amount',
+            'tax_amount', 'transfer_date', 'bank_reference',
+        ]
 
     def _get_editable_states(self):
         """الحالات التي يُسمح فيها بتعديل الحقول الحساسة أعلاه - "مسودة"
@@ -243,6 +270,22 @@ class BankSettlementMixin(models.AbstractModel):
         self._fill_employee_derived_vals(vals)
         return super().write(vals)
 
+    def unlink(self):
+        # سجلات السداد البنكي سجل تدقيق ومراجعة دائم - يُمنع حذفها نهائياً
+        # بعد مغادرة "مسودة" (حتى لممن يملك صلاحية الحذف على مستوى ir.
+        # model.access، مثل مدير عام السداد البنكي)، حفاظاً على أثر كامل
+        # لكل سجل رُفع للمراجعة أو اعتُمد أو نُفِّذ فعلياً - بنفس مبدأ
+        # recruitment_workflow.recruitment_request.unlink(). الإلغاء (زر
+        # "إلغاء") هو البديل الوحيد لمن غادر "مسودة".
+        for rec in self:
+            if rec.state != 'draft':
+                raise UserError(
+                    'لا يمكن حذف هذا السجل نهائياً بعد مغادرة "مسودة" - '
+                    'للحفاظ على سجل تدقيق ومراجعة كامل. استخدم زر "إلغاء" '
+                    'بدلاً من ذلك إن احتجت إيقافه.'
+                )
+        return super().unlink()
+
     def _get_sequence_code_for_create(self, vals):
         """كل نموذج فرعي يجب أن يحدد كود التسلسل الخاص به."""
         seq_code = self._sequence_code()
@@ -265,6 +308,7 @@ class BankSettlementMixin(models.AbstractModel):
         for rec in self:
             if rec.state != 'draft':
                 raise UserError('يمكن إرسال السجلات في حالة "مسودة" فقط للمراجعة.')
+        self._check_amount_positive_before_submit()
         self.write({'state': 'under_review'})
 
     def action_confirm(self):
