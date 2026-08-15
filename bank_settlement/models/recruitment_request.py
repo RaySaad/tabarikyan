@@ -30,6 +30,31 @@ class RecruitmentRequest(models.Model):
                 rec.bank_settlement_gov_fee_id = rec._create_bank_settlement_gov_fee_record()
         return result
 
+    def _unlock_gov_fee_for_correction(self):
+        """يُستدعى من "إرجاع للتصحيح" (action_return_to_stage) - يعالج
+        سجل "الرسوم الحكومية" المرتبط بالسداد البنكي (إن وُجد) قبل فتح
+        قفل المبلغ على طلب التوظيف نفسه:
+        - سُدِّدت فعلاً (state == 'done') => يُمنَع الإرجاع كلياً؛ القيد
+          المحاسبي الفعلي موجود، والتصحيح يجب أن يمر من السداد البنكي
+          نفسه (عكس/إلغاء القيد) وليس من هنا.
+        - لم تُسدَّد بعد (مسودة/تحت المراجعة/مؤكدة) => move_id فارغ حتماً
+          في هذه الحالات (لا يُنشأ إلا داخل action_done نفسها)، فيُحذف
+          السجل بأمان بلا أي قيد محاسبي معلَّق، ليُنشأ سجل جديد بالمبلغ
+          المصحَّح تلقائياً عند إعادة الضغط على "تسجيل الرسوم الحكومية"."""
+        self.ensure_one()
+        gov_fee = self.bank_settlement_gov_fee_id
+        if gov_fee:
+            if gov_fee.state == 'done':
+                raise UserError(
+                    'لا يمكن "إرجاع للتصحيح" - الرسوم الحكومية سُدِّدت '
+                    'فعلاً من السداد البنكي (%s). راجع/اعكس القيد '
+                    'المحاسبي من هناك أولاً إن احتجت تصحيح المبلغ.'
+                    % gov_fee.name
+                )
+            self.bank_settlement_gov_fee_id = False
+            gov_fee.sudo().unlink()
+        return super()._unlock_gov_fee_for_correction()
+
     def _validate_stage_exit(self, current_stage):
         """يضيف شرط مرحلة "تم السداد" الفعلي عندكم: تأكيد سداد إجمالي
         الرسوم الحكومية للمنصة/الجهة الحكومية (سجل "الرسوم الحكومية" في

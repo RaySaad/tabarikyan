@@ -925,6 +925,13 @@ class RecruitmentRequest(models.Model):
         ):
             raise UserError(_('ليست لديك الصلاحية للقيام بهذا الإجراء.'))
         old_stage = self.stage_id
+        # يفتح حقل مبلغ الرسوم الحكومية للتعديل مجدداً إن كان مقفولاً -
+        # وإلا يبقى "إرجاع للتصحيح" بلا معنى فعلي لو كان الخطأ في المبلغ
+        # نفسه (انظر _unlock_gov_fee_for_correction أدناه؛ bank_settlement
+        # تتجاوزها لمعالجة السجل المرتبط بالسداد البنكي أو منع الإرجاع
+        # كلياً إن سُدِّدت الرسوم فعلاً - يجب أن يحدث هذا قبل تغيير المرحلة
+        # حتى يُوقَف الإرجاع بالكامل إن رُفض).
+        self._unlock_gov_fee_for_correction()
         # السماح بالكتابة رغم أن الوجهة مرحلة سابقة (نتجاوز فحص الانتقال للأمام)
         self.with_context(skip_stage_validation=True).write({
             'stage_id': target_stage.id,
@@ -1082,6 +1089,18 @@ class RecruitmentRequest(models.Model):
                 'مطلوب منك: فاتورة رسوم توظيف بانتظار المراجعة والسداد',
                 note=_('الطلب: %s - المبلغ: %s') % (rec.name, rec.fee_amount),
             )
+
+    def _unlock_gov_fee_for_correction(self):
+        """يُعاد ضبط قفل الرسوم الحكومية عند "إرجاع للتصحيح" - يفتح حقل
+        المبلغ (gov_fee_amount) للتعديل مجدداً (readonly="gov_fee_settled"
+        في العرض). النماذج الفرعية (bank_settlement) تتجاوز هذه الدالة
+        لمعالجة أي سجل "رسوم حكومية" مرتبط بالسداد البنكي أولاً - تحذفه
+        إن لم تُسدَّد الرسوم فعلاً بعد، أو تمنع "إرجاع للتصحيح" كلياً
+        (بإثارة استثناء) إن كانت قد سُدِّدت فعلاً - قبل استدعاء super()
+        هنا."""
+        self.ensure_one()
+        if self.gov_fee_settled:
+            self.gov_fee_settled = False
 
     def action_register_gov_fee(self):
         """يسجّل الرسوم الحكومية لنقل الكفالة على هذا الطلب - المبلغ

@@ -788,3 +788,24 @@ class TestRecruitmentRequest(TransactionCase):
         request.action_next_stage()
 
         self.assertEqual(request.stage_id.code, 'sponsorship_done')
+
+    def test_gov_fee_unlocked_after_return_to_stage(self):
+        """"إرجاع للتصحيح" يفتح قفل مبلغ الرسوم الحكومية مجدداً - وإلا
+        يبقى الحقل مقفولاً للأبد رغم الرجوع لمرحلة سابقة (كان هذا خطأً
+        سابقاً: action_return_to_stage لا يمسّ gov_fee_settled إطلاقاً،
+        فيبقى readonly="gov_fee_settled" في العرض ساري المفعول للأبد)."""
+        request = self._create_request(
+            identification_id='1234567824', email='ah@example.com',
+            gov_fee_amount=1000.0,
+        )
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_sponsorship_transfer.id,
+        })
+        request.action_register_gov_fee()
+        self.assertTrue(request.gov_fee_settled)
+
+        request.action_return_to_stage(self.stage_project_review, 'مبلغ خاطئ')
+
+        self.assertFalse(request.gov_fee_settled)
+        request.gov_fee_amount = 1500.0
+        self.assertEqual(request.gov_fee_amount, 1500.0)
