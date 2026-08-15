@@ -135,10 +135,12 @@ class BankSettlementMixin(models.AbstractModel):
             ('under_review', 'تحت المراجعة'),
             ('confirmed', 'مؤكدة'),
             ('done', 'منفّذة'),
+            ('rejected', 'مرفوضة'),
             ('cancel', 'ملغاة'),
         ],
         string='الحالة', default='draft', tracking=True, copy=False,
     )
+    rejection_reason = fields.Text(string='سبب الرفض', copy=False)
 
     @api.depends('amount', 'tax_amount')
     def _compute_total_amount(self):
@@ -364,6 +366,43 @@ class BankSettlementMixin(models.AbstractModel):
                 'bank_settlement.group_bank_settlement_manager',
             )
         self.write({'state': 'cancel'})
+
+    def action_open_reject_wizard(self):
+        """يفتح معالج "رفض" (يفرض تسجيل السبب) - الزر في الواجهة يستدعي
+        هذه الدالة بدل action_reject مباشرة."""
+        self.ensure_one()
+        return {
+            'name': 'رفض السجل',
+            'type': 'ir.actions.act_window',
+            'res_model': 'bank.settlement.reject.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_res_model': self._name, 'default_res_id': self.id},
+        }
+
+    def action_reject(self, reason=False):
+        """رفض السجل - يتطلب سبباً إجبارياً (بعكس "إلغاء" الذي لا يتطلب
+        سبباً) - يُستخدم عند اكتشاف مراجع/مدير عام السداد البنكي أن
+        بيانات السجل خاطئة وتحتاج تصحيحاً من مُنشئه (وليس مجرد إيقافه
+        نهائياً كما في "إلغاء"). لا تُستدعى مباشرة من زر بالواجهة - تمر
+        حصراً عبر bank.settlement.reject.wizard الذي يفرض تمرير السبب
+        (انظر action_open_reject_wizard أعلاه)، بنفس مبدأ "رفض" في
+        recruitment_workflow.recruitment_request."""
+        if not reason:
+            raise UserError('يجب إدخال سبب الرفض.')
+        for rec in self:
+            if rec.state in ('done', 'cancel', 'rejected'):
+                raise UserError(
+                    'لا يمكن رفض سجل بحالة "%s".'
+                    % dict(rec._fields['state'].selection).get(rec.state, rec.state)
+                )
+            rec._check_group(
+                'bank_settlement.group_bank_settlement_reviewer',
+                'bank_settlement.group_bank_settlement_manager',
+            )
+        for rec in self:
+            rec.message_post(body='تم رفض السجل.<br/>السبب: %s' % reason)
+        self.write({'state': 'rejected', 'rejection_reason': reason})
 
     def _get_settlement_partner_id(self):
         """الشريك المستخدَم على سطر القيد المحاسبي - افتراضياً شريك

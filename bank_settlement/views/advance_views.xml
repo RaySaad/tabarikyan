@@ -7,7 +7,8 @@
             <field name="model">bank.settlement.advance</field>
             <field name="arch" type="xml">
                 <list string="السلف" decoration-success="state == 'paid'"
-                      decoration-info="state == 'waiting_approval'">
+                      decoration-info="state == 'waiting_approval'"
+                      decoration-danger="state == 'rejected'">
                     <field name="name"/>
                     <field name="employee_id"/>
                     <field name="residency_number"/>
@@ -17,6 +18,7 @@
                     <field name="state" widget="badge"
                            decoration-success="state == 'paid'"
                            decoration-info="state == 'waiting_approval'"
+                           decoration-danger="state == 'rejected'"
                            decoration-muted="state == 'draft'"/>
                 </list>
             </field>
@@ -49,10 +51,13 @@
                                 invisible="state != 'approved'"/>
                         <button name="action_reset_draft" string="إعادة لمسودة"
                                 type="object" groups="bank_settlement.group_bank_settlement_manager"
-                                invisible="state not in ('waiting_approval', 'pm_approved', 'approved')"/>
+                                invisible="state not in ('waiting_approval', 'pm_approved', 'approved', 'rejected')"/>
+                        <button name="action_open_reject_wizard" string="رفض"
+                                type="object" groups="bank_settlement.group_bank_settlement_reviewer"
+                                invisible="state in ('paid', 'cancel', 'rejected')"/>
                         <button name="action_cancel" string="إلغاء"
                                 type="object" groups="bank_settlement.group_bank_settlement_reviewer"
-                                invisible="state in ('paid', 'cancel')"/>
+                                invisible="state in ('paid', 'cancel', 'rejected')"/>
                         <field name="state" widget="statusbar"
                                statusbar_visible="draft,waiting_approval,pm_approved,approved,paid"/>
                     </header>

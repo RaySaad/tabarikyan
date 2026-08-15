@@ -24,6 +24,7 @@ class BankSettlementRepresentative(models.Model):
             ('under_review', 'تحت المراجعة'),
             ('confirmed', 'مؤكدة'),
             ('done', 'مسددة'),
+            ('rejected', 'مرفوضة'),
             ('cancel', 'ملغاة'),
         ],
         default='draft', tracking=True, copy=False,

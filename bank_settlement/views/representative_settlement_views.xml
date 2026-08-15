@@ -6,7 +6,8 @@
             <field name="name">bank.settlement.representative.list</field>
             <field name="model">bank.settlement.representative</field>
             <field name="arch" type="xml">
-                <list string="تصفيات المناديب" decoration-success="state == 'done'">
+                <list string="تصفيات المناديب" decoration-success="state == 'done'"
+                      decoration-danger="state == 'rejected'">
                     <field name="name"/>
                     <field name="date"/>
                     <field name="employee_id" string="اسم المندوب"/>
@@ -18,6 +19,7 @@
                     <field name="state" widget="badge"
                            decoration-success="state == 'done'"
                            decoration-info="state == 'confirmed'"
+                           decoration-danger="state == 'rejected'"
                            decoration-muted="state == 'draft'"/>
                 </list>
             </field>
@@ -42,10 +44,13 @@
                                 invisible="state != 'confirmed'"/>
                         <button name="action_reset_draft" string="إعادة لمسودة"
                                 type="object" groups="bank_settlement.group_bank_settlement_manager"
-                                invisible="state not in ('under_review', 'confirmed')"/>
+                                invisible="state not in ('under_review', 'confirmed', 'rejected')"/>
+                        <button name="action_open_reject_wizard" string="رفض"
+                                type="object" groups="bank_settlement.group_bank_settlement_reviewer"
+                                invisible="state in ('done', 'cancel', 'rejected')"/>
                         <button name="action_cancel" string="إلغاء"
                                 type="object" groups="bank_settlement.group_bank_settlement_reviewer"
-                                invisible="state in ('done', 'cancel')"/>
+                                invisible="state in ('done', 'cancel', 'rejected')"/>
                         <field name="state" widget="statusbar"
                                statusbar_visible="draft,under_review,confirmed,done"/>
                     </header>

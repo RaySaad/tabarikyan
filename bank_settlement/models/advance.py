@@ -38,6 +38,7 @@ class BankSettlementAdvance(models.Model):
             ('pm_approved', 'وافق مسؤول المشروع'),
             ('approved', 'تمت الموافقة'),
             ('paid', 'تم الصرف'),
+            ('rejected', 'مرفوضة'),
             ('cancel', 'ملغاة'),
         ],
         default='draft', tracking=True, copy=False,
@@ -136,6 +137,27 @@ class BankSettlementAdvance(models.Model):
                 'bank_settlement.group_bank_settlement_manager',
             )
         self.write({'state': 'cancel'})
+
+    def action_reject(self, reason=False):
+        """تجاوز - حالة "منفّذة" في السلفة اسمها "paid" (تم الصرف) بدل
+        "done" المستخدَمة في بقية شاشات السداد البنكي، والقفل المشترك في
+        الـ mixin يتحقق من "done" تحديداً فلن يمنع رفض سلفة "تم الصرف"
+        فعلياً بدونه."""
+        if not reason:
+            raise UserError('يجب إدخال سبب الرفض.')
+        for rec in self:
+            if rec.state in ('paid', 'cancel', 'rejected'):
+                raise UserError(
+                    'لا يمكن رفض سلفة بحالة "%s".'
+                    % dict(rec._fields['state'].selection).get(rec.state, rec.state)
+                )
+            rec._check_group(
+                'bank_settlement.group_bank_settlement_reviewer',
+                'bank_settlement.group_bank_settlement_manager',
+            )
+        for rec in self:
+            rec.message_post(body='تم رفض السلفة.<br/>السبب: %s' % reason)
+        self.write({'state': 'rejected', 'rejection_reason': reason})
 
     _ADVANCE_REASON_MIGRATION_MAP = {
         'salary_advance': 'bank_settlement.advance_reason_salary_advance',
