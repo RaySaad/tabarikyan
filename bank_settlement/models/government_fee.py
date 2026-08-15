@@ -60,6 +60,24 @@ class BankSettlementGovernmentFee(models.Model):
             'government_entity_id', 'fee_type_id', 'partner_id',
         ]
 
+    def action_reject(self, reason=False):
+        """عند رفض سجل مرتبط بطلب توظيف - يُعاد فتح مبلغ الرسوم الحكومية
+        هناك تلقائياً للتصحيح (بنفس أثر "إرجاع للتصحيح" من جهة طلب
+        التوظيف)، وإلا يبقى gov_fee_settled=True هناك رغم أن السجل الذي
+        استند إليه رُفض فعلياً - يعني قفل دائم بلا أي مخرج واضح لمن يتابع
+        من شاشة طلب التوظيف فقط ولا يعرف أن الرفض حدث من السداد البنكي."""
+        result = super().action_reject(reason=reason)
+        for rec in self:
+            request = rec.recruitment_request_id
+            if request and request.gov_fee_settled:
+                request.gov_fee_settled = False
+                request.message_post(body=(
+                    'أُعيد فتح مبلغ الرسوم الحكومية للتعديل - سجل الرسوم '
+                    'الحكومية المرتبط (%(name)s) رُفض من السداد البنكي.'
+                    '<br/>السبب: %(reason)s'
+                ) % {'name': rec.name, 'reason': reason})
+        return result
+
     _GOVERNMENT_ENTITY_MIGRATION_MAP = {
         'mol_resident': 'bank_settlement.government_entity_mol_resident',
         'hrsd_expat': 'bank_settlement.government_entity_hrsd_expat',

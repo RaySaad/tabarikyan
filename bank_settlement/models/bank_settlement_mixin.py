@@ -278,14 +278,20 @@ class BankSettlementMixin(models.AbstractModel):
         # model.access، مثل مدير عام السداد البنكي)، حفاظاً على أثر كامل
         # لكل سجل رُفع للمراجعة أو اعتُمد أو نُفِّذ فعلياً - بنفس مبدأ
         # recruitment_workflow.recruitment_request.unlink(). الإلغاء (زر
-        # "إلغاء") هو البديل الوحيد لمن غادر "مسودة".
-        for rec in self:
-            if rec.state != 'draft':
-                raise UserError(
-                    'لا يمكن حذف هذا السجل نهائياً بعد مغادرة "مسودة" - '
-                    'للحفاظ على سجل تدقيق ومراجعة كامل. استخدم زر "إلغاء" '
-                    'بدلاً من ذلك إن احتجت إيقافه.'
-                )
+        # "إلغاء") هو البديل الوحيد لمن غادر "مسودة". يُتجاوز عمداً عبر
+        # نفس سياق تجاوز القفل العام (bank_settlement_skip_approval_lock)
+        # لعملية نظامية واحدة: حذف سجل "الرسوم الحكومية" غير المسدَّد بعد
+        # عند "إرجاع للتصحيح" من recruitment_workflow (انظر bank_settlement/
+        # models/recruitment_request.py: _unlock_gov_fee_for_correction) -
+        # ليس حذفاً يدوياً حقيقياً من مستخدم.
+        if not self.env.context.get('bank_settlement_skip_approval_lock'):
+            for rec in self:
+                if rec.state != 'draft':
+                    raise UserError(
+                        'لا يمكن حذف هذا السجل نهائياً بعد مغادرة "مسودة" - '
+                        'للحفاظ على سجل تدقيق ومراجعة كامل. استخدم زر "إلغاء" '
+                        'بدلاً من ذلك إن احتجت إيقافه.'
+                    )
         return super().unlink()
 
     def _get_sequence_code_for_create(self, vals):

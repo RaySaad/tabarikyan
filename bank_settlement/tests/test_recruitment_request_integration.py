@@ -155,6 +155,48 @@ class TestRecruitmentRequestIntegration(TransactionCase):
         request.gov_fee_amount = 1500.0
         self.assertEqual(request.gov_fee_amount, 1500.0)
 
+    def test_return_to_stage_deletes_gov_fee_even_after_submitted_for_review(self):
+        """حارس ضد ثغرة انحدار حقيقية: بعد إضافة "منع الحذف النهائي بعد
+        مغادرة مسودة" (unlink() في bank_settlement_mixin)، الحذف النظامي
+        لسجل الرسوم الحكومية غير المسدَّد عند "إرجاع للتصحيح" توقف عن
+        العمل لأي سجل تجاوز حالة "مسودة" فعلياً (تحت المراجعة/مؤكدة) -
+        الاختبار الآخر أعلاه لا يغطي هذه الحالة لأنه يترك السجل في
+        "مسودة" دائماً. يجب أن يبقى الحذف النظامي يعمل رغم قفل الحذف
+        العام (عبر bank_settlement_skip_approval_lock)."""
+        request = self._create_request(identification_id='1234567842', email='bs11@example.com')
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_sponsorship_transfer.id,
+        })
+        request.action_register_gov_fee()
+        gov_fee = request.bank_settlement_gov_fee_id
+        gov_fee.action_submit_review()
+        gov_fee.action_confirm()
+        self.assertEqual(gov_fee.state, 'confirmed')
+
+        request.action_return_to_stage(self.stage_project_review, 'مبلغ خاطئ')
+
+        self.assertFalse(request.bank_settlement_gov_fee_id)
+        self.assertFalse(gov_fee.exists())
+
+    def test_rejecting_gov_fee_from_bank_settlement_unlocks_request_amount(self):
+        """رفض سجل الرسوم الحكومية من شاشة السداد البنكي نفسها (وليس عبر
+        "إرجاع للتصحيح" من طلب التوظيف) يجب أن يفتح مبلغ الرسوم على طلب
+        التوظيف تلقائياً هو الآخر - وإلا يبقى gov_fee_settled=True هناك
+        للأبد رغم رفض السجل الذي استند إليه فعلياً، بلا أي مخرج واضح لمن
+        يتابع من شاشة طلب التوظيف فقط."""
+        request = self._create_request(identification_id='1234567843', email='bs12@example.com')
+        request.action_register_gov_fee()
+        gov_fee = request.bank_settlement_gov_fee_id
+        self.assertTrue(request.gov_fee_settled)
+        gov_fee.action_submit_review()
+
+        gov_fee.action_reject(reason='بيانات خاطئة')
+
+        self.assertEqual(gov_fee.state, 'rejected')
+        self.assertFalse(request.gov_fee_settled)
+        request.gov_fee_amount = 1200.0
+        self.assertEqual(request.gov_fee_amount, 1200.0)
+
     def test_return_to_stage_blocked_if_gov_fee_already_paid(self):
         """"إرجاع للتصحيح" يُمنَع كلياً إن سُدِّدت الرسوم فعلاً (سجل
         السداد البنكي بحالة "منفّذة" - قيد محاسبي حقيقي موجود). التصحيح

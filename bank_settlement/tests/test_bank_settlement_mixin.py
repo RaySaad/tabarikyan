@@ -357,6 +357,5 @@ class TestBankSettlementMixin(TransactionCase):
         from odoo.tools import mute_logger
 
         self.env['bank.settlement.advance.reason'].create({'name': 'سبب تجريبي فريد'})
-        with self.assertRaises(IntegrityError), mute_logger('odoo.sql_db'):
-            with self.env.cr.savepoint():
-                self.env['bank.settlement.advance.reason'].create({'name': 'سبب تجريبي فريد'})
+        with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError):
+            self.env['bank.settlement.advance.reason'].create({'name': 'سبب تجريبي فريد'})

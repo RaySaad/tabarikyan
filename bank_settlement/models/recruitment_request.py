@@ -52,7 +52,13 @@ class RecruitmentRequest(models.Model):
                     % gov_fee.name
                 )
             self.bank_settlement_gov_fee_id = False
-            gov_fee.sudo().unlink()
+            # يتجاوز قفل "لا حذف بعد مغادرة مسودة" عمداً - هذا حذف نظامي
+            # لسجل غير مسدَّد بعد (تحقّقنا للتو من ذلك أعلاه)، وليس حذفاً
+            # يدوياً حقيقياً من مستخدم يتجاوز سجل التدقيق (انظر bank_
+            # settlement_mixin.unlink()).
+            gov_fee.sudo().with_context(
+                bank_settlement_skip_approval_lock=True,
+            ).unlink()
         return super()._unlock_gov_fee_for_correction()
 
     def _validate_stage_exit(self, current_stage):
