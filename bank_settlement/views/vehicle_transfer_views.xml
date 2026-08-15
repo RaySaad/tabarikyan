@@ -40,7 +40,7 @@
                                 type="object" class="btn-primary"
                                 groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state != 'confirmed'"/>
-                        <button name="action_reset_draft" string="إعادة لمسودة"
+                        <button name="action_open_reset_wizard" string="إعادة لمسودة"
                                 type="object" groups="bank_settlement.group_bank_settlement_manager"
                                 invisible="state not in ('under_review', 'confirmed', 'rejected')"/>
                         <button name="action_open_reject_wizard" string="رفض"

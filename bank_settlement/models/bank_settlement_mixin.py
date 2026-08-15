@@ -336,9 +336,28 @@ class BankSettlementMixin(models.AbstractModel):
                 rec.move_id = rec._create_settlement_move()
         self.write({'state': 'done'})
 
-    def action_reset_draft(self):
-        """إعادة لمسودة - تُلغي فعلياً أي اعتماد سابق (المدير العام)،
-        فتتطلب نفس صلاحيته تحديداً - وليست متاحة لمن ينشئ السجل فقط."""
+    def action_open_reset_wizard(self):
+        """يفتح معالج "إعادة لمسودة" (يفرض تسجيل السبب) - الزر في الواجهة
+        يستدعي هذه الدالة بدل action_reset_draft مباشرة."""
+        self.ensure_one()
+        return {
+            'name': 'إعادة لمسودة',
+            'type': 'ir.actions.act_window',
+            'res_model': 'bank.settlement.reset.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_res_model': self._name, 'default_res_id': self.id},
+        }
+
+    def action_reset_draft(self, reason=False):
+        """الإعادة الفعلية لمسودة - تُلغي فعلياً أي اعتماد سابق (المدير
+        العام)، فتتطلب نفس صلاحيته تحديداً - وليست متاحة لمن ينشئ السجل
+        فقط. تتطلب سبباً إجبارياً، ولا تُستدعى مباشرة من زر بالواجهة -
+        تمر حصراً عبر bank.settlement.reset.wizard (انظر
+        action_open_reset_wizard أعلاه)، بنفس مبدأ "إرجاع للتصحيح" في
+        recruitment_workflow."""
+        if not reason:
+            raise UserError('يجب توضيح سبب الإعادة لمسودة.')
         for rec in self:
             # القيد المحاسبي (إن وُجد) يعني أن السداد وثّق فعلياً محاسبياً -
             # لا يجوز إعادة السجل لمسودة وترك ذلك القيد معلّقاً بلا مرجع.
@@ -350,6 +369,8 @@ class BankSettlementMixin(models.AbstractModel):
                     % rec.move_id.name
                 )
             rec._check_group('bank_settlement.group_bank_settlement_manager')
+        for rec in self:
+            rec.message_post(body='تمت إعادة السجل لمسودة للتصحيح.<br/>السبب: %s' % reason)
         self.write({'state': 'draft'})
 
     def action_cancel(self):

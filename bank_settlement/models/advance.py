@@ -110,18 +110,9 @@ class BankSettlementAdvance(models.Model):
                 rec.move_id = rec._create_settlement_move()
         self.write({'state': 'paid'})
 
-    def action_reset_draft(self):
-        """إعادة لمسودة - تُلغي فعلياً اعتماد المدير العام السابق، فتتطلب
-        نفس صلاحيته تحديداً - وليست متاحة لمن أنشأ السلفة فقط."""
-        for rec in self:
-            if rec.move_id:
-                raise UserError(
-                    'لا يمكن إعادة هذه السلفة لمسودة - يوجد قيد محاسبي مرتبط '
-                    'بها بالفعل (%s). ألغِ/اعكس القيد أولاً من المحاسبة.'
-                    % rec.move_id.name
-                )
-            rec._check_group('bank_settlement.group_bank_settlement_manager')
-        self.write({'state': 'draft'})
+    # action_reset_draft/action_open_reset_wizard غير مُجاوَزتين هنا - نفس
+    # منطق الـ mixin الأساسي يعمل دون تعديل (السلفة لا تحتاج فحصاً إضافياً
+    # لا يوفّره move_id/_check_group الأساسيان).
 
     def action_cancel(self):
         """إلغاء - متاح للمراجع فما فوق (وليس لمن أنشأ السلفة فقط)."""

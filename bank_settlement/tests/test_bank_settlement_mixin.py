@@ -142,7 +142,7 @@ class TestBankSettlementMixin(TransactionCase):
         التعديل ممكناً مجدداً."""
         gov_fee = self._create_gov_fee()
         self._complete_to_confirmed(gov_fee)
-        gov_fee.action_reset_draft()
+        gov_fee.action_reset_draft(reason='بيانات خاطئة')
 
         gov_fee.write({'amount': 999.0})
         self.assertEqual(gov_fee.amount, 999.0)

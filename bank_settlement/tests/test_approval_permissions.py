@@ -85,11 +85,40 @@ class TestApprovalPermissions(TransactionCase):
         gov_fee.action_confirm()
 
         with self.assertRaises(UserError):
-            gov_fee.with_user(self.plain_user).action_reset_draft()
+            gov_fee.with_user(self.plain_user).action_reset_draft(reason='اختبار')
         with self.assertRaises(UserError):
-            gov_fee.with_user(self.reviewer_user).action_reset_draft()
+            gov_fee.with_user(self.reviewer_user).action_reset_draft(reason='اختبار')
 
-        gov_fee.with_user(self.manager_user).action_reset_draft()
+        gov_fee.with_user(self.manager_user).action_reset_draft(reason='بيانات خاطئة')
+        self.assertEqual(gov_fee.state, 'draft')
+
+    def test_reset_draft_requires_reason(self):
+        """"إعادة لمسودة" تفرض تسجيل سبب - نفس مبدأ "إرجاع للتصحيح" في
+        سير طلبات التوظيف."""
+        gov_fee = self._create_gov_fee().with_user(self.manager_user)
+        gov_fee.action_submit_review()
+        gov_fee.action_confirm()
+
+        with self.assertRaises(UserError):
+            gov_fee.action_reset_draft()
+
+        message_count_before = len(gov_fee.message_ids)
+        gov_fee.action_reset_draft(reason='سبب واضح')
+        self.assertEqual(gov_fee.state, 'draft')
+        self.assertGreater(len(gov_fee.message_ids), message_count_before)
+
+    def test_reset_wizard_delegates_to_action_reset_draft(self):
+        gov_fee = self._create_gov_fee().with_user(self.manager_user)
+        gov_fee.action_submit_review()
+        gov_fee.action_confirm()
+
+        wizard = self.env['bank.settlement.reset.wizard'].with_user(self.manager_user).create({
+            'res_model': gov_fee._name,
+            'res_id': gov_fee.id,
+            'reason': 'سبب عبر المعالج',
+        })
+        wizard.action_confirm_reset()
+
         self.assertEqual(gov_fee.state, 'draft')
 
     def test_cancel_requires_reviewer(self):
@@ -102,8 +131,8 @@ class TestApprovalPermissions(TransactionCase):
         self.assertEqual(gov_fee.state, 'cancel')
 
     def test_advance_reset_draft_requires_manager(self):
-        """السلفة (advance.py) تتجاوز هذه الدوال بنسخة خاصة بها - نفس
-        القيد يجب أن يُطبَّق هناك أيضاً."""
+        """السلفة (advance.py) لا تُجاوز action_reset_draft - تستخدم نفس
+        نسخة الـ mixin الأساسي مباشرة، ونفس القيد يجب أن يُطبَّق هنا."""
         advance = self.env['bank.settlement.advance'].create({
             'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id, 'amount': 300.0,
         }).with_user(self.manager_user)
@@ -114,9 +143,9 @@ class TestApprovalPermissions(TransactionCase):
         advance.action_confirm()
 
         with self.assertRaises(UserError):
-            advance.with_user(self.plain_user).action_reset_draft()
+            advance.with_user(self.plain_user).action_reset_draft(reason='اختبار')
 
-        advance.with_user(self.manager_user).action_reset_draft()
+        advance.with_user(self.manager_user).action_reset_draft(reason='بيانات خاطئة')
         self.assertEqual(advance.state, 'draft')
 
     def test_advance_cancel_requires_reviewer(self):
@@ -184,7 +213,7 @@ class TestApprovalPermissions(TransactionCase):
         gov_fee.with_user(self.reviewer_user).action_reject(reason='مبلغ خاطئ')
         self.assertEqual(gov_fee.state, 'rejected')
 
-        gov_fee.with_user(self.manager_user).action_reset_draft()
+        gov_fee.with_user(self.manager_user).action_reset_draft(reason='مبلغ خاطئ - سيُصحَّح')
         self.assertEqual(gov_fee.state, 'draft')
         gov_fee.write({'amount': 750.0})
         self.assertEqual(gov_fee.amount, 750.0)
