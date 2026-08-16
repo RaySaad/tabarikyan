@@ -359,3 +359,28 @@ class TestBankSettlementMixin(TransactionCase):
         self.env['bank.settlement.advance.reason'].create({'name': 'سبب تجريبي فريد'})
         with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError):
             self.env['bank.settlement.advance.reason'].create({'name': 'سبب تجريبي فريد'})
+
+    def test_advance_iban_and_stc_number_changes_are_tracked(self):
+        """آيبان الموظف ورقم STC Pay (وجهة صرف السلفة الفعلية) كانا بلا
+        أي تتبع (tracking) إطلاقاً - أي تعديل عليهما لم يكن يظهر في سجل
+        المتابعة (من عدّله ومتى والقيمة القديمة)، ثغرة تدقيق حقيقية على
+        حقول تمثّل بالضبط أين تذهب الأموال (ثغرة مكتشفة بمراجعة شاملة)."""
+        advance = self.Advance.create({
+            'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id,
+            'amount': 300.0,
+            'payment_method': 'bank_transfer',
+            'employee_iban': 'SA0000000000000000000001',
+        })
+        message_count_before = len(advance.message_ids)
+
+        advance.employee_iban = 'SA0000000000000000000002'
+
+        self.assertGreater(len(advance.message_ids), message_count_before)
+
+    def test_representative_iban_change_is_tracked(self):
+        rep = self.Representative.create({'settlement_amount': 400.0, 'iban': 'SA1111111111111111111111'})
+        message_count_before = len(rep.message_ids)
+
+        rep.iban = 'SA2222222222222222222222'
+
+        self.assertGreater(len(rep.message_ids), message_count_before)

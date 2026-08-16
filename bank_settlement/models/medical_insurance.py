@@ -17,7 +17,9 @@ class BankSettlementMedicalInsurance(models.Model):
         'res.partner', string='المورد', domain=[('supplier_rank', '>', 0)],
         tracking=True,
     )
-    company_iban = fields.Char(string='آيبان الشركة')
+    # tracking=True مهم تحديداً هنا - وجهة تحويل التأمين الفعلية، كانت
+    # بلا أي تتبع (ثغرة تدقيق حقيقية على حقل يمثّل أين تذهب الأموال).
+    company_iban = fields.Char(string='آيبان الشركة', tracking=True)
 
     state = fields.Selection(
         selection=[

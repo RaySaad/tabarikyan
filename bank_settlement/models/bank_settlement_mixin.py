@@ -101,11 +101,11 @@ class BankSettlementMixin(models.AbstractModel):
 
     # -- المحاسبة ---------------------------------------------------------
     linked_account_id = fields.Many2one(
-        'account.account', string='الحساب المرتبط',
+        'account.account', string='الحساب المرتبط', tracking=True,
         help='حساب الأستاذ العام المرتبط بهذا النوع من المصروفات',
     )
     journal_id = fields.Many2one(
-        'account.journal', string='دفتر اليومية',
+        'account.journal', string='دفتر اليومية', tracking=True,
         domain="[('company_id', 'parent_of', company_id)]",
         help='الدفتر الذي سيُسجَّل فيه هذا القيد - يُحدَّد صراحة بدل '
              'اختيار أول دفتر بنكي متاح تلقائياً. غير مقيَّد بنوع "بنكي" '
@@ -122,7 +122,7 @@ class BankSettlementMixin(models.AbstractModel):
 
     # -- السداد البنكي -----------------------------------------------------
     transfer_date = fields.Date(string='تاريخ التحويل', tracking=True)
-    bank_reference = fields.Char(string='رقم السداد البنكي')
+    bank_reference = fields.Char(string='رقم السداد البنكي', tracking=True)
     attachment_count = fields.Integer(
         string='عدد المرفقات', compute='_compute_attachment_count',
     )

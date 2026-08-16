@@ -24,8 +24,12 @@ class BankSettlementAdvance(models.Model):
         ],
         string='طريقة الدفع', tracking=True,
     )
-    employee_iban = fields.Char(string='آيبان الموظف')
-    stc_number = fields.Char(string='رقم STC Pay')
+    # tracking=True هنا مهم تحديداً - وجهة صرف السلفة الفعلية (حساب
+    # الموظف/رقمه على المحفظة). كان بلا أي تتبع سابقاً، فأي تعديل عليهما
+    # لا يظهر إطلاقاً في سجل المتابعة (من عدّله ومتى والقيمة القديمة) -
+    # ثغرة تدقيق حقيقية على حقول تمثّل بالضبط أين تذهب الأموال.
+    employee_iban = fields.Char(string='آيبان الموظف', tracking=True)
+    stc_number = fields.Char(string='رقم STC Pay', tracking=True)
 
     # حالة خاصة بالسلف: بانتظار الموافقة (مسؤول المشروع) ← وافق مسؤول
     # المشروع ← تمت الموافقة (المدير العام) ← تم الصرف. موافقة مسؤول
