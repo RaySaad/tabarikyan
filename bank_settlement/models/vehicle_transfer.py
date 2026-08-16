@@ -24,7 +24,7 @@ class BankSettlementVehicleTransfer(models.Model):
         'res.partner', compute='_compute_employee_partner_id',
     )
     vehicle_id = fields.Many2one(
-        'fleet.vehicle', string='السيارة',
+        'fleet.vehicle', string='السيارة', tracking=True,
         help='السيارة المرتبطة بهذا التحويل (مثال: مصروف وقود لسيارة '
              'محددة) - تُقيَّد القائمة تلقائياً بسيارات الموظف المختار '
              'أعلاه (سائقها الحالي أو المستقبلي)، ويمكن تركها فارغة إن '

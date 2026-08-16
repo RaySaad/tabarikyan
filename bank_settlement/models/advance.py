@@ -24,8 +24,12 @@ class BankSettlementAdvance(models.Model):
         ],
         string='طريقة الدفع', tracking=True,
     )
-    employee_iban = fields.Char(string='آيبان الموظف')
-    stc_number = fields.Char(string='رقم STC Pay')
+    # tracking=True هنا مهم تحديداً - وجهة صرف السلفة الفعلية (حساب
+    # الموظف/رقمه على المحفظة). كان بلا أي تتبع سابقاً، فأي تعديل عليهما
+    # لا يظهر إطلاقاً في سجل المتابعة (من عدّله ومتى والقيمة القديمة) -
+    # ثغرة تدقيق حقيقية على حقول تمثّل بالضبط أين تذهب الأموال.
+    employee_iban = fields.Char(string='آيبان الموظف', tracking=True)
+    stc_number = fields.Char(string='رقم STC Pay', tracking=True)
 
     # حالة خاصة بالسلف: بانتظار الموافقة (مسؤول المشروع) ← وافق مسؤول
     # المشروع ← تمت الموافقة (المدير العام) ← تم الصرف. موافقة مسؤول
@@ -115,7 +119,7 @@ class BankSettlementAdvance(models.Model):
     # لا يوفّره move_id/_check_group الأساسيان).
 
     def action_cancel(self):
-        """إلغاء - متاح للمراجع فما فوق (وليس لمن أنشأ السلفة فقط)."""
+        """إلغاء - متاح للمحاسب فما فوق (وليس لمن أنشأ السلفة فقط)."""
         for rec in self:
             if rec.move_id and rec.move_id.state == 'posted':
                 raise UserError(

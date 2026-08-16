@@ -8,11 +8,13 @@ class BankSettlementRepresentative(models.Model):
     _description = 'تصفية مندوب'
     _inherit = ['bank.settlement.mixin']
 
-    date = fields.Date(string='التاريخ', default=fields.Date.context_today)
-    iban = fields.Char(string='الأيبان')
+    date = fields.Date(string='التاريخ', default=fields.Date.context_today, tracking=True)
+    # tracking=True مهم تحديداً هنا - وجهة تصفية المندوب الفعلية، كانت
+    # بلا أي تتبع (ثغرة تدقيق حقيقية على حقل يمثّل أين تذهب الأموال).
+    iban = fields.Char(string='الأيبان', tracking=True)
 
     # "ID رقم" في الفيديو — تعريف المندوب داخل تطبيق التوصيل (كيتا/جاهز/هنقرستيشن)
-    platform_employee_id = fields.Char(string='ID رقم (داخل التطبيق)')
+    platform_employee_id = fields.Char(string='ID رقم (داخل التطبيق)', tracking=True)
 
     settlement_amount = fields.Monetary(
         string='مبلغ التصفية', related='amount', readonly=False,
