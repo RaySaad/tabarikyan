@@ -125,7 +125,7 @@ class TestBankSettlementMixin(TransactionCase):
 
     def test_settlement_move_flagged_for_restricted_visibility(self):
         """القيد الناتج عن السداد البنكي يُعلَّم بـ is_bank_settlement_move
-        - يُستخدم لحصر رؤية "مستخدم/مراجع" السداد البنكي عليه فقط، دون
+        - يُستخدم لحصر رؤية "مستخدم/محاسب" السداد البنكي عليه فقط، دون
         كشف بقية قيود المحاسبة (انظر ir.rule في security.xml)."""
         gov_fee = self._create_gov_fee()
         self._complete_to_done(gov_fee)

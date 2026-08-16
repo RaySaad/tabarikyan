@@ -13,7 +13,7 @@ class TestApprovalPermissions(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.group_user = cls.env.ref('bank_settlement.group_bank_settlement_user')
-        cls.group_reviewer = cls.env.ref('bank_settlement.group_bank_settlement_reviewer')
+        cls.group_accountant = cls.env.ref('bank_settlement.group_bank_settlement_reviewer')
         cls.group_manager = cls.env.ref('bank_settlement.group_bank_settlement_manager')
         cls.plain_user = cls.env['res.users'].create({
             'name': 'مستخدم أساسي - سداد بنكي',
@@ -21,11 +21,11 @@ class TestApprovalPermissions(TransactionCase):
             'email': 'bs_plain_user@example.com',
             'group_ids': [(6, 0, [cls.group_user.id, cls.env.ref('base.group_user').id])],
         })
-        cls.reviewer_user = cls.env['res.users'].create({
-            'name': 'مراجع - سداد بنكي',
-            'login': 'bank_settlement_reviewer_user',
-            'email': 'bs_reviewer_user@example.com',
-            'group_ids': [(6, 0, [cls.group_reviewer.id, cls.env.ref('base.group_user').id])],
+        cls.accountant_user = cls.env['res.users'].create({
+            'name': 'محاسب - سداد بنكي',
+            'login': 'bank_settlement_accountant_user',
+            'email': 'bs_accountant_user@example.com',
+            'group_ids': [(6, 0, [cls.group_accountant.id, cls.env.ref('base.group_user').id])],
         })
         cls.manager_user = cls.env['res.users'].create({
             'name': 'مدير عام - سداد بنكي',
@@ -42,11 +42,11 @@ class TestApprovalPermissions(TransactionCase):
         })
 
     def test_settlement_move_created_without_native_accounting_group(self):
-        """لا يجوز أن يحتاج مستخدم/مراجع السداد البنكي عضوية حقيقية في
-        مجموعة محاسبية أصلية بـ Odoo (فوترة/محاسب) لإكمال السداد - هذا
-        كان يفتح لهم رؤية بقية تطبيق المحاسبة رغم أنهم لا يحتاجونها.
-        reviewer_user هنا عضو فقط في مجموعات السداد البنكي + المستخدم
-        الأساسي، بلا أي مجموعة محاسبية أصلية إطلاقاً."""
+        """لا يجوز أن يحتاج مستخدم/محاسب السداد البنكي عضوية حقيقية في
+        مجموعة محاسبية أصلية بـ Odoo (فوترة/محاسب Odoo نفسه) لإكمال
+        السداد - هذا كان يفتح لهم رؤية بقية تطبيق المحاسبة رغم أنهم لا
+        يحتاجونها. accountant_user هنا عضو فقط في مجموعات السداد البنكي
+        + المستخدم الأساسي، بلا أي مجموعة محاسبية أصلية إطلاقاً."""
         gov_fee = self._create_gov_fee().with_user(self.manager_user)
         gov_fee.action_submit_review()
         gov_fee.action_confirm()
@@ -58,13 +58,13 @@ class TestApprovalPermissions(TransactionCase):
                 [('company_id', '=', gov_fee.company_id.id)], limit=1).id,
         })
 
-        gov_fee.with_user(self.reviewer_user).action_done()
+        gov_fee.with_user(self.accountant_user).action_done()
 
         self.assertEqual(gov_fee.state, 'done')
         self.assertTrue(gov_fee.move_id)
-        # المراجع يقدر يفتح القيد ويقرأه (زر "عرض القيد") رغم عدم عضويته
+        # المحاسب يقدر يفتح القيد ويقرأه (زر "عرض القيد") رغم عدم عضويته
         # في أي مجموعة محاسبية أصلية.
-        gov_fee.with_user(self.reviewer_user).move_id.read(['name', 'state'])
+        gov_fee.with_user(self.accountant_user).move_id.read(['name', 'state'])
 
     def test_user_cannot_read_unrelated_account_move(self):
         """"مستخدم" السداد البنكي يقدر يقرأ فقط القيود التي أنشأها
@@ -87,7 +87,7 @@ class TestApprovalPermissions(TransactionCase):
         with self.assertRaises(UserError):
             gov_fee.with_user(self.plain_user).action_reset_draft(reason='اختبار')
         with self.assertRaises(UserError):
-            gov_fee.with_user(self.reviewer_user).action_reset_draft(reason='اختبار')
+            gov_fee.with_user(self.accountant_user).action_reset_draft(reason='اختبار')
 
         gov_fee.with_user(self.manager_user).action_reset_draft(reason='بيانات خاطئة')
         self.assertEqual(gov_fee.state, 'draft')
@@ -121,13 +121,13 @@ class TestApprovalPermissions(TransactionCase):
 
         self.assertEqual(gov_fee.state, 'draft')
 
-    def test_cancel_requires_reviewer(self):
+    def test_cancel_requires_accountant(self):
         gov_fee = self._create_gov_fee()
 
         with self.assertRaises(UserError):
             gov_fee.with_user(self.plain_user).action_cancel()
 
-        gov_fee.with_user(self.reviewer_user).action_cancel()
+        gov_fee.with_user(self.accountant_user).action_cancel()
         self.assertEqual(gov_fee.state, 'cancel')
 
     def test_advance_reset_draft_requires_manager(self):
@@ -148,7 +148,7 @@ class TestApprovalPermissions(TransactionCase):
         advance.with_user(self.manager_user).action_reset_draft(reason='بيانات خاطئة')
         self.assertEqual(advance.state, 'draft')
 
-    def test_advance_cancel_requires_reviewer(self):
+    def test_advance_cancel_requires_accountant(self):
         advance = self.env['bank.settlement.advance'].create({
             'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id, 'amount': 300.0,
         })
@@ -156,7 +156,7 @@ class TestApprovalPermissions(TransactionCase):
         with self.assertRaises(UserError):
             advance.with_user(self.plain_user).action_cancel()
 
-        advance.with_user(self.reviewer_user).action_cancel()
+        advance.with_user(self.accountant_user).action_cancel()
         self.assertEqual(advance.state, 'cancel')
 
     def test_advance_confirm_requires_pm_approval_first(self):
@@ -170,8 +170,8 @@ class TestApprovalPermissions(TransactionCase):
         with self.assertRaises(UserError):
             advance.action_confirm()
 
-    def test_reject_requires_reviewer_and_reason(self):
-        """رفض السجل (منفصل عن "إلغاء") يتطلب صلاحية مراجع فما فوق
+    def test_reject_requires_accountant_and_reason(self):
+        """رفض السجل (منفصل عن "إلغاء") يتطلب صلاحية محاسب فما فوق
         وسبباً إجبارياً - يوثّق السبب في سجل المتابعة ويُخزَّن في حقل
         rejection_reason."""
         gov_fee = self._create_gov_fee()
@@ -180,10 +180,10 @@ class TestApprovalPermissions(TransactionCase):
         with self.assertRaises(UserError):
             gov_fee.with_user(self.plain_user).action_reject(reason='بيانات ناقصة')
         with self.assertRaises(UserError):
-            gov_fee.with_user(self.reviewer_user).action_reject()
+            gov_fee.with_user(self.accountant_user).action_reject()
 
         message_count_before = len(gov_fee.message_ids)
-        gov_fee.with_user(self.reviewer_user).action_reject(reason='بيانات ناقصة')
+        gov_fee.with_user(self.accountant_user).action_reject(reason='بيانات ناقصة')
 
         self.assertEqual(gov_fee.state, 'rejected')
         self.assertEqual(gov_fee.rejection_reason, 'بيانات ناقصة')
@@ -200,17 +200,17 @@ class TestApprovalPermissions(TransactionCase):
             'journal_id': self.env['account.journal'].search(
                 [('company_id', '=', gov_fee.company_id.id)], limit=1).id,
         })
-        gov_fee.with_user(self.reviewer_user).action_done()
+        gov_fee.with_user(self.accountant_user).action_done()
 
         with self.assertRaises(UserError):
-            gov_fee.with_user(self.reviewer_user).action_reject(reason='محاولة متأخرة')
+            gov_fee.with_user(self.accountant_user).action_reject(reason='محاولة متأخرة')
 
     def test_rejected_record_can_return_to_draft(self):
         """سجل مرفوض يمكن إعادته لمسودة للتصحيح ثم إعادة إرساله - "رفض"
         ليس نهاية المطاف، بل طلب تصحيح."""
         gov_fee = self._create_gov_fee()
         gov_fee.action_submit_review()
-        gov_fee.with_user(self.reviewer_user).action_reject(reason='مبلغ خاطئ')
+        gov_fee.with_user(self.accountant_user).action_reject(reason='مبلغ خاطئ')
         self.assertEqual(gov_fee.state, 'rejected')
 
         gov_fee.with_user(self.manager_user).action_reset_draft(reason='مبلغ خاطئ - سيُصحَّح')
@@ -233,17 +233,17 @@ class TestApprovalPermissions(TransactionCase):
             'linked_account_id': self.env['account.account'].search([], limit=1).id,
             'journal_id': self.env['account.journal'].search([], limit=1).id,
         })
-        advance.with_user(self.reviewer_user).action_done()
+        advance.with_user(self.accountant_user).action_done()
         self.assertEqual(advance.state, 'paid')
 
         with self.assertRaises(UserError):
-            advance.with_user(self.reviewer_user).action_reject(reason='محاولة متأخرة')
+            advance.with_user(self.accountant_user).action_reject(reason='محاولة متأخرة')
 
     def test_reject_wizard_delegates_to_action_reject(self):
         gov_fee = self._create_gov_fee()
         gov_fee.action_submit_review()
 
-        wizard = self.env['bank.settlement.reject.wizard'].with_user(self.reviewer_user).create({
+        wizard = self.env['bank.settlement.reject.wizard'].with_user(self.accountant_user).create({
             'res_model': gov_fee._name,
             'res_id': gov_fee.id,
             'reason': 'سبب عبر المعالج',

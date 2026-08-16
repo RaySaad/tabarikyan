@@ -100,7 +100,7 @@ class BankSettlementMedicalInsurance(models.Model):
                 # الشركة صراحة من شركة السجل نفسها - بدل تركها تُحسب من الشركة
                 # النشطة لمن يضغط الزر (انظر نفس المنطق في _create_settlement_move).
                 'company_id': self.company_id.id,
-                # يُستخدم لحصر رؤية "مستخدم/مراجع" السداد البنكي على قيودهم فقط
+                # يُستخدم لحصر رؤية "مستخدم/محاسب" السداد البنكي على قيودهم فقط
                 # عبر ir.rule - دون كشف بقية فواتير الشركة.
                 'is_bank_settlement_move': True,
                 'ref': self.name,

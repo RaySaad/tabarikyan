@@ -24,8 +24,15 @@
             <field name="privilege_id" ref="privilege_bank_settlement"/>
         </record>
 
+        <!-- الاسم "محاسب" (وليس "مراجع") - هو المسؤول فعلياً عن تنفيذ
+             الصرف الفعلي بعد اعتماد المدير العام، وليس عن أي "مراجعة"
+             حقيقية (لا يوجد إجراء مراجعة منفصل مربوط بهذه المجموعة تحديداً
+             - فقط ينفّذ بعد اعتماد المدير العام مباشرة). مُعرَّف الحقل
+             (XML ID) بقي group_bank_settlement_reviewer بلا تغيير عمداً
+             حفاظاً على عضويات المستخدمين الحاليين عند الترقية - لا يُنشئ
+             تغيير الاسم مجموعة جديدة فارغة. -->
         <record id="group_bank_settlement_reviewer" model="res.groups">
-            <field name="name">السداد البنكي / مراجع</field>
+            <field name="name">السداد البنكي / محاسب</field>
             <field name="sequence">20</field>
             <field name="privilege_id" ref="privilege_bank_settlement"/>
             <field name="implied_ids" eval="[(4, ref('group_bank_settlement_user'))]"/>
@@ -43,8 +50,9 @@
             توزيع الصلاحيات الفعلي على الإجراءات (وليس فقط CRUD) مطبَّق في
             كود Python (bank_settlement_mixin._check_group) وأزرار الواجهة:
             - "مستخدم": ينشئ السجل ويرسله للمراجعة (action_submit_review).
-            - "مراجع" (ويتوارثه "مدير عام"): ينفّذ السداد الفعلي بعد الاعتماد
-              (action_done / action_create_insurance_transfer).
+            - "محاسب" (ويتوارثه "مدير عام"): ينفّذ الصرف الفعلي بعد اعتماد
+              المدير العام (action_done / action_create_insurance_transfer)،
+              ويتولّى أيضاً "إلغاء"/"رفض" السجل.
             - "مدير عام" فقط: يعتمد السجل (action_confirm)، حسب الفيديو.
             لا توجد Record Rules على نماذج السداد البنكي نفسها بعد (كل من
             يملك المجموعة يرى كل سجلاتها بغض النظر عن من أنشأها) - أضفها
@@ -53,7 +61,7 @@
             البنكي) - انظر شرحه.
         -->
 
-        <!-- "مستخدم/مراجع" السداد البنكي يحتاجون صلاحية قراءة على
+        <!-- "مستخدم/محاسب" السداد البنكي يحتاجون صلاحية قراءة على
              account.move (لعرض القيد الناتج عبر زر "عرض القيد") ودخول
              تطبيق المحاسبة نفسه لرؤية قائمة "السداد البنكي" المدموجة
              فيه - وهذا يعني بلا قاعدة إضافية أنهم يقدرون تصفح كل قيود/
@@ -62,7 +70,7 @@
              نفسه فقط (is_bank_settlement_move) - أي محاولة لفتح "العملاء
              ← الفواتير" أو أي قائمة محاسبية أخرى ستظهر فارغة لهم عملياً. -->
         <record id="account_move_bank_settlement_rule" model="ir.rule">
-            <field name="name">قيود السداد البنكي فقط - مستخدم/مراجع السداد البنكي</field>
+            <field name="name">قيود السداد البنكي فقط - مستخدم/محاسب السداد البنكي</field>
             <field name="model_id" ref="account.model_account_move"/>
             <field name="groups" eval="[(4, ref('group_bank_settlement_user'))]"/>
             <field name="domain_force">[('is_bank_settlement_move', '=', True)]</field>

@@ -119,7 +119,7 @@ class BankSettlementAdvance(models.Model):
     # لا يوفّره move_id/_check_group الأساسيان).
 
     def action_cancel(self):
-        """إلغاء - متاح للمراجع فما فوق (وليس لمن أنشأ السلفة فقط)."""
+        """إلغاء - متاح للمحاسب فما فوق (وليس لمن أنشأ السلفة فقط)."""
         for rec in self:
             if rec.move_id and rec.move_id.state == 'posted':
                 raise UserError(

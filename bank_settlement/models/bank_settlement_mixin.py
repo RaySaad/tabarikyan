@@ -330,7 +330,7 @@ class BankSettlementMixin(models.AbstractModel):
 
     def action_done(self):
         """إتمام السداد/التحويل — ينشئ القيد المحاسبي إن لم يكن موجوداً.
-        متاح للمراجع/المحاسب فما فوق (بعد اعتماد المدير العام مسبقاً)."""
+        متاح للمحاسب فما فوق (بعد اعتماد المدير العام مسبقاً)."""
         for rec in self:
             if rec.state != 'confirmed':
                 raise UserError('يجب تأكيد السجل أولاً قبل إتمامه.')
@@ -380,7 +380,7 @@ class BankSettlementMixin(models.AbstractModel):
         self.write({'state': 'draft'})
 
     def action_cancel(self):
-        """إلغاء - متاح للمراجع فما فوق (وليس لمن ينشئ السجل فقط)."""
+        """إلغاء - متاح للمحاسب فما فوق (وليس لمن ينشئ السجل فقط)."""
         for rec in self:
             if rec.move_id and rec.move_id.state == 'posted':
                 raise UserError(
@@ -409,7 +409,7 @@ class BankSettlementMixin(models.AbstractModel):
 
     def action_reject(self, reason=False):
         """رفض السجل - يتطلب سبباً إجبارياً (بعكس "إلغاء" الذي لا يتطلب
-        سبباً) - يُستخدم عند اكتشاف مراجع/مدير عام السداد البنكي أن
+        سبباً) - يُستخدم عند اكتشاف محاسب/مدير عام السداد البنكي أن
         بيانات السجل خاطئة وتحتاج تصحيحاً من مُنشئه (وليس مجرد إيقافه
         نهائياً كما في "إلغاء"). لا تُستدعى مباشرة من زر بالواجهة - تمر
         حصراً عبر bank.settlement.reject.wizard الذي يفرض تمرير السبب
@@ -461,7 +461,7 @@ class BankSettlementMixin(models.AbstractModel):
             # الصحيح بشكل حتمي، حتى لو استخدم دفتر يومية الشركة الرئيسية
             # المشتركة (انظر domain حقل journal_id أعلاه).
             'company_id': self.company_id.id,
-            # يُستخدم لحصر رؤية "مستخدم/مراجع" السداد البنكي على قيودهم
+            # يُستخدم لحصر رؤية "مستخدم/محاسب" السداد البنكي على قيودهم
             # فقط عبر ir.rule - دون كشف بقية قيود المحاسبة في الشركة.
             'is_bank_settlement_move': True,
             'date': self.transfer_date or fields.Date.context_today(self),
@@ -486,9 +486,9 @@ class BankSettlementMixin(models.AbstractModel):
                 }),
             ],
         }
-        # sudo(): إنشاء القيد نفسه لا يجب أن يشترط عضوية "مستخدم/مراجع
+        # sudo(): إنشاء القيد نفسه لا يجب أن يشترط عضوية "مستخدم/محاسب
         # السداد البنكي" في إحدى مجموعات المحاسبة الأصلية بـ Odoo (فوترة،
-        # محاسب...) - الصلاحية الفعلية لهذا الإجراء محكومة بالفعل عبر
+        # محاسب Odoo نفسه...) - الصلاحية الفعلية لهذا الإجراء محكومة بالفعل عبر
         # _check_group في action_done قبل الوصول هنا. اشتراط عضوية
         # محاسبية حقيقية كان يفتح لهم أيضاً رؤية بقية تطبيق المحاسبة
         # (عملاء/موردين/فواتير) رغم أنهم لا يحتاجونها.
