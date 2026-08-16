@@ -14,13 +14,31 @@ class BankSettlementAdvance(models.Model):
         required=True, tracking=True,
     )
 
-    # حالة خاصة بالسلف كما ظهرت بالفيديو: بانتظار الموافقة / تمت الموافقة / تم الصرف
+    # طريقة استلام الموظف للمبلغ - تحويل بنكي (آيبان) أو STC Pay (رقم
+    # الجوال المسجَّل بالمحفظة) - حقل التفاصيل المطابق فقط يظهر حسب
+    # الاختيار (انظر views/advance_views.xml).
+    payment_method = fields.Selection(
+        selection=[
+            ('bank_transfer', 'تحويل بنكي'),
+            ('stc_pay', 'STC Pay'),
+        ],
+        string='طريقة الدفع', tracking=True,
+    )
+    employee_iban = fields.Char(string='آيبان الموظف')
+    stc_number = fields.Char(string='رقم STC Pay')
+
+    # حالة خاصة بالسلف: بانتظار الموافقة (مسؤول المشروع) ← وافق مسؤول
+    # المشروع ← تمت الموافقة (المدير العام) ← تم الصرف. موافقة مسؤول
+    # المشروع تأتي أولاً، ثم اعتماد المدير العام - نفس التسلسل المعتاد
+    # في الشركات.
     state = fields.Selection(
         selection=[
             ('draft', 'مسودة'),
             ('waiting_approval', 'بانتظار الموافقة'),
+            ('pm_approved', 'وافق مسؤول المشروع'),
             ('approved', 'تمت الموافقة'),
             ('paid', 'تم الصرف'),
+            ('rejected', 'مرفوضة'),
             ('cancel', 'ملغاة'),
         ],
         default='draft', tracking=True, copy=False,
@@ -30,24 +48,53 @@ class BankSettlementAdvance(models.Model):
         return 'bank.settlement.advance'
 
     def _get_locked_fields_after_approval(self):
-        return super()._get_locked_fields_after_approval() + ['advance_reason_id']
+        return super()._get_locked_fields_after_approval() + [
+            'advance_reason_id', 'payment_method', 'employee_iban', 'stc_number',
+        ]
 
-    def _get_editable_states(self):
-        # نفس مفهوم (مسودة/تحت المراجعة) بالمخزون الأساسي، لكن بأسماء
-        # حالات مختلفة خاصة بالسلف.
-        return ('draft', 'waiting_approval')
+    # _get_editable_states غير مُجاوَزة هنا - القيمة الافتراضية بالـ mixin
+    # ('draft' فقط) أصبحت مطابقة لما كان خاصاً بالسلف سابقاً (عُمِّم على
+    # كل الشاشات لاحقاً - انظر bank_settlement_mixin.py).
+
+    def _get_bank_fields_editable_state(self):
+        # حالة اعتماد المدير العام في السلفة اسمها "approved" (تمت
+        # الموافقة) بدل "confirmed" المستخدَمة في بقية شاشات السداد
+        # البنكي - انظر الشرح الكامل في bank_settlement_mixin.py.
+        return 'approved'
 
     def action_submit_review(self):
         for rec in self:
             if rec.state != 'draft':
                 raise UserError('يمكن إرسال السلف في حالة "مسودة" فقط للمراجعة.')
+        self._check_amount_positive_before_submit()
         self.write({'state': 'waiting_approval'})
 
-    def action_confirm(self):
-        """الموافقة على السلفة - تقتصر على المدير العام."""
+    def action_pm_approve(self):
+        """موافقة مسؤول المشروع - مسؤول مشروع الموظف نفسه تحديداً
+        (employee_id.project_id.user_id)، وليس أي عضو آخر في مجموعة
+        مسؤولي المشاريع - نفس فلسفة التعيين المحدَّد في recruitment_
+        workflow. إن لم يكن لموظف السلفة مشروع/مسؤول معيّن بعد، يُكتفى
+        بالتحقق من صلاحية المدير العام كحل احتياطي."""
         for rec in self:
             if rec.state != 'waiting_approval':
-                raise UserError('يمكن الموافقة على السلف في حالة "بانتظار الموافقة" فقط.')
+                raise UserError('يمكن موافقة مسؤول المشروع في حالة "بانتظار الموافقة" فقط.')
+            project_manager = rec.employee_id.project_id.user_id if rec.employee_id else False
+            if project_manager:
+                if rec.env.user != project_manager:
+                    raise UserError(
+                        'هذه الموافقة تتطلب مسؤول مشروع الموظف نفسه تحديداً (%s).'
+                        % project_manager.name
+                    )
+            else:
+                rec._check_group('bank_settlement.group_bank_settlement_manager')
+        self.write({'state': 'pm_approved'})
+
+    def action_confirm(self):
+        """الموافقة على السلفة (اعتماد المدير العام) - تأتي بعد موافقة
+        مسؤول المشروع، وتقتصر على المدير العام."""
+        for rec in self:
+            if rec.state != 'pm_approved':
+                raise UserError('يمكن اعتماد المدير العام بعد موافقة مسؤول المشروع فقط.')
             rec._check_group('bank_settlement.group_bank_settlement_manager')
         self.write({'state': 'approved'})
 
@@ -63,18 +110,9 @@ class BankSettlementAdvance(models.Model):
                 rec.move_id = rec._create_settlement_move()
         self.write({'state': 'paid'})
 
-    def action_reset_draft(self):
-        """إعادة لمسودة - تُلغي فعلياً اعتماد المدير العام السابق، فتتطلب
-        نفس صلاحيته تحديداً - وليست متاحة لمن أنشأ السلفة فقط."""
-        for rec in self:
-            if rec.move_id:
-                raise UserError(
-                    'لا يمكن إعادة هذه السلفة لمسودة - يوجد قيد محاسبي مرتبط '
-                    'بها بالفعل (%s). ألغِ/اعكس القيد أولاً من المحاسبة.'
-                    % rec.move_id.name
-                )
-            rec._check_group('bank_settlement.group_bank_settlement_manager')
-        self.write({'state': 'draft'})
+    # action_reset_draft/action_open_reset_wizard غير مُجاوَزتين هنا - نفس
+    # منطق الـ mixin الأساسي يعمل دون تعديل (السلفة لا تحتاج فحصاً إضافياً
+    # لا يوفّره move_id/_check_group الأساسيان).
 
     def action_cancel(self):
         """إلغاء - متاح للمراجع فما فوق (وليس لمن أنشأ السلفة فقط)."""
@@ -90,6 +128,27 @@ class BankSettlementAdvance(models.Model):
                 'bank_settlement.group_bank_settlement_manager',
             )
         self.write({'state': 'cancel'})
+
+    def action_reject(self, reason=False):
+        """تجاوز - حالة "منفّذة" في السلفة اسمها "paid" (تم الصرف) بدل
+        "done" المستخدَمة في بقية شاشات السداد البنكي، والقفل المشترك في
+        الـ mixin يتحقق من "done" تحديداً فلن يمنع رفض سلفة "تم الصرف"
+        فعلياً بدونه."""
+        if not reason:
+            raise UserError('يجب إدخال سبب الرفض.')
+        for rec in self:
+            if rec.state in ('paid', 'cancel', 'rejected'):
+                raise UserError(
+                    'لا يمكن رفض سلفة بحالة "%s".'
+                    % dict(rec._fields['state'].selection).get(rec.state, rec.state)
+                )
+            rec._check_group(
+                'bank_settlement.group_bank_settlement_reviewer',
+                'bank_settlement.group_bank_settlement_manager',
+            )
+        for rec in self:
+            rec.message_post(body='تم رفض السلفة.<br/>السبب: %s' % reason)
+        self.write({'state': 'rejected', 'rejection_reason': reason})
 
     _ADVANCE_REASON_MIGRATION_MAP = {
         'salary_advance': 'bank_settlement.advance_reason_salary_advance',

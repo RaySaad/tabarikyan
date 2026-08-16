@@ -17,6 +17,7 @@ class TestRecruitmentRequestIntegration(TransactionCase):
         cls.GovFee = cls.env['bank.settlement.government.fee']
         cls.stage_sponsorship_transfer = cls.env.ref('recruitment_workflow.stage_sponsorship_transfer')
         cls.stage_paid = cls.env.ref('recruitment_workflow.stage_paid')
+        cls.stage_project_review = cls.env.ref('recruitment_workflow.stage_project_review')
 
     def _create_request(self, **kwargs):
         vals = {
@@ -77,13 +78,15 @@ class TestRecruitmentRequestIntegration(TransactionCase):
         request = self._create_request(identification_id='1234567838', email='bs8@example.com')
         request.action_register_gov_fee()
         gov_fee = request.bank_settlement_gov_fee_id
+        gov_fee.action_submit_review()
+        gov_fee.action_confirm()
+        # دفتر اليومية/الحساب المرتبط لا يُسمح بتحديدهما إلا بعد الاعتماد
+        # تحديداً (حالة "مؤكدة").
         gov_fee.write({
             'linked_account_id': self.env['account.account'].search([], limit=1).id,
             'journal_id': self.env['account.journal'].search(
                 [('company_id', '=', gov_fee.company_id.id)], limit=1).id,
         })
-        gov_fee.action_submit_review()
-        gov_fee.action_confirm()
         self.assertEqual(gov_fee.state, 'confirmed')
 
         employee = request._create_employee()
@@ -110,12 +113,14 @@ class TestRecruitmentRequestIntegration(TransactionCase):
             request.action_next_stage()
 
         gov_fee = request.bank_settlement_gov_fee_id
+        gov_fee.action_submit_review()
+        gov_fee.action_confirm()
+        # دفتر اليومية/الحساب المرتبط لا يُسمح بتحديدهما إلا بعد الاعتماد
+        # تحديداً (حالة "مؤكدة").
         gov_fee.write({
             'linked_account_id': self.env['account.account'].search([], limit=1).id,
             'journal_id': self.env['account.journal'].search([('company_id', '=', gov_fee.company_id.id)], limit=1).id,
         })
-        gov_fee.action_submit_review()
-        gov_fee.action_confirm()
         gov_fee.action_done()
         self.assertEqual(gov_fee.state, 'done')
         self.assertTrue(gov_fee.move_id)
@@ -127,6 +132,97 @@ class TestRecruitmentRequestIntegration(TransactionCase):
 
         request.action_next_stage()
         self.assertEqual(request.stage_id.code, 'sponsorship_done')
+
+    def test_return_to_stage_deletes_unpaid_gov_fee_and_unlocks_amount(self):
+        """"إرجاع للتصحيح" قبل سداد الرسوم فعلياً (السجل لا يزال مسودة/
+        تحت المراجعة/مؤكدة في السداد البنكي - move_id فارغ حتماً) يحذف
+        السجل القديم تلقائياً ويفتح مبلغ الرسوم على طلب التوظيف للتعديل
+        مجدداً - بدل بقائه مقفولاً للأبد رغم الرجوع لمرحلة سابقة."""
+        request = self._create_request(identification_id='1234567840', email='bs9@example.com')
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_sponsorship_transfer.id,
+        })
+        request.action_register_gov_fee()
+        gov_fee = request.bank_settlement_gov_fee_id
+        self.assertTrue(gov_fee)
+        self.assertTrue(request.gov_fee_settled)
+
+        request.action_return_to_stage(self.stage_project_review, 'مبلغ خاطئ')
+
+        self.assertFalse(request.gov_fee_settled)
+        self.assertFalse(request.bank_settlement_gov_fee_id)
+        self.assertFalse(gov_fee.exists())
+        request.gov_fee_amount = 1500.0
+        self.assertEqual(request.gov_fee_amount, 1500.0)
+
+    def test_return_to_stage_deletes_gov_fee_even_after_submitted_for_review(self):
+        """حارس ضد ثغرة انحدار حقيقية: بعد إضافة "منع الحذف النهائي بعد
+        مغادرة مسودة" (unlink() في bank_settlement_mixin)، الحذف النظامي
+        لسجل الرسوم الحكومية غير المسدَّد عند "إرجاع للتصحيح" توقف عن
+        العمل لأي سجل تجاوز حالة "مسودة" فعلياً (تحت المراجعة/مؤكدة) -
+        الاختبار الآخر أعلاه لا يغطي هذه الحالة لأنه يترك السجل في
+        "مسودة" دائماً. يجب أن يبقى الحذف النظامي يعمل رغم قفل الحذف
+        العام (عبر bank_settlement_skip_approval_lock)."""
+        request = self._create_request(identification_id='1234567842', email='bs11@example.com')
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_sponsorship_transfer.id,
+        })
+        request.action_register_gov_fee()
+        gov_fee = request.bank_settlement_gov_fee_id
+        gov_fee.action_submit_review()
+        gov_fee.action_confirm()
+        self.assertEqual(gov_fee.state, 'confirmed')
+
+        request.action_return_to_stage(self.stage_project_review, 'مبلغ خاطئ')
+
+        self.assertFalse(request.bank_settlement_gov_fee_id)
+        self.assertFalse(gov_fee.exists())
+
+    def test_rejecting_gov_fee_from_bank_settlement_unlocks_request_amount(self):
+        """رفض سجل الرسوم الحكومية من شاشة السداد البنكي نفسها (وليس عبر
+        "إرجاع للتصحيح" من طلب التوظيف) يجب أن يفتح مبلغ الرسوم على طلب
+        التوظيف تلقائياً هو الآخر - وإلا يبقى gov_fee_settled=True هناك
+        للأبد رغم رفض السجل الذي استند إليه فعلياً، بلا أي مخرج واضح لمن
+        يتابع من شاشة طلب التوظيف فقط."""
+        request = self._create_request(identification_id='1234567843', email='bs12@example.com')
+        request.action_register_gov_fee()
+        gov_fee = request.bank_settlement_gov_fee_id
+        self.assertTrue(request.gov_fee_settled)
+        gov_fee.action_submit_review()
+
+        gov_fee.action_reject(reason='بيانات خاطئة')
+
+        self.assertEqual(gov_fee.state, 'rejected')
+        self.assertFalse(request.gov_fee_settled)
+        request.gov_fee_amount = 1200.0
+        self.assertEqual(request.gov_fee_amount, 1200.0)
+
+    def test_return_to_stage_blocked_if_gov_fee_already_paid(self):
+        """"إرجاع للتصحيح" يُمنَع كلياً إن سُدِّدت الرسوم فعلاً (سجل
+        السداد البنكي بحالة "منفّذة" - قيد محاسبي حقيقي موجود). التصحيح
+        في هذه الحالة يجب أن يمر من السداد البنكي نفسه، وليس من هنا."""
+        request = self._create_request(identification_id='1234567841', email='bs10@example.com')
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_sponsorship_transfer.id,
+        })
+        request.action_register_gov_fee()
+        gov_fee = request.bank_settlement_gov_fee_id
+        gov_fee.action_submit_review()
+        gov_fee.action_confirm()
+        gov_fee.write({
+            'linked_account_id': self.env['account.account'].search([], limit=1).id,
+            'journal_id': self.env['account.journal'].search(
+                [('company_id', '=', gov_fee.company_id.id)], limit=1).id,
+        })
+        gov_fee.action_done()
+        self.assertEqual(gov_fee.state, 'done')
+
+        with self.assertRaises(UserError):
+            request.action_return_to_stage(self.stage_project_review, 'مبلغ خاطئ')
+
+        self.assertTrue(request.gov_fee_settled)
+        self.assertEqual(request.bank_settlement_gov_fee_id, gov_fee)
+        self.assertTrue(gov_fee.exists())
 
     def test_paid_stage_free_without_gov_fee_amount(self):
         """بدون أي مبلغ رسوم حكومية على الطلب أصلاً، لا قيد على مغادرة

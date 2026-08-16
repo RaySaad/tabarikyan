@@ -5,12 +5,13 @@
         <!-- تطبيق مستقل بأيقونته الخاصة (وليس مدموجاً داخل المحاسبة) -
              حتى لا يحتاج "مستخدم/مراجع" السداد البنكي أي صلاحية محاسبية
              أصلية بـ Odoo للدخول، والتي كانت تفتح لهم أيضاً رؤية بقية
-             تطبيق المحاسبة (عملاء/موردين/فواتير) رغم عدم حاجتهم لها -
-             نفس صلاحية دخول هذا التطبيق مقصورة على مجموعات السداد
-             البنكي فقط. -->
+             تطبيق المحاسبة (عملاء/موردين/فواتير) رغم عدم حاجتهم لها.
+             مضاف إليها أيضاً مسؤولي المشاريع (سير التوظيف) - يحتاجون
+             الدخول لموافقة السلف فقط (القوائم الأخرى تبقى مخفية عنهم
+             تلقائياً لعدم امتلاكهم صلاحية تلك النماذج). -->
         <menuitem id="menu_bank_settlement_root" name="السداد البنكي"
                   web_icon="bank_settlement,static/description/icon.png"
-                  groups="bank_settlement.group_bank_settlement_user"
+                  groups="bank_settlement.group_bank_settlement_user,recruitment_workflow.group_recruitment_workflow_project_manager"
                   sequence="15"/>
 
         <menuitem id="menu_bank_settlement_advance" name="السلف"

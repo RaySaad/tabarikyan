@@ -6,7 +6,8 @@
             <field name="name">bank.settlement.representative.list</field>
             <field name="model">bank.settlement.representative</field>
             <field name="arch" type="xml">
-                <list string="تصفيات المناديب" decoration-success="state == 'done'">
+                <list string="تصفيات المناديب" decoration-success="state == 'done'"
+                      decoration-danger="state == 'rejected'">
                     <field name="name"/>
                     <field name="date"/>
                     <field name="employee_id" string="اسم المندوب"/>
@@ -18,6 +19,7 @@
                     <field name="state" widget="badge"
                            decoration-success="state == 'done'"
                            decoration-info="state == 'confirmed'"
+                           decoration-danger="state == 'rejected'"
                            decoration-muted="state == 'draft'"/>
                 </list>
             </field>
@@ -40,12 +42,15 @@
                                 type="object" class="btn-primary"
                                 groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state != 'confirmed'"/>
-                        <button name="action_reset_draft" string="إعادة لمسودة"
+                        <button name="action_open_reset_wizard" string="إعادة لمسودة"
                                 type="object" groups="bank_settlement.group_bank_settlement_manager"
-                                invisible="state not in ('under_review', 'confirmed')"/>
+                                invisible="state not in ('under_review', 'confirmed', 'rejected')"/>
+                        <button name="action_open_reject_wizard" string="رفض"
+                                type="object" groups="bank_settlement.group_bank_settlement_reviewer"
+                                invisible="state in ('done', 'cancel', 'rejected')"/>
                         <button name="action_cancel" string="إلغاء"
                                 type="object" groups="bank_settlement.group_bank_settlement_reviewer"
-                                invisible="state in ('done', 'cancel')"/>
+                                invisible="state in ('done', 'cancel', 'rejected')"/>
                         <field name="state" widget="statusbar"
                                statusbar_visible="draft,under_review,confirmed,done"/>
                     </header>
@@ -64,24 +69,31 @@
                         </div>
                         <group>
                             <group string="بيانات المندوب">
-                                <field name="date"/>
+                                <field name="date" readonly="state != 'draft'"/>
                                 <field name="employee_id" string="اسم المندوب" required="1"
-                                       readonly="state not in ('draft', 'under_review')"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="residency_number"/>
-                                <field name="iban"/>
+                                <field name="iban" readonly="state != 'draft'"/>
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                             <group string="بيانات المنصة">
-                                <field name="project_id" string="اسم التطبيق"/>
+                                <field name="project_id" string="اسم التطبيق"
+                                       readonly="state != 'draft'"/>
                                 <field name="analytic_account_id" readonly="1"/>
-                                <field name="platform_employee_id" string="ID رقم"/>
+                                <field name="platform_employee_id" string="ID رقم"
+                                       readonly="state != 'draft'"/>
                             </group>
                         </group>
                         <group string="مبلغ التصفية">
                             <field name="currency_id" invisible="1"/>
-                            <field name="settlement_amount" readonly="state not in ('draft', 'under_review')"/>
-                            <field name="linked_account_id" readonly="state not in ('draft', 'under_review')"/>
-                            <field name="journal_id" readonly="state not in ('draft', 'under_review')"/>
+                            <field name="settlement_amount" readonly="state != 'draft'"/>
+                            <!-- الحساب المرتبط ودفتر اليومية لا يظهران إلا بعد
+                                 اعتماد المدير العام، ويبقيان قابلين للتعبئة
+                                 تحديداً في تلك الحالة (قبل تسجيل السداد الفعلي). -->
+                            <field name="linked_account_id" readonly="state != 'confirmed'"
+                                   invisible="state not in ('confirmed', 'done')"/>
+                            <field name="journal_id" readonly="state != 'confirmed'"
+                                   invisible="state not in ('confirmed', 'done')"/>
                         </group>
                     </sheet>
                     <chatter/>

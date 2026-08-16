@@ -24,6 +24,7 @@ class BankSettlementRepresentative(models.Model):
             ('under_review', 'تحت المراجعة'),
             ('confirmed', 'مؤكدة'),
             ('done', 'مسددة'),
+            ('rejected', 'مرفوضة'),
             ('cancel', 'ملغاة'),
         ],
         default='draft', tracking=True, copy=False,
@@ -35,4 +36,9 @@ class BankSettlementRepresentative(models.Model):
     def _get_locked_fields_after_approval(self):
         # settlement_amount اسم بديل لحقل amount نفسه (related) - يُقفل
         # هو أيضاً بعد الاعتماد، تماماً كما لو كُتب على amount مباشرة.
-        return super()._get_locked_fields_after_approval() + ['settlement_amount']
+        # iban/platform_employee_id/date: وجهة الدفع الفعلية، هوية المندوب
+        # داخل تطبيق المنصة، وتاريخ التصفية - كانت بلا أي قفل إطلاقاً
+        # سابقاً (ثغرة حقيقية).
+        return super()._get_locked_fields_after_approval() + [
+            'settlement_amount', 'iban', 'platform_employee_id', 'date',
+        ]

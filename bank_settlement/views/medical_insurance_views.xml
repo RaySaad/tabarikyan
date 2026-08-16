@@ -6,7 +6,8 @@
             <field name="name">bank.settlement.medical.insurance.list</field>
             <field name="model">bank.settlement.medical.insurance</field>
             <field name="arch" type="xml">
-                <list string="التأمين الطبي" decoration-success="state == 'done'">
+                <list string="التأمين الطبي" decoration-success="state == 'done'"
+                      decoration-danger="state == 'rejected'">
                     <field name="name"/>
                     <field name="fee_type_id"/>
                     <field name="employee_id"/>
@@ -17,6 +18,7 @@
                     <field name="state" widget="badge"
                            decoration-success="state == 'done'"
                            decoration-info="state == 'confirmed'"
+                           decoration-danger="state == 'rejected'"
                            decoration-muted="state == 'draft'"/>
                 </list>
             </field>
@@ -40,12 +42,15 @@
                                 class="btn-primary"
                                 groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state != 'confirmed'"/>
-                        <button name="action_reset_draft" string="إعادة لمسودة"
+                        <button name="action_open_reset_wizard" string="إعادة لمسودة"
                                 type="object" groups="bank_settlement.group_bank_settlement_manager"
-                                invisible="state not in ('under_review', 'confirmed')"/>
+                                invisible="state not in ('under_review', 'confirmed', 'rejected')"/>
+                        <button name="action_open_reject_wizard" string="رفض"
+                                type="object" groups="bank_settlement.group_bank_settlement_reviewer"
+                                invisible="state in ('done', 'cancel', 'rejected')"/>
                         <button name="action_cancel" string="إلغاء"
                                 type="object" groups="bank_settlement.group_bank_settlement_reviewer"
-                                invisible="state in ('done', 'cancel')"/>
+                                invisible="state in ('done', 'cancel', 'rejected')"/>
                         <field name="state" widget="statusbar"
                                statusbar_visible="draft,under_review,confirmed,done"/>
                     </header>
@@ -64,27 +69,28 @@
                         </div>
                         <group>
                             <group string="بيانات التأمين">
-                                <field name="fee_type_id" readonly="state not in ('draft', 'under_review')"/>
-                                <field name="vendor_id" readonly="state not in ('draft', 'under_review')"/>
-                                <field name="company_iban"/>
-                                <field name="transfer_date"/>
+                                <field name="fee_type_id" readonly="state != 'draft'"/>
+                                <field name="vendor_id" readonly="state != 'draft'"/>
+                                <field name="company_iban" readonly="state != 'draft'"/>
+                                <field name="transfer_date" readonly="state != 'draft'"/>
                             </group>
                             <group string="المبالغ">
                                 <field name="currency_id" invisible="1"/>
-                                <field name="amount" readonly="state not in ('draft', 'under_review')"/>
-                                <field name="tax_amount" readonly="state not in ('draft', 'under_review')"/>
+                                <field name="amount" readonly="state != 'draft'"/>
+                                <field name="tax_amount" readonly="state != 'draft'"/>
                                 <field name="total_amount"/>
                             </group>
                         </group>
                         <group>
                             <group string="بيانات المندوب">
                                 <field name="employee_id" string="اسم المندوب" required="1"
-                                       readonly="state not in ('draft', 'under_review')"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="residency_number"/>
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                             <group string="المنصة">
-                                <field name="project_id" string="التطبيق"/>
+                                <field name="project_id" string="التطبيق"
+                                       readonly="state != 'draft'"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="operating_system" string="نظام التشغيل"/>
                             </group>

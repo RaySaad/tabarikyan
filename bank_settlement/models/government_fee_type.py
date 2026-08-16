@@ -14,6 +14,10 @@ class BankSettlementGovernmentEntity(models.Model):
     sequence = fields.Integer(string='الترتيب', default=10)
     active = fields.Boolean(default=True)
 
+    _sql_constraints = [
+        ('name_uniq', 'unique(name)', 'يوجد جهة حكومية أخرى بنفس الاسم بالفعل.'),
+    ]
+
 
 class BankSettlementGovernmentFeeType(models.Model):
     """نوع الرسوم الحكومية (نقل كفالة، تغيير مهنة...) - قائمة قابلة
@@ -25,3 +29,7 @@ class BankSettlementGovernmentFeeType(models.Model):
     name = fields.Char(string='الاسم', required=True)
     sequence = fields.Integer(string='الترتيب', default=10)
     active = fields.Boolean(default=True)
+
+    _sql_constraints = [
+        ('name_uniq', 'unique(name)', 'يوجد نوع رسوم آخر بنفس الاسم بالفعل.'),
+    ]

@@ -7,7 +7,8 @@
             <field name="model">bank.settlement.advance</field>
             <field name="arch" type="xml">
                 <list string="السلف" decoration-success="state == 'paid'"
-                      decoration-info="state == 'waiting_approval'">
+                      decoration-info="state == 'waiting_approval'"
+                      decoration-danger="state == 'rejected'">
                     <field name="name"/>
                     <field name="employee_id"/>
                     <field name="residency_number"/>
@@ -17,6 +18,7 @@
                     <field name="state" widget="badge"
                            decoration-success="state == 'paid'"
                            decoration-info="state == 'waiting_approval'"
+                           decoration-danger="state == 'rejected'"
                            decoration-muted="state == 'draft'"/>
                 </list>
             </field>
@@ -31,22 +33,33 @@
                         <button name="action_submit_review" string="إرسال للمراجعة"
                                 type="object" class="btn-primary"
                                 invisible="state != 'draft'"/>
-                        <button name="action_confirm" string="الموافقة"
+                        <!-- موافقة مسؤول المشروع - تظهر لمجموعة مسؤولي المشاريع
+                             (سير التوظيف) ومدير عام السداد البنكي كاحتياط، لكن
+                             التحقق الفعلي من كونه مسؤول مشروع الموظف تحديداً
+                             يتم من جهة الخادم في action_pm_approve. -->
+                        <button name="action_pm_approve" string="موافقة مسؤول المشروع"
+                                type="object" class="btn-primary"
+                                groups="recruitment_workflow.group_recruitment_workflow_project_manager,bank_settlement.group_bank_settlement_manager"
+                                invisible="state != 'waiting_approval'"/>
+                        <button name="action_confirm" string="اعتماد المدير العام"
                                 type="object" class="btn-primary"
                                 groups="bank_settlement.group_bank_settlement_manager"
-                                invisible="state != 'waiting_approval'"/>
+                                invisible="state != 'pm_approved'"/>
                         <button name="action_done" string="تم الصرف"
                                 type="object" class="btn-primary"
                                 groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state != 'approved'"/>
-                        <button name="action_reset_draft" string="إعادة لمسودة"
+                        <button name="action_open_reset_wizard" string="إعادة لمسودة"
                                 type="object" groups="bank_settlement.group_bank_settlement_manager"
-                                invisible="state not in ('waiting_approval', 'approved')"/>
+                                invisible="state not in ('waiting_approval', 'pm_approved', 'approved', 'rejected')"/>
+                        <button name="action_open_reject_wizard" string="رفض"
+                                type="object" groups="bank_settlement.group_bank_settlement_reviewer"
+                                invisible="state in ('paid', 'cancel', 'rejected')"/>
                         <button name="action_cancel" string="إلغاء"
                                 type="object" groups="bank_settlement.group_bank_settlement_reviewer"
-                                invisible="state in ('paid', 'cancel')"/>
+                                invisible="state in ('paid', 'cancel', 'rejected')"/>
                         <field name="state" widget="statusbar"
-                               statusbar_visible="draft,waiting_approval,approved,paid"/>
+                               statusbar_visible="draft,waiting_approval,pm_approved,approved,paid"/>
                     </header>
                     <sheet>
                         <widget name="web_ribbon" title="ملغاة" bg_color="text-bg-danger"
@@ -66,28 +79,44 @@
                         <group>
                             <group string="بيانات الموظف">
                                 <field name="employee_id" required="1"
-                                       readonly="state not in ('draft', 'waiting_approval')"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="residency_number"/>
-                                <field name="employee_category"/>
+                                <field name="employee_category" readonly="state != 'draft'"/>
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                             <group string="بيانات السلفة">
                                 <field name="advance_reason_id"
-                                       readonly="state not in ('draft', 'waiting_approval')"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="currency_id" invisible="1"/>
-                                <field name="amount" readonly="state not in ('draft', 'waiting_approval')"/>
-                                <field name="linked_account_id" readonly="state not in ('draft', 'waiting_approval')"/>
+                                <field name="amount" readonly="state != 'draft'"/>
                             </group>
+                        </group>
+                        <group string="طريقة الاستلام">
+                            <field name="payment_method" readonly="state != 'draft'"/>
+                            <field name="employee_iban" readonly="state != 'draft'"
+                                   invisible="payment_method != 'bank_transfer'"/>
+                            <field name="stc_number" readonly="state != 'draft'"
+                                   invisible="payment_method != 'stc_pay'"/>
                         </group>
                         <group string="بيانات السداد البنكي">
                             <group>
-                                <field name="transfer_date"/>
-                                <field name="bank_reference"/>
-                                <field name="journal_id" readonly="state not in ('draft', 'waiting_approval')"/>
+                                <field name="transfer_date" readonly="state != 'draft'"/>
+                                <field name="bank_reference" readonly="state != 'draft'"/>
+                                <!-- دفتر اليومية لا يظهر إلا بعد اعتماد المدير
+                                     العام، ويبقى قابلاً للتعبئة تحديداً في تلك
+                                     الحالة (قبل الصرف الفعلي) - وليس "مسودة"
+                                     كباقي الحقول (انظر write() في advance.py). -->
+                                <field name="journal_id" readonly="state != 'approved'"
+                                       invisible="state not in ('approved', 'paid')"/>
                             </group>
                             <group>
-                                <field name="project_id"/>
+                                <field name="project_id" readonly="state != 'draft'"/>
                                 <field name="analytic_account_id" readonly="1"/>
+                                <!-- الحساب المرتبط لا يظهر إلا بعد اعتماد
+                                     المدير العام، ويبقى قابلاً للتعبئة تحديداً
+                                     في تلك الحالة (قبل الصرف الفعلي). -->
+                                <field name="linked_account_id" readonly="state != 'approved'"
+                                       invisible="state not in ('approved', 'paid')"/>
                             </group>
                         </group>
                         <group string="ملاحظات">

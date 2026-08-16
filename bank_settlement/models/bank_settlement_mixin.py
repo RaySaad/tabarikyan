@@ -135,15 +135,37 @@ class BankSettlementMixin(models.AbstractModel):
             ('under_review', 'تحت المراجعة'),
             ('confirmed', 'مؤكدة'),
             ('done', 'منفّذة'),
+            ('rejected', 'مرفوضة'),
             ('cancel', 'ملغاة'),
         ],
         string='الحالة', default='draft', tracking=True, copy=False,
     )
+    rejection_reason = fields.Text(string='سبب الرفض', copy=False)
 
     @api.depends('amount', 'tax_amount')
     def _compute_total_amount(self):
         for rec in self:
             rec.total_amount = (rec.amount or 0.0) + (rec.tax_amount or 0.0)
+
+    @api.constrains('amount', 'tax_amount')
+    def _check_amount_not_negative(self):
+        """يمنع أي مبلغ سالب في أي حالة - لا يوجد سيناريو مشروع لمبلغ/
+        ضريبة سالبين هنا (كانت ثغرة حقيقية: لا يوجد أي تحقق سابقاً، يمكن
+        تمرير مبلغ سالب حتى مرحلة "منفّذة" وإنشاء قيد محاسبي فعلي به)."""
+        for rec in self:
+            if rec.amount and rec.amount < 0:
+                raise UserError('المبلغ لا يمكن أن يكون سالباً.')
+            if rec.tax_amount and rec.tax_amount < 0:
+                raise UserError('مبلغ الضريبة لا يمكن أن يكون سالباً.')
+
+    def _check_amount_positive_before_submit(self):
+        """يتحقق من أن المبلغ موجب فعلياً (وليس صفراً أو فارغاً) قبل
+        إرسال السجل للمراجعة - النماذج التي تُسمّي إجراء الإرسال بأسلوب
+        مختلف (advance.py: state مختلف) تستدعيها صراحة قبل تنفيذ
+        الانتقال."""
+        for rec in self:
+            if not rec.amount or rec.amount <= 0:
+                raise UserError('يجب تحديد مبلغ أكبر من صفر قبل إرسال السجل للمراجعة.')
 
     def _compute_attachment_count(self):
         for rec in self:
@@ -181,36 +203,96 @@ class BankSettlementMixin(models.AbstractModel):
         عدمه بعد - وإلا أصبحت الموافقة نفسها بلا معنى (يُعتمَد على مبلغ/
         شخص، ثم يُغيَّران بعد الاعتماد مباشرة). النماذج الفرعية التي لها
         حقول هوية/مبلغ إضافية خاصة بها (نوع الرسوم، الجهة، السيارة...)
-        تُضيفها هنا عبر تجاوز هذه الدالة."""
-        return ['employee_id', 'amount', 'tax_amount', 'linked_account_id', 'journal_id']
+        تُضيفها هنا عبر تجاوز هذه الدالة.
+
+        ملاحظة: linked_account_id/journal_id ليسا هنا عمداً - لهما نافذة
+        تعديل خاصة تبدأ بعد الاعتماد تحديداً (انظر _get_bank_fields_
+        editable_state أدناه)، بما أنهما لا يظهران أصلاً في الواجهة قبل
+        ذلك (لا معنى لقفلهما بنفس شرط "مسودة/تحت المراجعة" كباقي الحقول
+        هنا)."""
+        # project_id (المنصة) مقفول هنا مع employee_id عمداً - يُشتق تلقائياً
+        # من منصة الموظف المختار (انظر _fill_employee_derived_vals/
+        # _onchange_employee_id أعلاه)، وحساب المنصة التحليلي (analytic_
+        # account_id) يُحسَب منه مباشرة - فالسماح بتعديله يدوياً بعد
+        # الاعتماد يُتيح تغيير العزل المالي بين المنصات (كيتا/هنقرستيشن/
+        # جاهز) لسجل مُعتمَد فعلاً، رغم قفل الموظف نفسه.
+        # transfer_date/bank_reference: بيانات التحويل البنكي الفعلي - كان
+        # هذان الحقلان بلا أي قفل إطلاقاً في كل الشاشات سابقاً (ثغرة حقيقية
+        # مكتشفة بمراجعة شاملة)، قابلين للتعديل حتى بعد "منفّذة" مع وجود
+        # قيد محاسبي حقيقي مرتبط فعلاً بقيمتيهما وقت إنشائه.
+        return [
+            'employee_id', 'employee_category', 'project_id', 'amount',
+            'tax_amount', 'transfer_date', 'bank_reference',
+        ]
 
     def _get_editable_states(self):
-        """الحالات التي يُسمح فيها بتعديل الحقول الحساسة أعلاه - قبل
-        اعتماد المدير العام. النماذج التي تُسمّي حالاتها بأسماء مختلفة
-        (advance.py مثلاً: waiting_approval بدل under_review) تُجاوز هذه
+        """الحالات التي يُسمح فيها بتعديل الحقول الحساسة أعلاه - "مسودة"
+        فقط، أي أن القفل يبدأ فور "إرسال للمراجعة" مباشرة، قبل أي اعتماد
+        فعلي - بناءً على طلب صريح (بنفس قاعدة السلفة والتي كانت أشد من
+        بقية الشاشات، عُمِّمت الآن على الجميع)."""
+        return ('draft',)
+
+    _BANK_FIELDS = ('linked_account_id', 'journal_id')
+
+    def _get_bank_fields_editable_state(self):
+        """الحالة الوحيدة التي يُسمح فيها بتحديد دفتر اليومية/الحساب
+        المرتبط - بعد اعتماد المدير العام تحديداً (وهي أول مرة يظهران
+        فيها بالواجهة أصلاً، انظر الشاشات المختلفة) وقبل تسجيل السداد/
+        التحويل الفعلي (بعدها تُستخدَم قيمتهما لإنشاء القيد المحاسبي،
+        فلا معنى لتغييرهما). النماذج التي تُسمّي حالة الاعتماد باسم
+        مختلف (advance.py: 'approved' بدل 'confirmed') تُجاوز هذه
         الدالة."""
-        return ('draft', 'under_review')
+        return 'confirmed'
 
     def write(self, vals):
+        skip_lock = self.env.context.get('bank_settlement_skip_approval_lock')
         locked = self._get_locked_fields_after_approval()
         # يُتجاوز القفل عمداً لعملية نظامية واحدة: إكمال حقل الموظف
         # تلقائياً بمجرد إنشاء سجله الرسمي (hr.employee) في recruitment_
         # workflow - يستهدف نفس الشخص المرشّح بالضبط (لا تغيير فعلي "لمن")،
         # وليس تعديلاً يدوياً حقيقياً. انظر bank_settlement/models/
         # recruitment_request.py: _create_employee().
-        if any(f in vals for f in locked) and not self.env.context.get(
-            'bank_settlement_skip_approval_lock'
-        ):
+        if any(f in vals for f in locked) and not skip_lock:
             for rec in self:
                 if rec.state not in rec._get_editable_states():
                     raise UserError(
                         'لا يمكن تعديل بيانات السداد الأساسية (الموظف/'
-                        'المبلغ/الحساب/الدفتر) بعد اعتماد المدير العام - '
+                        'المنصة/المبلغ) بعد اعتماد المدير العام - '
                         'أعد السجل لمسودة أولاً (زر "إعادة لمسودة") إن '
                         'احتجت تصحيحها.'
                     )
+        if any(f in vals for f in self._BANK_FIELDS) and not skip_lock:
+            for rec in self:
+                if rec.state != rec._get_bank_fields_editable_state():
+                    raise UserError(
+                        'دفتر اليومية والحساب المرتبط لا يمكن تحديدهما إلا '
+                        'بعد اعتماد المدير العام مباشرة، وقبل تسجيل السداد/'
+                        'التحويل الفعلي.'
+                    )
         self._fill_employee_derived_vals(vals)
         return super().write(vals)
+
+    def unlink(self):
+        # سجلات السداد البنكي سجل تدقيق ومراجعة دائم - يُمنع حذفها نهائياً
+        # بعد مغادرة "مسودة" (حتى لممن يملك صلاحية الحذف على مستوى ir.
+        # model.access، مثل مدير عام السداد البنكي)، حفاظاً على أثر كامل
+        # لكل سجل رُفع للمراجعة أو اعتُمد أو نُفِّذ فعلياً - بنفس مبدأ
+        # recruitment_workflow.recruitment_request.unlink(). الإلغاء (زر
+        # "إلغاء") هو البديل الوحيد لمن غادر "مسودة". يُتجاوز عمداً عبر
+        # نفس سياق تجاوز القفل العام (bank_settlement_skip_approval_lock)
+        # لعملية نظامية واحدة: حذف سجل "الرسوم الحكومية" غير المسدَّد بعد
+        # عند "إرجاع للتصحيح" من recruitment_workflow (انظر bank_settlement/
+        # models/recruitment_request.py: _unlock_gov_fee_for_correction) -
+        # ليس حذفاً يدوياً حقيقياً من مستخدم.
+        if not self.env.context.get('bank_settlement_skip_approval_lock'):
+            for rec in self:
+                if rec.state != 'draft':
+                    raise UserError(
+                        'لا يمكن حذف هذا السجل نهائياً بعد مغادرة "مسودة" - '
+                        'للحفاظ على سجل تدقيق ومراجعة كامل. استخدم زر "إلغاء" '
+                        'بدلاً من ذلك إن احتجت إيقافه.'
+                    )
+        return super().unlink()
 
     def _get_sequence_code_for_create(self, vals):
         """كل نموذج فرعي يجب أن يحدد كود التسلسل الخاص به."""
@@ -234,6 +316,7 @@ class BankSettlementMixin(models.AbstractModel):
         for rec in self:
             if rec.state != 'draft':
                 raise UserError('يمكن إرسال السجلات في حالة "مسودة" فقط للمراجعة.')
+        self._check_amount_positive_before_submit()
         self.write({'state': 'under_review'})
 
     def action_confirm(self):
@@ -259,9 +342,28 @@ class BankSettlementMixin(models.AbstractModel):
                 rec.move_id = rec._create_settlement_move()
         self.write({'state': 'done'})
 
-    def action_reset_draft(self):
-        """إعادة لمسودة - تُلغي فعلياً أي اعتماد سابق (المدير العام)،
-        فتتطلب نفس صلاحيته تحديداً - وليست متاحة لمن ينشئ السجل فقط."""
+    def action_open_reset_wizard(self):
+        """يفتح معالج "إعادة لمسودة" (يفرض تسجيل السبب) - الزر في الواجهة
+        يستدعي هذه الدالة بدل action_reset_draft مباشرة."""
+        self.ensure_one()
+        return {
+            'name': 'إعادة لمسودة',
+            'type': 'ir.actions.act_window',
+            'res_model': 'bank.settlement.reset.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_res_model': self._name, 'default_res_id': self.id},
+        }
+
+    def action_reset_draft(self, reason=False):
+        """الإعادة الفعلية لمسودة - تُلغي فعلياً أي اعتماد سابق (المدير
+        العام)، فتتطلب نفس صلاحيته تحديداً - وليست متاحة لمن ينشئ السجل
+        فقط. تتطلب سبباً إجبارياً، ولا تُستدعى مباشرة من زر بالواجهة -
+        تمر حصراً عبر bank.settlement.reset.wizard (انظر
+        action_open_reset_wizard أعلاه)، بنفس مبدأ "إرجاع للتصحيح" في
+        recruitment_workflow."""
+        if not reason:
+            raise UserError('يجب توضيح سبب الإعادة لمسودة.')
         for rec in self:
             # القيد المحاسبي (إن وُجد) يعني أن السداد وثّق فعلياً محاسبياً -
             # لا يجوز إعادة السجل لمسودة وترك ذلك القيد معلّقاً بلا مرجع.
@@ -273,6 +375,8 @@ class BankSettlementMixin(models.AbstractModel):
                     % rec.move_id.name
                 )
             rec._check_group('bank_settlement.group_bank_settlement_manager')
+        for rec in self:
+            rec.message_post(body='تمت إعادة السجل لمسودة للتصحيح.<br/>السبب: %s' % reason)
         self.write({'state': 'draft'})
 
     def action_cancel(self):
@@ -289,6 +393,43 @@ class BankSettlementMixin(models.AbstractModel):
                 'bank_settlement.group_bank_settlement_manager',
             )
         self.write({'state': 'cancel'})
+
+    def action_open_reject_wizard(self):
+        """يفتح معالج "رفض" (يفرض تسجيل السبب) - الزر في الواجهة يستدعي
+        هذه الدالة بدل action_reject مباشرة."""
+        self.ensure_one()
+        return {
+            'name': 'رفض السجل',
+            'type': 'ir.actions.act_window',
+            'res_model': 'bank.settlement.reject.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_res_model': self._name, 'default_res_id': self.id},
+        }
+
+    def action_reject(self, reason=False):
+        """رفض السجل - يتطلب سبباً إجبارياً (بعكس "إلغاء" الذي لا يتطلب
+        سبباً) - يُستخدم عند اكتشاف مراجع/مدير عام السداد البنكي أن
+        بيانات السجل خاطئة وتحتاج تصحيحاً من مُنشئه (وليس مجرد إيقافه
+        نهائياً كما في "إلغاء"). لا تُستدعى مباشرة من زر بالواجهة - تمر
+        حصراً عبر bank.settlement.reject.wizard الذي يفرض تمرير السبب
+        (انظر action_open_reject_wizard أعلاه)، بنفس مبدأ "رفض" في
+        recruitment_workflow.recruitment_request."""
+        if not reason:
+            raise UserError('يجب إدخال سبب الرفض.')
+        for rec in self:
+            if rec.state in ('done', 'cancel', 'rejected'):
+                raise UserError(
+                    'لا يمكن رفض سجل بحالة "%s".'
+                    % dict(rec._fields['state'].selection).get(rec.state, rec.state)
+                )
+            rec._check_group(
+                'bank_settlement.group_bank_settlement_reviewer',
+                'bank_settlement.group_bank_settlement_manager',
+            )
+        for rec in self:
+            rec.message_post(body='تم رفض السجل.<br/>السبب: %s' % reason)
+        self.write({'state': 'rejected', 'rejection_reason': reason})
 
     def _get_settlement_partner_id(self):
         """الشريك المستخدَم على سطر القيد المحاسبي - افتراضياً شريك

@@ -6,7 +6,8 @@
             <field name="name">bank.settlement.vehicle.transfer.list</field>
             <field name="model">bank.settlement.vehicle.transfer</field>
             <field name="arch" type="xml">
-                <list string="تحويلات المركبات" decoration-success="state == 'done'">
+                <list string="تحويلات المركبات" decoration-success="state == 'done'"
+                      decoration-danger="state == 'rejected'">
                     <field name="name"/>
                     <field name="transfer_type_id"/>
                     <field name="employee_id"/>
@@ -16,6 +17,7 @@
                     <field name="state" widget="badge"
                            decoration-success="state == 'done'"
                            decoration-info="state == 'confirmed'"
+                           decoration-danger="state == 'rejected'"
                            decoration-muted="state == 'draft'"/>
                 </list>
             </field>
@@ -38,12 +40,15 @@
                                 type="object" class="btn-primary"
                                 groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state != 'confirmed'"/>
-                        <button name="action_reset_draft" string="إعادة لمسودة"
+                        <button name="action_open_reset_wizard" string="إعادة لمسودة"
                                 type="object" groups="bank_settlement.group_bank_settlement_manager"
-                                invisible="state not in ('under_review', 'confirmed')"/>
+                                invisible="state not in ('under_review', 'confirmed', 'rejected')"/>
+                        <button name="action_open_reject_wizard" string="رفض"
+                                type="object" groups="bank_settlement.group_bank_settlement_reviewer"
+                                invisible="state in ('done', 'cancel', 'rejected')"/>
                         <button name="action_cancel" string="إلغاء"
                                 type="object" groups="bank_settlement.group_bank_settlement_reviewer"
-                                invisible="state in ('done', 'cancel')"/>
+                                invisible="state in ('done', 'cancel', 'rejected')"/>
                         <field name="state" widget="statusbar"
                                statusbar_visible="draft,under_review,confirmed,done"/>
                     </header>
@@ -63,26 +68,34 @@
                         <group>
                             <group>
                                 <field name="transfer_type_id"
-                                       readonly="state not in ('draft', 'under_review')"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="employee_id"
-                                       readonly="state not in ('draft', 'under_review')"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="employee_partner_id" invisible="1"/>
                                 <field name="vehicle_id"
-                                       readonly="state not in ('draft', 'under_review')"
+                                       readonly="state != 'draft'"
                                        domain="['|', ('driver_id', '=', employee_partner_id), ('future_driver_id', '=', employee_partner_id)] if employee_partner_id else []"/>
-                                <field name="project_id"/>
+                                <field name="project_id"
+                                       readonly="state != 'draft'"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
-                                <field name="linked_account_id" readonly="state not in ('draft', 'under_review')"/>
+                                <!-- الحساب المرتبط لا يظهر إلا بعد اعتماد المدير
+                                     العام، ويبقى قابلاً للتعبئة تحديداً في تلك
+                                     الحالة (قبل تسجيل التحويل الفعلي). -->
+                                <field name="linked_account_id" readonly="state != 'confirmed'"
+                                       invisible="state not in ('confirmed', 'done')"/>
                             </group>
                             <group>
                                 <field name="currency_id" invisible="1"/>
-                                <field name="amount" readonly="state not in ('draft', 'under_review')"/>
-                                <field name="tax_amount" readonly="state not in ('draft', 'under_review')"/>
+                                <field name="amount" readonly="state != 'draft'"/>
+                                <field name="tax_amount" readonly="state != 'draft'"/>
                                 <field name="total_amount"/>
-                                <field name="transfer_date"/>
-                                <field name="bank_reference"/>
-                                <field name="journal_id" readonly="state not in ('draft', 'under_review')"/>
+                                <field name="transfer_date" readonly="state != 'draft'"/>
+                                <field name="bank_reference" readonly="state != 'draft'"/>
+                                <!-- دفتر اليومية لا يظهر إلا بعد اعتماد المدير
+                                     العام - لا حاجة له قبل ذلك. -->
+                                <field name="journal_id" readonly="state != 'confirmed'"
+                                       invisible="state not in ('confirmed', 'done')"/>
                             </group>
                         </group>
                         <group string="ملاحظات">
