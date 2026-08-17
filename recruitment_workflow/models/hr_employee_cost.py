@@ -99,6 +99,29 @@ class HrEmployeeCost(models.Model):
                 rec.cost_type_id.name or _('تكلفة'), rec.employee_id.name or '',
             )
 
+    @api.constrains('amount')
+    def _check_amount_positive(self):
+        """يمنع مبلغاً سالباً أو صفرياً - كان بلا أي تحقق سابقاً، يمكن
+        رفع تكلفة بمبلغ سالب فعلياً كفاتورة مورد حقيقية (ثغرة مكتشفة
+        بمراجعة شاملة)."""
+        for rec in self:
+            if rec.amount <= 0:
+                raise UserError(_('المبلغ يجب أن يكون أكبر من صفر.'))
+
+    def unlink(self):
+        # تكاليف الموظفين سجل تدقيق ومراجعة دائم مرتبط بفواتير موردين
+        # حقيقية - يُمنع حذفها نهائياً بعد مغادرة "مسودة" (حتى لممن يملك
+        # صلاحية الحذف)، بنفس مبدأ recruitment_request.unlink(). "إلغاء"
+        # هو البديل الوحيد لمن غادر "مسودة".
+        for rec in self:
+            if rec.state != 'draft':
+                raise UserError(_(
+                    'لا يمكن حذف هذه التكلفة نهائياً بعد مغادرة "مسودة" - '
+                    'للحفاظ على سجل تدقيق ومراجعة كامل. استخدم "إلغاء" '
+                    'بدلاً من ذلك.'
+                ))
+        return super().unlink()
+
     @api.onchange('employee_id')
     def _onchange_employee_id(self):
         if self.employee_id and self.employee_id.project_id:
@@ -167,6 +190,34 @@ class HrEmployeeCost(models.Model):
                 'تم رفع التكلفة كفاتورة مورد %(move)s (مسودة) لفريق المحاسبة '
                 'لمراجعتها واعتمادها ودفعها، موزّعة تحليلياً على مشروع %(project)s.'
             ) % {'move': move.display_name, 'project': rec.project_id.display_name})
+            rec._schedule_accounting_review_activity()
+
+    def _schedule_accounting_review_activity(self):
+        """يجدول نشاطاً (Activity) لأول مستخدم في مجموعة "المحاسب"، ويرسل
+        له أيضاً رسالة مباشرة في صندوق الدردشة (Discuss/الجرس) - كانت
+        هذه التكلفة تُرفع لفريق المحاسبة بلا أي إشعار فعلي سابقاً، فيجب
+        عليهم تفقّد قائمة فواتير الموردين يدوياً لاكتشاف وجود فاتورة
+        جديدة بانتظارهم. القناتان معاً بطلب صريح - النشاط وحده لا يظهر
+        في صندوق الدردشة (شاشة "الأنشطة" منفصلة عنه)."""
+        self.ensure_one()
+        group = self.env.ref(
+            'recruitment_workflow.group_recruitment_workflow_accountant',
+            raise_if_not_found=False,
+        )
+        if not group or not group.all_user_ids:
+            return
+        user = group.all_user_ids[0]
+        self.activity_schedule(
+            act_type_xmlid='mail.mail_activity_data_todo',
+            summary=_('مطلوب منك: مراجعة واعتماد فاتورة مورد - %s') % self.display_name,
+            note=_('التكلفة: %s - المبلغ: %s') % (self.display_name, self.amount),
+            user_id=user.id,
+        )
+        if user.partner_id:
+            self.message_post(
+                body=_('مطلوب منك: مراجعة واعتماد فاتورة مورد - %s.') % self.display_name,
+                partner_ids=user.partner_id.ids,
+            )
 
     def action_view_move(self):
         self.ensure_one()

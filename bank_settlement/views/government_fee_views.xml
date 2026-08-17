@@ -42,6 +42,9 @@
                                 type="object" class="btn-primary"
                                 groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state != 'confirmed'"/>
+                        <button name="action_open_return_wizard" string="إرجاع للتصحيح"
+                                type="object" groups="bank_settlement.group_bank_settlement_manager"
+                                invisible="state != 'confirmed'"/>
                         <button name="action_open_reset_wizard" string="إعادة لمسودة"
                                 type="object" groups="bank_settlement.group_bank_settlement_manager"
                                 invisible="state not in ('under_review', 'confirmed', 'rejected')"/>
@@ -91,10 +94,13 @@
                         </group>
                         <group string="بيانات السداد البنكي">
                             <group>
-                                <field name="transfer_date" readonly="state != 'draft'"/>
-                                <field name="bank_reference" readonly="state != 'draft'"/>
-                                <!-- دفتر اليومية لا يظهر إلا بعد اعتماد المدير
-                                     العام - لا حاجة له قبل ذلك. -->
+                                <!-- بيانات السداد الفعلي (خاصة بالمحاسب وقت
+                                     الصرف تحديداً) - لا تظهر إلا بعد اعتماد
+                                     المدير العام. -->
+                                <field name="transfer_date" readonly="state != 'confirmed'"
+                                       invisible="state not in ('confirmed', 'done')"/>
+                                <field name="bank_reference" readonly="state != 'confirmed'"
+                                       invisible="state not in ('confirmed', 'done')"/>
                                 <field name="journal_id" readonly="state != 'confirmed'"
                                        invisible="state not in ('confirmed', 'done')"/>
                                 <field name="currency_id" invisible="1"/>

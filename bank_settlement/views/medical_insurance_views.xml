@@ -42,6 +42,9 @@
                                 class="btn-primary"
                                 groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state != 'confirmed'"/>
+                        <button name="action_open_return_wizard" string="إرجاع للتصحيح"
+                                type="object" groups="bank_settlement.group_bank_settlement_manager"
+                                invisible="state != 'confirmed'"/>
                         <button name="action_open_reset_wizard" string="إعادة لمسودة"
                                 type="object" groups="bank_settlement.group_bank_settlement_manager"
                                 invisible="state not in ('under_review', 'confirmed', 'rejected')"/>
@@ -72,7 +75,13 @@
                                 <field name="fee_type_id" readonly="state != 'draft'"/>
                                 <field name="vendor_id" readonly="state != 'draft'"/>
                                 <field name="company_iban" readonly="state != 'draft'"/>
-                                <field name="transfer_date" readonly="state != 'draft'"/>
+                                <!-- تاريخ التحويل الفعلي - خاص بالمحاسب وقت
+                                     الصرف تحديداً - لا يظهر إلا بعد اعتماد
+                                     المدير العام (نفس منطق دفتر اليومية/
+                                     الحساب المرتبط في بقية الشاشات، رغم أن
+                                     هذه الشاشة لا تستخدمهما مباشرة). -->
+                                <field name="transfer_date" readonly="state != 'confirmed'"
+                                       invisible="state not in ('confirmed', 'done')"/>
                             </group>
                             <group string="المبالغ">
                                 <field name="currency_id" invisible="1"/>

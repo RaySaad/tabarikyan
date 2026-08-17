@@ -205,25 +205,19 @@ class BankSettlementMixin(models.AbstractModel):
         حقول هوية/مبلغ إضافية خاصة بها (نوع الرسوم، الجهة، السيارة...)
         تُضيفها هنا عبر تجاوز هذه الدالة.
 
-        ملاحظة: linked_account_id/journal_id ليسا هنا عمداً - لهما نافذة
-        تعديل خاصة تبدأ بعد الاعتماد تحديداً (انظر _get_bank_fields_
-        editable_state أدناه)، بما أنهما لا يظهران أصلاً في الواجهة قبل
-        ذلك (لا معنى لقفلهما بنفس شرط "مسودة/تحت المراجعة" كباقي الحقول
-        هنا)."""
+        ملاحظة: linked_account_id/journal_id/transfer_date/bank_reference
+        ليست هنا عمداً - لها نافذة تعديل خاصة تبدأ بعد الاعتماد تحديداً
+        (انظر _get_bank_fields_editable_state أدناه)، بما أنها بيانات
+        السداد الفعلي (خاصة بالمحاسب وقت الصرف تحديداً) ولا تظهر أصلاً
+        في الواجهة قبل ذلك - لا معنى لقفلها بنفس شرط "مسودة/تحت
+        المراجعة" كباقي الحقول هنا."""
         # project_id (المنصة) مقفول هنا مع employee_id عمداً - يُشتق تلقائياً
         # من منصة الموظف المختار (انظر _fill_employee_derived_vals/
         # _onchange_employee_id أعلاه)، وحساب المنصة التحليلي (analytic_
         # account_id) يُحسَب منه مباشرة - فالسماح بتعديله يدوياً بعد
         # الاعتماد يُتيح تغيير العزل المالي بين المنصات (كيتا/هنقرستيشن/
         # جاهز) لسجل مُعتمَد فعلاً، رغم قفل الموظف نفسه.
-        # transfer_date/bank_reference: بيانات التحويل البنكي الفعلي - كان
-        # هذان الحقلان بلا أي قفل إطلاقاً في كل الشاشات سابقاً (ثغرة حقيقية
-        # مكتشفة بمراجعة شاملة)، قابلين للتعديل حتى بعد "منفّذة" مع وجود
-        # قيد محاسبي حقيقي مرتبط فعلاً بقيمتيهما وقت إنشائه.
-        return [
-            'employee_id', 'employee_category', 'project_id', 'amount',
-            'tax_amount', 'transfer_date', 'bank_reference',
-        ]
+        return ['employee_id', 'employee_category', 'project_id', 'amount', 'tax_amount']
 
     def _get_editable_states(self):
         """الحالات التي يُسمح فيها بتعديل الحقول الحساسة أعلاه - "مسودة"
@@ -232,16 +226,20 @@ class BankSettlementMixin(models.AbstractModel):
         بقية الشاشات، عُمِّمت الآن على الجميع)."""
         return ('draft',)
 
-    _BANK_FIELDS = ('linked_account_id', 'journal_id')
+    # دفتر اليومية/الحساب المرتبط/تاريخ التحويل/رقم السداد البنكي - كلها
+    # بيانات السداد الفعلي التي يُدخلها المحاسب تحديداً وقت صرف المبلغ
+    # فعلياً، لا قبل ذلك (طلب صريح: "تاريخ التحويل... خاص بالمحاسبة عند
+    # صرف المبلغ - خليه مفعل لآخر خطوة وبعدها اغلقه بعد تم الصرف").
+    _BANK_FIELDS = ('linked_account_id', 'journal_id', 'transfer_date', 'bank_reference')
 
     def _get_bank_fields_editable_state(self):
-        """الحالة الوحيدة التي يُسمح فيها بتحديد دفتر اليومية/الحساب
-        المرتبط - بعد اعتماد المدير العام تحديداً (وهي أول مرة يظهران
-        فيها بالواجهة أصلاً، انظر الشاشات المختلفة) وقبل تسجيل السداد/
-        التحويل الفعلي (بعدها تُستخدَم قيمتهما لإنشاء القيد المحاسبي،
-        فلا معنى لتغييرهما). النماذج التي تُسمّي حالة الاعتماد باسم
-        مختلف (advance.py: 'approved' بدل 'confirmed') تُجاوز هذه
-        الدالة."""
+        """الحالة الوحيدة التي يُسمح فيها بتحديد بيانات السداد الفعلي
+        (دفتر اليومية، الحساب المرتبط، تاريخ التحويل، رقم السداد البنكي)
+        - بعد اعتماد المدير العام تحديداً (وهي أول مرة تظهر فيها بالواجهة
+        أصلاً، انظر الشاشات المختلفة) وقبل تسجيل السداد/التحويل الفعلي
+        (بعدها تُستخدَم قيمها لإنشاء القيد المحاسبي، فلا معنى لتغييرها).
+        النماذج التي تُسمّي حالة الاعتماد باسم مختلف (advance.py:
+        'approved' بدل 'confirmed') تُجاوز هذه الدالة."""
         return 'confirmed'
 
     def write(self, vals):
@@ -265,12 +263,60 @@ class BankSettlementMixin(models.AbstractModel):
             for rec in self:
                 if rec.state != rec._get_bank_fields_editable_state():
                     raise UserError(
-                        'دفتر اليومية والحساب المرتبط لا يمكن تحديدهما إلا '
-                        'بعد اعتماد المدير العام مباشرة، وقبل تسجيل السداد/'
-                        'التحويل الفعلي.'
+                        'بيانات السداد الفعلي (دفتر اليومية، الحساب المرتبط، '
+                        'تاريخ التحويل، رقم السداد البنكي) لا يمكن تحديدها '
+                        'إلا بعد اعتماد المدير العام مباشرة، وقبل تسجيل '
+                        'السداد/التحويل الفعلي.'
                     )
         self._fill_employee_derived_vals(vals)
-        return super().write(vals)
+        res = super().write(vals)
+        if 'state' in vals:
+            for rec in self:
+                rec._schedule_stage_activity()
+        return res
+
+    def _get_first_group_user(self, group_xmlid):
+        group = self.env.ref(group_xmlid, raise_if_not_found=False)
+        return group.all_user_ids[:1] if group else self.env['res.users']
+
+    def _get_stage_responsible_user(self):
+        """المستخدم الذي يجب تنبيهه بضرورة اتخاذ إجراء في الحالة الحالية -
+        كان السداد البنكي بلا أي إشعار فعلي إطلاقاً سابقاً (يجب تفقّد
+        القوائم يدوياً). النماذج التي تُسمّي حالاتها بأسماء مختلفة
+        (advance.py) تُجاوز هذه الدالة."""
+        self.ensure_one()
+        if self.state == 'under_review':
+            return self._get_first_group_user('bank_settlement.group_bank_settlement_manager')
+        if self.state == 'confirmed':
+            return self._get_first_group_user('bank_settlement.group_bank_settlement_reviewer')
+        if self.state == 'rejected':
+            return self.create_uid
+        return self.env['res.users']
+
+    def _schedule_stage_activity(self):
+        """يُنهي أي نشاط سابق متعلق بهذا السجل (الحالة تغيّرت، فالإجراء
+        المطلوب سابقاً لم يعد ذا قيمة) ثم يجدول تنبيهاً جديداً لصاحب
+        القرار في الحالة الجديدة (إن وُجد)، بقناتين معاً:
+        1. نشاط (Activity/To-Do) - يبقى ظاهراً حتى يُنجَز، في شاشة
+           "الأنشطة" المنفصلة (لا يظهر في صندوق الدردشة/الجرس).
+        2. رسالة مباشرة في صندوق الدردشة (Discuss/الجرس) - أسرع للملاحظة
+           لكن يمكن تجاهلها أو ضياعها بسهولة، طلب صريح بالإضافة للنشاط
+           وليس بديلاً عنه."""
+        self.ensure_one()
+        self.activity_ids.action_feedback(feedback='تغيّرت حالة السجل')
+        user = self._get_stage_responsible_user()
+        if not user:
+            return
+        self.activity_schedule(
+            act_type_xmlid='mail.mail_activity_data_todo',
+            summary='مطلوب إجراؤك: %s' % self.name,
+            user_id=user.id,
+        )
+        if user.partner_id:
+            self.message_post(
+                body='مطلوب إجراؤك على %s.' % self.name,
+                partner_ids=user.partner_id.ids,
+            )
 
     def unlink(self):
         # سجلات السداد البنكي سجل تدقيق ومراجعة دائم - يُمنع حذفها نهائياً
@@ -356,12 +402,15 @@ class BankSettlementMixin(models.AbstractModel):
         }
 
     def action_reset_draft(self, reason=False):
-        """الإعادة الفعلية لمسودة - تُلغي فعلياً أي اعتماد سابق (المدير
-        العام)، فتتطلب نفس صلاحيته تحديداً - وليست متاحة لمن ينشئ السجل
-        فقط. تتطلب سبباً إجبارياً، ولا تُستدعى مباشرة من زر بالواجهة -
-        تمر حصراً عبر bank.settlement.reset.wizard (انظر
-        action_open_reset_wizard أعلاه)، بنفس مبدأ "إرجاع للتصحيح" في
-        recruitment_workflow."""
+        """الإعادة الفعلية لمسودة - تُلغي فعلياً كل الموافقات السابقة
+        دفعة واحدة (المدير العام، ومسؤول المشروع في السلفة إن وُجدت)،
+        فتتطلب نفس صلاحية المدير العام تحديداً - وليست متاحة لمن ينشئ
+        السجل فقط. تتطلب سبباً إجبارياً، ولا تُستدعى مباشرة من زر
+        بالواجهة - تمر حصراً عبر bank.settlement.reset.wizard (انظر
+        action_open_reset_wizard أعلاه). مخصَّصة لتصحيح بيانات أساسية
+        خاطئة (المبلغ/الموظف...) - أما لتصحيح قرار موافقة واحد فقط مع
+        الحفاظ على الموافقات الأسبق، استخدم "إرجاع للتصحيح" بدلاً منها
+        (action_return_to_previous_stage أدناه)."""
         if not reason:
             raise UserError('يجب توضيح سبب الإعادة لمسودة.')
         for rec in self:
@@ -378,6 +427,69 @@ class BankSettlementMixin(models.AbstractModel):
         for rec in self:
             rec.message_post(body='تمت إعادة السجل لمسودة للتصحيح.<br/>السبب: %s' % reason)
         self.write({'state': 'draft'})
+
+    def _get_previous_stage(self):
+        """المرحلة السابقة مباشرة للحالة الحالية، لغرض "إرجاع للتصحيح"
+        فقط (وليس "إعادة لمسودة" أعلاه) - أي التراجع خطوة واحدة فقط عن
+        قرار موافقة أخير، مع الحفاظ على أي موافقة أسبق منه. تُعيد False
+        إن لم توجد خطوة سابقة ذات معنى من الحالة الحالية (مثال: "تحت
+        المراجعة" ليس لها خطوة سابقة - البديل الوحيد قبلها هو "مسودة"
+        نفسها، وهذا دور "إعادة لمسودة" لا "إرجاع للتصحيح").
+
+        في النماذج الأربعة الأساسية المستخدمة لسلسلة الحالات المشتركة
+        هنا (draft -> under_review -> confirmed -> done)، الانتقال
+        الوحيد ذو المعنى هو confirmed -> under_review (تراجع عن اعتماد
+        المدير العام، مع إبقاء الإرسال للمراجعة قائماً). advance.py له
+        سلسلة حالات مختلفة (5 حالات، وموافقتان منفصلتان: مسؤول المشروع
+        ثم المدير العام) فيُجاوز هذه الدالة بخطوتين ذواتي معنى."""
+        self.ensure_one()
+        if self.state == 'confirmed':
+            return 'under_review'
+        return False
+
+    def action_open_return_wizard(self):
+        """يفتح معالج "إرجاع للتصحيح" (يفرض تسجيل السبب) - الزر في
+        الواجهة يستدعي هذه الدالة بدل action_return_to_previous_stage
+        مباشرة، بنفس نمط باقي المعالجات أعلاه."""
+        self.ensure_one()
+        if not self._get_previous_stage():
+            raise UserError('لا توجد مرحلة سابقة يمكن الرجوع إليها من الحالة الحالية.')
+        return {
+            'name': 'إرجاع للتصحيح',
+            'type': 'ir.actions.act_window',
+            'res_model': 'bank.settlement.return.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_res_model': self._name, 'default_res_id': self.id},
+        }
+
+    def action_return_to_previous_stage(self, reason=False):
+        """التراجع الفعلي خطوة واحدة فقط للمرحلة السابقة مباشرة (انظر
+        _get_previous_stage أعلاه) - بعكس action_reset_draft الذي يمسح
+        كل الموافقات دفعة واحدة، هذه الدالة تُبقي أي موافقة أسبق من
+        الخطوة الملغاة قائمة كما هي (مثال: تُلغى موافقة المدير العام
+        على سلفة فقط، وتبقى موافقة مسؤول المشروع عليها سارية). تتطلب
+        نفس صلاحية "إعادة لمسودة" (مدير عام السداد البنكي) وسبباً
+        إجبارياً، ولا تُستدعى مباشرة من زر بالواجهة - تمر حصراً عبر
+        bank.settlement.return.wizard (انظر action_open_return_wizard
+        أعلاه)."""
+        if not reason:
+            raise UserError('يجب توضيح سبب الإرجاع للتصحيح.')
+        for rec in self:
+            previous_stage = rec._get_previous_stage()
+            if not previous_stage:
+                raise UserError('لا توجد مرحلة سابقة يمكن الرجوع إليها من الحالة الحالية.')
+            rec._check_group('bank_settlement.group_bank_settlement_manager')
+        for rec in self:
+            old_state_label = dict(rec._fields['state'].selection).get(rec.state, rec.state)
+            previous_stage = rec._get_previous_stage()
+            new_state_label = dict(rec._fields['state'].selection).get(previous_stage, previous_stage)
+            rec.message_post(
+                body='تم إرجاع السجل للتصحيح من "%s" إلى "%s" (مع الحفاظ على '
+                     'أي موافقة أسبق).<br/>السبب: %s'
+                     % (old_state_label, new_state_label, reason)
+            )
+            rec.write({'state': previous_stage})
 
     def action_cancel(self):
         """إلغاء - متاح للمحاسب فما فوق (وليس لمن ينشئ السجل فقط)."""

@@ -263,33 +263,19 @@ class TestRecruitmentRequest(TransactionCase):
         with self.assertRaises(UserError):
             request.write({'stage_id': next_stage.id})
 
-    def test_write_stage_single_step_blocked_by_unmet_requirement(self):
-        """حتى مستخدم يملك كل صلاحيات الموافقة (مدير سير العمل) لا يمكنه
-        الانتقال خطوة واحدة فقط من مرحلة "تم السداد" دون إصدار وسداد فاتورة
-        الرسوم - شرط العمل يبقى قائماً حتى في انتقال خطوة واحدة (فقط عند
-        استخدام آلية "رسوم التوظيف" الخارجية فعلياً، أي عند تحديد
-        fee_amount - من لا يستخدمها إطلاقاً لا يخضع لهذا الشرط)."""
+    def test_write_stage_paid_free_without_fee_move(self):
+        """مغادرة مرحلة "تم السداد" لا تفرض أي شرط متعلق بآلية "رسوم
+        التوظيف" الخارجية القديمة (fee_amount/fee_move_id/action_create_
+        fee_bill) - أُزيل الزر والحقول من كل الشاشات نهائياً، وأُزيل معه
+        هذا التحقق البرمجي أيضاً (كان يعلّق أي طلب له قيمة قديمة في
+        fee_amount للأبد، يطلب زراً لم يعد موجوداً إطلاقاً - ثغرة حقيقية
+        اكتُشفت من شكوى مستخدم فعلية). الشرط الفعلي الوحيد المتبقي مرتبط
+        بالرسوم الحكومية (gov_fee_amount) في مرحلة "جاري نقل الكفالة"."""
         self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         project = self.env['project.project'].create({'name': 'منصة تجريبية 3'})
         request = self._create_request(
             identification_id='1234567895', email='g@example.com', project_id=project.id,
             fee_amount=500.0,
-        )
-        request.with_context(skip_stage_validation=True).write({
-            'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
-        })
-
-        with self.assertRaises(UserError):
-            request.write({'stage_id': self.stage_sponsorship_transfer.id})
-
-    def test_write_stage_paid_free_without_fee_amount(self):
-        """من لا يستخدم آلية "رسوم التوظيف" الخارجية إطلاقاً (fee_amount
-        يبقى صفراً) يمكنه مغادرة مرحلة "تم السداد" دون أي فاتورة - الشرط
-        مشروط بوجود مبلغ فعلي، وليس مفروضاً دائماً."""
-        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
-        project = self.env['project.project'].create({'name': 'منصة تجريبية 3ب'})
-        request = self._create_request(
-            identification_id='1234567896', email='g2@example.com', project_id=project.id,
         )
         request.with_context(skip_stage_validation=True).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
@@ -394,6 +380,37 @@ class TestRecruitmentRequest(TransactionCase):
         # المسؤول المعيّن تحديداً يستطيع
         request.with_user(assigned_pm).action_approve()
         self.assertEqual(request.stage_id, self.stage_operations_review)
+
+    def test_stage_activity_notifies_specific_assigned_manager(self):
+        """إشعار مرحلة "قيد المراجعة" كان يصل لأول عضو عشوائي بمجموعة
+        "مسؤول المشروع" ككل - وليس مسؤول المشروع المحدَّد تحديداً على
+        هذا الطلب بالذات (الشخص الوحيد المخوَّل فعلياً بالموافقة عليه) -
+        ثغرة حقيقية: قد لا يصل الإشعار أبداً لمن يملك صلاحية الموافقة."""
+        assigned_pm = self.env['res.users'].create({
+            'name': 'مسؤول المشروع المعيّن - إشعار',
+            'login': 'assigned_pm_notify_user',
+            'email': 'assigned_pm_notify_user@example.com',
+            'group_ids': [(6, 0, [self.group_pm.id, self.env.ref('base.group_user').id])],
+        })
+        other_pm = self.env['res.users'].create({
+            'name': 'مسؤول مشروع آخر - إشعار',
+            'login': 'other_pm_notify_user',
+            'email': 'other_pm_notify_user@example.com',
+            'group_ids': [(6, 0, [self.group_pm.id, self.env.ref('base.group_user').id])],
+        })
+        project = self.env['project.project'].create({'name': 'منصة تجريبية - إشعار'})
+        request = self._create_request(
+            identification_id='1234567897', email='i@example.com',
+            project_id=project.id, project_manager_id=assigned_pm.id,
+        )
+
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_project_review.id,
+        })
+
+        self.assertTrue(request.activity_ids)
+        self.assertEqual(request.activity_ids[:1].user_id, assigned_pm)
+        self.assertNotEqual(request.activity_ids[:1].user_id, other_pm)
 
     # ------------------------------------------------------------------
     # أفعال حساسة أخرى يجب أن تتحقق من الصلاحية من جهة الخادم أيضاً
@@ -788,3 +805,24 @@ class TestRecruitmentRequest(TransactionCase):
         request.action_next_stage()
 
         self.assertEqual(request.stage_id.code, 'sponsorship_done')
+
+    def test_gov_fee_unlocked_after_return_to_stage(self):
+        """"إرجاع للتصحيح" يفتح قفل مبلغ الرسوم الحكومية مجدداً - وإلا
+        يبقى الحقل مقفولاً للأبد رغم الرجوع لمرحلة سابقة (كان هذا خطأً
+        سابقاً: action_return_to_stage لا يمسّ gov_fee_settled إطلاقاً،
+        فيبقى readonly="gov_fee_settled" في العرض ساري المفعول للأبد)."""
+        request = self._create_request(
+            identification_id='1234567824', email='ah@example.com',
+            gov_fee_amount=1000.0,
+        )
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_sponsorship_transfer.id,
+        })
+        request.action_register_gov_fee()
+        self.assertTrue(request.gov_fee_settled)
+
+        request.action_return_to_stage(self.stage_project_review, 'مبلغ خاطئ')
+
+        self.assertFalse(request.gov_fee_settled)
+        request.gov_fee_amount = 1500.0
+        self.assertEqual(request.gov_fee_amount, 1500.0)

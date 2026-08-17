@@ -59,6 +59,23 @@ class HrEmployeePlatformBulkAssignWizard(models.TransientModel):
             raise UserError(_(
                 'يوجد سطر بدون موظف محدد - احذفه قبل التأكيد.'
             ))
+        # هذا المعالج مخصَّص لربط موظفين قدامى ليس لهم منصة أصلاً (بيانات
+        # رجعية) - وليس لنقل موظفين يعملون فعلاً على منصة أخرى، الذي يجب
+        # أن يمر بخط سير طلب النقل (موافقة مسؤول المنصة الحالية ثم مدير
+        # العمليات). بدون هذا التحقق، يصبح بالإمكان تجاوز خط السير بالكامل
+        # عبر تحديد عدة موظفين دفعة واحدة من قائمة الموظفين وتحويلهم
+        # فوراً بلا أي موافقة - إعادة تأكيد نفس المنصة الحالية للموظف
+        # تبقى مسموحة (لا تغيير فعلي، ولا داعي لموافقة عليها).
+        already_on_other_platform = self.line_ids.filtered(
+            lambda l: l.employee_id.project_id and l.employee_id.project_id != self.project_id
+        )
+        if already_on_other_platform:
+            raise UserError(_(
+                'هذا المعالج مخصَّص لربط موظفين قدامى ليس لهم منصة أصلاً '
+                'فقط. الموظف/الموظفون التالون يعملون بالفعل على منصة '
+                'أخرى - استخدم "طلب نقل لمنصة أخرى" من سجل كل واحد منهم '
+                'بدلاً من ذلك:\n%s'
+            ) % '\n'.join(already_on_other_platform.mapped('employee_id.name')))
         for line in self.line_ids:
             line.employee_id._open_platform_history(
                 self.project_id, note=self.note, date_start=line.date_start,

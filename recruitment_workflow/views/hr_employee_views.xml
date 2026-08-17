@@ -18,11 +18,18 @@
                         invisible="cost_count == 0">
                     <field name="cost_count" widget="statinfo" string="تكاليف المنصة"/>
                 </button>
+                <button name="action_view_transfer_requests" type="object"
+                        class="oe_stat_button" icon="fa-exchange"
+                        invisible="pending_transfer_request_count == 0">
+                    <field name="pending_transfer_request_count" widget="statinfo"
+                           string="طلبات نقل معلّقة"/>
+                </button>
             </xpath>
             <xpath expr="//field[@name='job_id']" position="after">
-                <field name="project_id" string="المنصة الحالية" options="{'no_create': True}"/>
-                <button name="action_open_platform_transfer_wizard" type="object"
-                        string="نقل لمنصة أخرى" class="btn-link"
+                <field name="project_id" string="المنصة الحالية" readonly="1"
+                       options="{'no_create': True}"/>
+                <button name="action_open_platform_transfer_request" type="object"
+                        string="طلب نقل لمنصة أخرى" class="btn-link"
                         icon="fa-exchange" invisible="not project_id"/>
                 <field name="analytic_account_id" readonly="1" invisible="not analytic_account_id"/>
             </xpath>

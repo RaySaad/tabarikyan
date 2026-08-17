@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api
+from odoo import models, fields, api, _
+from odoo.exceptions import UserError
 
 
 class HrEmployeePlatformHistory(models.Model):
@@ -43,3 +44,16 @@ class HrEmployeePlatformHistory(models.Model):
     def _compute_is_current(self):
         for rec in self:
             rec.is_current = not rec.date_end
+
+    def unlink(self):
+        # سجل تاريخ المنصات هو المرجع الرسمي الدائم لمن عمل على أي منصة
+        # ومتى - لا يوجد مفهوم "مسودة" هنا (كل فترة تمثّل واقعة فعلية منذ
+        # إنشائها)، فيُمنع حذفها نهائياً بالكامل (حتى لمدير سير العمل)،
+        # بنفس مبدأ recruitment_request.unlink() تماماً - وإلا أمكن محو
+        # فترة تاريخية كاملة بلا أي أثر. تصحيح خطأ يجب أن يمر عبر طلب نقل
+        # منصة جديد يفتح فترة صحيحة، وليس حذف الفترة الخاطئة.
+        raise UserError(_(
+            'لا يمكن حذف سجلات تاريخ المنصات نهائياً، للحفاظ على سجل '
+            'تدقيق ومراجعة كامل. أنشئ طلب نقل منصة جديداً لتصحيح الفترة '
+            'الحالية إن احتجت ذلك.'
+        ))

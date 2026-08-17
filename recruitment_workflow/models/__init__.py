@@ -11,3 +11,4 @@ from . import hr_employee_platform_history
 from . import hr_employee_cost_type
 from . import hr_employee_cost
 from . import hr_employee
+from . import hr_employee_platform_transfer_request

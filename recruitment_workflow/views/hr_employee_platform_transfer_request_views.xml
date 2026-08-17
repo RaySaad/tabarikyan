@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_hr_employee_platform_transfer_request_list" model="ir.ui.view">
+            <field name="name">hr.employee.platform.transfer.request.list</field>
+            <field name="model">hr.employee.platform.transfer.request</field>
+            <field name="arch" type="xml">
+                <list string="طلبات نقل المنصة" decoration-success="state == 'done'"
+                      decoration-info="state == 'waiting_approval'"
+                      decoration-muted="state in ('draft', 'cancel')">
+                    <field name="name"/>
+                    <field name="employee_id"/>
+                    <field name="current_project_id"/>
+                    <field name="new_project_id"/>
+                    <field name="transfer_date"/>
+                    <field name="state" widget="badge"
+                           decoration-success="state == 'done'"
+                           decoration-info="state == 'waiting_approval'"
+                           decoration-muted="state in ('draft', 'cancel')"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_hr_employee_platform_transfer_request_form" model="ir.ui.view">
+            <field name="name">hr.employee.platform.transfer.request.form</field>
+            <field name="model">hr.employee.platform.transfer.request</field>
+            <field name="arch" type="xml">
+                <form string="طلب نقل موظف بين المنصات">
+                    <header>
+                        <button name="action_submit_review" string="إرسال للمراجعة"
+                                type="object" class="btn-primary"
+                                invisible="state != 'draft'"/>
+                        <!-- موافقة مسؤول المنصة الحالية - تظهر لمجموعة مسؤولي
+                             المشاريع ومدير العمليات كاحتياط، لكن التحقق
+                             الفعلي من كونه مسؤول المنصة الحالية تحديداً يتم
+                             من جهة الخادم في action_pm_approve. -->
+                        <button name="action_pm_approve" string="موافقة مسؤول المنصة الحالية"
+                                type="object" class="btn-primary"
+                                groups="recruitment_workflow.group_recruitment_workflow_project_manager,recruitment_workflow.group_recruitment_workflow_operations"
+                                invisible="state != 'waiting_approval'"/>
+                        <button name="action_confirm_transfer" string="اعتماد مدير العمليات وتنفيذ النقل"
+                                type="object" class="btn-primary"
+                                groups="recruitment_workflow.group_recruitment_workflow_operations"
+                                invisible="state != 'pm_approved'"/>
+                        <button name="action_open_reset_wizard" string="إعادة لمسودة"
+                                type="object" groups="recruitment_workflow.group_recruitment_workflow_operations"
+                                invisible="state not in ('waiting_approval', 'pm_approved')"/>
+                        <button name="action_cancel" string="إلغاء"
+                                type="object" groups="recruitment_workflow.group_recruitment_workflow_operations"
+                                invisible="state in ('done', 'cancel')"/>
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="draft,waiting_approval,pm_approved,done"/>
+                    </header>
+                    <sheet>
+                        <widget name="web_ribbon" title="ملغى" bg_color="text-bg-danger"
+                                invisible="state != 'cancel'"/>
+                        <div class="oe_title">
+                            <h1><field name="name" readonly="1"/></h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="employee_id" required="1"
+                                       readonly="state != 'draft'"/>
+                                <field name="current_project_id"/>
+                                <field name="new_project_id" required="1"
+                                       options="{'no_create': True}"
+                                       readonly="state != 'draft'"/>
+                            </group>
+                            <group>
+                                <field name="transfer_date" readonly="state != 'draft'"/>
+                                <field name="note"/>
+                                <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                            </group>
+                        </group>
+                        <div class="alert alert-info" role="alert">
+                            السيارة المخصصة للموظف (إن وُجدت) تبقى معه ولا تتأثر بالنقل.
+                            تُغلق الفترة الحالية في تاريخ المنصات وتُفتح فترة جديدة تلقائياً
+                            بعد اعتماد النقل نهائياً، مع تحديث الحساب التحليلي المستخدم
+                            للمتابعة والحسابات.
+                        </div>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_hr_employee_platform_transfer_request" model="ir.actions.act_window">
+            <field name="name">طلبات نقل المنصة</field>
+            <field name="res_model">hr.employee.platform.transfer.request</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+    </data>
+</odoo>

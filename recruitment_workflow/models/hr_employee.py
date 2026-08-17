@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
+from odoo.exceptions import UserError
 
 
 class HrEmployee(models.Model):
@@ -9,9 +10,14 @@ class HrEmployee(models.Model):
         'project.project',
         string='المنصة الحالية',
         tracking=True,
+        # readonly في الواجهة فقط (انظر hr_employee_views.xml) - الحماية
+        # الفعلية من جهة الخادم في write() أدناه، وإلا يبقى الحقل قابلاً
+        # للتعديل المباشر عبر قائمة الموظفين (تعديل جماعي/inline)، الاستيراد،
+        # أو RPC مباشر - متجاوزاً خط سير الموافقة بالكامل رغم إخفاء الزر.
         help='المشروع/المنصة الحالية التي يعمل عليها المندوب (كيتا، '
              'هنقرستيشن...). تُستخدم لفصل المتابعة والحسابات لكل منصة. '
-             'استخدم زر "نقل لمنصة أخرى" لتغييرها مع الاحتفاظ بالتاريخ.',
+             'لا يمكن تعديلها مباشرة - استخدم زر "طلب نقل لمنصة أخرى" '
+             '(يمر بخط سير موافقة، مع الاحتفاظ بالتاريخ الكامل).',
     )
     platform_history_ids = fields.One2many(
         'hr.employee.platform.history',
@@ -21,6 +27,14 @@ class HrEmployee(models.Model):
     platform_history_count = fields.Integer(
         string='عدد فترات المنصات',
         compute='_compute_platform_history_count',
+    )
+    transfer_request_ids = fields.One2many(
+        'hr.employee.platform.transfer.request', 'employee_id',
+        string='طلبات نقل المنصة',
+    )
+    pending_transfer_request_count = fields.Integer(
+        string='طلبات نقل معلّقة',
+        compute='_compute_pending_transfer_request_count',
     )
     cost_ids = fields.One2many(
         'hr.employee.cost',
@@ -63,6 +77,31 @@ class HrEmployee(models.Model):
         for rec in self:
             rec.platform_history_count = len(rec.platform_history_ids)
 
+    @api.depends('transfer_request_ids.state')
+    def _compute_pending_transfer_request_count(self):
+        for rec in self:
+            rec.pending_transfer_request_count = len(rec.transfer_request_ids.filtered(
+                lambda r: r.state not in ('done', 'cancel')
+            ))
+
+    def write(self, vals):
+        # المنصة الحالية لا يجوز تعديلها إلا عبر _open_platform_history -
+        # البوابة الوحيدة المستخدمة من كل المسارات المخوَّلة (مباشرة العمل
+        # الأولى من طلب التوظيف، الربط الجماعي للموظفين القدامى، واعتماد
+        # طلب نقل المنصة). أي محاولة تعديل مباشرة لهذا الحقل (شاشة الموظف،
+        # تعديل جماعي من القائمة، استيراد بيانات، أو RPC مباشر) تعني تجاوز
+        # خط سير الموافقة بالكامل رغم إخفاء/تعطيل الزر في الواجهة فقط.
+        if 'project_id' in vals and not self.env.context.get(
+            'platform_history_internal_write'
+        ):
+            raise UserError(_(
+                'لا يمكن تعديل "المنصة الحالية" مباشرة.\n'
+                'استخدم زر "طلب نقل لمنصة أخرى" في سجل الموظف - يمر بخط '
+                'سير موافقة (مسؤول المنصة الحالية ثم مدير العمليات) بدل '
+                'التعديل المباشر.'
+            ))
+        return super().write(vals)
+
     def _open_platform_history(self, project, note=False, date_start=None):
         """يفتح فترة جديدة في تاريخ المنصات ويغلق الفترة المفتوحة الحالية
         (إن وُجدت)، ثم يحدّث المنصة الحالية للمندوب.
@@ -93,7 +132,7 @@ class HrEmployee(models.Model):
             'date_start': date_start,
             'note': note or False,
         })
-        self.project_id = project.id
+        self.with_context(platform_history_internal_write=True).project_id = project.id
         self._sync_contract_project()
         self._sync_partner_analytic_distribution(project)
         self.message_post(body=_(
@@ -170,18 +209,32 @@ class HrEmployee(models.Model):
             contract.sudo().project_id = self.project_id.id
         return True
 
-    def action_open_platform_transfer_wizard(self):
+    def action_open_platform_transfer_request(self):
+        """يفتح نموذج "طلب نقل" جديد (وليس تنفيذ النقل فوراً) - يمر
+        الطلب بخط سير موافقة (مسؤول المنصة الحالية ثم مدير العمليات)
+        قبل تنفيذ النقل الفعلي. انظر hr_employee_platform_transfer_request.py."""
         self.ensure_one()
         return {
-            'name': _('نقل لمنصة أخرى'),
+            'name': _('طلب نقل لمنصة أخرى'),
             'type': 'ir.actions.act_window',
-            'res_model': 'hr.employee.platform.transfer.wizard',
+            'res_model': 'hr.employee.platform.transfer.request',
             'view_mode': 'form',
             'target': 'new',
             'context': {
                 'default_employee_id': self.id,
                 'default_current_project_id': self.project_id.id,
             },
+        }
+
+    def action_view_transfer_requests(self):
+        self.ensure_one()
+        return {
+            'name': _('طلبات نقل المنصة - %s') % self.display_name,
+            'type': 'ir.actions.act_window',
+            'res_model': 'hr.employee.platform.transfer.request',
+            'view_mode': 'list,form',
+            'domain': [('employee_id', '=', self.id)],
+            'context': {'default_employee_id': self.id},
         }
 
     def action_view_platform_history(self):

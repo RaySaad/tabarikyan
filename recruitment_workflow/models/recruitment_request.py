@@ -614,24 +614,15 @@ class RecruitmentRequest(models.Model):
         if current_stage.require_project and self.project_id and not self.project_id.account_id:
             self.project_id._create_default_analytic_account()
 
-        # مرحلة "تم السداد": التحقق الفعلي من سداد فاتورة الرسوم من المحاسبة
-        # (وليس مجرد تأكيد يدوي) - يمنع تجاوز الفحص عبر Kanban/API أيضاً.
-        # مشروط بوجود مبلغ رسوم فعلي (fee_amount) - لمن لا يستخدم آلية
-        # "رسوم التوظيف" (فاتورة مورّد خارجي) إطلاقاً، لا يُطبَّق أي شرط
-        # هنا؛ الشرط الفعلي لديهم مرتبط بالرسوم الحكومية (انظر تجاوز هذه
-        # الدالة في bank_settlement إن كان مثبتاً).
-        if current_stage.code == 'paid' and self.fee_amount > 0:
-            if not self.fee_move_id:
-                raise UserError(_(
-                    'لا يمكن الانتقال للمرحلة التالية. يجب إصدار فاتورة '
-                    'الرسوم أولاً (زر "إصدار فاتورة الرسوم").'
-                ))
-            if self.fee_move_id.payment_state not in ('paid', 'in_payment'):
-                raise UserError(_(
-                    'لا يمكن الانتقال للمرحلة التالية. فاتورة الرسوم لم تُسدَّد بعد.\n'
-                    'يجب أن يعتمد فريق المحاسبة الفاتورة ويسجّل الدفعة من '
-                    'تطبيق المحاسبة أولاً.'
-                ))
+        # ملاحظة: كان هنا سابقاً تحقق يشترط "إصدار فاتورة الرسوم" (آلية
+        # "رسوم التوظيف" القديمة - فاتورة مورّد خارجي، fee_amount/
+        # fee_move_id/action_create_fee_bill) قبل مغادرة مرحلة "تم
+        # السداد". حُذف الزر والحقول من كل الشاشات نهائياً (آلية معطّلة
+        # بالكامل من الواجهة)، لكن هذا التحقق البرمجي بقي موجوداً بالخطأ -
+        # فأي طلب له قيمة قديمة في fee_amount (من قبل حذف الزر) كان يعلق
+        # للأبد: يطلب النظام إجراءً عبر زر لم يعد موجوداً إطلاقاً في أي
+        # شاشة (ثغرة حقيقية اكتُشفت من شكوى مستخدم فعلية). الشرط الفعلي
+        # المستخدَم الآن هو الرسوم الحكومية فقط (gov_fee_amount) أدناه.
 
         # مرحلة "جاري نقل الكفالة": لو حُدِّد مبلغ للرسوم الحكومية، يجب
         # تسجيلها/تسويتها فعلياً قبل المتابعة (زر "تسجيل الرسوم الحكومية")
@@ -758,6 +749,12 @@ class RecruitmentRequest(models.Model):
                                'مطلوب مراجعتك: طلب توظيف بانتظار مراجعة مدير العمليات'),
         'gm_approval': ('recruitment_workflow.group_recruitment_workflow_gm',
                          'مطلوب اعتمادك: طلب توظيف بانتظار اعتماد المدير العام'),
+        # لم تكن "طلب سيارة" مُدرَجة هنا سابقاً - بلا أي إشعار إطلاقاً رغم
+        # اشتراطها موافقة مسؤول المشروع المحدَّد تحديداً (انظر
+        # _STAGE_ASSIGNED_USER_FIELD أدناه)، بنفس فئة الثغرة التي أُصلحت
+        # هنا لمرحلة "project_review".
+        'car_request': ('recruitment_workflow.group_recruitment_workflow_project_manager',
+                         'مطلوب منك: طلب توظيف بانتظار إنهاء طلب السيارة'),
     }
 
     def _schedule_activity_for_group(self, group_xmlid, summary, note=False):
@@ -771,11 +768,17 @@ class RecruitmentRequest(models.Model):
         # صراحة لمجموعة مدير العمليات.
         if not group or not group.all_user_ids:
             return
+        self._schedule_activity_for_user(group.all_user_ids[0], summary, note=note)
+
+    def _schedule_activity_for_user(self, user, summary, note=False):
+        self.ensure_one()
+        if not user:
+            return
         self.activity_schedule(
             act_type_xmlid='mail.mail_activity_data_todo',
             summary=summary,
             note=note or '',
-            user_id=group.all_user_ids[0].id,
+            user_id=user.id,
         )
 
     def _schedule_stage_activity(self):
@@ -784,10 +787,19 @@ class RecruitmentRequest(models.Model):
         if not entry:
             return
         group_xmlid, summary = entry
-        self._schedule_activity_for_group(
-            group_xmlid, summary,
-            note=_('الطلب: %s - المندوب: %s') % (self.name, self.employee_name or ''),
-        )
+        note = _('الطلب: %s - المندوب: %s') % (self.name, self.employee_name or '')
+        # إن كانت هذه المرحلة تشترط موافقة الشخص المعيّن تحديداً (مسؤول
+        # المشروع المحدَّد على هذا الطلب بالذات - انظر _STAGE_ASSIGNED_
+        # USER_FIELD/_check_approval_rights)، يصله الإشعار هو تحديداً -
+        # وليس أول عضو عشوائي بالمجموعة (كان هذا يعني سابقاً إمكانية وصول
+        # الإشعار لشخص لا يملك حتى صلاحية الموافقة على هذا الطلب بالذات،
+        # بينما الشخص المخوَّل الفعلي لا يعرف شيئاً - ثغرة حقيقية).
+        assigned_field = self._STAGE_ASSIGNED_USER_FIELD.get(self.stage_id.code or '')
+        assigned_user = self[assigned_field] if assigned_field else False
+        if assigned_user:
+            self._schedule_activity_for_user(assigned_user, summary, note=note)
+        else:
+            self._schedule_activity_for_group(group_xmlid, summary, note=note)
 
     # ------------------------------------------------------------------
     # الموافقة / الرفض
@@ -925,6 +937,13 @@ class RecruitmentRequest(models.Model):
         ):
             raise UserError(_('ليست لديك الصلاحية للقيام بهذا الإجراء.'))
         old_stage = self.stage_id
+        # يفتح حقل مبلغ الرسوم الحكومية للتعديل مجدداً إن كان مقفولاً -
+        # وإلا يبقى "إرجاع للتصحيح" بلا معنى فعلي لو كان الخطأ في المبلغ
+        # نفسه (انظر _unlock_gov_fee_for_correction أدناه؛ bank_settlement
+        # تتجاوزها لمعالجة السجل المرتبط بالسداد البنكي أو منع الإرجاع
+        # كلياً إن سُدِّدت الرسوم فعلاً - يجب أن يحدث هذا قبل تغيير المرحلة
+        # حتى يُوقَف الإرجاع بالكامل إن رُفض).
+        self._unlock_gov_fee_for_correction()
         # السماح بالكتابة رغم أن الوجهة مرحلة سابقة (نتجاوز فحص الانتقال للأمام)
         self.with_context(skip_stage_validation=True).write({
             'stage_id': target_stage.id,
@@ -1082,6 +1101,18 @@ class RecruitmentRequest(models.Model):
                 'مطلوب منك: فاتورة رسوم توظيف بانتظار المراجعة والسداد',
                 note=_('الطلب: %s - المبلغ: %s') % (rec.name, rec.fee_amount),
             )
+
+    def _unlock_gov_fee_for_correction(self):
+        """يُعاد ضبط قفل الرسوم الحكومية عند "إرجاع للتصحيح" - يفتح حقل
+        المبلغ (gov_fee_amount) للتعديل مجدداً (readonly="gov_fee_settled"
+        في العرض). النماذج الفرعية (bank_settlement) تتجاوز هذه الدالة
+        لمعالجة أي سجل "رسوم حكومية" مرتبط بالسداد البنكي أولاً - تحذفه
+        إن لم تُسدَّد الرسوم فعلاً بعد، أو تمنع "إرجاع للتصحيح" كلياً
+        (بإثارة استثناء) إن كانت قد سُدِّدت فعلاً - قبل استدعاء super()
+        هنا."""
+        self.ensure_one()
+        if self.gov_fee_settled:
+            self.gov_fee_settled = False
 
     def action_register_gov_fee(self):
         """يسجّل الرسوم الحكومية لنقل الكفالة على هذا الطلب - المبلغ
