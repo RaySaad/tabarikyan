@@ -749,6 +749,12 @@ class RecruitmentRequest(models.Model):
                                'مطلوب مراجعتك: طلب توظيف بانتظار مراجعة مدير العمليات'),
         'gm_approval': ('recruitment_workflow.group_recruitment_workflow_gm',
                          'مطلوب اعتمادك: طلب توظيف بانتظار اعتماد المدير العام'),
+        # لم تكن "طلب سيارة" مُدرَجة هنا سابقاً - بلا أي إشعار إطلاقاً رغم
+        # اشتراطها موافقة مسؤول المشروع المحدَّد تحديداً (انظر
+        # _STAGE_ASSIGNED_USER_FIELD أدناه)، بنفس فئة الثغرة التي أُصلحت
+        # هنا لمرحلة "project_review".
+        'car_request': ('recruitment_workflow.group_recruitment_workflow_project_manager',
+                         'مطلوب منك: طلب توظيف بانتظار إنهاء طلب السيارة'),
     }
 
     def _schedule_activity_for_group(self, group_xmlid, summary, note=False):
@@ -762,11 +768,17 @@ class RecruitmentRequest(models.Model):
         # صراحة لمجموعة مدير العمليات.
         if not group or not group.all_user_ids:
             return
+        self._schedule_activity_for_user(group.all_user_ids[0], summary, note=note)
+
+    def _schedule_activity_for_user(self, user, summary, note=False):
+        self.ensure_one()
+        if not user:
+            return
         self.activity_schedule(
             act_type_xmlid='mail.mail_activity_data_todo',
             summary=summary,
             note=note or '',
-            user_id=group.all_user_ids[0].id,
+            user_id=user.id,
         )
 
     def _schedule_stage_activity(self):
@@ -775,10 +787,19 @@ class RecruitmentRequest(models.Model):
         if not entry:
             return
         group_xmlid, summary = entry
-        self._schedule_activity_for_group(
-            group_xmlid, summary,
-            note=_('الطلب: %s - المندوب: %s') % (self.name, self.employee_name or ''),
-        )
+        note = _('الطلب: %s - المندوب: %s') % (self.name, self.employee_name or '')
+        # إن كانت هذه المرحلة تشترط موافقة الشخص المعيّن تحديداً (مسؤول
+        # المشروع المحدَّد على هذا الطلب بالذات - انظر _STAGE_ASSIGNED_
+        # USER_FIELD/_check_approval_rights)، يصله الإشعار هو تحديداً -
+        # وليس أول عضو عشوائي بالمجموعة (كان هذا يعني سابقاً إمكانية وصول
+        # الإشعار لشخص لا يملك حتى صلاحية الموافقة على هذا الطلب بالذات،
+        # بينما الشخص المخوَّل الفعلي لا يعرف شيئاً - ثغرة حقيقية).
+        assigned_field = self._STAGE_ASSIGNED_USER_FIELD.get(self.stage_id.code or '')
+        assigned_user = self[assigned_field] if assigned_field else False
+        if assigned_user:
+            self._schedule_activity_for_user(assigned_user, summary, note=note)
+        else:
+            self._schedule_activity_for_group(group_xmlid, summary, note=note)
 
     # ------------------------------------------------------------------
     # الموافقة / الرفض

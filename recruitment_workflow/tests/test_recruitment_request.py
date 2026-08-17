@@ -381,6 +381,37 @@ class TestRecruitmentRequest(TransactionCase):
         request.with_user(assigned_pm).action_approve()
         self.assertEqual(request.stage_id, self.stage_operations_review)
 
+    def test_stage_activity_notifies_specific_assigned_manager(self):
+        """إشعار مرحلة "قيد المراجعة" كان يصل لأول عضو عشوائي بمجموعة
+        "مسؤول المشروع" ككل - وليس مسؤول المشروع المحدَّد تحديداً على
+        هذا الطلب بالذات (الشخص الوحيد المخوَّل فعلياً بالموافقة عليه) -
+        ثغرة حقيقية: قد لا يصل الإشعار أبداً لمن يملك صلاحية الموافقة."""
+        assigned_pm = self.env['res.users'].create({
+            'name': 'مسؤول المشروع المعيّن - إشعار',
+            'login': 'assigned_pm_notify_user',
+            'email': 'assigned_pm_notify_user@example.com',
+            'group_ids': [(6, 0, [self.group_pm.id, self.env.ref('base.group_user').id])],
+        })
+        other_pm = self.env['res.users'].create({
+            'name': 'مسؤول مشروع آخر - إشعار',
+            'login': 'other_pm_notify_user',
+            'email': 'other_pm_notify_user@example.com',
+            'group_ids': [(6, 0, [self.group_pm.id, self.env.ref('base.group_user').id])],
+        })
+        project = self.env['project.project'].create({'name': 'منصة تجريبية - إشعار'})
+        request = self._create_request(
+            identification_id='1234567897', email='i@example.com',
+            project_id=project.id, project_manager_id=assigned_pm.id,
+        )
+
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_project_review.id,
+        })
+
+        self.assertTrue(request.activity_ids)
+        self.assertEqual(request.activity_ids[:1].user_id, assigned_pm)
+        self.assertNotEqual(request.activity_ids[:1].user_id, other_pm)
+
     # ------------------------------------------------------------------
     # أفعال حساسة أخرى يجب أن تتحقق من الصلاحية من جهة الخادم أيضاً
     # (وليس فقط عبر إخفاء الأزرار في الواجهة) - action_reject,
