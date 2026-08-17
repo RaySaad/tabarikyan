@@ -417,6 +417,9 @@ class TestBankSettlementMixin(TransactionCase):
             notified_user.has_group('bank_settlement.group_bank_settlement_manager'),
             'المستخدَم المُخطَر يجب أن يكون عضواً في مجموعة مدير عام السداد البنكي.',
         )
+        # رسالة مباشرة في صندوق الدردشة (Discuss/الجرس) بالإضافة للنشاط -
+        # طلب صريح، الأنشطة وحدها لا تظهر هناك.
+        self.assertIn(notified_user.partner_id, gov_fee.message_ids[:1].partner_ids)
 
     def test_activity_scheduled_for_accountant_on_confirm(self):
         """بعد اعتماد المدير العام، يجب أن يصل تنبيه للمحاسب (وليس مدير

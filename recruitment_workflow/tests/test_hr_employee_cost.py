@@ -79,3 +79,6 @@ class TestHrEmployeeCost(TransactionCase):
             notified_user.has_group('recruitment_workflow.group_recruitment_workflow_accountant'),
             'المستخدَم المُخطَر يجب أن يكون عضواً في مجموعة المحاسب فعلياً.',
         )
+        # رسالة مباشرة في صندوق الدردشة (Discuss/الجرس) بالإضافة للنشاط -
+        # طلب صريح، الأنشطة وحدها لا تظهر هناك.
+        self.assertIn(notified_user.partner_id, cost.message_ids[:1].partner_ids)

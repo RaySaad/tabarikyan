@@ -296,7 +296,12 @@ class BankSettlementMixin(models.AbstractModel):
     def _schedule_stage_activity(self):
         """يُنهي أي نشاط سابق متعلق بهذا السجل (الحالة تغيّرت، فالإجراء
         المطلوب سابقاً لم يعد ذا قيمة) ثم يجدول تنبيهاً جديداً لصاحب
-        القرار في الحالة الجديدة (إن وُجد)."""
+        القرار في الحالة الجديدة (إن وُجد)، بقناتين معاً:
+        1. نشاط (Activity/To-Do) - يبقى ظاهراً حتى يُنجَز، في شاشة
+           "الأنشطة" المنفصلة (لا يظهر في صندوق الدردشة/الجرس).
+        2. رسالة مباشرة في صندوق الدردشة (Discuss/الجرس) - أسرع للملاحظة
+           لكن يمكن تجاهلها أو ضياعها بسهولة، طلب صريح بالإضافة للنشاط
+           وليس بديلاً عنه."""
         self.ensure_one()
         self.activity_ids.action_feedback(feedback='تغيّرت حالة السجل')
         user = self._get_stage_responsible_user()
@@ -307,6 +312,11 @@ class BankSettlementMixin(models.AbstractModel):
             summary='مطلوب إجراؤك: %s' % self.name,
             user_id=user.id,
         )
+        if user.partner_id:
+            self.message_post(
+                body='مطلوب إجراؤك على %s.' % self.name,
+                partner_ids=user.partner_id.ids,
+            )
 
     def unlink(self):
         # سجلات السداد البنكي سجل تدقيق ومراجعة دائم - يُمنع حذفها نهائياً

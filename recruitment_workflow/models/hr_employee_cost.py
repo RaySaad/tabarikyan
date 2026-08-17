@@ -193,10 +193,12 @@ class HrEmployeeCost(models.Model):
             rec._schedule_accounting_review_activity()
 
     def _schedule_accounting_review_activity(self):
-        """يجدول نشاط (Activity) لأول مستخدم في مجموعة "المحاسب" - كانت
+        """يجدول نشاطاً (Activity) لأول مستخدم في مجموعة "المحاسب"، ويرسل
+        له أيضاً رسالة مباشرة في صندوق الدردشة (Discuss/الجرس) - كانت
         هذه التكلفة تُرفع لفريق المحاسبة بلا أي إشعار فعلي سابقاً، فيجب
         عليهم تفقّد قائمة فواتير الموردين يدوياً لاكتشاف وجود فاتورة
-        جديدة بانتظارهم."""
+        جديدة بانتظارهم. القناتان معاً بطلب صريح - النشاط وحده لا يظهر
+        في صندوق الدردشة (شاشة "الأنشطة" منفصلة عنه)."""
         self.ensure_one()
         group = self.env.ref(
             'recruitment_workflow.group_recruitment_workflow_accountant',
@@ -204,12 +206,18 @@ class HrEmployeeCost(models.Model):
         )
         if not group or not group.all_user_ids:
             return
+        user = group.all_user_ids[0]
         self.activity_schedule(
             act_type_xmlid='mail.mail_activity_data_todo',
             summary=_('مطلوب منك: مراجعة واعتماد فاتورة مورد - %s') % self.display_name,
             note=_('التكلفة: %s - المبلغ: %s') % (self.display_name, self.amount),
-            user_id=group.all_user_ids[0].id,
+            user_id=user.id,
         )
+        if user.partner_id:
+            self.message_post(
+                body=_('مطلوب منك: مراجعة واعتماد فاتورة مورد - %s.') % self.display_name,
+                partner_ids=user.partner_id.ids,
+            )
 
     def action_view_move(self):
         self.ensure_one()
