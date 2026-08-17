@@ -85,6 +85,22 @@ class BankSettlementAdvance(models.Model):
             return self.create_uid
         return self.env['res.users']
 
+    def _get_previous_stage(self):
+        """للسلفة موافقتان منفصلتان (مسؤول المشروع ثم المدير العام)،
+        فلها خطوتان ذواتا معنى للتراجع خطوة واحدة (بعكس بقية شاشات
+        السداد البنكي التي لها خطوة واحدة فقط - انظر bank_settlement_
+        mixin.py):
+        - approved -> pm_approved: تراجع عن اعتماد المدير العام فقط،
+          مع إبقاء موافقة مسؤول المشروع سارية.
+        - pm_approved -> waiting_approval: تراجع عن موافقة مسؤول
+          المشروع نفسها."""
+        self.ensure_one()
+        if self.state == 'approved':
+            return 'pm_approved'
+        if self.state == 'pm_approved':
+            return 'waiting_approval'
+        return False
+
     def action_submit_review(self):
         for rec in self:
             if rec.state != 'draft':

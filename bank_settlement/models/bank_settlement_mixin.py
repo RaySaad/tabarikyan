@@ -402,12 +402,15 @@ class BankSettlementMixin(models.AbstractModel):
         }
 
     def action_reset_draft(self, reason=False):
-        """الإعادة الفعلية لمسودة - تُلغي فعلياً أي اعتماد سابق (المدير
-        العام)، فتتطلب نفس صلاحيته تحديداً - وليست متاحة لمن ينشئ السجل
-        فقط. تتطلب سبباً إجبارياً، ولا تُستدعى مباشرة من زر بالواجهة -
-        تمر حصراً عبر bank.settlement.reset.wizard (انظر
-        action_open_reset_wizard أعلاه)، بنفس مبدأ "إرجاع للتصحيح" في
-        recruitment_workflow."""
+        """الإعادة الفعلية لمسودة - تُلغي فعلياً كل الموافقات السابقة
+        دفعة واحدة (المدير العام، ومسؤول المشروع في السلفة إن وُجدت)،
+        فتتطلب نفس صلاحية المدير العام تحديداً - وليست متاحة لمن ينشئ
+        السجل فقط. تتطلب سبباً إجبارياً، ولا تُستدعى مباشرة من زر
+        بالواجهة - تمر حصراً عبر bank.settlement.reset.wizard (انظر
+        action_open_reset_wizard أعلاه). مخصَّصة لتصحيح بيانات أساسية
+        خاطئة (المبلغ/الموظف...) - أما لتصحيح قرار موافقة واحد فقط مع
+        الحفاظ على الموافقات الأسبق، استخدم "إرجاع للتصحيح" بدلاً منها
+        (action_return_to_previous_stage أدناه)."""
         if not reason:
             raise UserError('يجب توضيح سبب الإعادة لمسودة.')
         for rec in self:
@@ -424,6 +427,69 @@ class BankSettlementMixin(models.AbstractModel):
         for rec in self:
             rec.message_post(body='تمت إعادة السجل لمسودة للتصحيح.<br/>السبب: %s' % reason)
         self.write({'state': 'draft'})
+
+    def _get_previous_stage(self):
+        """المرحلة السابقة مباشرة للحالة الحالية، لغرض "إرجاع للتصحيح"
+        فقط (وليس "إعادة لمسودة" أعلاه) - أي التراجع خطوة واحدة فقط عن
+        قرار موافقة أخير، مع الحفاظ على أي موافقة أسبق منه. تُعيد False
+        إن لم توجد خطوة سابقة ذات معنى من الحالة الحالية (مثال: "تحت
+        المراجعة" ليس لها خطوة سابقة - البديل الوحيد قبلها هو "مسودة"
+        نفسها، وهذا دور "إعادة لمسودة" لا "إرجاع للتصحيح").
+
+        في النماذج الأربعة الأساسية المستخدمة لسلسلة الحالات المشتركة
+        هنا (draft -> under_review -> confirmed -> done)، الانتقال
+        الوحيد ذو المعنى هو confirmed -> under_review (تراجع عن اعتماد
+        المدير العام، مع إبقاء الإرسال للمراجعة قائماً). advance.py له
+        سلسلة حالات مختلفة (5 حالات، وموافقتان منفصلتان: مسؤول المشروع
+        ثم المدير العام) فيُجاوز هذه الدالة بخطوتين ذواتي معنى."""
+        self.ensure_one()
+        if self.state == 'confirmed':
+            return 'under_review'
+        return False
+
+    def action_open_return_wizard(self):
+        """يفتح معالج "إرجاع للتصحيح" (يفرض تسجيل السبب) - الزر في
+        الواجهة يستدعي هذه الدالة بدل action_return_to_previous_stage
+        مباشرة، بنفس نمط باقي المعالجات أعلاه."""
+        self.ensure_one()
+        if not self._get_previous_stage():
+            raise UserError('لا توجد مرحلة سابقة يمكن الرجوع إليها من الحالة الحالية.')
+        return {
+            'name': 'إرجاع للتصحيح',
+            'type': 'ir.actions.act_window',
+            'res_model': 'bank.settlement.return.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_res_model': self._name, 'default_res_id': self.id},
+        }
+
+    def action_return_to_previous_stage(self, reason=False):
+        """التراجع الفعلي خطوة واحدة فقط للمرحلة السابقة مباشرة (انظر
+        _get_previous_stage أعلاه) - بعكس action_reset_draft الذي يمسح
+        كل الموافقات دفعة واحدة، هذه الدالة تُبقي أي موافقة أسبق من
+        الخطوة الملغاة قائمة كما هي (مثال: تُلغى موافقة المدير العام
+        على سلفة فقط، وتبقى موافقة مسؤول المشروع عليها سارية). تتطلب
+        نفس صلاحية "إعادة لمسودة" (مدير عام السداد البنكي) وسبباً
+        إجبارياً، ولا تُستدعى مباشرة من زر بالواجهة - تمر حصراً عبر
+        bank.settlement.return.wizard (انظر action_open_return_wizard
+        أعلاه)."""
+        if not reason:
+            raise UserError('يجب توضيح سبب الإرجاع للتصحيح.')
+        for rec in self:
+            previous_stage = rec._get_previous_stage()
+            if not previous_stage:
+                raise UserError('لا توجد مرحلة سابقة يمكن الرجوع إليها من الحالة الحالية.')
+            rec._check_group('bank_settlement.group_bank_settlement_manager')
+        for rec in self:
+            old_state_label = dict(rec._fields['state'].selection).get(rec.state, rec.state)
+            previous_stage = rec._get_previous_stage()
+            new_state_label = dict(rec._fields['state'].selection).get(previous_stage, previous_stage)
+            rec.message_post(
+                body='تم إرجاع السجل للتصحيح من "%s" إلى "%s" (مع الحفاظ على '
+                     'أي موافقة أسبق).<br/>السبب: %s'
+                     % (old_state_label, new_state_label, reason)
+            )
+            rec.write({'state': previous_stage})
 
     def action_cancel(self):
         """إلغاء - متاح للمحاسب فما فوق (وليس لمن ينشئ السجل فقط)."""

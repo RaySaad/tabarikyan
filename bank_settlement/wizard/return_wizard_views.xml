@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_bank_settlement_return_wizard_form" model="ir.ui.view">
+        <field name="name">bank.settlement.return.wizard.form</field>
+        <field name="model">bank.settlement.return.wizard</field>
+        <field name="arch" type="xml">
+            <form string="إرجاع للتصحيح">
+                <field name="res_model" invisible="1"/>
+                <field name="res_id" invisible="1"/>
+                <group>
+                    <field name="reason" placeholder="وضّح سبب إرجاع هذا السجل للتصحيح..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm_return" type="object"
+                            string="تأكيد الإرجاع للتصحيح" class="btn-primary"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

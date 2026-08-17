@@ -473,3 +473,126 @@ class TestBankSettlementMixin(TransactionCase):
 
         self.assertTrue(advance.activity_ids)
         self.assertEqual(advance.activity_ids[:1].user_id, assigned_pm)
+
+    def test_return_to_previous_stage_preserves_state_and_logs_reason(self):
+        """"إرجاع للتصحيح" يُرجع السجل خطوة واحدة فقط (مؤكدة -> تحت
+        المراجعة) - بعكس "إعادة لمسودة" التي تمسح كل شيء دفعة واحدة -
+        ويُسجّل السبب في سجل المتابعة."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+        message_count_before = len(gov_fee.message_ids)
+
+        gov_fee.action_return_to_previous_stage(reason='اعتماد المدير العام كان خطأً')
+
+        self.assertEqual(gov_fee.state, 'under_review')
+        self.assertGreater(len(gov_fee.message_ids), message_count_before)
+
+    def test_return_to_previous_stage_blocked_without_previous_stage(self):
+        """لا توجد مرحلة سابقة ذات معنى من "تحت المراجعة" (البديل هو
+        "إعادة لمسودة" نفسها) - يجب رفض المحاولة، سواء عبر الإجراء
+        مباشرة أو عبر فتح المعالج."""
+        gov_fee = self._create_gov_fee()
+        gov_fee.action_submit_review()
+        self.assertEqual(gov_fee.state, 'under_review')
+
+        with self.assertRaises(UserError):
+            gov_fee.action_return_to_previous_stage(reason='سبب ما')
+        with self.assertRaises(UserError):
+            gov_fee.action_open_return_wizard()
+
+    def test_return_to_previous_stage_requires_reason(self):
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+
+        with self.assertRaises(UserError):
+            gov_fee.action_return_to_previous_stage(reason=False)
+        self.assertEqual(gov_fee.state, 'confirmed')
+
+    def test_return_to_previous_stage_requires_manager_group(self):
+        """محاسب (مجموعة "reviewer") لا يملك صلاحية "إرجاع للتصحيح" -
+        نفس صلاحية "إعادة لمسودة" تحديداً (مدير عام السداد البنكي)،
+        وليست متاحة لمن يستطيع فقط تنفيذ الصرف."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+        reviewer_group = self.env.ref('bank_settlement.group_bank_settlement_reviewer')
+        reviewer_user = self.env['res.users'].create({
+            'name': 'محاسب - اختبار إرجاع للتصحيح',
+            'login': 'return_wizard_reviewer_only',
+            'email': 'return_wizard_reviewer_only@example.com',
+            'group_ids': [(6, 0, [reviewer_group.id, self.env.ref('base.group_user').id])],
+        })
+
+        with self.assertRaises(UserError):
+            gov_fee.with_user(reviewer_user).action_return_to_previous_stage(reason='محاولة غير مصرَّح بها')
+        self.assertEqual(gov_fee.state, 'confirmed')
+
+    def test_return_wizard_delegates_to_action(self):
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+        wizard = self.env['bank.settlement.return.wizard'].create({
+            'res_model': gov_fee._name, 'res_id': gov_fee.id,
+            'reason': 'سبب عبر المعالج',
+        })
+
+        wizard.action_confirm_return()
+
+        self.assertEqual(gov_fee.state, 'under_review')
+
+    def test_return_wizard_rejects_invalid_res_model(self):
+        wizard = self.env['bank.settlement.return.wizard'].create({
+            'res_model': 'res.partner', 'res_id': self.env.user.partner_id.id,
+            'reason': 'محاولة نموذج غير صالح',
+        })
+        with self.assertRaises(UserError):
+            wizard.action_confirm_return()
+
+    def test_advance_return_to_previous_stage_preserves_earlier_approval(self):
+        """السلفة: التراجع من "تمت الموافقة" (اعتماد المدير العام) يعيدها
+        إلى "وافق مسؤول المشروع" - أي يُلغي اعتماد المدير العام فقط،
+        ويُبقي موافقة مسؤول المشروع سارية (بعكس "إعادة لمسودة" التي كانت
+        ستمسح الاثنتين معاً)."""
+        advance = self.Advance.create({
+            'advance_reason_id': self.env.ref(
+                'bank_settlement.advance_reason_salary_advance').id,
+            'amount': 300.0,
+        })
+        advance.action_submit_review()
+        advance.action_pm_approve()
+        advance.action_confirm()
+        self.assertEqual(advance.state, 'approved')
+
+        advance.action_return_to_previous_stage(reason='اعتماد المدير العام كان خطأً')
+
+        self.assertEqual(advance.state, 'pm_approved')
+
+        # المرحلة السابقة (pm_approved) نفسها تُمثّل موافقة مسؤول المشروع
+        # قائمة - إعادة تنفيذ اعتماد المدير العام وحده كافٍ لإكمال السلسلة
+        # دون إعادة طلب موافقة مسؤول المشروع من جديد.
+        advance.action_confirm()
+        self.assertEqual(advance.state, 'approved')
+
+    def test_advance_return_to_previous_stage_second_step(self):
+        """التراجع من "وافق مسؤول المشروع" يعيد السلفة إلى "بانتظار
+        الموافقة" - الخطوة الثانية ذات المعنى في سلسلة السلفة."""
+        advance = self.Advance.create({
+            'advance_reason_id': self.env.ref(
+                'bank_settlement.advance_reason_salary_advance').id,
+            'amount': 300.0,
+        })
+        advance.action_submit_review()
+        advance.action_pm_approve()
+        self.assertEqual(advance.state, 'pm_approved')
+
+        advance.action_return_to_previous_stage(reason='موافقة مسؤول المشروع كانت خطأً')
+
+        self.assertEqual(advance.state, 'waiting_approval')
+
+    def test_return_to_previous_stage_blocked_when_move_exists(self):
+        """لا يمكن الإرجاع للتصحيح بعد إنشاء القيد المحاسبي فعلياً (حالة
+        "منفّذة") - لا توجد مرحلة سابقة معرَّفة من هذه الحالة أصلاً."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_done(gov_fee)
+        self.assertEqual(gov_fee.state, 'done')
+
+        with self.assertRaises(UserError):
+            gov_fee.action_return_to_previous_stage(reason='سبب ما')
