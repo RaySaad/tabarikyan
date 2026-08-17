@@ -64,3 +64,18 @@ class TestHrEmployeeCost(TransactionCase):
 
         with self.assertRaises(UserError):
             cost.unlink()
+
+    def test_submit_to_accounting_notifies_accountant(self):
+        """كانت التكلفة تُرفع لفريق المحاسبة بلا أي إشعار فعلي - يجب أن
+        يصلهم نشاط (Activity) تلقائي بدل تفقّد فواتير الموردين يدوياً."""
+        partner = self.env['res.partner'].create({'name': 'مورد تجريبي - إشعار'})
+        cost = self._create_cost(partner_id=partner.id)
+
+        cost.action_submit_to_accounting()
+
+        self.assertTrue(cost.activity_ids)
+        notified_user = cost.activity_ids[:1].user_id
+        self.assertTrue(
+            notified_user.has_group('recruitment_workflow.group_recruitment_workflow_accountant'),
+            'المستخدَم المُخطَر يجب أن يكون عضواً في مجموعة المحاسب فعلياً.',
+        )

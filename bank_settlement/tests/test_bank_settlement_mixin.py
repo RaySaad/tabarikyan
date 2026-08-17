@@ -402,3 +402,71 @@ class TestBankSettlementMixin(TransactionCase):
         rep.iban = 'SA2222222222222222222222'
 
         self.assertGreater(len(rep.message_ids), message_count_before)
+
+    def test_activity_scheduled_for_manager_on_submit_review(self):
+        """كان السداد البنكي بلا أي إشعار فعلي إطلاقاً - يجب أن يصل تنبيه
+        (Activity) تلقائي لمدير عام السداد البنكي فور "إرسال للمراجعة"،
+        بدل تفقّد القوائم يدوياً."""
+        gov_fee = self._create_gov_fee()
+
+        gov_fee.action_submit_review()
+
+        self.assertTrue(gov_fee.activity_ids)
+        notified_user = gov_fee.activity_ids[:1].user_id
+        self.assertTrue(
+            notified_user.has_group('bank_settlement.group_bank_settlement_manager'),
+            'المستخدَم المُخطَر يجب أن يكون عضواً في مجموعة مدير عام السداد البنكي.',
+        )
+
+    def test_activity_scheduled_for_accountant_on_confirm(self):
+        """بعد اعتماد المدير العام، يجب أن يصل تنبيه للمحاسب (وليس مدير
+        عام آخر) - هو المسؤول عن تنفيذ الصرف التالي."""
+        gov_fee = self._create_gov_fee()
+        gov_fee.action_submit_review()
+
+        gov_fee.action_confirm()
+
+        self.assertTrue(gov_fee.activity_ids)
+        notified_user = gov_fee.activity_ids[:1].user_id
+        self.assertTrue(
+            notified_user.has_group('bank_settlement.group_bank_settlement_reviewer'),
+            'المستخدَم المُخطَر يجب أن يكون عضواً في مجموعة المحاسب.',
+        )
+
+    def test_previous_activity_closed_on_state_change(self):
+        """النشاط السابق (المرتبط بحالة سابقة) يجب أن يُغلَق تلقائياً عند
+        تغيّر الحالة - وإلا تراكمت تنبيهات قديمة لم تعد ذات معنى."""
+        gov_fee = self._create_gov_fee()
+        gov_fee.action_submit_review()
+        first_activity = gov_fee.activity_ids
+
+        gov_fee.action_confirm()
+
+        self.assertFalse(first_activity.exists())
+
+    def test_advance_activity_scheduled_for_specific_project_manager(self):
+        """السلفة تحديداً: الإشعار عند "إرسال للمراجعة" يستهدف مسؤول
+        مشروع الموظف نفسه تحديداً (وليس أول عضو عشوائي بمجموعة مسؤولي
+        المشاريع) - بنفس منطق التحقق الفعلي في action_pm_approve."""
+        pm_group = self.env.ref('recruitment_workflow.group_recruitment_workflow_project_manager')
+        assigned_pm = self.env['res.users'].create({
+            'name': 'مسؤول مشروع معيّن - إشعار سلفة',
+            'login': 'advance_notify_assigned_pm',
+            'email': 'advance_notify_assigned_pm@example.com',
+            'group_ids': [(6, 0, [pm_group.id, self.env.ref('base.group_user').id])],
+        })
+        project = self.env['project.project'].create({
+            'name': 'مشروع تجريبي - إشعار سلفة', 'user_id': assigned_pm.id,
+        })
+        employee = self.env['hr.employee'].create({
+            'name': 'موظف سلفة - إشعار', 'project_id': project.id,
+        })
+        advance = self.Advance.create({
+            'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id,
+            'amount': 300.0, 'employee_id': employee.id,
+        })
+
+        advance.action_submit_review()
+
+        self.assertTrue(advance.activity_ids)
+        self.assertEqual(advance.activity_ids[:1].user_id, assigned_pm)

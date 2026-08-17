@@ -190,6 +190,26 @@ class HrEmployeeCost(models.Model):
                 'تم رفع التكلفة كفاتورة مورد %(move)s (مسودة) لفريق المحاسبة '
                 'لمراجعتها واعتمادها ودفعها، موزّعة تحليلياً على مشروع %(project)s.'
             ) % {'move': move.display_name, 'project': rec.project_id.display_name})
+            rec._schedule_accounting_review_activity()
+
+    def _schedule_accounting_review_activity(self):
+        """يجدول نشاط (Activity) لأول مستخدم في مجموعة "المحاسب" - كانت
+        هذه التكلفة تُرفع لفريق المحاسبة بلا أي إشعار فعلي سابقاً، فيجب
+        عليهم تفقّد قائمة فواتير الموردين يدوياً لاكتشاف وجود فاتورة
+        جديدة بانتظارهم."""
+        self.ensure_one()
+        group = self.env.ref(
+            'recruitment_workflow.group_recruitment_workflow_accountant',
+            raise_if_not_found=False,
+        )
+        if not group or not group.all_user_ids:
+            return
+        self.activity_schedule(
+            act_type_xmlid='mail.mail_activity_data_todo',
+            summary=_('مطلوب منك: مراجعة واعتماد فاتورة مورد - %s') % self.display_name,
+            note=_('التكلفة: %s - المبلغ: %s') % (self.display_name, self.amount),
+            user_id=group.all_user_ids[0].id,
+        )
 
     def action_view_move(self):
         self.ensure_one()

@@ -269,7 +269,44 @@ class BankSettlementMixin(models.AbstractModel):
                         'السداد/التحويل الفعلي.'
                     )
         self._fill_employee_derived_vals(vals)
-        return super().write(vals)
+        res = super().write(vals)
+        if 'state' in vals:
+            for rec in self:
+                rec._schedule_stage_activity()
+        return res
+
+    def _get_first_group_user(self, group_xmlid):
+        group = self.env.ref(group_xmlid, raise_if_not_found=False)
+        return group.all_user_ids[:1] if group else self.env['res.users']
+
+    def _get_stage_responsible_user(self):
+        """المستخدم الذي يجب تنبيهه بضرورة اتخاذ إجراء في الحالة الحالية -
+        كان السداد البنكي بلا أي إشعار فعلي إطلاقاً سابقاً (يجب تفقّد
+        القوائم يدوياً). النماذج التي تُسمّي حالاتها بأسماء مختلفة
+        (advance.py) تُجاوز هذه الدالة."""
+        self.ensure_one()
+        if self.state == 'under_review':
+            return self._get_first_group_user('bank_settlement.group_bank_settlement_manager')
+        if self.state == 'confirmed':
+            return self._get_first_group_user('bank_settlement.group_bank_settlement_reviewer')
+        if self.state == 'rejected':
+            return self.create_uid
+        return self.env['res.users']
+
+    def _schedule_stage_activity(self):
+        """يُنهي أي نشاط سابق متعلق بهذا السجل (الحالة تغيّرت، فالإجراء
+        المطلوب سابقاً لم يعد ذا قيمة) ثم يجدول تنبيهاً جديداً لصاحب
+        القرار في الحالة الجديدة (إن وُجد)."""
+        self.ensure_one()
+        self.activity_ids.action_feedback(feedback='تغيّرت حالة السجل')
+        user = self._get_stage_responsible_user()
+        if not user:
+            return
+        self.activity_schedule(
+            act_type_xmlid='mail.mail_activity_data_todo',
+            summary='مطلوب إجراؤك: %s' % self.name,
+            user_id=user.id,
+        )
 
     def unlink(self):
         # سجلات السداد البنكي سجل تدقيق ومراجعة دائم - يُمنع حذفها نهائياً

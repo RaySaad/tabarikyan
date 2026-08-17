@@ -66,6 +66,25 @@ class BankSettlementAdvance(models.Model):
         # البنكي - انظر الشرح الكامل في bank_settlement_mixin.py.
         return 'approved'
 
+    def _get_stage_responsible_user(self):
+        """السلفة لها سلسلة حالات خاصة (waiting_approval → pm_approved →
+        approved → paid) بدل تسلسل الـ mixin الأساسي - وموافقة مسؤول
+        المشروع تستهدف الشخص المحدَّد تحديداً (نفس منطق action_pm_approve)
+        بدل أول عضو بالمجموعة، إن وُجد."""
+        self.ensure_one()
+        if self.state == 'waiting_approval':
+            project_manager = self.employee_id.project_id.user_id if self.employee_id else False
+            return project_manager or self._get_first_group_user(
+                'bank_settlement.group_bank_settlement_manager'
+            )
+        if self.state == 'pm_approved':
+            return self._get_first_group_user('bank_settlement.group_bank_settlement_manager')
+        if self.state == 'approved':
+            return self._get_first_group_user('bank_settlement.group_bank_settlement_reviewer')
+        if self.state == 'rejected':
+            return self.create_uid
+        return self.env['res.users']
+
     def action_submit_review(self):
         for rec in self:
             if rec.state != 'draft':
