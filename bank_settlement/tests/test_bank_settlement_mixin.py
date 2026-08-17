@@ -248,17 +248,35 @@ class TestBankSettlementMixin(TransactionCase):
             submitted_fee.unlink()
         self.assertTrue(submitted_fee.exists())
 
-    def test_transfer_date_and_bank_reference_locked_after_draft(self):
-        """تاريخ التحويل ورقم السداد البنكي - بيانات التحويل الفعلي - لم
-        يكونا مقفولين إطلاقاً سابقاً (ثغرة حقيقية)، رغم ارتباطهما بقيد
-        محاسبي حقيقي فور "منفّذة"."""
+    def test_transfer_date_and_bank_reference_only_editable_after_gm_approval(self):
+        """تاريخ التحويل ورقم السداد البنكي - بيانات السداد الفعلي، خاصة
+        بالمحاسب وقت الصرف تحديداً - يُمنع تحديدهما قبل اعتماد المدير
+        العام (لا يظهران أصلاً في الواجهة قبل ذلك، بنفس منطق دفتر
+        اليومية/الحساب المرتبط)، يُسمح بتحديدهما في حالة "مؤكدة" تحديداً
+        (طلب صريح)، ثم يُقفلان مجدداً بعد "منفّذة"."""
         gov_fee = self._create_gov_fee()
-        gov_fee.action_submit_review()
 
         with self.assertRaises(UserError):
             gov_fee.write({'transfer_date': '2025-01-01'})
+
+        gov_fee.action_submit_review()
         with self.assertRaises(UserError):
             gov_fee.write({'bank_reference': 'REF-123'})
+
+        gov_fee.action_confirm()
+        self.assertEqual(gov_fee.state, 'confirmed')
+        gov_fee.write({'transfer_date': '2025-01-01', 'bank_reference': 'REF-123'})
+        self.assertEqual(str(gov_fee.transfer_date), '2025-01-01')
+        self.assertEqual(gov_fee.bank_reference, 'REF-123')
+
+        gov_fee.write({
+            'linked_account_id': self.env['account.account'].search([], limit=1).id,
+            'journal_id': self.env['account.journal'].search(
+                [('company_id', '=', gov_fee.company_id.id)], limit=1).id,
+        })
+        gov_fee.action_done()
+        with self.assertRaises(UserError):
+            gov_fee.write({'bank_reference': 'REF-456'})
 
     def test_negative_amount_rejected(self):
         with self.assertRaises(UserError):

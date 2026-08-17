@@ -100,12 +100,14 @@
                         </group>
                         <group string="بيانات السداد البنكي">
                             <group>
-                                <field name="transfer_date" readonly="state != 'draft'"/>
-                                <field name="bank_reference" readonly="state != 'draft'"/>
-                                <!-- دفتر اليومية لا يظهر إلا بعد اعتماد المدير
-                                     العام، ويبقى قابلاً للتعبئة تحديداً في تلك
-                                     الحالة (قبل الصرف الفعلي) - وليس "مسودة"
-                                     كباقي الحقول (انظر write() في advance.py). -->
+                                <!-- بيانات السداد الفعلي (خاصة بالمحاسب وقت
+                                     الصرف تحديداً) - لا تظهر إلا بعد اعتماد
+                                     المدير العام، وتُقفَل مجدداً بعد "تم
+                                     الصرف" - وليس "مسودة" كباقي الحقول. -->
+                                <field name="transfer_date" readonly="state != 'approved'"
+                                       invisible="state not in ('approved', 'paid')"/>
+                                <field name="bank_reference" readonly="state != 'approved'"
+                                       invisible="state not in ('approved', 'paid')"/>
                                 <field name="journal_id" readonly="state != 'approved'"
                                        invisible="state not in ('approved', 'paid')"/>
                             </group>

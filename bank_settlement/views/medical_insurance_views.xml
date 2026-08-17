@@ -72,7 +72,13 @@
                                 <field name="fee_type_id" readonly="state != 'draft'"/>
                                 <field name="vendor_id" readonly="state != 'draft'"/>
                                 <field name="company_iban" readonly="state != 'draft'"/>
-                                <field name="transfer_date" readonly="state != 'draft'"/>
+                                <!-- تاريخ التحويل الفعلي - خاص بالمحاسب وقت
+                                     الصرف تحديداً - لا يظهر إلا بعد اعتماد
+                                     المدير العام (نفس منطق دفتر اليومية/
+                                     الحساب المرتبط في بقية الشاشات، رغم أن
+                                     هذه الشاشة لا تستخدمهما مباشرة). -->
+                                <field name="transfer_date" readonly="state != 'confirmed'"
+                                       invisible="state not in ('confirmed', 'done')"/>
                             </group>
                             <group string="المبالغ">
                                 <field name="currency_id" invisible="1"/>
