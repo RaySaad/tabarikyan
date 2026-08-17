@@ -263,33 +263,19 @@ class TestRecruitmentRequest(TransactionCase):
         with self.assertRaises(UserError):
             request.write({'stage_id': next_stage.id})
 
-    def test_write_stage_single_step_blocked_by_unmet_requirement(self):
-        """حتى مستخدم يملك كل صلاحيات الموافقة (مدير سير العمل) لا يمكنه
-        الانتقال خطوة واحدة فقط من مرحلة "تم السداد" دون إصدار وسداد فاتورة
-        الرسوم - شرط العمل يبقى قائماً حتى في انتقال خطوة واحدة (فقط عند
-        استخدام آلية "رسوم التوظيف" الخارجية فعلياً، أي عند تحديد
-        fee_amount - من لا يستخدمها إطلاقاً لا يخضع لهذا الشرط)."""
+    def test_write_stage_paid_free_without_fee_move(self):
+        """مغادرة مرحلة "تم السداد" لا تفرض أي شرط متعلق بآلية "رسوم
+        التوظيف" الخارجية القديمة (fee_amount/fee_move_id/action_create_
+        fee_bill) - أُزيل الزر والحقول من كل الشاشات نهائياً، وأُزيل معه
+        هذا التحقق البرمجي أيضاً (كان يعلّق أي طلب له قيمة قديمة في
+        fee_amount للأبد، يطلب زراً لم يعد موجوداً إطلاقاً - ثغرة حقيقية
+        اكتُشفت من شكوى مستخدم فعلية). الشرط الفعلي الوحيد المتبقي مرتبط
+        بالرسوم الحكومية (gov_fee_amount) في مرحلة "جاري نقل الكفالة"."""
         self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         project = self.env['project.project'].create({'name': 'منصة تجريبية 3'})
         request = self._create_request(
             identification_id='1234567895', email='g@example.com', project_id=project.id,
             fee_amount=500.0,
-        )
-        request.with_context(skip_stage_validation=True).write({
-            'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
-        })
-
-        with self.assertRaises(UserError):
-            request.write({'stage_id': self.stage_sponsorship_transfer.id})
-
-    def test_write_stage_paid_free_without_fee_amount(self):
-        """من لا يستخدم آلية "رسوم التوظيف" الخارجية إطلاقاً (fee_amount
-        يبقى صفراً) يمكنه مغادرة مرحلة "تم السداد" دون أي فاتورة - الشرط
-        مشروط بوجود مبلغ فعلي، وليس مفروضاً دائماً."""
-        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
-        project = self.env['project.project'].create({'name': 'منصة تجريبية 3ب'})
-        request = self._create_request(
-            identification_id='1234567896', email='g2@example.com', project_id=project.id,
         )
         request.with_context(skip_stage_validation=True).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
