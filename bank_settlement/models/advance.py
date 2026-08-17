@@ -85,21 +85,27 @@ class BankSettlementAdvance(models.Model):
             return self.create_uid
         return self.env['res.users']
 
-    def _get_previous_stage(self):
+    def _get_returnable_stages(self):
         """للسلفة موافقتان منفصلتان (مسؤول المشروع ثم المدير العام)،
-        فلها خطوتان ذواتا معنى للتراجع خطوة واحدة (بعكس بقية شاشات
-        السداد البنكي التي لها خطوة واحدة فقط - انظر bank_settlement_
-        mixin.py):
-        - approved -> pm_approved: تراجع عن اعتماد المدير العام فقط،
-          مع إبقاء موافقة مسؤول المشروع سارية.
-        - pm_approved -> waiting_approval: تراجع عن موافقة مسؤول
-          المشروع نفسها."""
+        فلها خيار مرحلتين ممكنتين عند التراجع من "تمت الموافقة" (بعكس
+        بقية شاشات السداد البنكي التي لها خيار واحد فقط - انظر
+        bank_settlement_mixin.py):
+        - pm_approved (الأقرب): تراجع عن اعتماد المدير العام فقط، مع
+          إبقاء موافقة مسؤول المشروع سارية.
+        - waiting_approval (الأبعد): تراجع عن الموافقتين معاً دفعة
+          واحدة - يختاره المستخدم صراحة من المعالج إن أراد ذلك.
+        ومن "وافق مسؤول المشروع" نفسها، الخيار الوحيد هو التراجع عن
+        موافقة مسؤول المشروع."""
         self.ensure_one()
+        selection = dict(self._fields['state'].selection)
         if self.state == 'approved':
-            return 'pm_approved'
+            return [
+                ('pm_approved', selection.get('pm_approved')),
+                ('waiting_approval', selection.get('waiting_approval')),
+            ]
         if self.state == 'pm_approved':
-            return 'waiting_approval'
-        return False
+            return [('waiting_approval', selection.get('waiting_approval'))]
+        return []
 
     def action_submit_review(self):
         for rec in self:

@@ -428,31 +428,41 @@ class BankSettlementMixin(models.AbstractModel):
             rec.message_post(body='تمت إعادة السجل لمسودة للتصحيح.<br/>السبب: %s' % reason)
         self.write({'state': 'draft'})
 
-    def _get_previous_stage(self):
-        """المرحلة السابقة مباشرة للحالة الحالية، لغرض "إرجاع للتصحيح"
-        فقط (وليس "إعادة لمسودة" أعلاه) - أي التراجع خطوة واحدة فقط عن
-        قرار موافقة أخير، مع الحفاظ على أي موافقة أسبق منه. تُعيد False
-        إن لم توجد خطوة سابقة ذات معنى من الحالة الحالية (مثال: "تحت
-        المراجعة" ليس لها خطوة سابقة - البديل الوحيد قبلها هو "مسودة"
-        نفسها، وهذا دور "إعادة لمسودة" لا "إرجاع للتصحيح").
+    def _get_returnable_stages(self):
+        """قائمة مرتبة (من الأقرب للحالة الحالية إلى الأبعد) بأزواج
+        (كود الحالة، اسمها المعروض) تمثّل كل المراحل السابقة (غير
+        "مسودة") التي يصح اختيارها كوجهة عبر "إرجاع للتصحيح" - بنفس
+        مبدأ اختيار المرحلة المستهدفة في recruitment_workflow (حيث
+        يختار المستخدم المرحلة صراحة من قائمة، بدل خطوة واحدة ثابتة).
+        "مسودة" نفسها ليست ضمن القائمة أبداً - هذا دور "إعادة لمسودة"
+        وحدها (تمسح كل الموافقات دفعة واحدة)، بينما هذه القائمة كلها
+        مراحل "عمل قيد التقدّم" يُحتفَظ فيها بأي موافقة سابقة للمرحلة
+        المختارة.
 
-        في النماذج الأربعة الأساسية المستخدمة لسلسلة الحالات المشتركة
-        هنا (draft -> under_review -> confirmed -> done)، الانتقال
-        الوحيد ذو المعنى هو confirmed -> under_review (تراجع عن اعتماد
-        المدير العام، مع إبقاء الإرسال للمراجعة قائماً). advance.py له
-        سلسلة حالات مختلفة (5 حالات، وموافقتان منفصلتان: مسؤول المشروع
-        ثم المدير العام) فيُجاوز هذه الدالة بخطوتين ذواتي معنى."""
+        النماذج الأربعة الأساسية المستخدمة لسلسلة الحالات المشتركة هنا
+        (draft -> under_review -> confirmed -> done) لها خيار واحد فقط
+        ذو معنى: confirmed -> under_review. advance.py له سلسلة حالات
+        مختلفة (5 حالات، وموافقتان منفصلتان) فيُجاوز هذه الدالة بخيارين."""
         self.ensure_one()
+        selection = dict(self._fields['state'].selection)
         if self.state == 'confirmed':
-            return 'under_review'
-        return False
+            return [('under_review', selection.get('under_review'))]
+        return []
+
+    def _get_previous_stage(self):
+        """أقرب مرحلة سابقة (أول عنصر في _get_returnable_stages) - تُستخدم
+        كقيمة افتراضية عند عدم اختيار مرحلة مستهدفة صراحة."""
+        self.ensure_one()
+        stages = self._get_returnable_stages()
+        return stages[0][0] if stages else False
 
     def action_open_return_wizard(self):
-        """يفتح معالج "إرجاع للتصحيح" (يفرض تسجيل السبب) - الزر في
-        الواجهة يستدعي هذه الدالة بدل action_return_to_previous_stage
-        مباشرة، بنفس نمط باقي المعالجات أعلاه."""
+        """يفتح معالج "إرجاع للتصحيح" (يفرض اختيار المرحلة المستهدفة
+        وتسجيل السبب) - الزر في الواجهة يستدعي هذه الدالة بدل
+        action_return_to_previous_stage مباشرة، بنفس نمط باقي المعالجات
+        أعلاه."""
         self.ensure_one()
-        if not self._get_previous_stage():
+        if not self._get_returnable_stages():
             raise UserError('لا توجد مرحلة سابقة يمكن الرجوع إليها من الحالة الحالية.')
         return {
             'name': 'إرجاع للتصحيح',
@@ -463,33 +473,39 @@ class BankSettlementMixin(models.AbstractModel):
             'context': {'default_res_model': self._name, 'default_res_id': self.id},
         }
 
-    def action_return_to_previous_stage(self, reason=False):
-        """التراجع الفعلي خطوة واحدة فقط للمرحلة السابقة مباشرة (انظر
-        _get_previous_stage أعلاه) - بعكس action_reset_draft الذي يمسح
-        كل الموافقات دفعة واحدة، هذه الدالة تُبقي أي موافقة أسبق من
-        الخطوة الملغاة قائمة كما هي (مثال: تُلغى موافقة المدير العام
-        على سلفة فقط، وتبقى موافقة مسؤول المشروع عليها سارية). تتطلب
-        نفس صلاحية "إعادة لمسودة" (مدير عام السداد البنكي) وسبباً
-        إجبارياً، ولا تُستدعى مباشرة من زر بالواجهة - تمر حصراً عبر
+    def action_return_to_previous_stage(self, target_state=False, reason=False):
+        """التراجع الفعلي إلى مرحلة سابقة مختارة (target_state) - أو
+        أقرب مرحلة سابقة تلقائياً إن لم تُحدَّد (_get_previous_stage)،
+        للتوافق مع الاستدعاء المباشر بلا معالج. بعكس action_reset_draft
+        الذي يمسح كل الموافقات دفعة واحدة للعودة لمسودة، هذه الدالة
+        تُبقي أي موافقة أسبق من المرحلة المختارة قائمة كما هي (مثال:
+        اختيار "وافق مسؤول المشروع" في سلفة يُلغي اعتماد المدير العام
+        فقط، ويُبقي موافقة مسؤول المشروع سارية). تتطلب نفس صلاحية
+        "إعادة لمسودة" (مدير عام السداد البنكي) وسبباً إجبارياً، ولا
+        تُستدعى مباشرة من زر بالواجهة - تمر حصراً عبر
         bank.settlement.return.wizard (انظر action_open_return_wizard
-        أعلاه)."""
+        أعلاه)، الذي يقيّد الاختيار فعلياً لقائمة _get_returnable_stages
+        فقط (طبقة حماية إضافية من جهة الخادم هنا أيضاً، دفاعاً ضد أي
+        استدعاء RPC مباشر بمرحلة غير صالحة)."""
         if not reason:
             raise UserError('يجب توضيح سبب الإرجاع للتصحيح.')
         for rec in self:
-            previous_stage = rec._get_previous_stage()
-            if not previous_stage:
-                raise UserError('لا توجد مرحلة سابقة يمكن الرجوع إليها من الحالة الحالية.')
+            returnable_codes = [code for code, _label in rec._get_returnable_stages()]
+            chosen = target_state or (returnable_codes[0] if returnable_codes else False)
+            if not chosen or chosen not in returnable_codes:
+                raise UserError('لا يمكن الإرجاع لهذه المرحلة من الحالة الحالية.')
             rec._check_group('bank_settlement.group_bank_settlement_manager')
         for rec in self:
+            returnable_codes = [code for code, _label in rec._get_returnable_stages()]
+            chosen = target_state or returnable_codes[0]
             old_state_label = dict(rec._fields['state'].selection).get(rec.state, rec.state)
-            previous_stage = rec._get_previous_stage()
-            new_state_label = dict(rec._fields['state'].selection).get(previous_stage, previous_stage)
+            new_state_label = dict(rec._fields['state'].selection).get(chosen, chosen)
             rec.message_post(
                 body='تم إرجاع السجل للتصحيح من "%s" إلى "%s" (مع الحفاظ على '
-                     'أي موافقة أسبق).<br/>السبب: %s'
+                     'أي موافقة أسبق للمرحلة المختارة).<br/>السبب: %s'
                      % (old_state_label, new_state_label, reason)
             )
-            rec.write({'state': previous_stage})
+            rec.write({'state': chosen})
 
     def action_cancel(self):
         """إلغاء - متاح للمحاسب فما فوق (وليس لمن ينشئ السجل فقط)."""

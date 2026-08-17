@@ -9,6 +9,7 @@
                 <field name="res_model" invisible="1"/>
                 <field name="res_id" invisible="1"/>
                 <group>
+                    <field name="target_state"/>
                     <field name="reason" placeholder="وضّح سبب إرجاع هذا السجل للتصحيح..."/>
                 </group>
                 <footer>

@@ -529,14 +529,71 @@ class TestBankSettlementMixin(TransactionCase):
     def test_return_wizard_delegates_to_action(self):
         gov_fee = self._create_gov_fee()
         self._complete_to_confirmed(gov_fee)
-        wizard = self.env['bank.settlement.return.wizard'].create({
+        wizard = self.env['bank.settlement.return.wizard'].with_context(
+            default_res_model=gov_fee._name, default_res_id=gov_fee.id,
+        ).create({
             'res_model': gov_fee._name, 'res_id': gov_fee.id,
+            'target_state': 'under_review',
             'reason': 'سبب عبر المعالج',
         })
 
         wizard.action_confirm_return()
 
         self.assertEqual(gov_fee.state, 'under_review')
+
+    def test_return_wizard_target_state_selection_matches_record(self):
+        """قائمة "الإرجاع إلى مرحلة" في المعالج تُبنى ديناميكياً من
+        _get_returnable_stages() الخاصة بالسجل المستهدف نفسه - وليست
+        قائمة ثابتة لكل النماذج."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+        wizard = self.env['bank.settlement.return.wizard'].with_context(
+            default_res_model=gov_fee._name, default_res_id=gov_fee.id,
+        ).new({'res_model': gov_fee._name, 'res_id': gov_fee.id})
+
+        self.assertEqual(
+            wizard._selection_target_state(),
+            [('under_review', 'تحت المراجعة')],
+        )
+
+    def test_advance_return_wizard_allows_choosing_further_stage_directly(self):
+        """السلفة تحديداً: من "تمت الموافقة"، يمكن اختيار "بانتظار
+        الموافقة" مباشرة عبر المعالج (تخطي "وافق مسؤول المشروع")، بدل
+        إلزامية التراجع خطوة واحدة فقط في كل مرة."""
+        advance = self.Advance.create({
+            'advance_reason_id': self.env.ref(
+                'bank_settlement.advance_reason_salary_advance').id,
+            'amount': 300.0,
+        })
+        advance.action_submit_review()
+        advance.action_pm_approve()
+        advance.action_confirm()
+        self.assertEqual(advance.state, 'approved')
+
+        wizard = self.env['bank.settlement.return.wizard'].with_context(
+            default_res_model=advance._name, default_res_id=advance.id,
+        ).create({
+            'res_model': advance._name, 'res_id': advance.id,
+            'target_state': 'waiting_approval',
+            'reason': 'كلا الموافقتين كانتا خاطئتين',
+        })
+
+        wizard.action_confirm_return()
+
+        self.assertEqual(advance.state, 'waiting_approval')
+
+    def test_return_to_previous_stage_rejects_invalid_target_state(self):
+        """محاولة تمرير target_state لا يعيده _get_returnable_stages
+        للسجل يجب أن تُرفض - طبقة حماية إضافية من جهة الخادم، دفاعاً ضد
+        استدعاء RPC مباشر يتجاوز قائمة المعالج."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+
+        with self.assertRaises(UserError):
+            gov_fee.action_return_to_previous_stage(
+                target_state='draft', reason='محاولة قفز غير صالحة',
+            )
+        self.assertEqual(gov_fee.state, 'confirmed')
 
     def test_return_wizard_rejects_invalid_res_model(self):
         wizard = self.env['bank.settlement.return.wizard'].create({
