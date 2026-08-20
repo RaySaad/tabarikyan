@@ -4,3 +4,4 @@ from . import test_recruitment_stage
 from . import test_hr_employee_platform
 from . import test_hr_employee_cost
 from . import test_project_project
+from . import test_fleet_vehicle_branch_history

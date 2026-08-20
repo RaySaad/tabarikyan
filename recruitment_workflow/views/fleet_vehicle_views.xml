@@ -18,12 +18,85 @@
                     <field name="recruitment_state" widget="statusbar"/>
                 </header>
             </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_branch_history" type="object"
+                        class="oe_stat_button" icon="fa-history"
+                        invisible="branch_history_count == 0">
+                    <field name="branch_history_count" widget="statinfo" string="فترات الفروع"/>
+                </button>
+            </xpath>
             <xpath expr="//sheet" position="inside">
                 <group string="التوظيف / الأسطول" name="recruitment_platform">
                     <field name="project_id"/>
+                    <button name="action_open_branch_transfer_wizard" type="object"
+                            string="نقل لفرع آخر" class="btn-link"
+                            icon="fa-exchange"
+                            groups="recruitment_workflow.group_recruitment_workflow_fleet"/>
                 </group>
             </xpath>
         </field>
+    </record>
+
+    <!-- معالج نقل سيارة لفرع آخر - تنفيذ فوري مع تسجيل الحركة -->
+    <record id="view_fleet_vehicle_branch_transfer_wizard_form" model="ir.ui.view">
+        <field name="name">fleet.vehicle.branch.transfer.wizard.form</field>
+        <field name="model">fleet.vehicle.branch.transfer.wizard</field>
+        <field name="arch" type="xml">
+            <form string="نقل لفرع آخر">
+                <field name="vehicle_id" invisible="1"/>
+                <group>
+                    <field name="current_company_id"/>
+                    <field name="company_id" options="{'no_create': True}"/>
+                    <field name="note" placeholder="ملاحظة اختيارية..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm_transfer" type="object"
+                            string="تأكيد النقل" class="btn-primary"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- قائمة/فورم تاريخ فروع السيارات -->
+    <record id="view_fleet_vehicle_branch_history_list" model="ir.ui.view">
+        <field name="name">fleet.vehicle.branch.history.list</field>
+        <field name="model">fleet.vehicle.branch.history</field>
+        <field name="arch" type="xml">
+            <list string="تاريخ فروع السيارات" default_order="date_start desc"
+                  decoration-success="is_current">
+                <field name="vehicle_id"/>
+                <field name="company_id"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="is_current" widget="boolean_toggle" readonly="1"/>
+                <field name="moved_by" optional="hide"/>
+                <field name="note" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_fleet_vehicle_branch_history_form" model="ir.ui.view">
+        <field name="name">fleet.vehicle.branch.history.form</field>
+        <field name="model">fleet.vehicle.branch.history</field>
+        <field name="arch" type="xml">
+            <form string="فترة تبعية لفرع">
+                <group>
+                    <field name="vehicle_id"/>
+                    <field name="company_id"/>
+                    <field name="date_start"/>
+                    <field name="date_end"/>
+                    <field name="moved_by"/>
+                    <field name="note"/>
+                </group>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_fleet_vehicle_branch_history" model="ir.actions.act_window">
+        <field name="name">تاريخ فروع السيارات</field>
+        <field name="res_model">fleet.vehicle.branch.history</field>
+        <field name="view_mode">list,form</field>
     </record>
 
     <!-- نموذج مخصّص لطلبات السيارات من التوظيف - يظهر داخل تطبيق Fleet

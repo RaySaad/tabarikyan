@@ -71,4 +71,11 @@
               groups="recruitment_workflow.group_recruitment_workflow_fleet"
               sequence="25"/>
 
+    <menuitem id="menu_fleet_vehicle_branch_history"
+              name="تاريخ فروع السيارات"
+              parent="fleet.menu_root"
+              action="action_fleet_vehicle_branch_history"
+              groups="recruitment_workflow.group_recruitment_workflow_fleet"
+              sequence="30"/>
+
 </odoo>
