@@ -119,9 +119,16 @@ class TestRecruitmentRequest(TransactionCase):
         ولا تتغيّر إلا بتغيير المشروع نفسه."""
         # حقل company_id مقيَّد بـgroups="base.group_multi_company" في
         # الواجهة - بدون هذه المجموعة لن يظهر الحقل أصلاً في Form ويفشل
-        # الاختبار بخطأ "حقل غير معروف".
+        # الاختبار بخطأ "حقل غير معروف". لكن ذلك وحده غير كافٍ: فلترة
+        # المجموعات على مستوى الحقل تُدمَج (AND) مع مجموعات ir.model.access
+        # الخاصة بالنموذج نفسها - فلا بد أيضاً من مجموعة تملك حق قراءة
+        # recruitment.request أصلاً (group_pm هنا)، وإلا يبقى الحقل مخفياً
+        # رغم امتلاك base.group_multi_company.
         self.env.user.write({
-            'group_ids': [(4, self.env.ref('base.group_multi_company').id)],
+            'group_ids': [
+                (4, self.env.ref('base.group_multi_company').id),
+                (4, self.group_pm.id),
+            ],
         })
         other_company = self.env['res.company'].create({'name': 'شركة تجريبية أخرى'})
         project = self.env['project.project'].create({
@@ -249,8 +256,14 @@ class TestRecruitmentRequest(TransactionCase):
     def test_write_stage_single_step_blocked_without_approval_rights(self):
         """انتقال خطوة واحدة فقط (المرحلة التالية مباشرة) من مرحلة تتطلب
         موافقة ('project_review') لا يزال يتطلب صلاحية الموافقة عليها -
-        المستخدم الحالي (superuser بدون مجموعات مخصصة) لا يملكها."""
-        project = self.env['project.project'].create({'name': 'منصة تجريبية 2'})
+        المستخدم الحالي (superuser بدون مجموعات مخصصة) لا يملكها.
+
+        user_id=False صراحة على المشروع: بدونها project.project.user_id
+        يُشتق تلقائياً لمن أنشأه (المستخدم الحالي نفسه)، فيصبح هو "مسؤول
+        المشروع المعيّن" تلقائياً ويملك الصلاحية بالخطأ - يُبطل الاختبار."""
+        project = self.env['project.project'].create({
+            'name': 'منصة تجريبية 2', 'user_id': False,
+        })
         request = self._create_request(
             identification_id='1234567891', email='c@example.com', project_id=project.id,
         )
@@ -327,7 +340,12 @@ class TestRecruitmentRequest(TransactionCase):
             'email': 'pm_test_user@example.com',
             'group_ids': [(6, 0, [self.group_pm.id, self.env.ref('base.group_user').id])],
         })
-        project = self.env['project.project'].create({'name': 'منصة تجريبية 3'})
+        # user_id=False صراحة: بدونها يُشتق تلقائياً لمنشئ المشروع (المستخدم
+        # الحالي هنا، وليس pm_user) فيصبح هو "المعيّن تحديداً" بدل أن يُعتمد
+        # على فحص المجموعة العام كما يفترضه هذا الاختبار.
+        project = self.env['project.project'].create({
+            'name': 'منصة تجريبية 3', 'user_id': False,
+        })
         request = self._create_request(
             identification_id='1234567892', email='d@example.com', project_id=project.id,
         )
@@ -680,6 +698,9 @@ class TestRecruitmentRequest(TransactionCase):
     def test_action_reject_works_from_new_stage(self):
         """يجب أن يكون رفض الطلب متاحاً من المرحلة الأولى (قبل رفع أي
         مرفقات)، وليس فقط من مراحل الموافقة اللاحقة."""
+        # action_reject تتطلب مجموعة "العمليات" - المستخدم الحالي بلا أي
+        # مجموعة مخصصة افتراضياً؛ الاختبار يستهدف منطق الرفض نفسه لا الصلاحية.
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(identification_id='1234567804', email='o@example.com')
         self.assertEqual(request.stage_id.code, 'new')
 
@@ -694,6 +715,9 @@ class TestRecruitmentRequest(TransactionCase):
     def test_send_car_request_without_available_vehicle_still_submits(self):
         """عدم توفر سيارة حالياً يجب ألا يمنع إرسال الطلب لقسم الأسطول -
         فقط يُظهر تنبيهاً غير معطِّل، والطلب يُرفع لهم بأي حال."""
+        # action_send_car_request تتطلب مجموعة "مسؤول المشروع" - الاختبار
+        # يستهدف منطق التنبيه/الإرسال نفسه لا الصلاحية.
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         project = self.env['project.project'].create({'name': 'منصة تجريبية 11'})
         request = self._create_request(
             identification_id='1234567812', email='v@example.com', project_id=project.id,
@@ -708,6 +732,7 @@ class TestRecruitmentRequest(TransactionCase):
 
     def test_send_car_request_with_available_vehicle_no_notification(self):
         """توفر سيارة يجب ألا يُظهر أي تنبيه - إرسال طلب عادي فقط."""
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         project = self.env['project.project'].create({'name': 'منصة تجريبية 12'})
         brand = self.env['fleet.vehicle.model.brand'].create({'name': 'ماركة تجريبية 2'})
         model = self.env['fleet.vehicle.model'].create({
@@ -756,6 +781,8 @@ class TestRecruitmentRequest(TransactionCase):
     # الرسوم الحكومية (نقل الكفالة) - المبلغ الإجمالي فقط
     # ------------------------------------------------------------------
     def test_gov_fee_registered_marks_settled(self):
+        # action_register_gov_fee تتطلب مجموعة "الموارد البشرية".
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(
             identification_id='1234567818', email='ab@example.com',
             gov_fee_amount=1000.0,
@@ -766,11 +793,13 @@ class TestRecruitmentRequest(TransactionCase):
         self.assertTrue(request.gov_fee_settled)
 
     def test_gov_fee_requires_amount_before_registering(self):
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(identification_id='1234567821', email='ae@example.com')
         with self.assertRaises(UserError):
             request.action_register_gov_fee()
 
     def test_gov_fee_cannot_be_settled_twice(self):
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(
             identification_id='1234567823', email='ag@example.com',
             gov_fee_amount=1000.0,
@@ -795,6 +824,9 @@ class TestRecruitmentRequest(TransactionCase):
 
     def test_stage_exit_allowed_without_gov_fee_settled_when_no_amount(self):
         """لا قيد إطلاقاً لو لم يُحدَّد أي مبلغ للرسوم الحكومية أصلاً."""
+        # مغادرة مرحلة "جاري نقل الكفالة" تتطلب مجموعة "الموارد البشرية"
+        # (_STAGE_APPROVAL_GROUP) - الاختبار يستهدف شرط المبلغ نفسه لا الصلاحية.
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(
             identification_id='1234567820', email='ad@example.com',
         )
@@ -811,6 +843,7 @@ class TestRecruitmentRequest(TransactionCase):
         يبقى الحقل مقفولاً للأبد رغم الرجوع لمرحلة سابقة (كان هذا خطأً
         سابقاً: action_return_to_stage لا يمسّ gov_fee_settled إطلاقاً،
         فيبقى readonly="gov_fee_settled" في العرض ساري المفعول للأبد)."""
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(
             identification_id='1234567824', email='ah@example.com',
             gov_fee_amount=1000.0,

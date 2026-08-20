@@ -21,7 +21,13 @@ class RecruitmentAnalyticProjectMixin(models.AbstractModel):
         help='يُسحب تلقائياً من الحساب التحليلي المرتبط بالمشروع/المنصة المختارة.',
     )
 
-    @api.depends('project_id')
+    # project_id.account_id ضمن الاعتماديات أيضاً - وليس project_id فقط -
+    # وإلا يبقى الحساب التحليلي المخزَّن فارغاً للأبد على أي سجل أُنشئ
+    # قبل استدعاء project._create_default_analytic_account() (الحالة
+    # الشائعة: الحساب التحليلي يُنشأ لحظياً عند أول حاجة فعلية له، بعد
+    # إنشاء الطلب/التكلفة بفترة). ثغرة حقيقية اكتُشفت بمراجعة شاملة: كانت
+    # فواتير الرسوم/التكاليف تُصدَر بلا أي توزيع تحليلي فعلياً في هذه الحالة.
+    @api.depends('project_id', 'project_id.account_id')
     def _compute_analytic_account_id(self):
         for rec in self:
             rec.analytic_account_id = rec.project_id.account_id

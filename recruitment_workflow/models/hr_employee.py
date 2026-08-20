@@ -112,16 +112,24 @@ class HrEmployee(models.Model):
         :param date_start: تاريخ بداية الفترة الجديدة - يُفترض اليوم إن لم
             يُحدَّد. مهم عند الربط الرجعي لموظفين قدامى كانوا على المنصة
             فعلياً منذ تاريخ سابق، وليس منذ اليوم.
-        """
+
+        sudo() ضروري هنا: platform_history_ids حقل "خاص" من منظور
+        hr.employee (غير مُدرَج في hr.employee.public)، وhr.employee نفسه
+        لا يملك أي مستخدم بمجموعات موديول التوظيف فقط (بلا hr.group_hr_user)
+        صلاحية قراءة/كتابة عليه مباشرة عبر ir.model.access - رغم أن هذه
+        الدالة تُستدعى تحديداً من action_confirm_transfer المخصصة لمجموعة
+        "مدير العمليات" (recruitment_workflow) - ثغرة حقيقية اكتُشفت
+        بالاختبار الفعلي."""
         self.ensure_one()
         if not project:
             return False
+        employee = self.sudo()
         # نضمن وجود حساب تحليلي على المنصة الجديدة هنا بالذات - لحظة النقل
         # الفعلية لموديول التوظيف - قبل ما نعتمد عليه بمزامنة العقد بالأسفل.
         if not project.account_id:
             project._create_default_analytic_account()
         date_start = date_start or fields.Date.context_today(self)
-        open_lines = self.platform_history_ids.filtered(lambda l: not l.date_end)
+        open_lines = employee.platform_history_ids.filtered(lambda l: not l.date_end)
         # لا داعي لفتح فترة جديدة إن كانت نفس المنصة الحالية بدون تغيير فعلي
         if open_lines and open_lines[0].project_id.id == project.id:
             return open_lines[0]
@@ -132,10 +140,10 @@ class HrEmployee(models.Model):
             'date_start': date_start,
             'note': note or False,
         })
-        self.with_context(platform_history_internal_write=True).project_id = project.id
-        self._sync_contract_project()
-        self._sync_partner_analytic_distribution(project)
-        self.message_post(body=_(
+        employee.with_context(platform_history_internal_write=True).project_id = project.id
+        employee._sync_contract_project()
+        employee._sync_partner_analytic_distribution(project)
+        employee.message_post(body=_(
             'تم نقل المندوب إلى المنصة: %s%s'
         ) % (project.display_name, (' — %s' % note) if note else ''))
         return new_line

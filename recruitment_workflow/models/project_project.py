@@ -149,7 +149,11 @@ class ProjectProject(models.Model):
                 if default_plan:
                     vals['plan_id'] = default_plan.id
             analytic_account = AnalyticAccount.create(vals)
-            project.account_id = analytic_account.id
+            # sudo(): من يستدعي هذه الدالة (مثلاً مسؤول العمليات عند نقل
+            # مندوب بين منصات) قد لا يملك بالضرورة صلاحية "Project/
+            # Administrator" اللازمة للكتابة المباشرة على project.project -
+            # وهذا استنتاج داخلي تلقائي، وليس تعديلاً يدوياً للمشروع نفسه.
+            project.sudo().account_id = analytic_account.id
 
     def action_create_analytic_account(self):
         """إجراء يدوي اختياري (غير مستخدم حالياً في أي واجهة مشروع عامة)،
