@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_bank_settlement_admin_delete_wizard_form" model="ir.ui.view">
+        <field name="name">bank.settlement.admin.delete.wizard.form</field>
+        <field name="model">bank.settlement.admin.delete.wizard</field>
+        <field name="arch" type="xml">
+            <form string="حذف نهائي إداري">
+                <field name="res_model" invisible="1"/>
+                <field name="res_id" invisible="1"/>
+                <div class="alert alert-danger" role="alert">
+                    تحذير: هذا الإجراء نهائي ولا يمكن التراجع عنه. إن كان
+                    للسجل قيد محاسبي مرحّل، سيُنشأ له قيد عكسي مرحّل يُصفّر
+                    أثره المالي - لن يُحذف القيد الأصلي نفسه.
+                </div>
+                <group>
+                    <field name="reason" placeholder="وضّح سبب الحذف النهائي..."/>
+                    <field name="confirmation_text" placeholder="حذف نهائي"/>
+                </group>
+                <footer>
+                    <button name="action_confirm_delete" type="object"
+                            string="تأكيد الحذف النهائي" class="btn-danger"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>
