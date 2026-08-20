@@ -142,14 +142,23 @@ class HrEmployee(models.Model):
 
     def _get_personal_partner(self):
         """يجد partner المندوب الشخصي (وليس partner العمل/الشركة) بنفس
-        الترتيب الاحتياطي المستخدم في recruitment_request.py."""
+        الترتيب الاحتياطي المستخدم في recruitment_request.py.
+
+        sudo() ضروري هنا: work_contact_id/address_home_id حقلان "خاصان"
+        (Private) من منظور hr.employee (غير مُدرَجين في hr.employee.public)
+        - بلا sudo() كان أي مستدعٍ من مستخدم بلا hr.group_hr_user (مثل
+        محاسب/مدير عام السداد البنكي عند إتمام الصرف) سيفشل بـ AccessError
+        فور الوصول لهذه الدالة، رغم أنها إرجاع تقني بحت لمعرّف شريك
+        محاسبي (لا تعرض بيانات الموظف الشخصية للمستدعي نفسه) - ثغرة
+        حقيقية مكتشفة بالاختبار الفعلي."""
         self.ensure_one()
-        if 'work_contact_id' in self._fields and self.work_contact_id:
-            return self.work_contact_id
-        if 'address_home_id' in self._fields and self.address_home_id:
-            return self.address_home_id
-        if self.user_id and self.user_id.partner_id:
-            return self.user_id.partner_id
+        employee = self.sudo()
+        if 'work_contact_id' in employee._fields and employee.work_contact_id:
+            return employee.work_contact_id
+        if 'address_home_id' in employee._fields and employee.address_home_id:
+            return employee.address_home_id
+        if employee.user_id and employee.user_id.partner_id:
+            return employee.user_id.partner_id
         return self.env['res.partner']
 
     def _sync_partner_analytic_distribution(self, project):

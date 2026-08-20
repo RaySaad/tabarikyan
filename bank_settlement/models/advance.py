@@ -73,7 +73,13 @@ class BankSettlementAdvance(models.Model):
         بدل أول عضو بالمجموعة، إن وُجد."""
         self.ensure_one()
         if self.state == 'waiting_approval':
-            project_manager = self.employee_id.project_id.user_id if self.employee_id else False
+            # sudo(): project_id حقل "خاص" (Private) من منظور hr.employee
+            # (مخصَّص من recruitment_workflow، غير مُدرَج في hr.employee.
+            # public) - بلا sudo() هنا يفشل أي مستخدم سداد بنكي عادي (بلا
+            # hr.group_hr_user) بمجرد وصول السلفة لهذه المرحلة، رغم أن
+            # القراءة داخلية بحتة (تحديد من يُخطَر) ولا تعرض بيانات الموظف
+            # الخاصة له مباشرة.
+            project_manager = self.employee_id.sudo().project_id.user_id if self.employee_id else False
             return project_manager or self._get_first_group_user(
                 'bank_settlement.group_bank_settlement_manager'
             )
@@ -123,7 +129,12 @@ class BankSettlementAdvance(models.Model):
         for rec in self:
             if rec.state != 'waiting_approval':
                 raise UserError('يمكن موافقة مسؤول المشروع في حالة "بانتظار الموافقة" فقط.')
-            project_manager = rec.employee_id.project_id.user_id if rec.employee_id else False
+            # sudo(): نفس سبب _get_stage_responsible_user أعلاه - القراءة
+            # هنا داخلية بحتة لتحديد "من يحق له الضغط"، وليست عرضاً
+            # لبيانات الموظف الخاصة لمن يستدعي الدالة - ثغرة حقيقية
+            # مكتشفة بالاختبار الفعلي (AccessError كان يمنع مسؤول المشروع
+            # الحقيقي نفسه من الموافقة أصلاً).
+            project_manager = rec.employee_id.sudo().project_id.user_id if rec.employee_id else False
             if project_manager:
                 if rec.env.user != project_manager:
                     raise UserError(

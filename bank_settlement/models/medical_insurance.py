@@ -77,6 +77,15 @@ class BankSettlementMedicalInsurance(models.Model):
         مرتبط بمورد حقيقي له فاتورة رسمية. ينهي دورة الحالة أيضاً (كانت
         سابقاً لا تصل لحالة "تم التحويل" لعدم تحديث state هنا إطلاقاً)."""
         self.ensure_one()
+        # بلا هذا التحقق المبكر (قبل شرط "مؤكدة" أدناه)، نقرة مزدوجة أو
+        # استدعاء مكرر (RPC) كان يفشل بخطأ "يجب تأكيد السجل أولاً" بدل
+        # إرجاع نفس الفاتورة الموجودة فعلاً - لأن هذه الدالة نفسها تُغيّر
+        # الحالة إلى "تم التحويل" فور نجاحها أول مرة، فيفشل شرط "مؤكدة"
+        # عند أي استدعاء تالٍ رغم وجود الفاتورة أصلاً (ثغرة حقيقية
+        # مكتشفة بالاختبار الفعلي - الاختبار الذي يُفترض أن يتحقق من
+        # التكرار الآمن كان هو نفسه يفشل بخطأ مختلف تماماً عن المتوقَّع).
+        if self.move_id:
+            return self.move_id.id
         if self.state != 'confirmed':
             raise UserError('يجب تأكيد السجل أولاً قبل إنشاء تحويل التأمين.')
         self._check_group(
@@ -85,36 +94,30 @@ class BankSettlementMedicalInsurance(models.Model):
         )
         if not self.vendor_id:
             raise UserError('يجب تحديد المورد أولاً لإنشاء تحويل التأمين.')
-        # بلا هذا التحقق، نقرة مزدوجة أو استدعاء مكرر (RPC) ينشئ فاتورتي
-        # مورد حقيقيتين لنفس السجل - الأولى تبقى يتيمة (لا مرجع لها من
-        # هذا السجل) لكن تبقى قابلة للدفع فعلياً في المحاسبة (ثغرة حقيقية
-        # مكتشفة بمراجعة شاملة - action_done المشتركة في المixin محمية
-        # بنفس هذا التحقق أصلاً، هذه الدالة المستقلة لم تكن كذلك).
-        if not self.move_id:
-            # sudo(): نفس منطق _create_settlement_move في المixin - لا يجوز أن
-            # يشترط إنشاء الفاتورة عضوية محاسبية أصلية بـ Odoo؛ الصلاحية الفعلية
-            # محكومة بالفعل عبر _check_group أعلاه.
-            move = self.env['account.move'].sudo().create({
-                'move_type': 'in_invoice',
-                'partner_id': self.vendor_id.id,
-                # الشركة صراحة من شركة السجل نفسها - بدل تركها تُحسب من الشركة
-                # النشطة لمن يضغط الزر (انظر نفس المنطق في _create_settlement_move).
-                'company_id': self.company_id.id,
-                # يُستخدم لحصر رؤية "مستخدم/محاسب" السداد البنكي على قيودهم فقط
-                # عبر ir.rule - دون كشف بقية فواتير الشركة.
-                'is_bank_settlement_move': True,
-                'ref': self.name,
-                'invoice_date': self.transfer_date or fields.Date.context_today(self),
-                'invoice_line_ids': [(0, 0, {
-                    'name': self.name,
-                    'quantity': 1,
-                    'price_unit': self.total_amount,
-                    'analytic_distribution': (
-                        {str(self.analytic_account_id.id): 100}
-                        if self.analytic_account_id else False
-                    ),
-                })],
-            })
-            self.move_id = move.id
+        # sudo(): نفس منطق _create_settlement_move في المixin - لا يجوز أن
+        # يشترط إنشاء الفاتورة عضوية محاسبية أصلية بـ Odoo؛ الصلاحية الفعلية
+        # محكومة بالفعل عبر _check_group أعلاه.
+        move = self.env['account.move'].sudo().create({
+            'move_type': 'in_invoice',
+            'partner_id': self.vendor_id.id,
+            # الشركة صراحة من شركة السجل نفسها - بدل تركها تُحسب من الشركة
+            # النشطة لمن يضغط الزر (انظر نفس المنطق في _create_settlement_move).
+            'company_id': self.company_id.id,
+            # يُستخدم لحصر رؤية "مستخدم/محاسب" السداد البنكي على قيودهم فقط
+            # عبر ir.rule - دون كشف بقية فواتير الشركة.
+            'is_bank_settlement_move': True,
+            'ref': self.name,
+            'invoice_date': self.transfer_date or fields.Date.context_today(self),
+            'invoice_line_ids': [(0, 0, {
+                'name': self.name,
+                'quantity': 1,
+                'price_unit': self.total_amount,
+                'analytic_distribution': (
+                    {str(self.analytic_account_id.id): 100}
+                    if self.analytic_account_id else False
+                ),
+            })],
+        })
+        self.move_id = move.id
         self.state = 'done'
         return self.move_id.id

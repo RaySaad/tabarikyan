@@ -24,6 +24,10 @@ class TestFleetVehicleBranchHistory(TransactionCase):
             'name': 'مسؤول أسطول - اختبار نقل فرع',
             'login': 'fleet_branch_transfer_user',
             'email': 'fleet_branch_transfer_user@example.com',
+            # company_ids تشمل الفرع الهدف أيضاً - وإلا AccessError عند قراءة
+            # اسمه (company.display_name ضمن رسالة الدردشة) بسبب عزل الشركات
+            # القياسي بـ Odoo (لا علاقة بصلاحيات قسم الأسطول نفسها).
+            'company_ids': [(6, 0, [cls.env.company.id, cls.branch.id])],
             'group_ids': [(6, 0, [cls.fleet_group.id, cls.env.ref('base.group_user').id])],
         })
 
@@ -87,11 +91,14 @@ class TestFleetVehicleBranchHistory(TransactionCase):
             wizard.action_confirm_transfer()
 
     def test_wizard_rejects_without_target_branch(self):
-        wizard = self.env['fleet.vehicle.branch.transfer.wizard'].create({
-            'vehicle_id': self.vehicle.id,
-        })
-        with self.assertRaises(UserError):
-            wizard.action_confirm_transfer()
+        # company_id إجباري (required=True) على مستوى النموذج نفسه - فالمنع
+        # يحدث فعلياً عند create() (NotNullViolation) قبل الوصول حتى
+        # لـ action_confirm_transfer نفسها؛ نتحقق بـ Exception عامة بدل
+        # UserError تحديداً لتغطية الحالتين.
+        with self.assertRaises(Exception):
+            self.env['fleet.vehicle.branch.transfer.wizard'].create({
+                'vehicle_id': self.vehicle.id,
+            })
 
     def test_non_fleet_user_cannot_open_transfer_wizard_action(self):
         """مستخدم عادي (بلا مجموعة قسم الأسطول) لا يملك حق إنشاء سجل

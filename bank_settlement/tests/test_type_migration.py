@@ -22,6 +22,17 @@ class TestTypeMigration(TransactionCase):
             ADD COLUMN IF NOT EXISTS government_entity varchar,
             ADD COLUMN IF NOT EXISTS fee_type varchar
         """)
+        # government_entity_id/fee_type_id أصبحا required=True (يضيف Odoo
+        # قيد NOT NULL حقيقياً على مستوى قاعدة البيانات نفسها بمجرد عدم
+        # وجود بيانات قديمة تخالفه وقت التنصيب) - نُسقطه مؤقتاً هنا لمحاكاة
+        # وضع سجل حقيقي قبل وجود هذا القيد أصلاً (قبل الترقية)؛ يعود
+        # القيد تلقائياً بانتهاء معاملة الاختبار (DDL ضمن TransactionCase
+        # يُلغى بالتراجع تلقائياً مثل أي تغيير بيانات آخر).
+        self.env.cr.execute("""
+            ALTER TABLE bank_settlement_government_fee
+            ALTER COLUMN government_entity_id DROP NOT NULL,
+            ALTER COLUMN fee_type_id DROP NOT NULL
+        """)
         self.env.cr.execute("""
             UPDATE bank_settlement_government_fee
             SET government_entity = 'hrsd_expat', fee_type = 'office_fee',

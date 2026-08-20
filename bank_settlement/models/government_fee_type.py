@@ -14,9 +14,11 @@ class BankSettlementGovernmentEntity(models.Model):
     sequence = fields.Integer(string='الترتيب', default=10)
     active = fields.Boolean(default=True)
 
-    _sql_constraints = [
-        ('name_uniq', 'unique(name)', 'يوجد جهة حكومية أخرى بنفس الاسم بالفعل.'),
-    ]
+    # _sql_constraints (الصيغة القديمة) لم تعد فعّالة إطلاقاً في هذا
+    # الإصدار من Odoo - انظر الشرح الكامل في advance_reason.py.
+    _name_uniq = models.Constraint(
+        'unique(name)', 'يوجد جهة حكومية أخرى بنفس الاسم بالفعل.',
+    )
 
 
 class BankSettlementGovernmentFeeType(models.Model):
@@ -30,6 +32,6 @@ class BankSettlementGovernmentFeeType(models.Model):
     sequence = fields.Integer(string='الترتيب', default=10)
     active = fields.Boolean(default=True)
 
-    _sql_constraints = [
-        ('name_uniq', 'unique(name)', 'يوجد نوع رسوم آخر بنفس الاسم بالفعل.'),
-    ]
+    _name_uniq = models.Constraint(
+        'unique(name)', 'يوجد نوع رسوم آخر بنفس الاسم بالفعل.',
+    )

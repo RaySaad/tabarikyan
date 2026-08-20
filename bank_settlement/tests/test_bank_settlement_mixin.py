@@ -11,6 +11,13 @@ class TestBankSettlementMixin(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # TransactionCase يُشغِّل الاختبارات افتراضياً باسم superuser
+        # (uid=1، __system__) - وهو ليس عضواً تلقائياً في أي من مجموعات
+        # السداد البنكي المخصَّصة (فقط base.user_admin مُضاف صراحة لمجموعة
+        # المدير العام عبر security.xml، والتي تتضمّن المحاسب/المستخدم
+        # تلقائياً عبر implied_ids) - فنستبدل مستخدم البيئة الافتراضي هنا
+        # مرة واحدة بدل إضافة with_user() لكل استدعاء عبر كل الاختبارات.
+        cls.env = cls.env(user=cls.env.ref('base.user_admin'))
         cls.GovFee = cls.env['bank.settlement.government.fee']
         cls.Representative = cls.env['bank.settlement.representative']
         cls.Advance = cls.env['bank.settlement.advance']
@@ -389,17 +396,30 @@ class TestBankSettlementMixin(TransactionCase):
             'payment_method': 'bank_transfer',
             'employee_iban': 'SA0000000000000000000001',
         })
+        # رسالة التتبع (tracking) تُسجَّل فعلياً عبر precommit hook (انظر
+        # mail_thread._message_track: self.env.cr.precommit.data) - لا
+        # تُنشأ مباشرة ضمن write()/create() نفسها. يجب تفريغها هنا (بعد
+        # الإنشاء تحديداً، قبل قراءة العدّاد "قبل") وإلا يتراكم تسجيل
+        # تتبّع الإنشاء مع تسجيل تتبّع التعديل التالي معاً في نفس التفريغ
+        # فيضيع أحدهما (ثغرة تجريبية مكتشفة بالتجربة الفعلية - في
+        # الاستخدام الفعلي هذا يحدث تلقائياً وبشكل منفصل قبل انتهاء أي
+        # طلب HTTP/RPC عادي، فلا يظهر هناك).
+        self.env.cr.flush()
         message_count_before = len(advance.message_ids)
 
         advance.employee_iban = 'SA0000000000000000000002'
+        self.env.cr.flush()
 
         self.assertGreater(len(advance.message_ids), message_count_before)
 
     def test_representative_iban_change_is_tracked(self):
         rep = self.Representative.create({'settlement_amount': 400.0, 'iban': 'SA1111111111111111111111'})
+        # انظر الشرح الكامل في test_advance_iban_and_stc_number_changes_are_tracked
+        self.env.cr.flush()
         message_count_before = len(rep.message_ids)
 
         rep.iban = 'SA2222222222222222222222'
+        self.env.cr.flush()
 
         self.assertGreater(len(rep.message_ids), message_count_before)
 
@@ -438,14 +458,20 @@ class TestBankSettlementMixin(TransactionCase):
 
     def test_previous_activity_closed_on_state_change(self):
         """النشاط السابق (المرتبط بحالة سابقة) يجب أن يُغلَق تلقائياً عند
-        تغيّر الحالة - وإلا تراكمت تنبيهات قديمة لم تعد ذات معنى."""
+        تغيّر الحالة - وإلا تراكمت تنبيهات قديمة لم تعد ذات معنى.
+
+        ملاحظة: action_feedback() في هذا الإصدار من Odoo يُؤرشِف النشاط
+        المكتمل (active=False) بدل حذفه نهائياً - يبقى موجوداً كسجل
+        تاريخي (مع رسالة "تم" في الدردشة)، فلا يظهر ضمن activity_ids
+        (التي تُصفّي على active=True ضمنياً مثل أي حقل عادي)."""
         gov_fee = self._create_gov_fee()
         gov_fee.action_submit_review()
         first_activity = gov_fee.activity_ids
 
         gov_fee.action_confirm()
 
-        self.assertFalse(first_activity.exists())
+        self.assertFalse(first_activity.active)
+        self.assertNotIn(first_activity, gov_fee.activity_ids)
 
     def test_advance_activity_scheduled_for_specific_project_manager(self):
         """السلفة تحديداً: الإشعار عند "إرسال للمراجعة" يستهدف مسؤول
@@ -598,7 +624,7 @@ class TestBankSettlementMixin(TransactionCase):
     def test_return_wizard_rejects_invalid_res_model(self):
         wizard = self.env['bank.settlement.return.wizard'].create({
             'res_model': 'res.partner', 'res_id': self.env.user.partner_id.id,
-            'reason': 'محاولة نموذج غير صالح',
+            'target_state': 'under_review', 'reason': 'محاولة نموذج غير صالح',
         })
         with self.assertRaises(UserError):
             wizard.action_confirm_return()

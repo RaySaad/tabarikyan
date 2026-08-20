@@ -45,10 +45,11 @@ class RecruitmentStage(models.Model):
     description = fields.Text(string='الوصف', translate=True)
     active = fields.Boolean(string='نشط', default=True)
 
-    _sql_constraints = [
-        (
-            'code_uniq',
-            'unique(code)',
-            'رمز المرحلة يجب أن يكون فريداً - يوجد مرحلة أخرى بنفس الرمز.',
-        ),
-    ]
+    # _sql_constraints (الصيغة القديمة) لم تعد فعّالة إطلاقاً في هذا
+    # الإصدار من Odoo (تحذير صامت عند التحميل: "no longer supported") -
+    # القيد كان معطَّلاً بالكامل بلا أي رسالة خطأ واضحة. models.Constraint
+    # هي الصيغة الحالية المدعومة فعلياً.
+    _code_uniq = models.Constraint(
+        'unique(code)',
+        'رمز المرحلة يجب أن يكون فريداً - يوجد مرحلة أخرى بنفس الرمز.',
+    )

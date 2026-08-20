@@ -13,6 +13,13 @@ class TestRecruitmentRequestIntegration(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # TransactionCase يُشغِّل الاختبارات افتراضياً باسم superuser
+        # (uid=1) - وليس عضواً في مجموعات سير التوظيف المخصَّصة (فقط
+        # base.user_admin مُضاف صراحة لمجموعة "مدير سير العمل" عبر
+        # security.xml، والتي تتضمّن hr/gm/fleet/accountant تلقائياً عبر
+        # implied_ids) - إجراءات هذا الاختبار (تسجيل الرسوم، إرجاع
+        # للتصحيح...) تتطلب هذه المجموعات فعلياً.
+        cls.env = cls.env(user=cls.env.ref('base.user_admin'))
         cls.Request = cls.env['recruitment.request']
         cls.GovFee = cls.env['bank.settlement.government.fee']
         cls.stage_sponsorship_transfer = cls.env.ref('recruitment_workflow.stage_sponsorship_transfer')
@@ -130,8 +137,12 @@ class TestRecruitmentRequestIntegration(TransactionCase):
             '(المُشتقة من المشروع)، وليس على أي شركة أخرى.',
         )
 
+        # action_next_stage() تنقل خطوة واحدة فقط في تسلسل المراحل - من
+        # "تم السداد" (paid) الخطوة التالية مباشرة هي "جاري نقل الكفالة"
+        # (sponsorship_transfer)، وليست "تم نقل الكفالة" (sponsorship_done)
+        # التي تليها هي الأخرى.
         request.action_next_stage()
-        self.assertEqual(request.stage_id.code, 'sponsorship_done')
+        self.assertEqual(request.stage_id.code, 'sponsorship_transfer')
 
     def test_return_to_stage_deletes_unpaid_gov_fee_and_unlocks_amount(self):
         """"إرجاع للتصحيح" قبل سداد الرسوم فعلياً (السجل لا يزال مسودة/

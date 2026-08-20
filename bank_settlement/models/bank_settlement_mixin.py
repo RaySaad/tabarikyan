@@ -77,13 +77,22 @@ class BankSettlementMixin(models.AbstractModel):
 
     @api.onchange('employee_id')
     def _onchange_employee_id(self):
-        if self.employee_id and self.employee_id.project_id:
-            self.project_id = self.employee_id.project_id
+        # sudo() ضروري هنا: project_id/company_id حقلان "خاصان" (Private)
+        # من منظور hr.employee (project_id تحديداً حقل مخصَّص أضافه
+        # recruitment_workflow، غير مُدرَج في hr.employee.public) - أي
+        # مستخدم سداد بنكي عادي (بلا عضوية في مجموعة الموارد البشرية
+        # الأصلية hr.group_hr_user) كان سيتلقى AccessError فوراً بمجرد
+        # اختيار موظف في أي من الشاشات الخمس، رغم أن هذا القراءة هنا
+        # داخلية بحتة (اشتقاق حقل آخر) ولا تعرض بيانات الموظف الخاصة
+        # للمستخدم مباشرة - ثغرة حقيقية مكتشفة بالاختبار الفعلي.
+        employee = self.employee_id.sudo()
+        if employee and employee.project_id:
+            self.project_id = employee.project_id
         # الشركة تُشتق من فرع الموظف نفسه - بدل تركها على الشركة النشطة
         # افتراضياً في جلسة من ينشئ السجل (غالباً الشركة الرئيسية إن لم
         # يُبدّلها المستخدم يدوياً)، والتي قد تختلف عن فرع الموظف الفعلي.
-        if self.employee_id and self.employee_id.company_id:
-            self.company_id = self.employee_id.company_id
+        if employee and employee.company_id:
+            self.company_id = employee.company_id
 
     # -- المبالغ والعملة -------------------------------------------------
     amount = fields.Monetary(string='المبلغ', tracking=True)
@@ -182,7 +191,11 @@ class BankSettlementMixin(models.AbstractModel):
         القادمة من RPC/API مباشرة لا تمر بـ onchange إطلاقاً."""
         if not vals.get('employee_id'):
             return
-        employee = self.env['hr.employee'].browse(vals['employee_id'])
+        # sudo() لنفس سبب _onchange_employee_id أعلاه - create()/write()
+        # يُنفَّذان باسم المستخدم الفعلي (وليس onchange وحده)، فبلا sudo()
+        # هنا كان أي "مستخدم" سداد بنكي عادي (بلا hr.group_hr_user) سيفشل
+        # بمجرد محاولة إنشاء سجل بموظف محدَّد.
+        employee = self.env['hr.employee'].sudo().browse(vals['employee_id'])
         if 'project_id' not in vals and employee.project_id:
             vals['project_id'] = employee.project_id.id
         if 'company_id' not in vals and employee.company_id:
