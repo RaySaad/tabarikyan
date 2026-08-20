@@ -45,9 +45,16 @@ class BankSettlementMixin(models.AbstractModel):
     # رقم الإقامة يُشتق مباشرة من hr.version (عبر _inherits على hr.employee)
     # - نفس الرقم المستخدم في recruitment_workflow (identification_id) -
     # وليس حقلاً مدخلاً يدوياً منفصلاً قد يتعارض مع ملف الموظف الفعلي.
+    # groups='' صراحة: بدونها يرث هذا الحقل تلقائياً قيد hr.group_hr_user
+    # الموجود على identification_id في نواة hr (حماية خصوصية معيارية) - ما
+    # يمنع أي مستخدم سداد بنكي (محاسب/مدير عام/مسؤول مشروع) لا يملك تلك
+    # الصلاحية من مجرد فتح شاشة السداد البنكي أصلاً (AccessError عند عرض
+    # النموذج بالكامل) - ثغرة حقيقية خطيرة اكتُشفت بمحاكاة مستخدم غير
+    # إداري (اختبارات الوحدة لم تكتشفها لأن base.user_admin يملك تلك
+    # الصلاحية أصلاً فمرّت كل الاختبارات رغم الثغرة).
     residency_number = fields.Char(
         string='رقم الإقامة', related='employee_id.identification_id',
-        store=True, readonly=True,
+        store=True, readonly=True, groups='',
     )
     employee_category = fields.Selection(
         selection=[

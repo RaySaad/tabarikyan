@@ -85,8 +85,13 @@ class HrEmployeePlatformTransferRequest(models.Model):
 
     @api.onchange('employee_id')
     def _onchange_employee_id(self):
+        # sudo(): project_id حقل "خاص" من منظور hr.employee.public، ومسؤول
+        # المشروع/العمليات (المخوَّلان بإنشاء طلب النقل) لا يملكان بالضرورة
+        # hr.group_hr_user - AccessError حقيقي عند اختيار الموظف من الواجهة
+        # (اكتُشف بمحاكاة مباشرة بذاكرة تخزين مؤقت باردة، وليس عبر الاختبارات
+        # التي كانت تُخفيه بسبب مشاركة الذاكرة المؤقتة مع بيئة الإداري).
         if self.employee_id:
-            self.current_project_id = self.employee_id.project_id
+            self.current_project_id = self.employee_id.sudo().project_id
 
     def _get_locked_fields_after_approval(self):
         """بيانات هوية الطلب (لمن، لأي منصة، متى) - لا يجوز تعديلها فور
@@ -199,7 +204,11 @@ class HrEmployeePlatformTransferRequest(models.Model):
                     'hr.employee.platform.transfer.request'
                 ) or _('جديد')
             if vals.get('employee_id') and not vals.get('current_project_id'):
-                employee = self.env['hr.employee'].browse(vals['employee_id'])
+                # sudo(): project_id حقل "خاص" من منظور hr.employee.public -
+                # يحدث هذا المسار عند create() مباشر بلا onchange (مثال:
+                # إنشاء برمجي/RPC لا يمر بالواجهة) من مستخدم مسؤول مشروع/
+                # عمليات لا يملك بالضرورة hr.group_hr_user.
+                employee = self.env['hr.employee'].sudo().browse(vals['employee_id'])
                 vals['current_project_id'] = employee.project_id.id
         return super().create(vals_list)
 
@@ -241,17 +250,22 @@ class HrEmployeePlatformTransferRequest(models.Model):
             if rec.state != 'pm_approved':
                 raise UserError(_('يمكن اعتماد مدير العمليات بعد موافقة مسؤول المنصة الحالية فقط.'))
             rec._check_group('recruitment_workflow.group_recruitment_workflow_operations')
+            # sudo(): project_id حقل "خاص" من منظور hr.employee.public -
+            # مدير العمليات (المخوَّل بهذا الاعتماد) لا يملك بالضرورة
+            # hr.group_hr_user. القراءة داخلية بحتة (حارس تحقق فني) ولا
+            # تعرض بيانات الموظف الشخصية للمستخدم مباشرة.
+            employee = rec.employee_id.sudo()
             # حارس ضد تغيّر الوضع الفعلي منذ إنشاء الطلب (مثال: طلب آخر
             # نقل نفس الموظف لمنصة مختلفة وتم اعتماده أولاً) - بدل تنفيذ
             # نقل مبني على لقطة قديمة لم تعد صحيحة.
-            if rec.current_project_id and rec.employee_id.project_id != rec.current_project_id:
+            if rec.current_project_id and employee.project_id != rec.current_project_id:
                 raise UserError(_(
                     'المنصة الحالية للموظف "%(employee)s" تغيّرت منذ إنشاء '
                     'هذا الطلب (أصبحت %(actual)s بدل %(expected)s) - ألغِ '
                     'هذا الطلب وأنشئ طلباً جديداً بالبيانات الصحيحة.'
                 ) % {
-                    'employee': rec.employee_id.display_name,
-                    'actual': rec.employee_id.project_id.display_name or _('بلا منصة'),
+                    'employee': employee.display_name,
+                    'actual': employee.project_id.display_name or _('بلا منصة'),
                     'expected': rec.current_project_id.display_name,
                 })
             rec.employee_id._open_platform_history(

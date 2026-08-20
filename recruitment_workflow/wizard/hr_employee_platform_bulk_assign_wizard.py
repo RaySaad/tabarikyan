@@ -33,7 +33,12 @@ class HrEmployeePlatformBulkAssignWizard(models.TransientModel):
         if 'line_ids' in fields_list and not res.get('line_ids'):
             employee_ids = self.env.context.get('active_ids')
             if employee_ids:
-                employees = self.env['hr.employee'].browse(employee_ids)
+                # sudo(): حتى قراءة حقل عام كـcreate_date تفشل هنا بـ
+                # AccessError - دفعة الجلب المسبق (prefetch) لسجل hr.employee
+                # تشمل حقولاً خاصة مخصَّصة (project_id، analytic_account_id)
+                # دائماً، فتفشل الدفعة كاملة لمن لا يملك hr.group_hr_user
+                # حتى لو طُلب حقل عام واحد فقط.
+                employees = self.env['hr.employee'].sudo().browse(employee_ids)
                 res['line_ids'] = [
                     (0, 0, {
                         'employee_id': employee.id,
@@ -66,8 +71,11 @@ class HrEmployeePlatformBulkAssignWizard(models.TransientModel):
         # عبر تحديد عدة موظفين دفعة واحدة من قائمة الموظفين وتحويلهم
         # فوراً بلا أي موافقة - إعادة تأكيد نفس المنصة الحالية للموظف
         # تبقى مسموحة (لا تغيير فعلي، ولا داعي لموافقة عليها).
+        # sudo(): project_id حقل "خاص" من منظور hr.employee.public - مسؤول
+        # المشروع (المخوَّل بهذا المعالج) لا يملك بالضرورة hr.group_hr_user.
         already_on_other_platform = self.line_ids.filtered(
-            lambda l: l.employee_id.project_id and l.employee_id.project_id != self.project_id
+            lambda l: l.employee_id.sudo().project_id
+            and l.employee_id.sudo().project_id != self.project_id
         )
         if already_on_other_platform:
             raise UserError(_(
@@ -75,7 +83,7 @@ class HrEmployeePlatformBulkAssignWizard(models.TransientModel):
                 'فقط. الموظف/الموظفون التالون يعملون بالفعل على منصة '
                 'أخرى - استخدم "طلب نقل لمنصة أخرى" من سجل كل واحد منهم '
                 'بدلاً من ذلك:\n%s'
-            ) % '\n'.join(already_on_other_platform.mapped('employee_id.name')))
+            ) % '\n'.join(already_on_other_platform.mapped(lambda l: l.employee_id.sudo().name)))
         for line in self.line_ids:
             line.employee_id._open_platform_history(
                 self.project_id, note=self.note, date_start=line.date_start,

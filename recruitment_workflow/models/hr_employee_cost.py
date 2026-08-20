@@ -124,8 +124,14 @@ class HrEmployeeCost(models.Model):
 
     @api.onchange('employee_id')
     def _onchange_employee_id(self):
-        if self.employee_id and self.employee_id.project_id:
-            self.project_id = self.employee_id.project_id
+        # sudo(): project_id حقل "خاص" من منظور hr.employee.public، ومستخدم
+        # مجموعة "العمليات" (المخوَّل بإنشاء تكاليف الموظفين) لا يملك بالضرورة
+        # hr.group_hr_user - AccessError حقيقي عند اختيار الموظف من الواجهة
+        # (اكتُشف بمحاكاة مباشرة، وليس عبر الاختبارات - كانت الاختبارات تُخفيه
+        # بسبب مشاركة ذاكرة التخزين المؤقت مع بيئة الإداري في نفس المعاملة).
+        employee = self.employee_id.sudo()
+        if employee and employee.project_id:
+            self.project_id = employee.project_id
 
     @api.onchange('cost_type_id')
     def _onchange_cost_type_id(self):
