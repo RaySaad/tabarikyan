@@ -39,8 +39,14 @@ class BankSettlementMixin(models.AbstractModel):
     # هذا يسمح لكود آلي محدَّد (bank.settlement.government.fee المُنشأ
     # تلقائياً من recruitment.request قبل وجود سجل الموظف الرسمي) بإنشاء
     # السجل بدون موظف مؤقتاً، ثم إكمال الحقل تلقائياً لاحقاً.
+    # ondelete='restrict': بدونها (والحقل غير required عمداً) الافتراضي
+    # 'set null' - حذف سجل الموظف (hr.employee) كان يُفرغ هذا الحقل بصمت
+    # على أي عملية سداد بنكي نشطة (حتى "بانتظار الموافقة") بدل منع الحذف
+    # - يترك السجل عالقاً بحقل إلزامي في الواجهة فارغ ولا يمكن حفظه، ويفقد
+    # الرابط الرسمي لهوية الموظف نهائياً - ثغرة حقيقية سبّبت فقدان بيانات
+    # فعلي (اكتُشفت من بلاغ مستخدم حقيقي).
     employee_id = fields.Many2one(
-        'hr.employee', string='اسم الموظف', tracking=True,
+        'hr.employee', string='اسم الموظف', tracking=True, ondelete='restrict',
     )
     # رقم الإقامة يُشتق مباشرة من hr.version (عبر _inherits على hr.employee)
     # - نفس الرقم المستخدم في recruitment_workflow (identification_id) -

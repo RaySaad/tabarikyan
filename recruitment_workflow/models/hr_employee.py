@@ -102,6 +102,36 @@ class HrEmployee(models.Model):
             ))
         return super().write(vals)
 
+    def unlink(self):
+        # حذف سجل الموظف نهائياً يقطع الرابط الرسمي مع سجلات تدقيق دائمة
+        # (طلب التوظيف الأصلي، تاريخ المنصات، التكاليف، طلبات النقل) يُمنع
+        # حذفها هي نفسها صراحة في كل مكان آخر بالنظام - فالسماح بحذف الموظف
+        # نفسه يُبطل تلك الحماية كلها من الخلف. ثغرة حقيقية سبّبت فقدان
+        # بيانات فعلياً (بلاغ مستخدم: حُذف موظف له سلفة "بانتظار الموافقة"
+        # في bank_settlement، فتعطّلت الشاشة تماماً). الأرشفة (زر "أرشفة")
+        # هي البديل الصحيح دائماً لموظف غادر الشركة أو أُنشئ بالخطأ.
+        # (اسم الموديل، اسم الحقل، الوصف الظاهر في الرسالة) - نفس الأربعة
+        # التي تحمي نفسها من الحذف المباشر فعلياً في كل مكان آخر بالنظام؛
+        # نفحصها هنا مسبقاً برسالة عربية واضحة بدل الاعتماد فقط على قيد
+        # ondelete='restrict' على مستوى قاعدة البيانات (يبقى فعّالاً كخط
+        # حماية أخير حتى لو نسينا إضافة نموذج جديد هنا مستقبلاً).
+        linked_models = [
+            ('recruitment.request', 'employee_id', 'طلب/طلبات توظيف'),
+            ('hr.employee.platform.history', 'employee_id', 'سجل/سجلات تاريخ منصات'),
+            ('hr.employee.cost', 'employee_id', 'تكلفة/تكاليف'),
+            ('hr.employee.platform.transfer.request', 'employee_id', 'طلب/طلبات نقل منصة'),
+        ]
+        for employee in self:
+            for model_name, field_name, description in linked_models:
+                Model = self.env[model_name].sudo()
+                if Model.search_count([(field_name, '=', employee.id)]):
+                    raise UserError(_(
+                        'لا يمكن حذف الموظف "%(employee)s" نهائياً - له '
+                        '%(description)s مرتبطة به يجب الحفاظ على سجلها '
+                        'للتدقيق. استخدم "أرشفة" بدلاً من الحذف.'
+                    ) % {'employee': employee.name, 'description': description})
+        return super().unlink()
+
     def _open_platform_history(self, project, note=False, date_start=None):
         """يفتح فترة جديدة في تاريخ المنصات ويغلق الفترة المفتوحة الحالية
         (إن وُجدت)، ثم يحدّث المنصة الحالية للمندوب.

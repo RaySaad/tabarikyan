@@ -269,11 +269,17 @@ class RecruitmentRequest(models.Model):
         string='يوجد عقد',
         compute='_compute_has_contract',
     )
+    # ondelete='restrict': بدونها الافتراضي 'set null' (الحقل غير required) -
+    # حذف سجل الموظف كان يُفرغ هذا الحقل بصمت على طلب توظيف قد يكون منتهياً
+    # (state=done) منذ زمن، فيفقد الرابط الرسمي الوحيد لسجل HR الفعلي رغم
+    # أن الطلب نفسه سجل تدقيق دائم يُمنع حذفه أصلاً (انظر unlink() أدناه) -
+    # نفس فئة الثغرة المكتشفة في bank_settlement_mixin.employee_id.
     employee_id = fields.Many2one(
         'hr.employee',
         string='الموظف (سجل HR)',
         readonly=True,
         copy=False,
+        ondelete='restrict',
     )
     candidate_partner_id = fields.Many2one(
         'res.partner', string='جهة اتصال المرشّح', readonly=True, copy=False,

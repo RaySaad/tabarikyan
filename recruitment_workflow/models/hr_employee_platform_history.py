@@ -14,7 +14,14 @@ class HrEmployeePlatformHistory(models.Model):
         'hr.employee',
         string='المندوب',
         required=True,
-        ondelete='cascade',
+        # ondelete='restrict' وليس 'cascade': unlink() أدناه يمنع حذف سجل
+        # تاريخ المنصات نهائياً "حتى لمدير سير العمل" للحفاظ على سجل تدقيق
+        # دائم - لكن 'cascade' كان يُبطل هذه الحماية بالكامل من الخلف: حذف
+        # الموظف نفسه (hr.employee) كان يمحو كل سجلات تاريخه تلقائياً عبر
+        # قيد المفتاح الأجنبي مباشرة في قاعدة البيانات، متجاوزاً unlink()
+        # بالكامل (لا يمر بكود بايثون إطلاقاً) - ثغرة حقيقية تسببت بفقدان
+        # سجل تدقيق دائم فعلياً عند حذف موظف له عمليات نشطة مرتبطة.
+        ondelete='restrict',
         index=True,
     )
     project_id = fields.Many2one(
