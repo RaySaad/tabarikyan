@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_hr_employee_statement" model="ir.actions.report">
+        <field name="name">كشف حساب الموظف</field>
+        <field name="model">hr.employee</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">bank_settlement.report_hr_employee_statement</field>
+        <field name="report_file">bank_settlement.report_hr_employee_statement</field>
+        <field name="print_report_name">'كشف حساب - %s' % (object.name)</field>
+    </record>
+
+    <template id="report_hr_employee_statement">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="data" t-value="doc._get_employee_statement_data()"/>
+                <t t-call="web.external_layout">
+                    <div class="page" dir="rtl" style="text-align:right;">
+                        <h2 style="text-align:center;">كشف حساب</h2>
+                        <h4 style="text-align:center;" t-out="doc.name"/>
+                        <table class="table table-sm o_main_table mt-4">
+                            <tr><td><strong>رقم الإقامة</strong></td><td t-out="doc.identification_id or ''"/></tr>
+                            <tr><td><strong>المنصة الحالية</strong></td><td t-out="doc.project_id.display_name or ''"/></tr>
+                            <tr><td><strong>الشركة/الفرع</strong></td><td t-out="doc.company_id.display_name or ''"/></tr>
+                        </table>
+
+                        <h4 class="mt-4">السلف</h4>
+                        <table class="table table-sm" t-if="data['advances']">
+                            <thead>
+                                <tr><th>الكود</th><th>التاريخ</th><th>السبب</th><th>المبلغ</th><th>الحالة</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="data['advances']" t-as="line">
+                                    <td t-out="line.name"/>
+                                    <td t-out="line.create_date.date()"/>
+                                    <td t-out="line.advance_reason_id.name or ''"/>
+                                    <td t-out="line.amount"/>
+                                    <td t-out="dict(line._fields['state'].selection).get(line.state)"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-if="not data['advances']">لا توجد سلف مسجَّلة.</p>
+
+                        <h4 class="mt-4">تصفيات المناديب</h4>
+                        <table class="table table-sm" t-if="data['settlements']">
+                            <thead>
+                                <tr><th>الكود</th><th>التاريخ</th><th>المبلغ</th><th>الحالة</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="data['settlements']" t-as="line">
+                                    <td t-out="line.name"/>
+                                    <td t-out="line.date"/>
+                                    <td t-out="line.settlement_amount"/>
+                                    <td t-out="dict(line._fields['state'].selection).get(line.state)"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-if="not data['settlements']">لا توجد تصفيات مسجَّلة.</p>
+
+                        <h4 class="mt-4">مخالفات المرور ورسوم الرخصة</h4>
+                        <table class="table table-sm" t-if="data['vehicle_transfers']">
+                            <thead>
+                                <tr><th>الكود</th><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>الحالة</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="data['vehicle_transfers']" t-as="line">
+                                    <td t-out="line.name"/>
+                                    <td t-out="line.create_date.date()"/>
+                                    <td t-out="line.transfer_type_id.name or ''"/>
+                                    <td t-out="line.amount"/>
+                                    <td t-out="dict(line._fields['state'].selection).get(line.state)"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-if="not data['vehicle_transfers']">لا توجد مخالفات/رسوم رخصة مسجَّلة.</p>
+
+                        <h4 class="mt-4">رواتب وعمولات (من المحاسبة)</h4>
+                        <table class="table table-sm" t-if="data['payroll_lines']">
+                            <thead>
+                                <tr><th>المرجع</th><th>التاريخ</th><th>المبلغ</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="data['payroll_lines']" t-as="line">
+                                    <td t-out="line.move_id.ref or line.move_id.name"/>
+                                    <td t-out="line.date"/>
+                                    <td t-out="line.credit or line.debit"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-if="not data['payroll_lines']">لا توجد مدفوعات رواتب/عمولات مسجَّلة في المحاسبة.</p>
+
+                        <table class="table table-sm mt-4">
+                            <tr style="font-weight:bold; border-top: 2px solid #000;">
+                                <td>الإجمالي العام</td>
+                                <td t-out="data['total']"/>
+                            </tr>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>
