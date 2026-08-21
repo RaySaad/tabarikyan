@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datetime import date
+
 from odoo import models, _
 from odoo.exceptions import UserError
 
@@ -35,25 +37,51 @@ class HrEmployee(models.Model):
         return super().unlink()
 
     # -- كشف حساب الموظف (طباعة) -----------------------------------------
-    # طلب صريح: تقرير يُعطى للموظف نفسه، يقتصر على ما "يخصه" فعلياً -
-    # مبالغ ذهبت له (سلف، تصفيات مناديب، رواتب/عمولات)، ومخالفات/رسوم
-    # رخصة مركبته تحديداً. الرسوم الحكومية والتأمين الطبي مستبعدان عمداً
-    # (مصاريف داخلية للشركة، لا علاقة مباشرة للموظف بها من منظوره هو).
+    # طلب صريح: كشف حساب موحّد يُعطى للموظف نفسه (بلا تقسيمات/مسميات
+    # أقسام منفصلة، عمودا مدين/دائن، وإجمالي واحد فقط) - يقتصر على ما
+    # "يخصه" فعلياً: سلف، تصفيات مناديب، مخالفات/رسوم رخصة مركبته
+    # تحديداً، ورواتب/عمولات. الرسوم الحكومية والتأمين الطبي مستبعدان
+    # عمداً (مصاريف داخلية للشركة، لا علاقة مباشرة للموظف بها من منظوره
+    # هو). التصنيف مدين/دائن حسب تحديد صريح من المستخدم:
+    # - سلفة: مدين (عليه - تُخصم من راتبه لاحقاً)
+    # - تصفية مندوب: دائن (له - وصلته فعلاً)
+    # - مخالفة مرور: مدين (عليه)
+    # - رسوم رخصة قيادة: مدين (عليه - تُخصم منه)
+    # - راتب/عمولة (من المحاسبة): دائن (له)
     _VEHICLE_TRANSFER_STATEMENT_TYPES = (
         'bank_settlement.vehicle_transfer_type_traffic_violation',
         'bank_settlement.vehicle_transfer_type_driving_license',
     )
 
     def _get_employee_statement_data(self):
-        """يجمع كل بيانات كشف حساب الموظف - انظر الشرح أعلاه لسبب
-        استبعاد الرسوم الحكومية/التأمين الطبي عمداً."""
+        """يبني كشف حساب موحّد (سطر واحد لكل حركة، مرتّب بالتاريخ) -
+        انظر الشرح أعلاه لتصنيف مدين/دائن ولسبب استبعاد الرسوم الحكومية/
+        التأمين الطبي عمداً."""
         self.ensure_one()
+        lines = []
+
         advances = self.env['bank.settlement.advance'].sudo().search(
-            [('employee_id', '=', self.id)], order='create_date desc',
+            [('employee_id', '=', self.id)],
         )
+        for adv in advances:
+            lines.append({
+                'date': adv.create_date.date(),
+                'description': _('سلفة - %s') % (adv.advance_reason_id.name or adv.name),
+                'debit': adv.amount,
+                'credit': 0.0,
+            })
+
         settlements = self.env['bank.settlement.representative'].sudo().search(
-            [('employee_id', '=', self.id)], order='create_date desc',
+            [('employee_id', '=', self.id)],
         )
+        for settlement in settlements:
+            lines.append({
+                'date': settlement.date,
+                'description': _('تصفية مندوب - %s') % settlement.name,
+                'debit': 0.0,
+                'credit': settlement.settlement_amount,
+            })
+
         statement_type_ids = [
             xmlid_id for xmlid_id in (
                 self.env.ref(xmlid, raise_if_not_found=False).id
@@ -64,37 +92,49 @@ class HrEmployee(models.Model):
             [
                 ('employee_id', '=', self.id),
                 ('transfer_type_id', 'in', statement_type_ids),
-            ], order='create_date desc',
+            ],
         )
-        # رواتب/عمولات: قيود محاسبية مرحّلة على شريكه الشخصي، باستثناء
-        # القيود التي أنشأها السداد البنكي نفسه (is_bank_settlement_move)
-        # - وإلا تكرّرت نفس السلفة/التصفية مرتين (مرة كسجل سداد بنكي،
-        # ومرة كسطر قيد محاسبي على نفس الشريك).
-        partner = self.sudo()._get_personal_partner()
+        for transfer in vehicle_transfers:
+            lines.append({
+                'date': transfer.create_date.date(),
+                'description': '%s - %s' % (transfer.transfer_type_id.name, transfer.name),
+                'debit': transfer.amount,
+                'credit': 0.0,
+            })
+
+        # رواتب/عمولات: قيود محاسبية مرحّلة، باستثناء القيود التي أنشأها
+        # السداد البنكي نفسه (is_bank_settlement_move) - وإلا تكرّرت نفس
+        # السلفة/التصفية مرتين. work_contact_id تحديداً (وليس سلسلة
+        # _get_personal_partner الاحتياطية الكاملة) - أي fallback أوسع
+        # (address_home_id/user_id.partner_id) قد يصادف شريكاً عاماً
+        # مستخدَماً لمصاريف أخرى غير مرتبطة بالموظف إطلاقاً، وهو بالضبط
+        # ما حدث فعلياً (ثغرة حقيقية اكتُشفت من كشف تجريبي حقيقي: ظهرت
+        # فواتير كهرباء شاليه وتأسيس نظام أودو لا علاقة لها بالموظف).
+        partner = self.sudo().work_contact_id
         payroll_lines = self.env['account.move.line'].sudo().search(
             [
                 ('partner_id', '=', partner.id),
                 ('move_id.is_bank_settlement_move', '=', False),
                 ('move_id.state', '=', 'posted'),
                 ('display_type', '=', 'payment_term'),
-            ], order='date desc',
+            ],
         ) if partner else self.env['account.move.line']
-        payroll_total = sum(
-            (line.credit or line.debit) for line in payroll_lines
-        )
-        total = (
-            sum(advances.mapped('amount'))
-            + sum(settlements.mapped('settlement_amount'))
-            + sum(vehicle_transfers.mapped('amount'))
-            + payroll_total
-        )
+        for line in payroll_lines:
+            lines.append({
+                'date': line.date,
+                'description': _('راتب/عمولة - %s') % (line.move_id.ref or line.move_id.name),
+                'debit': 0.0,
+                'credit': line.credit or line.debit,
+            })
+
+        lines.sort(key=lambda l: l['date'] or date.min)
+        total_debit = sum(l['debit'] for l in lines)
+        total_credit = sum(l['credit'] for l in lines)
         return {
-            'advances': advances,
-            'settlements': settlements,
-            'vehicle_transfers': vehicle_transfers,
-            'payroll_lines': payroll_lines,
-            'payroll_total': payroll_total,
-            'total': total,
+            'lines': lines,
+            'total_debit': total_debit,
+            'total_credit': total_credit,
+            'net_total': total_credit - total_debit,
         }
 
     def action_print_employee_statement(self):

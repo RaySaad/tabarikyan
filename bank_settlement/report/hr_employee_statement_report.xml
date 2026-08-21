@@ -24,75 +24,39 @@
                             <tr><td><strong>الشركة/الفرع</strong></td><td t-out="doc.company_id.display_name or ''"/></tr>
                         </table>
 
-                        <h4 class="mt-4">السلف</h4>
-                        <table class="table table-sm" t-if="data['advances']">
+                        <table class="table table-sm mt-4" t-if="data['lines']">
                             <thead>
-                                <tr><th>الكود</th><th>التاريخ</th><th>السبب</th><th>المبلغ</th><th>الحالة</th></tr>
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>البيان</th>
+                                    <th>مدين (عليه)</th>
+                                    <th>دائن (له)</th>
+                                </tr>
                             </thead>
                             <tbody>
-                                <tr t-foreach="data['advances']" t-as="line">
-                                    <td t-out="line.name"/>
-                                    <td t-out="line.create_date.date()"/>
-                                    <td t-out="line.advance_reason_id.name or ''"/>
-                                    <td t-out="line.amount"/>
-                                    <td t-out="dict(line._fields['state'].selection).get(line.state)"/>
+                                <tr t-foreach="data['lines']" t-as="line">
+                                    <td t-out="line['date']"/>
+                                    <td t-out="line['description']"/>
+                                    <td t-out="('%.2f' % line['debit']) if line['debit'] else ''"/>
+                                    <td t-out="('%.2f' % line['credit']) if line['credit'] else ''"/>
                                 </tr>
                             </tbody>
-                        </table>
-                        <p t-if="not data['advances']">لا توجد سلف مسجَّلة.</p>
-
-                        <h4 class="mt-4">تصفيات المناديب</h4>
-                        <table class="table table-sm" t-if="data['settlements']">
-                            <thead>
-                                <tr><th>الكود</th><th>التاريخ</th><th>المبلغ</th><th>الحالة</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr t-foreach="data['settlements']" t-as="line">
-                                    <td t-out="line.name"/>
-                                    <td t-out="line.date"/>
-                                    <td t-out="line.settlement_amount"/>
-                                    <td t-out="dict(line._fields['state'].selection).get(line.state)"/>
+                            <tfoot>
+                                <tr style="font-weight:bold; border-top: 2px solid #000;">
+                                    <td colspan="2">الإجمالي</td>
+                                    <td t-out="'%.2f' % data['total_debit']"/>
+                                    <td t-out="'%.2f' % data['total_credit']"/>
                                 </tr>
-                            </tbody>
+                            </tfoot>
                         </table>
-                        <p t-if="not data['settlements']">لا توجد تصفيات مسجَّلة.</p>
+                        <p t-if="not data['lines']">لا توجد حركات مسجَّلة.</p>
 
-                        <h4 class="mt-4">مخالفات المرور ورسوم الرخصة</h4>
-                        <table class="table table-sm" t-if="data['vehicle_transfers']">
-                            <thead>
-                                <tr><th>الكود</th><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>الحالة</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr t-foreach="data['vehicle_transfers']" t-as="line">
-                                    <td t-out="line.name"/>
-                                    <td t-out="line.create_date.date()"/>
-                                    <td t-out="line.transfer_type_id.name or ''"/>
-                                    <td t-out="line.amount"/>
-                                    <td t-out="dict(line._fields['state'].selection).get(line.state)"/>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <p t-if="not data['vehicle_transfers']">لا توجد مخالفات/رسوم رخصة مسجَّلة.</p>
-
-                        <h4 class="mt-4">رواتب وعمولات (من المحاسبة)</h4>
-                        <table class="table table-sm" t-if="data['payroll_lines']">
-                            <thead>
-                                <tr><th>المرجع</th><th>التاريخ</th><th>المبلغ</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr t-foreach="data['payroll_lines']" t-as="line">
-                                    <td t-out="line.move_id.ref or line.move_id.name"/>
-                                    <td t-out="line.date"/>
-                                    <td t-out="line.credit or line.debit"/>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <p t-if="not data['payroll_lines']">لا توجد مدفوعات رواتب/عمولات مسجَّلة في المحاسبة.</p>
-
-                        <table class="table table-sm mt-4">
-                            <tr style="font-weight:bold; border-top: 2px solid #000;">
-                                <td>الإجمالي العام</td>
-                                <td t-out="data['total']"/>
+                        <table class="table table-sm mt-2" t-if="data['lines']">
+                            <tr style="font-weight:bold; font-size: 1.2em; border-top: 2px solid #000;">
+                                <td>
+                                    الصافي الإجمالي (له/عليه)
+                                </td>
+                                <td t-out="'%.2f' % data['net_total']"/>
                             </tr>
                         </table>
                     </div>
