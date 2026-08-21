@@ -471,6 +471,73 @@ class BankSettlementMixin(models.AbstractModel):
             })
         self.with_context(bank_settlement_skip_approval_lock=True).unlink()
 
+    def action_open_rename_wizard(self):
+        self.ensure_one()
+        if not self._is_admin_delete_enabled():
+            raise UserError(
+                'ميزة "تعديل الكود الإداري" غير مُفعَّلة حالياً. '
+                'فعِّلها من الإعدادات > التقنية > معاملات النظام '
+                '(bank_settlement.admin_delete_enabled) قبل الاستخدام.'
+            )
+        return {
+            'name': 'تعديل الكود الإداري',
+            'type': 'ir.actions.act_window',
+            'res_model': 'bank.settlement.rename.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_res_model': self._name,
+                'default_res_id': self.id,
+                'default_old_code': self.name,
+            },
+        }
+
+    def action_admin_rename(self, new_code=False, reason=False):
+        """تعديل الكود (name) الإداري - يتجاوز عمداً قفل الحقل (readonly)
+        لتصحيح فجوة/ترتيب في أكواد سجلات موجودة فعلاً. أداة استثنائية
+        مُغلَقة افتراضياً (_is_admin_delete_enabled، نفس مفتاح الحذف
+        النهائي وإعادة ضبط الترقيم)، تتطلب صلاحية مدير عام السداد البنكي
+        وسبباً إجبارياً، ولا تُستدعى مباشرة من زر بالواجهة - تمر حصراً
+        عبر bank.settlement.rename.wizard (يفرض كتابة عبارة تأكيد إضافية).
+
+        يُرفض التعديل إن كان الكود الجديد مستخدَماً فعلاً على سجل آخر من
+        نفس النموذج - وإلا أصبح لسجلَين نفس الكود، وهو بالضبط الخطر الذي
+        يحذّر منه توثيق sequence_reset_wizard.
+
+        قبل تعديل الكود، يُسجَّل أثر دائم في bank.settlement.rename.log
+        (الكود القديم والجديد، من عدّله، متى، ولماذا) - وإلا أصبح تجاوز
+        القفل بلا أي مساءلة، بنفس مبدأ action_admin_force_delete."""
+        if not self._is_admin_delete_enabled():
+            raise UserError('ميزة "تعديل الكود الإداري" غير مُفعَّلة حالياً.')
+        if not reason:
+            raise UserError('يجب توضيح سبب تعديل الكود.')
+        new_code = (new_code or '').strip()
+        if not new_code:
+            raise UserError('يجب تحديد الكود الجديد.')
+        for rec in self:
+            rec._check_group('bank_settlement.group_bank_settlement_manager')
+        for rec in self:
+            if new_code == rec.name:
+                continue
+            duplicate = self.search([
+                ('id', '!=', rec.id), ('name', '=', new_code),
+            ], limit=1)
+            if duplicate:
+                raise UserError(
+                    'الكود "%s" مستخدَم فعلاً على سجل آخر (%s) - اختر '
+                    'كوداً مختلفاً.' % (new_code, duplicate.display_name)
+                )
+            old_code = rec.name
+            self.env['bank.settlement.rename.log'].sudo().create({
+                'source_model': rec._name,
+                'old_code': old_code,
+                'new_code': new_code,
+                'employee_name': rec.employee_id.display_name or False,
+                'reason': reason,
+                'renamed_by': self.env.user.id,
+            })
+            rec.with_context(bank_settlement_skip_approval_lock=True).write({'name': new_code})
+
     def _get_sequence_code_for_create(self, vals):
         """كل نموذج فرعي يجب أن يحدد كود التسلسل الخاص به."""
         seq_code = self._sequence_code()

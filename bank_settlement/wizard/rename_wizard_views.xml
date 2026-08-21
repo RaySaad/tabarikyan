@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_bank_settlement_rename_wizard_form" model="ir.ui.view">
+        <field name="name">bank.settlement.rename.wizard.form</field>
+        <field name="model">bank.settlement.rename.wizard</field>
+        <field name="arch" type="xml">
+            <form string="تعديل الكود الإداري">
+                <field name="res_model" invisible="1"/>
+                <field name="res_id" invisible="1"/>
+                <div class="alert alert-warning" role="alert">
+                    تحذير: تعديل كود سجل بعد إصداره استثناء - تأكد أولاً أن
+                    الكود الجديد غير مستخدم في سجل آخر، وإلا سيُرفض التعديل.
+                </div>
+                <group>
+                    <field name="old_code" string="الكود الحالي"/>
+                    <field name="new_code" placeholder="مثال: REQ/0007"/>
+                    <field name="reason" placeholder="وضّح سبب تعديل الكود..."/>
+                    <field name="confirmation_text" placeholder="تعديل الكود"/>
+                </group>
+                <footer>
+                    <button name="action_confirm_rename" type="object"
+                            string="تأكيد تعديل الكود" class="btn-warning"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

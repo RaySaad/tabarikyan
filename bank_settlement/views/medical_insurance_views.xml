@@ -58,6 +58,10 @@
                                 type="object" class="btn-danger"
                                 groups="bank_settlement.group_bank_settlement_manager"
                                 invisible="not admin_delete_enabled"/>
+                        <button name="action_open_rename_wizard" string="تعديل الكود الإداري"
+                                type="object" class="btn-warning"
+                                groups="bank_settlement.group_bank_settlement_manager"
+                                invisible="not admin_delete_enabled"/>
                         <field name="admin_delete_enabled" invisible="1"/>
                         <field name="state" widget="statusbar"
                                statusbar_visible="draft,under_review,confirmed,done"/>

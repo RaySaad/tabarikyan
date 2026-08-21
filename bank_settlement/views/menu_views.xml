@@ -64,9 +64,9 @@
 
         <!-- أدوات استثنائية (مُغلَقة افتراضياً - انظر _is_admin_delete_enabled
              في bank_settlement_mixin.py) لتنظيف بيانات خاطئة/تجريبية -
-             الحذف النهائي نفسه يبدأ من زر داخل كل سجل، وإعادة الترقيم من
-             هنا. سجل الحذف يبقى مرئياً دائماً (سجل تدقيق) بغض النظر عن
-             تفعيل الأداة من عدمه. -->
+             الحذف النهائي وتعديل الكود يبدآن من زر داخل كل سجل، وإعادة
+             الترقيم من هنا. سجلا الحذف والتعديل يبقيان مرئيَّين دائماً
+             (سجل تدقيق) بغض النظر عن تفعيل الأداة من عدمه. -->
         <menuitem id="menu_bank_settlement_sequence_reset" name="إعادة ضبط الترقيم"
                   parent="menu_bank_settlement_config"
                   action="action_bank_settlement_sequence_reset_wizard" sequence="80"/>
@@ -74,6 +74,10 @@
         <menuitem id="menu_bank_settlement_deletion_log" name="سجل الحذف النهائي"
                   parent="menu_bank_settlement_config"
                   action="action_bank_settlement_deletion_log" sequence="90"/>
+
+        <menuitem id="menu_bank_settlement_rename_log" name="سجل تعديل الكود"
+                  parent="menu_bank_settlement_config"
+                  action="action_bank_settlement_rename_log" sequence="95"/>
 
     </data>
 </odoo>
