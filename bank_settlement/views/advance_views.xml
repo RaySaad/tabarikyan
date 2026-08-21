@@ -61,11 +61,6 @@
                         <button name="action_cancel" string="إلغاء"
                                 type="object" groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state in ('paid', 'cancel', 'rejected')"/>
-                        <button name="action_open_admin_delete_wizard" string="حذف نهائي إداري"
-                                type="object" class="btn-danger"
-                                groups="bank_settlement.group_bank_settlement_manager"
-                                invisible="not admin_delete_enabled"/>
-                        <field name="admin_delete_enabled" invisible="1"/>
                         <field name="state" widget="statusbar"
                                statusbar_visible="draft,waiting_approval,pm_approved,approved,paid"/>
                     </header>

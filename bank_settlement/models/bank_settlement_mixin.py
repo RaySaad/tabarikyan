@@ -352,13 +352,10 @@ class BankSettlementMixin(models.AbstractModel):
         # recruitment_workflow.recruitment_request.unlink(). الإلغاء (زر
         # "إلغاء") هو البديل الوحيد لمن غادر "مسودة". يُتجاوز عمداً عبر
         # نفس سياق تجاوز القفل العام (bank_settlement_skip_approval_lock)
-        # في حالتين نظاميتين محدَّدتين فقط، وليس حذفاً يدوياً حراً:
-        # (1) حذف سجل "الرسوم الحكومية" غير المسدَّد بعد عند "إرجاع
-        # للتصحيح" من recruitment_workflow (انظر bank_settlement/models/
-        # recruitment_request.py: _unlock_gov_fee_for_correction)،
-        # (2) action_admin_force_delete أدناه (يضيف نفس السياق صراحة بعد
-        # تسجيل العملية في bank.settlement.deletion.log وعكس/حذف القيد
-        # المحاسبي المرتبط بشكل سليم - انظر الشرح هناك).
+        # في حالة نظامية واحدة محدَّدة فقط، وليس حذفاً يدوياً حراً: حذف
+        # سجل "الرسوم الحكومية" غير المسدَّد بعد عند "إرجاع للتصحيح" من
+        # recruitment_workflow (انظر bank_settlement/models/recruitment_
+        # request.py: _unlock_gov_fee_for_correction).
         if not self.env.context.get('bank_settlement_skip_approval_lock'):
             for rec in self:
                 if rec.state != 'draft':
@@ -368,108 +365,6 @@ class BankSettlementMixin(models.AbstractModel):
                         'بدلاً من ذلك إن احتجت إيقافه.'
                     )
         return super().unlink()
-
-    admin_delete_enabled = fields.Boolean(
-        string='الحذف النهائي الإداري مفعَّل', compute='_compute_admin_delete_enabled',
-    )
-
-    def _compute_admin_delete_enabled(self):
-        enabled = self._is_admin_delete_enabled()
-        for rec in self:
-            rec.admin_delete_enabled = enabled
-
-    @api.model
-    def _is_admin_delete_enabled(self):
-        """مفتاح تفعيل مؤقت (معامل نظام، مُغلَق افتراضياً) لميزة "الحذف
-        النهائي الإداري" أدناه - أداة استثنائية لتنظيف بيانات خاطئة/
-        تجريبية أُنشئت بالخطأ (بما فيها ما وصل لمرحلة "منفّذة" وله قيد
-        محاسبي)، وليست جزءاً من سير العمل المعتاد. يُفعَّل يدوياً من
-        الإعدادات > التقنية > معاملات النظام
-        (bank_settlement.admin_delete_enabled = True) وقت الحاجة فقط،
-        ثم يُعاد إغلاقه (False) بعد الانتهاء - الزر نفسه يختفي من
-        الواجهة تلقائياً عند الإغلاق (انظر invisible في العروض)."""
-        return self.env['ir.config_parameter'].sudo().get_param(
-            'bank_settlement.admin_delete_enabled'
-        ) in ('1', 'True', 'true')
-
-    def action_open_admin_delete_wizard(self):
-        self.ensure_one()
-        if not self._is_admin_delete_enabled():
-            raise UserError(
-                'ميزة "الحذف النهائي الإداري" غير مُفعَّلة حالياً. '
-                'فعِّلها من الإعدادات > التقنية > معاملات النظام '
-                '(bank_settlement.admin_delete_enabled) قبل الاستخدام.'
-            )
-        return {
-            'name': 'حذف نهائي إداري',
-            'type': 'ir.actions.act_window',
-            'res_model': 'bank.settlement.admin.delete.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {'default_res_model': self._name, 'default_res_id': self.id},
-        }
-
-    def action_admin_force_delete(self, reason=False):
-        """حذف نهائي إداري - يتجاوز عمداً حماية "لا حذف بعد مغادرة
-        مسودة" أعلاه، لتنظيف بيانات خاطئة/تجريبية وصلت لأي مرحلة (بما
-        فيها "منفّذة" ولها قيد محاسبي مُنشأ فعلياً). أداة استثنائية
-        مُغلَقة افتراضياً (_is_admin_delete_enabled)، تتطلب صلاحية مدير
-        عام السداد البنكي وسبباً إجبارياً، ولا تُستدعى مباشرة من زر
-        بالواجهة - تمر حصراً عبر bank.settlement.admin.delete.wizard
-        (يفرض كتابة عبارة تأكيد إضافية، انظر action_open_admin_delete_
-        wizard أعلاه).
-
-        القيد المحاسبي المرتبط (إن وُجد):
-        - مرحّل (Posted): **لا يُحذف نهائياً أبداً** - هذا ليس ممارسة
-          محاسبية سليمة حتى لبيانات خاطئة (قد يدخل ضمن تقارير ضريبية/
-          مالية صادرة فعلاً). بدلاً من ذلك، يُنشأ له قيد عكسي (Reversal)
-          مُرحَّل أيضاً يُصفّر أثره المالي بالكامل، مع بقاء القيدين معاً
-          كأثر دائم وموثّق في دفاتر المحاسبة نفسها - نفس الأسلوب الذي
-          يستخدمه أي محاسب لإلغاء قيد مرحّل بالخطأ.
-        - مسودة (غير مرحّل بعد): يُحذف مباشرة بلا أي مشكلة - لا أثر
-          محاسبي رسمي بعد.
-
-        قبل حذف سجل السداد البنكي نفسه، يُسجَّل أثر دائم في
-        bank.settlement.deletion.log (نموذج منفصل يبقى موجوداً حتى بعد
-        اختفاء هذا السجل) - من حذفه، متى، لماذا، وماذا حدث للقيد
-        المحاسبي المرتبط تحديداً."""
-        if not self._is_admin_delete_enabled():
-            raise UserError(
-                'ميزة "الحذف النهائي الإداري" غير مُفعَّلة حالياً.'
-            )
-        if not reason:
-            raise UserError('يجب توضيح سبب الحذف النهائي.')
-        for rec in self:
-            rec._check_group('bank_settlement.group_bank_settlement_manager')
-        for rec in self:
-            move = rec.move_id
-            move_name = move.name if move else False
-            move_status_label = False
-            if move:
-                if move.state == 'posted':
-                    # cancel=True يُرحِّل القيد العكسي تلقائياً من داخل
-                    # _reverse_moves نفسها (لازم لتصفير الأثر المالي
-                    # فعلياً بربطه بتسوية/مطابقة مع القيد الأصلي المرحّل)
-                    # - نفس الآلية المستخدمة داخلياً في _unlink_or_reverse
-                    # القياسية بـ Odoo نفسها؛ استدعاء action_post() هنا
-                    # مجدداً يفشل لأنه أصبح مرحّلاً بالفعل.
-                    reversal = move._reverse_moves(cancel=True)
-                    move_status_label = 'عُكس بقيد مقابل مرحّل (%s) - القيد الأصلي بقي في دفاتر المحاسبة' % reversal.name
-                else:
-                    move.unlink()
-                    move_status_label = 'حُذف مباشرة (كان لا يزال مسودة، بلا أثر محاسبي رسمي)'
-            self.env['bank.settlement.deletion.log'].sudo().create({
-                'source_model': rec._name,
-                'record_name': rec.name,
-                'employee_name': rec.employee_id.display_name or False,
-                'amount': rec.total_amount,
-                'state_at_deletion': dict(rec._fields['state'].selection).get(rec.state, rec.state),
-                'move_name': move_name,
-                'move_status_at_deletion': move_status_label,
-                'reason': reason,
-                'deleted_by': self.env.user.id,
-            })
-        self.with_context(bank_settlement_skip_approval_lock=True).unlink()
 
     def _get_sequence_code_for_create(self, vals):
         """كل نموذج فرعي يجب أن يحدد كود التسلسل الخاص به."""
