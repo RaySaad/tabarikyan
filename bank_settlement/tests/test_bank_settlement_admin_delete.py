@@ -5,9 +5,9 @@ from odoo.tests import TransactionCase, tagged
 
 @tagged('post_install', '-at_install')
 class TestBankSettlementAdminDelete(TransactionCase):
-    """يتحقق من "الحذف النهائي الإداري" و"إعادة الترقيم" - أداتان
-    استثنائيتان مُغلَقتان افتراضياً (معامل نظام bank_settlement.
-    admin_delete_enabled)، لتنظيف بيانات خاطئة/تجريبية وصلت لأي مرحلة
+    """يتحقق من "الحذف النهائي الإداري" - أداة استثنائية مُغلَقة افتراضياً
+    (معامل نظام bank_settlement.admin_delete_enabled)، لتنظيف بيانات
+    خاطئة/تجريبية وصلت لأي مرحلة
     - أهم ما يُتحقَّق منه: قيد محاسبي مرحّل (Posted) لا يُحذف نهائياً
     أبداً، بل يُعكَس بقيد مقابل مرحّل أيضاً (نفس الأسلوب المحاسبي
     السليم)، بينما قيد لا يزال مسودة يُحذف مباشرة بلا مشكلة.
@@ -207,55 +207,4 @@ class TestBankSettlementAdminDelete(TransactionCase):
         wizard.action_confirm_delete()
 
         self.assertFalse(gov_fee.exists())
-        self._disable_admin_delete()
-
-    # -- إعادة الترقيم --------------------------------------------------------
-
-    def test_sequence_reset_blocked_when_disabled(self):
-        wizard = self.env['bank.settlement.sequence.reset.wizard'].with_user(self.manager_user).create({
-            'sequence_model': 'bank.settlement.government.fee',
-            'next_number': 1, 'confirmation_text': 'إعادة ترقيم',
-        })
-        with self.assertRaises(UserError):
-            wizard.action_confirm_reset()
-
-    def test_sequence_reset_requires_manager_group(self):
-        """محاسب (بلا مجموعة مدير) لا يملك حتى صلاحية إنشاء سجل المعالج
-        نفسه (AccessError من ir.model.access.csv) - قبل أن يصل لتحقق
-        الصلاحية الصريح داخل action_confirm_reset أصلاً؛ النتيجة
-        العملية واحدة: لا يمكنه إعادة الترقيم إطلاقاً."""
-        self._enable_admin_delete()
-        reviewer_user = self._reviewer_only_user('sequence_reset_reviewer_only')
-        with self.assertRaises(Exception):
-            self.env['bank.settlement.sequence.reset.wizard'].with_user(reviewer_user).create({
-                'sequence_model': 'bank.settlement.government.fee',
-                'next_number': 1, 'confirmation_text': 'إعادة ترقيم',
-            })
-        self._disable_admin_delete()
-
-    def test_sequence_reset_requires_exact_confirmation_text(self):
-        self._enable_admin_delete()
-        wizard = self.env['bank.settlement.sequence.reset.wizard'].with_user(self.manager_user).create({
-            'sequence_model': 'bank.settlement.government.fee',
-            'next_number': 1, 'confirmation_text': 'نص خاطئ',
-        })
-        with self.assertRaises(UserError):
-            wizard.action_confirm_reset()
-        self._disable_admin_delete()
-
-    def test_sequence_reset_updates_next_number(self):
-        self._enable_admin_delete()
-        wizard = self.env['bank.settlement.sequence.reset.wizard'].with_user(self.manager_user).create({
-            'sequence_model': 'bank.settlement.government.fee',
-            'next_number': 777, 'confirmation_text': 'إعادة ترقيم',
-        })
-
-        wizard.action_confirm_reset()
-
-        sequence = self.env['ir.sequence'].search(
-            [('code', '=', 'bank.settlement.government.fee')], limit=1,
-        )
-        self.assertEqual(sequence.number_next_actual, 777)
-        new_fee = self._create_gov_fee()
-        self.assertIn('0777', new_fee.name)
         self._disable_admin_delete()
