@@ -45,13 +45,7 @@
                         <button name="action_open_return_wizard" string="إرجاع للتصحيح"
                                 type="object" groups="bank_settlement.group_bank_settlement_manager"
                                 invisible="state != 'confirmed'"/>
-                        <button name="action_open_reset_wizard" string="إعادة لمسودة"
-                                type="object" groups="bank_settlement.group_bank_settlement_manager"
-                                invisible="state not in ('under_review', 'confirmed', 'rejected')"/>
                         <button name="action_open_reject_wizard" string="رفض"
-                                type="object" groups="bank_settlement.group_bank_settlement_reviewer"
-                                invisible="state in ('done', 'cancel', 'rejected')"/>
-                        <button name="action_cancel" string="إلغاء"
                                 type="object" groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state in ('done', 'cancel', 'rejected')"/>
                         <field name="state" widget="statusbar"
@@ -73,7 +67,11 @@
                         <group>
                             <group string="بيانات التأمين">
                                 <field name="fee_type_id" readonly="state != 'draft'"/>
-                                <field name="vendor_id" readonly="state != 'draft'"/>
+                                <!-- طلب صريح: يبقى المورد قابلاً للتعديل من
+                                     "مسودة" وحتى آخر مرحلة، لا يُقفَل فور
+                                     مغادرة "مسودة" كباقي حقول الهوية هنا. -->
+                                <field name="vendor_id"
+                                       readonly="state in ('done', 'rejected', 'cancel')"/>
                                 <field name="company_iban" readonly="state != 'draft'"/>
                                 <!-- تاريخ التحويل الفعلي - خاص بالمحاسب وقت
                                      الصرف تحديداً - لا يظهر إلا بعد اعتماد

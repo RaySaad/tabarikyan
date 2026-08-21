@@ -151,6 +151,11 @@ class BankSettlementMixin(models.AbstractModel):
 
     notes = fields.Text(string='ملاحظات')
 
+    # يُفعَّل (False) تلقائياً عند الرفض (انظر action_reject أدناه) - يُخرج
+    # السجل المرفوض من القوائم النشطة الافتراضية دون حذفه (سجل التدقيق
+    # يبقى كاملاً)، ويبقى متاحاً عبر فلتر "مؤرشف" المعياري في Odoo.
+    active = fields.Boolean(default=True)
+
     state = fields.Selection(
         selection=[
             ('draft', 'مسودة'),
@@ -258,6 +263,14 @@ class BankSettlementMixin(models.AbstractModel):
     # صرف المبلغ - خليه مفعل لآخر خطوة وبعدها اغلقه بعد تم الصرف").
     _BANK_FIELDS = ('linked_account_id', 'journal_id', 'transfer_date', 'bank_reference')
 
+    def _get_locked_bank_fields(self):
+        """الحقول ضمن _BANK_FIELDS التي لا تزال مقفولة فعلياً حتى مرحلة
+        الاعتماد - النموذج الفرعي يمكنه استثناء حقل منها بتجاوز هذه
+        الدالة (مثال: government_fee.py يستثني bank_reference، لأنه
+        متعلق أصلاً بمن يرفع الطلب نفسه - طلب صريح: "خلي رقم السداد
+        مفتوح من البداية" - وليس بالمحاسب وقت الصرف كباقي حقول السداد)."""
+        return self._BANK_FIELDS
+
     def _get_bank_fields_editable_state(self):
         """الحالة الوحيدة التي يُسمح فيها بتحديد بيانات السداد الفعلي
         (دفتر اليومية، الحساب المرتبط، تاريخ التحويل، رقم السداد البنكي)
@@ -281,11 +294,11 @@ class BankSettlementMixin(models.AbstractModel):
                 if rec.state not in rec._get_editable_states():
                     raise UserError(
                         'لا يمكن تعديل بيانات السداد الأساسية (الموظف/'
-                        'المنصة/المبلغ) بعد اعتماد المدير العام - '
-                        'أعد السجل لمسودة أولاً (زر "إعادة لمسودة") إن '
-                        'احتجت تصحيحها.'
+                        'المنصة/المبلغ) بعد اعتماد المدير العام. استخدم '
+                        '"إرجاع للتصحيح" إن كان التصحيح ضمن ما تسمح به، '
+                        'أو ارفض السجل وأنشئ سجلاً جديداً صحيحاً.'
                     )
-        if any(f in vals for f in self._BANK_FIELDS) and not skip_lock:
+        if any(f in vals for f in self._get_locked_bank_fields()) and not skip_lock:
             for rec in self:
                 if rec.state != rec._get_bank_fields_editable_state():
                     raise UserError(
@@ -414,56 +427,17 @@ class BankSettlementMixin(models.AbstractModel):
                 rec.move_id = rec._create_settlement_move()
         self.write({'state': 'done'})
 
-    def action_open_reset_wizard(self):
-        """يفتح معالج "إعادة لمسودة" (يفرض تسجيل السبب) - الزر في الواجهة
-        يستدعي هذه الدالة بدل action_reset_draft مباشرة."""
-        self.ensure_one()
-        return {
-            'name': 'إعادة لمسودة',
-            'type': 'ir.actions.act_window',
-            'res_model': 'bank.settlement.reset.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {'default_res_model': self._name, 'default_res_id': self.id},
-        }
-
-    def action_reset_draft(self, reason=False):
-        """الإعادة الفعلية لمسودة - تُلغي فعلياً كل الموافقات السابقة
-        دفعة واحدة (المدير العام، ومسؤول المشروع في السلفة إن وُجدت)،
-        فتتطلب نفس صلاحية المدير العام تحديداً - وليست متاحة لمن ينشئ
-        السجل فقط. تتطلب سبباً إجبارياً، ولا تُستدعى مباشرة من زر
-        بالواجهة - تمر حصراً عبر bank.settlement.reset.wizard (انظر
-        action_open_reset_wizard أعلاه). مخصَّصة لتصحيح بيانات أساسية
-        خاطئة (المبلغ/الموظف...) - أما لتصحيح قرار موافقة واحد فقط مع
-        الحفاظ على الموافقات الأسبق، استخدم "إرجاع للتصحيح" بدلاً منها
-        (action_return_to_previous_stage أدناه)."""
-        if not reason:
-            raise UserError('يجب توضيح سبب الإعادة لمسودة.')
-        for rec in self:
-            # القيد المحاسبي (إن وُجد) يعني أن السداد وثّق فعلياً محاسبياً -
-            # لا يجوز إعادة السجل لمسودة وترك ذلك القيد معلّقاً بلا مرجع.
-            # يجب عكس/إلغاء القيد أولاً من شاشة المحاسبة نفسها.
-            if rec.move_id:
-                raise UserError(
-                    'لا يمكن إعادة هذا السجل لمسودة - يوجد قيد محاسبي مرتبط '
-                    'به بالفعل (%s). ألغِ/اعكس القيد أولاً من المحاسبة.'
-                    % rec.move_id.name
-                )
-            rec._check_group('bank_settlement.group_bank_settlement_manager')
-        for rec in self:
-            rec.message_post(body='تمت إعادة السجل لمسودة للتصحيح.<br/>السبب: %s' % reason)
-        self.write({'state': 'draft'})
-
     def _get_returnable_stages(self):
         """قائمة مرتبة (من الأقرب للحالة الحالية إلى الأبعد) بأزواج
         (كود الحالة، اسمها المعروض) تمثّل كل المراحل السابقة (غير
         "مسودة") التي يصح اختيارها كوجهة عبر "إرجاع للتصحيح" - بنفس
         مبدأ اختيار المرحلة المستهدفة في recruitment_workflow (حيث
         يختار المستخدم المرحلة صراحة من قائمة، بدل خطوة واحدة ثابتة).
-        "مسودة" نفسها ليست ضمن القائمة أبداً - هذا دور "إعادة لمسودة"
-        وحدها (تمسح كل الموافقات دفعة واحدة)، بينما هذه القائمة كلها
-        مراحل "عمل قيد التقدّم" يُحتفَظ فيها بأي موافقة سابقة للمرحلة
-        المختارة.
+        "مسودة" نفسها ليست ضمن القائمة - "إرجاع للتصحيح" يُبقي أي موافقة
+        أسبق من المرحلة المختارة قائمة كما هي، بعكس العودة الكاملة
+        لمسودة (كانت أداة منفصلة، أُلغيت عمداً: يُعتمَد فقط على "إرجاع
+        للتصحيح" لتصحيح مرحلة واحدة، أو "رفض" لسجل يحتاج بداية جديدة
+        بالكامل).
 
         النماذج الأربعة الأساسية المستخدمة لسلسلة الحالات المشتركة هنا
         (draft -> under_review -> confirmed -> done) لها خيار واحد فقط
@@ -502,13 +476,11 @@ class BankSettlementMixin(models.AbstractModel):
     def action_return_to_previous_stage(self, target_state=False, reason=False):
         """التراجع الفعلي إلى مرحلة سابقة مختارة (target_state) - أو
         أقرب مرحلة سابقة تلقائياً إن لم تُحدَّد (_get_previous_stage)،
-        للتوافق مع الاستدعاء المباشر بلا معالج. بعكس action_reset_draft
-        الذي يمسح كل الموافقات دفعة واحدة للعودة لمسودة، هذه الدالة
-        تُبقي أي موافقة أسبق من المرحلة المختارة قائمة كما هي (مثال:
-        اختيار "وافق مسؤول المشروع" في سلفة يُلغي اعتماد المدير العام
-        فقط، ويُبقي موافقة مسؤول المشروع سارية). تتطلب نفس صلاحية
-        "إعادة لمسودة" (مدير عام السداد البنكي) وسبباً إجبارياً، ولا
-        تُستدعى مباشرة من زر بالواجهة - تمر حصراً عبر
+        للتوافق مع الاستدعاء المباشر بلا معالج. تُبقي أي موافقة أسبق من
+        المرحلة المختارة قائمة كما هي (مثال: اختيار "وافق مسؤول المشروع"
+        في سلفة يُلغي اعتماد المدير العام فقط، ويُبقي موافقة مسؤول
+        المشروع سارية). تتطلب صلاحية مدير عام السداد البنكي وسبباً
+        إجبارياً، ولا تُستدعى مباشرة من زر بالواجهة - تمر حصراً عبر
         bank.settlement.return.wizard (انظر action_open_return_wizard
         أعلاه)، الذي يقيّد الاختيار فعلياً لقائمة _get_returnable_stages
         فقط (طبقة حماية إضافية من جهة الخادم هنا أيضاً، دفاعاً ضد أي
@@ -533,21 +505,6 @@ class BankSettlementMixin(models.AbstractModel):
             )
             rec.write({'state': chosen})
 
-    def action_cancel(self):
-        """إلغاء - متاح للمحاسب فما فوق (وليس لمن ينشئ السجل فقط)."""
-        for rec in self:
-            if rec.move_id and rec.move_id.state == 'posted':
-                raise UserError(
-                    'لا يمكن إلغاء هذا السجل - القيد المحاسبي المرتبط به '
-                    'مرحّل بالفعل (%s). ألغِه/اعكسه من المحاسبة أولاً.'
-                    % rec.move_id.name
-                )
-            rec._check_group(
-                'bank_settlement.group_bank_settlement_reviewer',
-                'bank_settlement.group_bank_settlement_manager',
-            )
-        self.write({'state': 'cancel'})
-
     def action_open_reject_wizard(self):
         """يفتح معالج "رفض" (يفرض تسجيل السبب) - الزر في الواجهة يستدعي
         هذه الدالة بدل action_reject مباشرة."""
@@ -562,13 +519,18 @@ class BankSettlementMixin(models.AbstractModel):
         }
 
     def action_reject(self, reason=False):
-        """رفض السجل - يتطلب سبباً إجبارياً (بعكس "إلغاء" الذي لا يتطلب
-        سبباً) - يُستخدم عند اكتشاف محاسب/مدير عام السداد البنكي أن
-        بيانات السجل خاطئة وتحتاج تصحيحاً من مُنشئه (وليس مجرد إيقافه
-        نهائياً كما في "إلغاء"). لا تُستدعى مباشرة من زر بالواجهة - تمر
-        حصراً عبر bank.settlement.reject.wizard الذي يفرض تمرير السبب
-        (انظر action_open_reject_wizard أعلاه)، بنفس مبدأ "رفض" في
-        recruitment_workflow.recruitment_request."""
+        """رفض السجل - يتطلب سبباً إجبارياً. يُستخدم عند اكتشاف محاسب/
+        مدير عام السداد البنكي أن بيانات السجل خاطئة جوهرياً (تحتاج
+        بداية جديدة بالكامل من مُنشئه، وليس مجرد تصحيح مرحلة واحدة -
+        استخدم "إرجاع للتصحيح" لذلك بدلاً منه). لا تُستدعى مباشرة من زر
+        بالواجهة - تمر حصراً عبر bank.settlement.reject.wizard الذي
+        يفرض تمرير السبب (انظر action_open_reject_wizard أعلاه)، بنفس
+        مبدأ "رفض" في recruitment_workflow.recruitment_request.
+
+        يؤرشف السجل تلقائياً (active=False) عند الرفض - طلب صريح: سجل
+        مرفوض يخرج من القوائم النشطة الافتراضية (يبقى متاحاً عبر فلتر
+        "مؤرشف" المعياري للتدقيق)، بدل البقاء ظاهراً بشكل دائم بحالة
+        "مرفوضة" وسط بقية السجلات النشطة."""
         if not reason:
             raise UserError('يجب إدخال سبب الرفض.')
         for rec in self:
@@ -583,7 +545,7 @@ class BankSettlementMixin(models.AbstractModel):
             )
         for rec in self:
             rec.message_post(body='تم رفض السجل.<br/>السبب: %s' % reason)
-        self.write({'state': 'rejected', 'rejection_reason': reason})
+        self.write({'state': 'rejected', 'rejection_reason': reason, 'active': False})
 
     def _get_settlement_partner_id(self):
         """الشريك المستخدَم على سطر القيد المحاسبي - افتراضياً شريك

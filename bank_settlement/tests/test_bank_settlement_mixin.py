@@ -144,16 +144,6 @@ class TestBankSettlementMixin(TransactionCase):
         gov_fee.write({'amount': 750.0})
         self.assertEqual(gov_fee.amount, 750.0)
 
-    def test_reset_draft_reopens_editing(self):
-        """بعد "إعادة لمسودة" (مدير عام فقط، ولا قيد محاسبي بعد) يعود
-        التعديل ممكناً مجدداً."""
-        gov_fee = self._create_gov_fee()
-        self._complete_to_confirmed(gov_fee)
-        gov_fee.action_reset_draft(reason='بيانات خاطئة')
-
-        gov_fee.write({'amount': 999.0})
-        self.assertEqual(gov_fee.amount, 999.0)
-
     def test_approval_lock_bypassed_with_explicit_context_flag(self):
         """آلية الاستكمال التلقائي لحقل الموظف (candidate → hr.employee
         رسمي) يجب أن تتجاوز القفل عمداً عبر السياق الصريح."""
@@ -255,35 +245,23 @@ class TestBankSettlementMixin(TransactionCase):
             submitted_fee.unlink()
         self.assertTrue(submitted_fee.exists())
 
-    def test_transfer_date_and_bank_reference_only_editable_after_gm_approval(self):
-        """تاريخ التحويل ورقم السداد البنكي - بيانات السداد الفعلي، خاصة
-        بالمحاسب وقت الصرف تحديداً - يُمنع تحديدهما قبل اعتماد المدير
-        العام (لا يظهران أصلاً في الواجهة قبل ذلك، بنفس منطق دفتر
-        اليومية/الحساب المرتبط)، يُسمح بتحديدهما في حالة "مؤكدة" تحديداً
-        (طلب صريح)، ثم يُقفلان مجدداً بعد "منفّذة"."""
+    def test_transfer_date_only_editable_after_gm_approval(self):
+        """تاريخ التحويل - بيانات السداد الفعلي، خاصة بالمحاسب وقت الصرف
+        تحديداً - يُمنع تحديده قبل اعتماد المدير العام (لا يظهر أصلاً في
+        الواجهة قبل ذلك، بنفس منطق دفتر اليومية/الحساب المرتبط)، يُسمح
+        بتحديده في حالة "مؤكدة" تحديداً. رقم السداد (bank_reference) هنا
+        استثناء مقصود - انظر test_government_fee_bank_reference_editable_
+        from_draft أدناه (مفتوح من "مسودة" مباشرة، بعكس تاريخ التحويل)."""
         gov_fee = self._create_gov_fee()
 
         with self.assertRaises(UserError):
             gov_fee.write({'transfer_date': '2025-01-01'})
 
         gov_fee.action_submit_review()
-        with self.assertRaises(UserError):
-            gov_fee.write({'bank_reference': 'REF-123'})
-
         gov_fee.action_confirm()
         self.assertEqual(gov_fee.state, 'confirmed')
-        gov_fee.write({'transfer_date': '2025-01-01', 'bank_reference': 'REF-123'})
+        gov_fee.write({'transfer_date': '2025-01-01'})
         self.assertEqual(str(gov_fee.transfer_date), '2025-01-01')
-        self.assertEqual(gov_fee.bank_reference, 'REF-123')
-
-        gov_fee.write({
-            'linked_account_id': self.env['account.account'].search([], limit=1).id,
-            'journal_id': self.env['account.journal'].search(
-                [('company_id', '=', gov_fee.company_id.id)], limit=1).id,
-        })
-        gov_fee.action_done()
-        with self.assertRaises(UserError):
-            gov_fee.write({'bank_reference': 'REF-456'})
 
     def test_negative_amount_rejected(self):
         with self.assertRaises(UserError):
@@ -679,3 +657,58 @@ class TestBankSettlementMixin(TransactionCase):
 
         with self.assertRaises(UserError):
             gov_fee.action_return_to_previous_stage(reason='سبب ما')
+
+    def test_government_fee_bank_reference_editable_from_draft(self):
+        """رقم السداد (bank_reference) في الرسوم الحكومية مفتوح من
+        "مسودة" مباشرة - بعكس بقية بيانات السداد الفعلي (طلب صريح:
+        متعلق بمن يرفع الطلب نفسه، وليس بالمحاسب وقت الصرف)."""
+        gov_fee = self._create_gov_fee()
+        gov_fee.write({'bank_reference': 'GOV-REF-001'})
+        self.assertEqual(gov_fee.bank_reference, 'GOV-REF-001')
+
+        gov_fee.action_submit_review()
+        gov_fee.write({'bank_reference': 'GOV-REF-002'})
+        self.assertEqual(gov_fee.bank_reference, 'GOV-REF-002')
+
+        gov_fee.action_confirm()
+        gov_fee.write({'bank_reference': 'GOV-REF-003'})
+        self.assertEqual(gov_fee.bank_reference, 'GOV-REF-003')
+
+        gov_fee.write({
+            'linked_account_id': self.env['account.account'].search([], limit=1).id,
+            'journal_id': self.env['account.journal'].search(
+                [('company_id', '=', gov_fee.company_id.id)], limit=1).id,
+        })
+        gov_fee.action_done()
+        with self.assertRaises(UserError):
+            gov_fee.write({'bank_reference': 'GOV-REF-004'})
+
+    def test_medical_insurance_vendor_editable_until_last_stage(self):
+        """المورد (vendor_id) في التأمين الطبي يبقى قابلاً للتعديل من
+        "مسودة" وحتى آخر مرحلة (بعكس بقية حقول الهوية هناك التي تُقفَل
+        فور مغادرة "مسودة") - طلب صريح، ويُقفَل فقط بعد اكتمال السجل."""
+        Insurance = self.env['bank.settlement.medical.insurance']
+        vendor1 = self.env['res.partner'].create({'name': 'مورد تأمين 1', 'supplier_rank': 1})
+        vendor2 = self.env['res.partner'].create({'name': 'مورد تأمين 2', 'supplier_rank': 1})
+        insurance = Insurance.create({
+            'fee_type_id': self.env.ref('bank_settlement.medical_insurance_type_medical_insurance').id,
+            'vendor_id': vendor1.id,
+            'amount': 200.0,
+        })
+
+        insurance.action_submit_review()
+        insurance.write({'vendor_id': vendor2.id})
+        self.assertEqual(insurance.vendor_id, vendor2)
+
+        insurance.action_confirm()
+        insurance.write({'vendor_id': vendor1.id})
+        self.assertEqual(insurance.vendor_id, vendor1)
+
+        insurance.write({
+            'linked_account_id': self.env['account.account'].search([], limit=1).id,
+        })
+        insurance.action_create_insurance_transfer()
+        self.assertEqual(insurance.state, 'done')
+
+        with self.assertRaises(UserError):
+            insurance.write({'vendor_id': vendor2.id})

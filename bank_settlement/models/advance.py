@@ -166,25 +166,6 @@ class BankSettlementAdvance(models.Model):
                 rec.move_id = rec._create_settlement_move()
         self.write({'state': 'paid'})
 
-    # action_reset_draft/action_open_reset_wizard غير مُجاوَزتين هنا - نفس
-    # منطق الـ mixin الأساسي يعمل دون تعديل (السلفة لا تحتاج فحصاً إضافياً
-    # لا يوفّره move_id/_check_group الأساسيان).
-
-    def action_cancel(self):
-        """إلغاء - متاح للمحاسب فما فوق (وليس لمن أنشأ السلفة فقط)."""
-        for rec in self:
-            if rec.move_id and rec.move_id.state == 'posted':
-                raise UserError(
-                    'لا يمكن إلغاء هذه السلفة - القيد المحاسبي المرتبط بها '
-                    'مرحّل بالفعل (%s). ألغِه/اعكسه من المحاسبة أولاً.'
-                    % rec.move_id.name
-                )
-            rec._check_group(
-                'bank_settlement.group_bank_settlement_reviewer',
-                'bank_settlement.group_bank_settlement_manager',
-            )
-        self.write({'state': 'cancel'})
-
     def action_reject(self, reason=False):
         """تجاوز - حالة "منفّذة" في السلفة اسمها "paid" (تم الصرف) بدل
         "done" المستخدَمة في بقية شاشات السداد البنكي، والقفل المشترك في
@@ -204,7 +185,7 @@ class BankSettlementAdvance(models.Model):
             )
         for rec in self:
             rec.message_post(body='تم رفض السلفة.<br/>السبب: %s' % reason)
-        self.write({'state': 'rejected', 'rejection_reason': reason})
+        self.write({'state': 'rejected', 'rejection_reason': reason, 'active': False})
 
     _ADVANCE_REASON_MIGRATION_MAP = {
         'salary_advance': 'bank_settlement.advance_reason_salary_advance',

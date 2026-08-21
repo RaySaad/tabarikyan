@@ -5,11 +5,10 @@ from odoo.exceptions import UserError
 
 class BankSettlementReturnWizard(models.TransientModel):
     """معالج "إرجاع للتصحيح" - يُرجع سجل السداد البنكي إلى مرحلة سابقة
-    يختارها المستخدم صراحة (مع الحفاظ على أي موافقة أسبق من تلك المرحلة)،
-    بعكس bank.settlement.reset.wizard الذي يعيده لمسودة بالكامل - بنفس
-    مبدأ اختيار المرحلة المستهدفة في recruitment.return.wizard. يفرض
-    تسجيل السبب، بنفس مبدأ reset_wizard.py/reject_wizard.py (res_model/
-    res_id بدل Many2one مباشر، لأن الشاشات الخمس نماذج منفصلة)."""
+    يختارها المستخدم صراحة (مع الحفاظ على أي موافقة أسبق من تلك المرحلة)
+    - بنفس مبدأ اختيار المرحلة المستهدفة في recruitment.return.wizard.
+    يفرض تسجيل السبب، بنفس مبدأ reject_wizard.py (res_model/res_id بدل
+    Many2one مباشر، لأن الشاشات الخمس نماذج منفصلة)."""
     _name = 'bank.settlement.return.wizard'
     _description = 'معالج إرجاع سجل السداد البنكي للتصحيح'
 

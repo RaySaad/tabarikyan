@@ -37,9 +37,23 @@ class BankSettlementMedicalInsurance(models.Model):
         return 'bank.settlement.medical.insurance'
 
     def _get_locked_fields_after_approval(self):
+        # vendor_id (المورد) مستثنى عمداً هنا - طلب صريح: يبقى موجوداً
+        # وقابلاً للتعديل من "مسودة" وحتى آخر مرحلة (وليس مقفولاً فور
+        # مغادرة "مسودة" كباقي حقول الهوية) - انظر القيد الخاص به وحده
+        # في write() أدناه (يُقفَل فقط عند اكتمال/انتهاء السجل).
         return super()._get_locked_fields_after_approval() + [
-            'fee_type_id', 'vendor_id', 'company_iban',
+            'fee_type_id', 'company_iban',
         ]
+
+    def write(self, vals):
+        if 'vendor_id' in vals and not self.env.context.get('bank_settlement_skip_approval_lock'):
+            for rec in self:
+                if rec.state in ('done', 'rejected', 'cancel'):
+                    raise UserError(
+                        'لا يمكن تعديل "المورد" بعد اكتمال السجل (تم '
+                        'التحويل/رُفض/أُلغي).'
+                    )
+        return super().write(vals)
 
     _FEE_TYPE_MIGRATION_MAP = {
         'medical_insurance': 'bank_settlement.medical_insurance_type_medical_insurance',

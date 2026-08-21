@@ -5,9 +5,9 @@ from odoo.tests import TransactionCase, tagged
 
 @tagged('post_install', '-at_install')
 class TestApprovalPermissions(TransactionCase):
-    """يتحقق أن "إعادة لمسودة" و"إلغاء" مقيَّدتان بصلاحية مناسبة - لا
-    يكفي أن يكون المستخدم "مستخدم" أساسي فقط (أدنى مستوى) لإلغاء اعتماد
-    المدير العام أو إلغاء سجل بعد مراجعته."""
+    """يتحقق أن "رفض" و"إرجاع للتصحيح" (المسارين الوحيدين المتبقيين
+    للتراجع عن مراحل السداد البنكي - "إعادة لمسودة" و"إلغاء" أُلغيتا
+    عمداً) مقيَّدتان بصلاحية مناسبة، وأن الرفض يؤرشف السجل تلقائياً."""
 
     @classmethod
     def setUpClass(cls):
@@ -79,86 +79,6 @@ class TestApprovalPermissions(TransactionCase):
         )
         self.assertFalse(found, 'يجب ألا يرى مستخدم السداد البنكي قيوداً غير مرتبطة به')
 
-    def test_reset_draft_requires_manager(self):
-        gov_fee = self._create_gov_fee().with_user(self.manager_user)
-        gov_fee.action_submit_review()
-        gov_fee.action_confirm()
-
-        with self.assertRaises(UserError):
-            gov_fee.with_user(self.plain_user).action_reset_draft(reason='اختبار')
-        with self.assertRaises(UserError):
-            gov_fee.with_user(self.accountant_user).action_reset_draft(reason='اختبار')
-
-        gov_fee.with_user(self.manager_user).action_reset_draft(reason='بيانات خاطئة')
-        self.assertEqual(gov_fee.state, 'draft')
-
-    def test_reset_draft_requires_reason(self):
-        """"إعادة لمسودة" تفرض تسجيل سبب - نفس مبدأ "إرجاع للتصحيح" في
-        سير طلبات التوظيف."""
-        gov_fee = self._create_gov_fee().with_user(self.manager_user)
-        gov_fee.action_submit_review()
-        gov_fee.action_confirm()
-
-        with self.assertRaises(UserError):
-            gov_fee.action_reset_draft()
-
-        message_count_before = len(gov_fee.message_ids)
-        gov_fee.action_reset_draft(reason='سبب واضح')
-        self.assertEqual(gov_fee.state, 'draft')
-        self.assertGreater(len(gov_fee.message_ids), message_count_before)
-
-    def test_reset_wizard_delegates_to_action_reset_draft(self):
-        gov_fee = self._create_gov_fee().with_user(self.manager_user)
-        gov_fee.action_submit_review()
-        gov_fee.action_confirm()
-
-        wizard = self.env['bank.settlement.reset.wizard'].with_user(self.manager_user).create({
-            'res_model': gov_fee._name,
-            'res_id': gov_fee.id,
-            'reason': 'سبب عبر المعالج',
-        })
-        wizard.action_confirm_reset()
-
-        self.assertEqual(gov_fee.state, 'draft')
-
-    def test_cancel_requires_accountant(self):
-        gov_fee = self._create_gov_fee()
-
-        with self.assertRaises(UserError):
-            gov_fee.with_user(self.plain_user).action_cancel()
-
-        gov_fee.with_user(self.accountant_user).action_cancel()
-        self.assertEqual(gov_fee.state, 'cancel')
-
-    def test_advance_reset_draft_requires_manager(self):
-        """السلفة (advance.py) لا تُجاوز action_reset_draft - تستخدم نفس
-        نسخة الـ mixin الأساسي مباشرة، ونفس القيد يجب أن يُطبَّق هنا."""
-        advance = self.env['bank.settlement.advance'].create({
-            'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id, 'amount': 300.0,
-        }).with_user(self.manager_user)
-        advance.action_submit_review()
-        # لا موظف محدَّد على هذه السلفة، فتُطبَّق آلية الاحتياط (صلاحية
-        # المدير العام) بدل اشتراط مسؤول مشروع محدَّد.
-        advance.action_pm_approve()
-        advance.action_confirm()
-
-        with self.assertRaises(UserError):
-            advance.with_user(self.plain_user).action_reset_draft(reason='اختبار')
-
-        advance.with_user(self.manager_user).action_reset_draft(reason='بيانات خاطئة')
-        self.assertEqual(advance.state, 'draft')
-
-    def test_advance_cancel_requires_accountant(self):
-        advance = self.env['bank.settlement.advance'].create({
-            'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id, 'amount': 300.0,
-        })
-
-        with self.assertRaises(UserError):
-            advance.with_user(self.plain_user).action_cancel()
-
-        advance.with_user(self.accountant_user).action_cancel()
-        self.assertEqual(advance.state, 'cancel')
-
     def test_advance_confirm_requires_pm_approval_first(self):
         """اعتماد المدير العام لا يجوز إلا بعد موافقة مسؤول المشروع -
         وليس مباشرة بعد الإرسال للمراجعة."""
@@ -205,18 +125,25 @@ class TestApprovalPermissions(TransactionCase):
         with self.assertRaises(UserError):
             gov_fee.with_user(self.accountant_user).action_reject(reason='محاولة متأخرة')
 
-    def test_rejected_record_can_return_to_draft(self):
-        """سجل مرفوض يمكن إعادته لمسودة للتصحيح ثم إعادة إرساله - "رفض"
-        ليس نهاية المطاف، بل طلب تصحيح."""
+    def test_reject_archives_record(self):
+        """الرفض يؤرشف السجل تلقائياً (active=False) - يخرج من القوائم
+        النشطة الافتراضية، ويبقى متاحاً عبر فلتر "مؤرشف" للتدقيق فقط.
+        لا يوجد مسار رجوع لمسودة بعد الرفض (طلب صريح: أُلغيت "إعادة
+        لمسودة" بالكامل) - سجل يحتاج تصحيحاً جوهرياً يُنشأ من جديد."""
         gov_fee = self._create_gov_fee()
         gov_fee.action_submit_review()
-        gov_fee.with_user(self.accountant_user).action_reject(reason='مبلغ خاطئ')
-        self.assertEqual(gov_fee.state, 'rejected')
+        self.assertTrue(gov_fee.active)
 
-        gov_fee.with_user(self.manager_user).action_reset_draft(reason='مبلغ خاطئ - سيُصحَّح')
-        self.assertEqual(gov_fee.state, 'draft')
-        gov_fee.write({'amount': 750.0})
-        self.assertEqual(gov_fee.amount, 750.0)
+        gov_fee.with_user(self.accountant_user).action_reject(reason='مبلغ خاطئ')
+
+        self.assertEqual(gov_fee.state, 'rejected')
+        self.assertFalse(gov_fee.active)
+        # لا يزال موجوداً فعلياً (لم يُحذف) - فقط مؤرشف، ويظل قابلاً
+        # للوصول صراحة عبر with_context(active_test=False).
+        found = self.env['bank.settlement.government.fee'].with_context(
+            active_test=False
+        ).search([('id', '=', gov_fee.id)])
+        self.assertTrue(found)
 
     def test_advance_reject_blocked_once_paid(self):
         """السلفة تُجاوز action_reject بنسخة خاصة بها - حالتها النهائية
@@ -238,6 +165,20 @@ class TestApprovalPermissions(TransactionCase):
 
         with self.assertRaises(UserError):
             advance.with_user(self.accountant_user).action_reject(reason='محاولة متأخرة')
+
+    def test_advance_reject_archives_record(self):
+        """السلفة لها نسخة خاصة بها من action_reject (لا تستدعي super())
+        - يجب أن تؤرشف السجل تلقائياً هي الأخرى، بنفس مبدأ الـ mixin."""
+        advance = self.env['bank.settlement.advance'].create({
+            'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id,
+            'amount': 300.0,
+        })
+        advance.action_submit_review()
+
+        advance.with_user(self.accountant_user).action_reject(reason='بيانات خاطئة')
+
+        self.assertEqual(advance.state, 'rejected')
+        self.assertFalse(advance.active)
 
     def test_reject_wizard_delegates_to_action_reject(self):
         gov_fee = self._create_gov_fee()
