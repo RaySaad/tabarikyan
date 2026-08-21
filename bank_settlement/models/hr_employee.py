@@ -60,6 +60,19 @@ class HrEmployee(models.Model):
         التأمين الطبي عمداً."""
         self.ensure_one()
         lines = []
+        # كل الحسابات المحاسبية المرتبطة بسجلات السداد البنكي الخاصة بهذا
+        # الموظف (بكل نماذجه الخمسة، حتى المستبعدة من العرض هنا كالرسوم
+        # الحكومية) - تُستبعد صراحة من بحث حساب "ذمم الموظفين" أدناه،
+        # بالإضافة لفلتر is_bank_settlement_move (وليس بديلاً عنه) - وإلا
+        # أمكن ظهور نفس السلفة/التصفية مرتين لو اختار المحاسب حساب 212003
+        # نفسه كـ"الحساب المرتبط" (linked_account_id) عند إتمامها؛ ثغرة
+        # حقيقية اكتُشفت من كشف تجريبي حقيقي (سلفة "REQ/0001" ظهرت مرتين).
+        bank_settlement_move_ids = set()
+        for model_name in self._BANK_SETTLEMENT_MODELS:
+            for rec in self.env[model_name].sudo().search(
+                [('employee_id', '=', self.id), ('move_id', '!=', False)],
+            ):
+                bank_settlement_move_ids.add(rec.move_id.id)
 
         advances = self.env['bank.settlement.advance'].sudo().search(
             [('employee_id', '=', self.id)],
@@ -122,13 +135,16 @@ class HrEmployee(models.Model):
                 [('name', 'ilike', 'ذمم الموظفين')], limit=1,
             )
         partner = self.sudo().work_contact_id
+        dues_domain = [
+            ('account_id', '=', dues_account.id if dues_account else False),
+            ('partner_id', '=', partner.id if partner else False),
+            ('move_id.is_bank_settlement_move', '=', False),
+            ('move_id.state', '=', 'posted'),
+        ]
+        if bank_settlement_move_ids:
+            dues_domain.append(('move_id', 'not in', list(bank_settlement_move_ids)))
         dues_lines = self.env['account.move.line'].sudo().search(
-            [
-                ('account_id', '=', dues_account.id),
-                ('partner_id', '=', partner.id),
-                ('move_id.is_bank_settlement_move', '=', False),
-                ('move_id.state', '=', 'posted'),
-            ],
+            dues_domain,
         ) if (dues_account and partner) else self.env['account.move.line']
         for line in dues_lines:
             lines.append({
