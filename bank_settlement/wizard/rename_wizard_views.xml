@@ -11,6 +11,12 @@
                     تعديل كود سجل بعد إصداره استثناء - تأكد أن كل كود جديد
                     غير مستخدَم على سجل آخر، وإلا سيُرفض السطر كاملاً.
                 </div>
+                <group>
+                    <field name="start_number"/>
+                    <button name="action_auto_sequence" type="object"
+                            string="ترقيم تلقائي متسلسل (يغلق كل الفجوات)"
+                            class="btn-secondary"/>
+                </group>
                 <field name="line_ids">
                     <list editable="bottom" create="0">
                         <field name="res_model" column_invisible="1"/>

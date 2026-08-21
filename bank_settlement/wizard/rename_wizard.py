@@ -20,6 +20,12 @@ class BankSettlementRenameWizard(models.TransientModel):
         'bank.settlement.rename.wizard.line', 'wizard_id', string='السجلات',
     )
     line_count = fields.Integer(string='عدد السجلات', compute='_compute_line_count')
+    start_number = fields.Integer(
+        string='يبدأ الترقيم من', default=1,
+        help='يُستخدم مع زر "ترقيم تلقائي متسلسل" فقط - الرقم الذي يبدأ '
+             'منه السجل الأقدم بين المحدَّدين، وتُرقَّم الباقي تباعاً بلا '
+             'أي فجوة (بنفس بادئة/تنسيق الكود المعتاد لهذا النموذج).',
+    )
     reason = fields.Text(string='سبب التعديل', required=True)
     confirmation_text = fields.Char(
         string='اكتب "تعديل الكود" للتأكيد', required=True,
@@ -51,6 +57,31 @@ class BankSettlementRenameWizard(models.TransientModel):
     def _compute_line_count(self):
         for rec in self:
             rec.line_count = len(rec.line_ids)
+
+    def action_auto_sequence(self):
+        """يملأ "الكود الجديد" تلقائياً لكل الأسطر - ترقيم متسلسل بلا أي
+        فجوة، بترتيب res_id (ترتيب الإنشاء الفعلي، وليس الكود الحالي نفسه
+        الذي قد يكون غير مرتَّب أصلاً وهو بالضبط المشكلة المطلوب تصحيحها).
+        يستخدم نفس بادئة/تنسيق ir.sequence المعرَّف لهذا النموذج (نفس
+        القيم المستخدمة في sequence_reset_wizard) - فالنتيجة أكواد بنفس
+        الشكل المعتاد تماماً، فقط بلا فجوات. لا يُنفَّذ أي تعديل فعلي بعد -
+        يبقى للمستخدم مراجعة الجدول قبل الضغط على "تأكيد تعديل الأكواد"."""
+        self.ensure_one()
+        by_model = {}
+        for line in self.line_ids:
+            by_model.setdefault(line.res_model, []).append(line)
+        for res_model, lines in by_model.items():
+            sequence = self.env['ir.sequence'].sudo().search(
+                [('code', '=', res_model)], limit=1,
+            )
+            if not sequence:
+                continue
+            prefix = sequence.prefix or ''
+            padding = sequence.padding or 0
+            lines.sort(key=lambda l: l.res_id)
+            for index, line in enumerate(lines):
+                number = self.start_number + index
+                line.new_code = '%s%s' % (prefix, str(number).zfill(padding))
 
     def action_confirm_rename(self):
         self.ensure_one()
