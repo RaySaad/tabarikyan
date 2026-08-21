@@ -47,7 +47,8 @@ class HrEmployee(models.Model):
     # - تصفية مندوب: دائن (له - وصلته فعلاً)
     # - مخالفة مرور: مدين (عليه)
     # - رسوم رخصة قيادة: مدين (عليه - تُخصم منه)
-    # - راتب/عمولة (من المحاسبة): دائن (له)
+    # - قيود حساب "ذمم الموظفين" (212003): كما هي مسجَّلة فعلاً في
+    #   المحاسبة (مدين/دائن مباشرة من القيد نفسه، بلا إعادة تفسير)
     _VEHICLE_TRANSFER_STATEMENT_TYPES = (
         'bank_settlement.vehicle_transfer_type_traffic_violation',
         'bank_settlement.vehicle_transfer_type_driving_license',
@@ -102,29 +103,39 @@ class HrEmployee(models.Model):
                 'credit': 0.0,
             })
 
-        # رواتب/عمولات: قيود محاسبية مرحّلة، باستثناء القيود التي أنشأها
+        # رواتب/عمولات وأي ذمم أخرى: قيود محاسبية مرحّلة على حساب "ذمم
+        # الموظفين" تحديداً (كود 212003) - طلب صريح: هذا الحساب هو
+        # المرجع الرسمي لكل ما يخص الموظف مالياً في دفاتر المحاسبة
+        # الفعلية، فتُعرَض قيمة مدين/دائن لكل قيد كما هي مسجَّلة بالضبط
+        # (بلا أي إعادة تفسير للاتجاه). باستثناء القيود التي أنشأها
         # السداد البنكي نفسه (is_bank_settlement_move) - وإلا تكرّرت نفس
-        # السلفة/التصفية مرتين. work_contact_id تحديداً (وليس سلسلة
-        # _get_personal_partner الاحتياطية الكاملة) - أي fallback أوسع
-        # (address_home_id/user_id.partner_id) قد يصادف شريكاً عاماً
-        # مستخدَماً لمصاريف أخرى غير مرتبطة بالموظف إطلاقاً، وهو بالضبط
-        # ما حدث فعلياً (ثغرة حقيقية اكتُشفت من كشف تجريبي حقيقي: ظهرت
-        # فواتير كهرباء شاليه وتأسيس نظام أودو لا علاقة لها بالموظف).
+        # السلفة/التصفية مرتين (مرة كسجل سداد بنكي، ومرة كقيد محاسبي).
+        # work_contact_id تحديداً لتحديد قيود هذا الموظف بالذات ضمن نفس
+        # الحساب المشترك لكل الموظفين - انظر أيضاً ثغرة سابقة مشابهة
+        # اكتُشفت من كشف تجريبي حقيقي (فواتير غير مرتبطة بالموظف ظهرت
+        # عند الاعتماد على سلسلة شريك احتياطية أوسع بدل هذا الحقل تحديداً).
+        dues_account = self.env['account.account'].sudo().search(
+            [('code', '=', '212003')], limit=1,
+        )
+        if not dues_account:
+            dues_account = self.env['account.account'].sudo().search(
+                [('name', 'ilike', 'ذمم الموظفين')], limit=1,
+            )
         partner = self.sudo().work_contact_id
-        payroll_lines = self.env['account.move.line'].sudo().search(
+        dues_lines = self.env['account.move.line'].sudo().search(
             [
+                ('account_id', '=', dues_account.id),
                 ('partner_id', '=', partner.id),
                 ('move_id.is_bank_settlement_move', '=', False),
                 ('move_id.state', '=', 'posted'),
-                ('display_type', '=', 'payment_term'),
             ],
-        ) if partner else self.env['account.move.line']
-        for line in payroll_lines:
+        ) if (dues_account and partner) else self.env['account.move.line']
+        for line in dues_lines:
             lines.append({
                 'date': line.date,
-                'description': _('راتب/عمولة - %s') % (line.move_id.ref or line.move_id.name),
-                'debit': 0.0,
-                'credit': line.credit or line.debit,
+                'description': line.name or line.move_id.ref or line.move_id.name,
+                'debit': line.debit,
+                'credit': line.credit,
             })
 
         lines.sort(key=lambda l: l['date'] or date.min)
