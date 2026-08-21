@@ -5,26 +5,80 @@
         <field name="name">bank.settlement.rename.wizard.form</field>
         <field name="model">bank.settlement.rename.wizard</field>
         <field name="arch" type="xml">
-            <form string="تعديل الكود الإداري">
-                <field name="res_model" invisible="1"/>
-                <field name="res_id" invisible="1"/>
+            <form string="تعديل الكود الإداري (دفعة واحدة)">
                 <div class="alert alert-warning" role="alert">
-                    تحذير: تعديل كود سجل بعد إصداره استثناء - تأكد أولاً أن
-                    الكود الجديد غير مستخدم في سجل آخر، وإلا سيُرفض التعديل.
+                    سيُعدَّل كود <field name="line_count" class="fw-bold d-inline"/> سجل. تحذير:
+                    تعديل كود سجل بعد إصداره استثناء - تأكد أن كل كود جديد
+                    غير مستخدَم على سجل آخر، وإلا سيُرفض السطر كاملاً.
                 </div>
+                <field name="line_ids">
+                    <list editable="bottom" create="0">
+                        <field name="res_model" column_invisible="1"/>
+                        <field name="res_id" column_invisible="1"/>
+                        <field name="old_code" readonly="1"/>
+                        <field name="new_code"/>
+                    </list>
+                </field>
                 <group>
-                    <field name="old_code" string="الكود الحالي"/>
-                    <field name="new_code" placeholder="مثال: REQ/0007"/>
-                    <field name="reason" placeholder="وضّح سبب تعديل الكود..."/>
+                    <field name="reason" placeholder="وضّح سبب تعديل الأكواد..."/>
                     <field name="confirmation_text" placeholder="تعديل الكود"/>
                 </group>
                 <footer>
                     <button name="action_confirm_rename" type="object"
-                            string="تأكيد تعديل الكود" class="btn-warning"/>
+                            string="تأكيد تعديل الأكواد" class="btn-warning"/>
                     <button string="إلغاء" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
         </field>
+    </record>
+
+    <!-- إجراء جماعي يظهر في قائمة "الإجراءات" (⚙) عند تحديد عدة سجلات من
+         شاشة القائمة (السلف/الرسوم الحكومية/التأمين الطبي/تحويل المركبات/
+         تصفيات المناديب) - بدل فتح كل سجل على حدة. سجل واحد لكل نموذج
+         (binding_model_id) يفعّل ظهور نفس المعالج من كل الشاشات الخمس. -->
+    <record id="action_bank_settlement_rename_advance" model="ir.actions.act_window">
+        <field name="name">تعديل الكود الإداري</field>
+        <field name="res_model">bank.settlement.rename.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_bank_settlement_advance"/>
+        <field name="binding_view_types">list</field>
+    </record>
+
+    <record id="action_bank_settlement_rename_government_fee" model="ir.actions.act_window">
+        <field name="name">تعديل الكود الإداري</field>
+        <field name="res_model">bank.settlement.rename.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_bank_settlement_government_fee"/>
+        <field name="binding_view_types">list</field>
+    </record>
+
+    <record id="action_bank_settlement_rename_medical_insurance" model="ir.actions.act_window">
+        <field name="name">تعديل الكود الإداري</field>
+        <field name="res_model">bank.settlement.rename.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_bank_settlement_medical_insurance"/>
+        <field name="binding_view_types">list</field>
+    </record>
+
+    <record id="action_bank_settlement_rename_vehicle_transfer" model="ir.actions.act_window">
+        <field name="name">تعديل الكود الإداري</field>
+        <field name="res_model">bank.settlement.rename.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_bank_settlement_vehicle_transfer"/>
+        <field name="binding_view_types">list</field>
+    </record>
+
+    <record id="action_bank_settlement_rename_representative" model="ir.actions.act_window">
+        <field name="name">تعديل الكود الإداري</field>
+        <field name="res_model">bank.settlement.rename.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_bank_settlement_representative"/>
+        <field name="binding_view_types">list</field>
     </record>
 
 </odoo>

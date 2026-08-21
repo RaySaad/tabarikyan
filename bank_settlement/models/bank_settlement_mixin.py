@@ -471,34 +471,15 @@ class BankSettlementMixin(models.AbstractModel):
             })
         self.with_context(bank_settlement_skip_approval_lock=True).unlink()
 
-    def action_open_rename_wizard(self):
-        self.ensure_one()
-        if not self._is_admin_delete_enabled():
-            raise UserError(
-                'ميزة "تعديل الكود الإداري" غير مُفعَّلة حالياً. '
-                'فعِّلها من الإعدادات > التقنية > معاملات النظام '
-                '(bank_settlement.admin_delete_enabled) قبل الاستخدام.'
-            )
-        return {
-            'name': 'تعديل الكود الإداري',
-            'type': 'ir.actions.act_window',
-            'res_model': 'bank.settlement.rename.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'default_res_model': self._name,
-                'default_res_id': self.id,
-                'default_old_code': self.name,
-            },
-        }
-
     def action_admin_rename(self, new_code=False, reason=False):
         """تعديل الكود (name) الإداري - يتجاوز عمداً قفل الحقل (readonly)
         لتصحيح فجوة/ترتيب في أكواد سجلات موجودة فعلاً. أداة استثنائية
         مُغلَقة افتراضياً (_is_admin_delete_enabled، نفس مفتاح الحذف
         النهائي وإعادة ضبط الترقيم)، تتطلب صلاحية مدير عام السداد البنكي
         وسبباً إجبارياً، ولا تُستدعى مباشرة من زر بالواجهة - تمر حصراً
-        عبر bank.settlement.rename.wizard (يفرض كتابة عبارة تأكيد إضافية).
+        عبر bank.settlement.rename.wizard (معالج جماعي يُفتح من قائمة
+        الإجراءات ⚙ بعد تحديد عدة سجلات من شاشة القائمة، يفرض كتابة عبارة
+        تأكيد إضافية).
 
         يُرفض التعديل إن كان الكود الجديد مستخدَماً فعلاً على سجل آخر من
         نفس النموذج - وإلا أصبح لسجلَين نفس الكود، وهو بالضبط الخطر الذي
