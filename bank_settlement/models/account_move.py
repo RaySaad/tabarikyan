@@ -25,15 +25,21 @@ class AccountMove(models.Model):
     # (امنع الحذف/التعديل الجوهري، اطلب استخدام قيد عكسي/إلغاء إن احتاج
     # الأمر تصحيحاً بدل حذف السجل الأصلي أو تغيير حالته).
     def unlink(self):
-        for move in self:
-            if move.is_bank_settlement_move:
-                raise UserError(_(
-                    'لا يمكن حذف القيد المحاسبي "%s" نهائياً - هو قيد سداد '
-                    'بنكي مرتبط بسجل معتمد (سلفة، رسوم حكومية، تأمين طبي، '
-                    'تحويل مركبة، أو تصفية) يجب الحفاظ عليه للتدقيق. إن '
-                    'احتاج الأمر تصحيحاً، استخدم قيداً عكسياً أو الإلغاء '
-                    'بدلاً من الحذف.'
-                ) % move.name)
+        # bank_settlement_admin_force_delete: استثناء إداري صريح ومُسجَّل
+        # (سجل bank.settlement.deletion.log) لـ"الحذف النهائي الإداري" -
+        # انظر bank_settlement_mixin.action_admin_force_delete. يُستخدم
+        # فقط لقيد لا يزال مسودة (لم يُرحَّل بعد)؛ قيد مرحّل يُعكَس هناك
+        # بدل حذفه، فلا يمر من هنا أصلاً.
+        if not self.env.context.get('bank_settlement_admin_force_delete'):
+            for move in self:
+                if move.is_bank_settlement_move:
+                    raise UserError(_(
+                        'لا يمكن حذف القيد المحاسبي "%s" نهائياً - هو قيد سداد '
+                        'بنكي مرتبط بسجل معتمد (سلفة، رسوم حكومية، تأمين طبي، '
+                        'تحويل مركبة، أو تصفية) يجب الحفاظ عليه للتدقيق. إن '
+                        'احتاج الأمر تصحيحاً، استخدم قيداً عكسياً أو الإلغاء '
+                        'بدلاً من الحذف.'
+                    ) % move.name)
         return super().unlink()
 
     def button_draft(self):

@@ -62,5 +62,13 @@
                   parent="menu_bank_settlement_config"
                   action="action_bank_settlement_advance_reason" sequence="50"/>
 
+        <!-- أداة استثنائية (مُغلَقة افتراضياً - انظر _is_admin_delete_enabled
+             في bank_settlement_mixin.py) لتنظيف بيانات خاطئة/تجريبية -
+             الحذف النهائي يبدأ من زر داخل كل سجل. سجل الحذف يبقى مرئياً
+             دائماً (سجل تدقيق) بغض النظر عن تفعيل الأداة من عدمه. -->
+        <menuitem id="menu_bank_settlement_deletion_log" name="سجل الحذف النهائي"
+                  parent="menu_bank_settlement_config"
+                  action="action_bank_settlement_deletion_log" sequence="90"/>
+
     </data>
 </odoo>
