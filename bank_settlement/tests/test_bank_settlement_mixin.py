@@ -120,6 +120,21 @@ class TestBankSettlementMixin(TransactionCase):
         with self.assertRaises(UserError):
             gov_fee.write({'project_id': other_project.id})
 
+    def test_company_locked_after_approval(self):
+        """الشركة/الفرع (company_id) تُقفل هي أيضاً بعد الاعتماد - ثغرة
+        حقيقية اكتُشفت بمراجعة شاملة (تدقيق صلاحيات Studio): كان الحقل
+        readonly="1" في الشاشة فقط (تسهيل واجهة)، بلا أي حماية فعلية من
+        جهة الخادم - تعديله مباشرة (RPC، أو بعد إزالة قيد الواجهة عبر
+        Studio) كان يغيّر الفرع المحاسبي لسجل معتمَد فعلاً بلا أي مانع."""
+        other_branch = self.env['res.company'].create({
+            'name': 'فرع آخر - قفل الشركة', 'parent_id': self.env.company.id,
+        })
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+
+        with self.assertRaises(UserError):
+            gov_fee.write({'company_id': other_branch.id})
+
     def test_type_fields_locked_after_approval(self):
         """نوع الرسوم/الجهة الحكومية يُقفلان هما أيضاً بعد الاعتماد."""
         gov_fee = self._create_gov_fee()

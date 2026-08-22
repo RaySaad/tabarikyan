@@ -248,7 +248,17 @@ class BankSettlementMixin(models.AbstractModel):
         # account_id) يُحسَب منه مباشرة - فالسماح بتعديله يدوياً بعد
         # الاعتماد يُتيح تغيير العزل المالي بين المنصات (كيتا/هنقرستيشن/
         # جاهز) لسجل مُعتمَد فعلاً، رغم قفل الموظف نفسه.
-        return ['employee_id', 'employee_category', 'project_id', 'amount', 'tax_amount']
+        # company_id: ثغرة حقيقية اكتُشفت بمراجعة شاملة (تدقيق صلاحيات
+        # Studio) - كان الحقل يظهر readonly="1" في كل الشاشات (تسهيل
+        # واجهة فقط)، بلا أي حماية فعلية من جهة الخادم؛ تعديله مباشرة
+        # (عبر RPC، أو بعد إزالة قيد الواجهة عبر Studio) كان يغيّر الفرع/
+        # الشركة المحاسبية لسجل مُعتمَد فعلاً بلا أي مانع. يُشتق تلقائياً
+        # من فرع الموظف فقط (انظر _fill_employee_derived_vals)، ولا يُشترط
+        # تعديله يدوياً منفصلاً عنه أصلاً.
+        return [
+            'employee_id', 'employee_category', 'project_id', 'amount',
+            'tax_amount', 'company_id',
+        ]
 
     def _get_editable_states(self):
         """الحالات التي يُسمح فيها بتعديل الحقول الحساسة أعلاه - "مسودة"

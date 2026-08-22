@@ -699,6 +699,20 @@ class TestRecruitmentRequest(TransactionCase):
         with self.assertRaises(UserError):
             request.write({'project_manager_id': other_pm.id})
 
+    def test_company_id_cannot_be_written_alone(self):
+        """لا يمكن تعديل company_id مباشرة بمعزل عن project_id - ثغرة
+        حقيقية اكتُشفت بمراجعة شاملة (تدقيق صلاحيات Studio): كان الحقل
+        readonly="1" في الشاشة فقط (تسهيل واجهة)، بلا أي حماية فعلية من
+        جهة الخادم - تعديله مباشرة (RPC، أو بعد إزالة قيد الواجهة عبر
+        Studio) كان يغيّر فرع/شركة الطلب بمعزل عن المشروع الفعلي المختار،
+        رغم اشتقاقه تلقائياً منه حصراً (نفس منطق project_manager_id
+        تماماً أعلاه)."""
+        other_company = self.env['res.company'].create({'name': 'شركة أخرى - قفل الشركة'})
+        request = self._create_request(identification_id='1234567848', email='ar@example.com')
+
+        with self.assertRaises(UserError):
+            request.write({'company_id': other_company.id})
+
     def test_project_edit_syncs_only_in_progress_requests(self):
         """تعديل "مسؤول المشروع" على المشروع نفسه ينعكس تلقائياً على الطلبات
         التي لا تزال قيد التنفيذ فقط - الطلبات المكتملة تحتفظ بالقيمة القديمة
