@@ -48,12 +48,9 @@
               action="action_recruitment_compensation_type"
               sequence="25"/>
 
-    <!-- لا توجد قائمة رئيسية في تطبيق الموظفين لتكاليف الموظفين حسب
-         المنصة عمداً - ستُدار هذه التكاليف (تجديد إقامة، كروت عمل...)
-         لاحقاً من جهة المحاسبة مباشرة بآلية مختلفة (تقسيط يومي على فترة
-         الصلاحية). النموذج والبيانات والوصول عبر زر "تكاليف المنصة" في
-         سجل الموظف نفسه يبقون كما هم - فقط لا قائمة مستقلة له هنا. -->
-
+    <!-- إعداد لآلية "رسوم التوظيف" في recruitment_request.py
+         (fee_cost_type_id) - وليس لنموذج تكاليف مستقل (حُذف، انظر
+         hr_employee_cost_type_views.xml). -->
     <menuitem id="menu_hr_employee_cost_type"
               name="أنواع تكاليف الموظفين"
               parent="hr.menu_human_resources_configuration"

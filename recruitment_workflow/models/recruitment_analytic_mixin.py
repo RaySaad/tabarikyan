@@ -7,8 +7,8 @@ class RecruitmentAnalyticProjectMixin(models.AbstractModel):
     project_id الموجود على النموذج الوارث، عبر account_id على project.project.
 
     يُستخدم في كل النماذج التي تحتاج ربط المنصة (المشروع) بحسابها التحليلي:
-    recruitment.request, hr.employee, hr.employee.cost,
-    hr.employee.platform.history - بدلاً من تكرار نفس الحقل والدالة 4 مرات.
+    recruitment.request, hr.employee, hr.employee.platform.history - بدلاً
+    من تكرار نفس الحقل والدالة في كل منها.
     """
     _name = 'recruitment.workflow.analytic.mixin'
     _description = 'مزيج: حساب تحليلي من المشروع/المنصة'

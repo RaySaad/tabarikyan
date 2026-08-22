@@ -1,27 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <!-- نموذج التقرير هو المعالج (wizard) نفسه، وليس hr.employee مباشرة -
+         انظر الشرح في wizard/employee_statement_wizard.py حول سبب هذا
+         الاختيار (موثوقية وصول date_from/date_to لقالب QWeb). -->
     <record id="action_report_hr_employee_statement" model="ir.actions.report">
         <field name="name">كشف حساب الموظف</field>
-        <field name="model">hr.employee</field>
+        <field name="model">bank.settlement.employee.statement.wizard</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">bank_settlement.report_hr_employee_statement</field>
         <field name="report_file">bank_settlement.report_hr_employee_statement</field>
-        <field name="print_report_name">'كشف حساب - %s' % (object.name)</field>
+        <field name="print_report_name">'كشف حساب - %s' % (object.employee_id.name)</field>
     </record>
 
     <template id="report_hr_employee_statement">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
-                <t t-set="data" t-value="doc._get_employee_statement_data()"/>
+                <t t-set="employee" t-value="doc.employee_id"/>
+                <t t-set="data" t-value="employee._get_employee_statement_data(doc.date_from, doc.date_to)"/>
                 <t t-call="web.external_layout">
                     <div class="page" dir="rtl" style="text-align:right;">
                         <h2 style="text-align:center;">كشف حساب</h2>
-                        <h4 style="text-align:center;" t-out="doc.name"/>
+                        <h4 style="text-align:center;" t-out="employee.name"/>
                         <table class="table table-sm o_main_table mt-4">
-                            <tr><td><strong>رقم الإقامة</strong></td><td t-out="doc.identification_id or ''"/></tr>
-                            <tr><td><strong>المنصة الحالية</strong></td><td t-out="doc.project_id.display_name or ''"/></tr>
-                            <tr><td><strong>الشركة/الفرع</strong></td><td t-out="doc.company_id.display_name or ''"/></tr>
+                            <tr><td><strong>رقم الإقامة</strong></td><td t-out="employee.identification_id or ''"/></tr>
+                            <tr><td><strong>المنصة الحالية</strong></td><td t-out="employee.project_id.display_name or ''"/></tr>
+                            <tr><td><strong>الشركة/الفرع</strong></td><td t-out="employee.company_id.display_name or ''"/></tr>
+                            <tr>
+                                <td><strong>فترة الكشف</strong></td>
+                                <td>
+                                    <t t-if="doc.date_from" t-out="doc.date_from"/>
+                                    <t t-if="not doc.date_from">من بداية السجل</t>
+                                    <t t-out="' - '"/>
+                                    <t t-if="doc.date_to" t-out="doc.date_to"/>
+                                    <t t-if="not doc.date_to">حتى اليوم</t>
+                                </td>
+                            </tr>
                         </table>
 
                         <table class="table table-sm mt-4" t-if="data['lines']">
@@ -49,7 +63,7 @@
                                 </tr>
                             </tfoot>
                         </table>
-                        <p t-if="not data['lines']">لا توجد حركات مسجَّلة.</p>
+                        <p t-if="not data['lines']">لا توجد حركات مسجَّلة ضمن هذه الفترة.</p>
 
                         <table class="table table-sm mt-2" t-if="data['lines']">
                             <tr style="font-weight:bold; font-size: 1.2em; border-top: 2px solid #000;">

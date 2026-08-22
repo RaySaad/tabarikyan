@@ -54,10 +54,16 @@ class HrEmployee(models.Model):
         'bank_settlement.vehicle_transfer_type_driving_license',
     )
 
-    def _get_employee_statement_data(self):
+    def _get_employee_statement_data(self, date_from=False, date_to=False):
         """يبني كشف حساب موحّد (سطر واحد لكل حركة، مرتّب بالتاريخ) -
         انظر الشرح أعلاه لتصنيف مدين/دائن ولسبب استبعاد الرسوم الحكومية/
-        التأمين الطبي عمداً."""
+        التأمين الطبي عمداً.
+
+        date_from/date_to اختياريان (طلب صريح: شاشة اختيار الموظف وتاريخ
+        كشف الحساب - إما من بداية العقد أو تاريخ محدد - انظر
+        bank.settlement.employee.statement.wizard التي تحسب/تمرر
+        date_from فعلياً). بلا أي منهما تُعرَض كل الحركة التاريخية
+        (السلوك الأصلي، محفوظ للتوافق الخلفي مع أي استدعاء مباشر)."""
         self.ensure_one()
         lines = []
         # كل الحسابات المحاسبية المرتبطة بسجلات السداد البنكي الخاصة بهذا
@@ -74,8 +80,16 @@ class HrEmployee(models.Model):
             ):
                 bank_settlement_move_ids.add(rec.move_id.id)
 
+        def _date_domain(field_name):
+            domain = []
+            if date_from:
+                domain.append((field_name, '>=', date_from))
+            if date_to:
+                domain.append((field_name, '<=', date_to))
+            return domain
+
         advances = self.env['bank.settlement.advance'].sudo().search(
-            [('employee_id', '=', self.id)],
+            [('employee_id', '=', self.id)] + _date_domain('create_date'),
         )
         for adv in advances:
             lines.append({
@@ -86,7 +100,7 @@ class HrEmployee(models.Model):
             })
 
         settlements = self.env['bank.settlement.representative'].sudo().search(
-            [('employee_id', '=', self.id)],
+            [('employee_id', '=', self.id)] + _date_domain('date'),
         )
         for settlement in settlements:
             lines.append({
@@ -106,7 +120,7 @@ class HrEmployee(models.Model):
             [
                 ('employee_id', '=', self.id),
                 ('transfer_type_id', 'in', statement_type_ids),
-            ],
+            ] + _date_domain('create_date'),
         )
         for transfer in vehicle_transfers:
             lines.append({
@@ -135,12 +149,17 @@ class HrEmployee(models.Model):
                 [('name', 'ilike', 'ذمم الموظفين')], limit=1,
             )
         partner = self.sudo().work_contact_id
+        # طلب صريح: يجب أن يفحص الكشف حتى القيود غير المرحّلة (لا يزال
+        # مسودة) - وليس المرحّلة فقط - على حساب "ذمم الموظفين"، بنفس
+        # مبدأ باقي أقسام الكشف أعلاه (سلفة/تصفية/مخالفة) التي أصلاً لا
+        # تشترط أي حالة معينة. يُستبعد "ملغاة" فقط (cancel) - قيد أُلغي
+        # فعلياً لا معنى لعرضه ضمن ذمم الموظف.
         dues_domain = [
             ('account_id', '=', dues_account.id if dues_account else False),
             ('partner_id', '=', partner.id if partner else False),
             ('move_id.is_bank_settlement_move', '=', False),
-            ('move_id.state', '=', 'posted'),
-        ]
+            ('move_id.state', '!=', 'cancel'),
+        ] + _date_domain('date')
         if bank_settlement_move_ids:
             dues_domain.append(('move_id', 'not in', list(bank_settlement_move_ids)))
         dues_lines = self.env['account.move.line'].sudo().search(
@@ -164,8 +183,3 @@ class HrEmployee(models.Model):
             'net_total': total_credit - total_debit,
         }
 
-    def action_print_employee_statement(self):
-        self.ensure_one()
-        return self.env.ref(
-            'bank_settlement.action_report_hr_employee_statement'
-        ).report_action(self)

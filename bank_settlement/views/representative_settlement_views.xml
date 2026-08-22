@@ -48,11 +48,6 @@
                         <button name="action_open_reject_wizard" string="رفض"
                                 type="object" groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state in ('done', 'cancel', 'rejected')"/>
-                        <button name="action_open_admin_delete_wizard" string="حذف نهائي إداري"
-                                type="object" class="btn-danger"
-                                groups="bank_settlement.group_bank_settlement_manager"
-                                invisible="not admin_delete_enabled"/>
-                        <field name="admin_delete_enabled" invisible="1"/>
                         <field name="state" widget="statusbar"
                                statusbar_visible="draft,under_review,confirmed,done"/>
                     </header>
@@ -70,36 +65,38 @@
                             <h1><field name="name" readonly="1"/></h1>
                         </div>
                         <div class="alert alert-warning" role="alert" invisible="not returned_for_correction">
-                            تم إرجاع هذا السجل للتصحيح - الحقول أعلاه قابلة للتعديل مؤقتاً حتى
-                            إعادة الاعتماد.
+                            تم إرجاع هذا السجل للتصحيح - يمكن تعديل مبلغ التصفية وبيانات
+                            السداد البنكي (الحساب/دفتر اليومية) مؤقتاً حتى إعادة الاعتماد.
+                            هوية المندوب/المنصة تبقى مقفولة.
                         </div>
                         <group>
                             <group string="بيانات المندوب">
-                                <field name="date" readonly="state != 'draft' and not returned_for_correction"/>
+                                <field name="date" readonly="state != 'draft'"/>
                                 <field name="employee_id" string="اسم المندوب" required="1"
-                                       readonly="state != 'draft' and not returned_for_correction"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="residency_number"/>
-                                <field name="iban" readonly="state != 'draft' and not returned_for_correction"/>
+                                <field name="iban" readonly="state != 'draft'"/>
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                             <group string="بيانات المنصة">
                                 <field name="project_id" string="اسم التطبيق"
-                                       readonly="state != 'draft' and not returned_for_correction"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="platform_employee_id" string="ID رقم"
-                                       readonly="state != 'draft' and not returned_for_correction"/>
+                                       readonly="state != 'draft'"/>
                             </group>
                         </group>
                         <group string="مبلغ التصفية">
                             <field name="currency_id" invisible="1"/>
                             <field name="settlement_amount" readonly="state != 'draft' and not returned_for_correction"/>
                             <!-- الحساب المرتبط ودفتر اليومية لا يظهران إلا بعد
-                                 اعتماد المدير العام، ويبقيان قابلين للتعبئة
-                                 تحديداً في تلك الحالة (قبل تسجيل السداد الفعلي). -->
-                            <field name="linked_account_id" readonly="state != 'confirmed'"
-                                   invisible="state not in ('confirmed', 'done')"/>
-                            <field name="journal_id" readonly="state != 'confirmed'"
-                                   invisible="state not in ('confirmed', 'done')"/>
+                                 اعتماد المدير العام (أو أثناء "إرجاع للتصحيح")،
+                                 ويبقيان قابلين للتعبئة تحديداً في تلك الحالة
+                                 (قبل تسجيل السداد الفعلي). -->
+                            <field name="linked_account_id" readonly="state != 'confirmed' and not returned_for_correction"
+                                   invisible="state not in ('confirmed', 'done') and not returned_for_correction"/>
+                            <field name="journal_id" readonly="state != 'confirmed' and not returned_for_correction"
+                                   invisible="state not in ('confirmed', 'done') and not returned_for_correction"/>
                         </group>
                     </sheet>
                     <chatter/>

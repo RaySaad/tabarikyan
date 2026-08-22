@@ -36,42 +36,6 @@ class HrEmployee(models.Model):
         string='طلبات نقل معلّقة',
         compute='_compute_pending_transfer_request_count',
     )
-    cost_ids = fields.One2many(
-        'hr.employee.cost',
-        'employee_id',
-        string='تكاليف مرتبطة بالمنصات',
-    )
-    cost_count = fields.Integer(
-        string='عدد التكاليف',
-        compute='_compute_cost_count',
-    )
-    total_posted_cost = fields.Monetary(
-        string='إجمالي التكاليف المرحّلة',
-        compute='_compute_cost_count',
-        currency_field='currency_id',
-    )
-    currency_id = fields.Many2one(
-        'res.currency',
-        string='العملة',
-        compute='_compute_currency_id',
-    )
-
-    def _compute_currency_id(self):
-        for rec in self:
-            rec.currency_id = self.env.company.currency_id
-
-    @api.depends('cost_ids.move_state', 'cost_ids.amount')
-    def _compute_cost_count(self):
-        for rec in self:
-            rec.cost_count = len(rec.cost_ids)
-            # "المرحّلة" تعني حالة الترحيل المحاسبي الفعلية لفاتورة المورد
-            # المرتبطة (move_state == 'posted') - وليس حقل state الخاص بسير
-            # عمل التكلفة نفسها (draft/submitted/cancelled)، الذي لا يملك
-            # قيمة 'posted' إطلاقاً أصلاً.
-            rec.total_posted_cost = sum(
-                rec.cost_ids.filtered(lambda c: c.move_state == 'posted').mapped('amount')
-            )
-
     @api.depends('platform_history_ids')
     def _compute_platform_history_count(self):
         for rec in self:
@@ -118,7 +82,6 @@ class HrEmployee(models.Model):
         linked_models = [
             ('recruitment.request', 'employee_id', 'طلب/طلبات توظيف'),
             ('hr.employee.platform.history', 'employee_id', 'سجل/سجلات تاريخ منصات'),
-            ('hr.employee.cost', 'employee_id', 'تكلفة/تكاليف'),
             ('hr.employee.platform.transfer.request', 'employee_id', 'طلب/طلبات نقل منصة'),
         ]
         for employee in self:
@@ -295,16 +258,3 @@ class HrEmployee(models.Model):
             'context': {'default_employee_id': self.id},
         }
 
-    def action_view_costs(self):
-        self.ensure_one()
-        return {
-            'name': _('تكاليف المنصات - %s') % self.display_name,
-            'type': 'ir.actions.act_window',
-            'res_model': 'hr.employee.cost',
-            'view_mode': 'list,form',
-            'domain': [('employee_id', '=', self.id)],
-            'context': {
-                'default_employee_id': self.id,
-                'default_project_id': self.project_id.id,
-            },
-        }
