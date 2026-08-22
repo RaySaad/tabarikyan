@@ -88,3 +88,24 @@ class TestEmployeeStatementWizard(TransactionCase):
         wizard._onchange_date_mode()
 
         self.assertFalse(wizard.date_from)
+
+    def test_company_id_follows_employee_not_current_session_company(self):
+        """ثغرة حقيقية اكتُشفت من الاستخدام الفعلي: رأس/تذييل التقرير
+        (web.external_layout المعياري بأودو) كان يعرض بيانات الشركة
+        الحالية في الجلسة، وليس شركة/فرع الموظف نفسه - لأن ذلك القالب
+        يبحث عن حقل company_id على السجل الرئيسي (doc) تحديداً، ويقع
+        على الشركة الحالية كخيار احتياطي بدونه. company_id هنا (related
+        لشركة الموظف) يحل هذا - ويسمح أيضاً بتعديل تذييل ذلك الفرع
+        تحديداً (مثال: حذف الآيبان) بمعزل تام عن تذييل الشركة الرئيسية
+        المستخدَم في الفواتير."""
+        branch = self.env['res.company'].create({
+            'name': 'فرع منفصل - كشف حساب', 'parent_id': self.env.company.id,
+        })
+        branch_employee = self.env['hr.employee'].create({
+            'name': 'موظف - فرع منفصل', 'company_id': branch.id,
+        })
+
+        wizard = self.Wizard.create({'employee_id': branch_employee.id})
+
+        self.assertEqual(wizard.company_id, branch)
+        self.assertNotEqual(wizard.company_id, self.env.company)
