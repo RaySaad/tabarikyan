@@ -38,8 +38,18 @@ class BankSettlementReturnWizard(models.TransientModel):
     reason = fields.Text(string='سبب الإرجاع للتصحيح', required=True)
 
     def _selection_target_state(self):
-        res_model = self.env.context.get('default_res_model')
-        res_id = self.env.context.get('default_res_id')
+        # ثغرة حقيقية اكتُشفت من الاستخدام الفعلي: القراءة من self.env.
+        # context هنا (بدل حقلي res_model/res_id المخزَّنين فعلياً على
+        # المعالج نفسه) كانت تفشل بصمت وتُرجع قائمة فارغة ("لا توجد
+        # نتائج") في بعض الحالات - سياق فتح الإجراء الأصلي (default_
+        # res_model/default_res_id) لا يبقى مضموناً متاحاً عبر self.env.
+        # context عند كل إعادة حساب لاحقة لقائمة هذا الحقل (مثلاً بعد أي
+        # onchange/إعادة رسم للشاشة)، بعكس قيمتي حقلي res_model/res_id
+        # أنفسهما - تُملأ مرة واحدة فقط من نفس السياق عند إنشاء السجل
+        # (افتراضي default_get قياسي)، لكنها تبقى ثابتة كقيمة حقل عادي
+        # بعدها بغض النظر عن أي تغيّر لاحق في السياق المحيط.
+        res_model = self.res_model
+        res_id = self.res_id
         if not res_model or not res_id or res_model not in self._VALID_RES_MODELS:
             return []
         record = self.env[res_model].browse(res_id)
