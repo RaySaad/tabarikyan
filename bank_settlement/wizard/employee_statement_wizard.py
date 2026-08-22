@@ -17,6 +17,22 @@ class BankSettlementEmployeeStatementWizard(models.TransientModel):
     _description = 'معالج طباعة كشف حساب الموظف'
 
     employee_id = fields.Many2one('hr.employee', string='الموظف', required=True)
+    # طلب صريح: التقرير كان يعرض رأس/تذييل الشركة الحالية في الجلسة
+    # (self.env.company)، وليس شركة/فرع الموظف نفسه - لأن web.external_
+    # layout (القالب المعياري بأودو الذي يستدعيه القالب أدناه) يبحث عن
+    # حقل company_id على السجل الرئيسي (doc) تحديداً؛ بدونه يقع تلقائياً
+    # على الشركة الحالية كخيار احتياطي (انظر external_layout في web/
+    # views/report_templates.xml). بإضافته هنا (related لشركة الموظف
+    # نفسه - فرع منفصل فعلياً عن الشركة الرئيسية، تأكَّد المستخدم) يصبح
+    # رأس/تذييل هذا التقرير تحديداً قابلاً للتعديل بحرية من إعدادات ذلك
+    # الفرع (Settings > الشركات > [الفرع] > تذييل التقارير) بمعزل تام عن
+    # تذييل الشركة الرئيسية المستخدَم في الفواتير وبقية التقارير - يحل
+    # هذا وحده مشكلة "أريد حذف الآيبان هنا فقط، وليس بالفواتير" دون أي
+    # كود إضافي، بمجرد أن يُعدِّل المستخدم تذييل ذلك الفرع تحديداً.
+    company_id = fields.Many2one(
+        'res.company', string='شركة/فرع الموظف',
+        related='employee_id.company_id', store=True, readonly=True,
+    )
     date_mode = fields.Selection(
         [('contract_start', 'من بداية العقد'), ('custom', 'تاريخ محدد')],
         string='بداية الكشف', default='contract_start', required=True,
