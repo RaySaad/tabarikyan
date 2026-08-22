@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'السداد البنكي - Bank Settlement',
-    'version': '19.0.1.5.0',
+    'version': '19.0.1.6.0',
     'category': 'Accounting/Accounting',
     'summary': 'إدارة السلف، الرسوم الحكومية، تحويلات المركبات، التأمين الطبي، وتصفيات المناديب',
     'description': """
@@ -44,6 +44,7 @@ recruitment_workflow لبيانات المناديب (hr.employee) والمنص�
         'data/type_data.xml',
         'wizard/reject_wizard_views.xml',
         'wizard/return_wizard_views.xml',
+        'wizard/employee_statement_wizard_views.xml',
         'views/type_views.xml',
         'views/advance_views.xml',
         'views/government_fee_views.xml',
@@ -51,7 +52,6 @@ recruitment_workflow لبيانات المناديب (hr.employee) والمنص�
         'views/medical_insurance_views.xml',
         'views/representative_settlement_views.xml',
         'views/recruitment_request_views.xml',
-        'views/hr_employee_views.xml',
         'views/menu_views.xml',
         'report/hr_employee_statement_report.xml',
     ],

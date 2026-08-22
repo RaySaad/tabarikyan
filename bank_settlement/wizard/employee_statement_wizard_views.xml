@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_bank_settlement_employee_statement_wizard_form" model="ir.ui.view">
+        <field name="name">bank.settlement.employee.statement.wizard.form</field>
+        <field name="model">bank.settlement.employee.statement.wizard</field>
+        <field name="arch" type="xml">
+            <form string="كشف حساب الموظف">
+                <group>
+                    <field name="employee_id" options="{'no_create': True}"/>
+                    <field name="date_mode" widget="radio"/>
+                    <field name="date_from" invisible="date_mode != 'custom'"
+                           required="date_mode == 'custom'"/>
+                    <field name="date_to"/>
+                </group>
+                <footer>
+                    <button name="action_print" type="object"
+                            string="طباعة كشف حساب" class="btn-primary"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bank_settlement_employee_statement_wizard" model="ir.actions.act_window">
+        <field name="name">كشف حساب الموظف</field>
+        <field name="res_model">bank.settlement.employee.statement.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

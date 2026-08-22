@@ -34,12 +34,15 @@
                   parent="menu_bank_settlement_root"
                   action="action_bank_settlement_representative" sequence="50"/>
 
-        <!-- كشف حساب الموظف - انتقل من تطبيق الموظفين إلى هنا (طلب صريح)
-             - انظر الشرح في hr_employee_views.xml. متاح لمن يملك صلاحية
-             "مستخدم" السداد البنكي فما فوق - كشف مالي، وليس للعرض العام. -->
+        <!-- كشف حساب الموظف - انتقل من تطبيق الموظفين إلى هنا (طلب صريح)،
+             ثم أصبح معالجاً يختار فيه المستخدم الموظف وفترة الكشف (من
+             بداية العقد أو تاريخ محدد - طلب صريح لاحق) بدل عرض مباشر -
+             انظر wizard/employee_statement_wizard.py. متاح لمن يملك
+             صلاحية "مستخدم" السداد البنكي فما فوق - كشف مالي، وليس
+             للعرض العام. -->
         <menuitem id="menu_bank_settlement_employee_statement" name="كشف حساب الموظف"
                   parent="menu_bank_settlement_root"
-                  action="action_bank_settlement_employee_statement" sequence="60"/>
+                  action="action_bank_settlement_employee_statement_wizard" sequence="60"/>
 
         <!-- الإعدادات: قوائم أنواع/أسباب الرسوم القابلة للتعديل والإضافة
              من المستخدم نفسه (بدل قوائم ثابتة بالكود) - مقصورة على مدير
