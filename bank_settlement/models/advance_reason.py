@@ -13,6 +13,10 @@ class BankSettlementAdvanceReason(models.Model):
     sequence = fields.Integer(string='الترتيب', default=10)
     active = fields.Boolean(default=True)
 
-    _sql_constraints = [
-        ('name_uniq', 'unique(name)', 'يوجد سبب سلفة آخر بنفس الاسم بالفعل.'),
-    ]
+    # ملاحظة: _sql_constraints (الصيغة القديمة) لم تعد فعّالة إطلاقاً في
+    # هذا الإصدار من Odoo (تحذير صامت عند التحميل: "no longer supported")
+    # - القيد كان معطَّلاً بالكامل بلا أي رسالة خطأ واضحة. models.Constraint
+    # هي الصيغة الحالية المدعومة فعلياً.
+    _name_uniq = models.Constraint(
+        'unique(name)', 'يوجد سبب سلفة آخر بنفس الاسم بالفعل.',
+    )

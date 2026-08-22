@@ -11,6 +11,13 @@ class TestBankSettlementMixin(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # TransactionCase يُشغِّل الاختبارات افتراضياً باسم superuser
+        # (uid=1، __system__) - وهو ليس عضواً تلقائياً في أي من مجموعات
+        # السداد البنكي المخصَّصة (فقط base.user_admin مُضاف صراحة لمجموعة
+        # المدير العام عبر security.xml، والتي تتضمّن المحاسب/المستخدم
+        # تلقائياً عبر implied_ids) - فنستبدل مستخدم البيئة الافتراضي هنا
+        # مرة واحدة بدل إضافة with_user() لكل استدعاء عبر كل الاختبارات.
+        cls.env = cls.env(user=cls.env.ref('base.user_admin'))
         cls.GovFee = cls.env['bank.settlement.government.fee']
         cls.Representative = cls.env['bank.settlement.representative']
         cls.Advance = cls.env['bank.settlement.advance']
@@ -113,6 +120,21 @@ class TestBankSettlementMixin(TransactionCase):
         with self.assertRaises(UserError):
             gov_fee.write({'project_id': other_project.id})
 
+    def test_company_locked_after_approval(self):
+        """الشركة/الفرع (company_id) تُقفل هي أيضاً بعد الاعتماد - ثغرة
+        حقيقية اكتُشفت بمراجعة شاملة (تدقيق صلاحيات Studio): كان الحقل
+        readonly="1" في الشاشة فقط (تسهيل واجهة)، بلا أي حماية فعلية من
+        جهة الخادم - تعديله مباشرة (RPC، أو بعد إزالة قيد الواجهة عبر
+        Studio) كان يغيّر الفرع المحاسبي لسجل معتمَد فعلاً بلا أي مانع."""
+        other_branch = self.env['res.company'].create({
+            'name': 'فرع آخر - قفل الشركة', 'parent_id': self.env.company.id,
+        })
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+
+        with self.assertRaises(UserError):
+            gov_fee.write({'company_id': other_branch.id})
+
     def test_type_fields_locked_after_approval(self):
         """نوع الرسوم/الجهة الحكومية يُقفلان هما أيضاً بعد الاعتماد."""
         gov_fee = self._create_gov_fee()
@@ -136,16 +158,6 @@ class TestBankSettlementMixin(TransactionCase):
         gov_fee = self._create_gov_fee()
         gov_fee.write({'amount': 750.0})
         self.assertEqual(gov_fee.amount, 750.0)
-
-    def test_reset_draft_reopens_editing(self):
-        """بعد "إعادة لمسودة" (مدير عام فقط، ولا قيد محاسبي بعد) يعود
-        التعديل ممكناً مجدداً."""
-        gov_fee = self._create_gov_fee()
-        self._complete_to_confirmed(gov_fee)
-        gov_fee.action_reset_draft(reason='بيانات خاطئة')
-
-        gov_fee.write({'amount': 999.0})
-        self.assertEqual(gov_fee.amount, 999.0)
 
     def test_approval_lock_bypassed_with_explicit_context_flag(self):
         """آلية الاستكمال التلقائي لحقل الموظف (candidate → hr.employee
@@ -248,35 +260,56 @@ class TestBankSettlementMixin(TransactionCase):
             submitted_fee.unlink()
         self.assertTrue(submitted_fee.exists())
 
-    def test_transfer_date_and_bank_reference_only_editable_after_gm_approval(self):
-        """تاريخ التحويل ورقم السداد البنكي - بيانات السداد الفعلي، خاصة
-        بالمحاسب وقت الصرف تحديداً - يُمنع تحديدهما قبل اعتماد المدير
-        العام (لا يظهران أصلاً في الواجهة قبل ذلك، بنفس منطق دفتر
-        اليومية/الحساب المرتبط)، يُسمح بتحديدهما في حالة "مؤكدة" تحديداً
-        (طلب صريح)، ثم يُقفلان مجدداً بعد "منفّذة"."""
+    def test_settlement_move_cannot_be_deleted(self):
+        """ثغرة حقيقية اكتُشفت من الاستخدام الفعلي: مستخدم يملك صلاحية
+        حذف في المحاسبة كان يقدر يحذف القيد المحاسبي الناتج عن السداد
+        البنكي مباشرة (حتى بلا إرجاعه لمسودة أولاً)، بينما سجل السداد
+        نفسه (السلفة/الرسوم الحكومية/...) يبقى ظاهراً بحالة "منفّذة/تم
+        الصرف" وكأن كل شيء سليم - القيد الذي يوثّقه اختفى فعلياً من
+        الدفاتر. يجب منع الحذف نهائياً لأي قيد بهذه العلامة."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_done(gov_fee)
+        move = gov_fee.move_id
+        self.assertTrue(move.is_bank_settlement_move)
+
+        with self.assertRaises(UserError):
+            move.unlink()
+        self.assertTrue(move.exists())
+
+    def test_settlement_move_cannot_be_reset_to_draft(self):
+        """نفس الثغرة أعلاه لكن عبر المسار الآخر: إرجاع القيد لمسودة أولاً
+        (button_draft) هو ما يسمح لاحقاً بحذفه حتى لو مُنع الحذف المباشر
+        من قيد "مرحَّل" بإعدادات الشركة - فيُمنع هذا المسار أيضاً من
+        جذوره. القيد يُنشأ بحالة "مسودة" ولا يُرحَّل تلقائياً (المحاسب
+        يرحّله يدوياً لاحقاً من شاشة القيد نفسها) - فنرحّله هنا صراحة
+        ليطابق الحالة الواقعية وقت اكتشاف الثغرة."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_done(gov_fee)
+        move = gov_fee.move_id
+        move.action_post()
+        self.assertEqual(move.state, 'posted')
+
+        with self.assertRaises(UserError):
+            move.button_draft()
+        self.assertEqual(move.state, 'posted')
+
+    def test_transfer_date_only_editable_after_gm_approval(self):
+        """تاريخ التحويل - بيانات السداد الفعلي، خاصة بالمحاسب وقت الصرف
+        تحديداً - يُمنع تحديده قبل اعتماد المدير العام (لا يظهر أصلاً في
+        الواجهة قبل ذلك، بنفس منطق دفتر اليومية/الحساب المرتبط)، يُسمح
+        بتحديده في حالة "مؤكدة" تحديداً. رقم السداد (bank_reference) هنا
+        استثناء مقصود - انظر test_government_fee_bank_reference_editable_
+        from_draft أدناه (مفتوح من "مسودة" مباشرة، بعكس تاريخ التحويل)."""
         gov_fee = self._create_gov_fee()
 
         with self.assertRaises(UserError):
             gov_fee.write({'transfer_date': '2025-01-01'})
 
         gov_fee.action_submit_review()
-        with self.assertRaises(UserError):
-            gov_fee.write({'bank_reference': 'REF-123'})
-
         gov_fee.action_confirm()
         self.assertEqual(gov_fee.state, 'confirmed')
-        gov_fee.write({'transfer_date': '2025-01-01', 'bank_reference': 'REF-123'})
+        gov_fee.write({'transfer_date': '2025-01-01'})
         self.assertEqual(str(gov_fee.transfer_date), '2025-01-01')
-        self.assertEqual(gov_fee.bank_reference, 'REF-123')
-
-        gov_fee.write({
-            'linked_account_id': self.env['account.account'].search([], limit=1).id,
-            'journal_id': self.env['account.journal'].search(
-                [('company_id', '=', gov_fee.company_id.id)], limit=1).id,
-        })
-        gov_fee.action_done()
-        with self.assertRaises(UserError):
-            gov_fee.write({'bank_reference': 'REF-456'})
 
     def test_negative_amount_rejected(self):
         with self.assertRaises(UserError):
@@ -389,17 +422,30 @@ class TestBankSettlementMixin(TransactionCase):
             'payment_method': 'bank_transfer',
             'employee_iban': 'SA0000000000000000000001',
         })
+        # رسالة التتبع (tracking) تُسجَّل فعلياً عبر precommit hook (انظر
+        # mail_thread._message_track: self.env.cr.precommit.data) - لا
+        # تُنشأ مباشرة ضمن write()/create() نفسها. يجب تفريغها هنا (بعد
+        # الإنشاء تحديداً، قبل قراءة العدّاد "قبل") وإلا يتراكم تسجيل
+        # تتبّع الإنشاء مع تسجيل تتبّع التعديل التالي معاً في نفس التفريغ
+        # فيضيع أحدهما (ثغرة تجريبية مكتشفة بالتجربة الفعلية - في
+        # الاستخدام الفعلي هذا يحدث تلقائياً وبشكل منفصل قبل انتهاء أي
+        # طلب HTTP/RPC عادي، فلا يظهر هناك).
+        self.env.cr.flush()
         message_count_before = len(advance.message_ids)
 
         advance.employee_iban = 'SA0000000000000000000002'
+        self.env.cr.flush()
 
         self.assertGreater(len(advance.message_ids), message_count_before)
 
     def test_representative_iban_change_is_tracked(self):
         rep = self.Representative.create({'settlement_amount': 400.0, 'iban': 'SA1111111111111111111111'})
+        # انظر الشرح الكامل في test_advance_iban_and_stc_number_changes_are_tracked
+        self.env.cr.flush()
         message_count_before = len(rep.message_ids)
 
         rep.iban = 'SA2222222222222222222222'
+        self.env.cr.flush()
 
         self.assertGreater(len(rep.message_ids), message_count_before)
 
@@ -438,14 +484,20 @@ class TestBankSettlementMixin(TransactionCase):
 
     def test_previous_activity_closed_on_state_change(self):
         """النشاط السابق (المرتبط بحالة سابقة) يجب أن يُغلَق تلقائياً عند
-        تغيّر الحالة - وإلا تراكمت تنبيهات قديمة لم تعد ذات معنى."""
+        تغيّر الحالة - وإلا تراكمت تنبيهات قديمة لم تعد ذات معنى.
+
+        ملاحظة: action_feedback() في هذا الإصدار من Odoo يُؤرشِف النشاط
+        المكتمل (active=False) بدل حذفه نهائياً - يبقى موجوداً كسجل
+        تاريخي (مع رسالة "تم" في الدردشة)، فلا يظهر ضمن activity_ids
+        (التي تُصفّي على active=True ضمنياً مثل أي حقل عادي)."""
         gov_fee = self._create_gov_fee()
         gov_fee.action_submit_review()
         first_activity = gov_fee.activity_ids
 
         gov_fee.action_confirm()
 
-        self.assertFalse(first_activity.exists())
+        self.assertFalse(first_activity.active)
+        self.assertNotIn(first_activity, gov_fee.activity_ids)
 
     def test_advance_activity_scheduled_for_specific_project_manager(self):
         """السلفة تحديداً: الإشعار عند "إرسال للمراجعة" يستهدف مسؤول
@@ -529,8 +581,11 @@ class TestBankSettlementMixin(TransactionCase):
     def test_return_wizard_delegates_to_action(self):
         gov_fee = self._create_gov_fee()
         self._complete_to_confirmed(gov_fee)
-        wizard = self.env['bank.settlement.return.wizard'].create({
+        wizard = self.env['bank.settlement.return.wizard'].with_context(
+            default_res_model=gov_fee._name, default_res_id=gov_fee.id,
+        ).create({
             'res_model': gov_fee._name, 'res_id': gov_fee.id,
+            'target_state': 'under_review',
             'reason': 'سبب عبر المعالج',
         })
 
@@ -538,10 +593,64 @@ class TestBankSettlementMixin(TransactionCase):
 
         self.assertEqual(gov_fee.state, 'under_review')
 
+    def test_return_wizard_target_state_selection_matches_record(self):
+        """قائمة "الإرجاع إلى مرحلة" في المعالج تُبنى ديناميكياً من
+        _get_returnable_stages() الخاصة بالسجل المستهدف نفسه - وليست
+        قائمة ثابتة لكل النماذج."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+        wizard = self.env['bank.settlement.return.wizard'].with_context(
+            default_res_model=gov_fee._name, default_res_id=gov_fee.id,
+        ).new({'res_model': gov_fee._name, 'res_id': gov_fee.id})
+
+        self.assertEqual(
+            wizard._selection_target_state(),
+            [('under_review', 'تحت المراجعة')],
+        )
+
+    def test_advance_return_wizard_allows_choosing_further_stage_directly(self):
+        """السلفة تحديداً: من "تمت الموافقة"، يمكن اختيار "بانتظار
+        الموافقة" مباشرة عبر المعالج (تخطي "وافق مسؤول المشروع")، بدل
+        إلزامية التراجع خطوة واحدة فقط في كل مرة."""
+        advance = self.Advance.create({
+            'advance_reason_id': self.env.ref(
+                'bank_settlement.advance_reason_salary_advance').id,
+            'amount': 300.0,
+        })
+        advance.action_submit_review()
+        advance.action_pm_approve()
+        advance.action_confirm()
+        self.assertEqual(advance.state, 'approved')
+
+        wizard = self.env['bank.settlement.return.wizard'].with_context(
+            default_res_model=advance._name, default_res_id=advance.id,
+        ).create({
+            'res_model': advance._name, 'res_id': advance.id,
+            'target_state': 'waiting_approval',
+            'reason': 'كلا الموافقتين كانتا خاطئتين',
+        })
+
+        wizard.action_confirm_return()
+
+        self.assertEqual(advance.state, 'waiting_approval')
+
+    def test_return_to_previous_stage_rejects_invalid_target_state(self):
+        """محاولة تمرير target_state لا يعيده _get_returnable_stages
+        للسجل يجب أن تُرفض - طبقة حماية إضافية من جهة الخادم، دفاعاً ضد
+        استدعاء RPC مباشر يتجاوز قائمة المعالج."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+
+        with self.assertRaises(UserError):
+            gov_fee.action_return_to_previous_stage(
+                target_state='draft', reason='محاولة قفز غير صالحة',
+            )
+        self.assertEqual(gov_fee.state, 'confirmed')
+
     def test_return_wizard_rejects_invalid_res_model(self):
         wizard = self.env['bank.settlement.return.wizard'].create({
             'res_model': 'res.partner', 'res_id': self.env.user.partner_id.id,
-            'reason': 'محاولة نموذج غير صالح',
+            'target_state': 'under_review', 'reason': 'محاولة نموذج غير صالح',
         })
         with self.assertRaises(UserError):
             wizard.action_confirm_return()
@@ -596,3 +705,58 @@ class TestBankSettlementMixin(TransactionCase):
 
         with self.assertRaises(UserError):
             gov_fee.action_return_to_previous_stage(reason='سبب ما')
+
+    def test_government_fee_bank_reference_editable_from_draft(self):
+        """رقم السداد (bank_reference) في الرسوم الحكومية مفتوح من
+        "مسودة" مباشرة - بعكس بقية بيانات السداد الفعلي (طلب صريح:
+        متعلق بمن يرفع الطلب نفسه، وليس بالمحاسب وقت الصرف)."""
+        gov_fee = self._create_gov_fee()
+        gov_fee.write({'bank_reference': 'GOV-REF-001'})
+        self.assertEqual(gov_fee.bank_reference, 'GOV-REF-001')
+
+        gov_fee.action_submit_review()
+        gov_fee.write({'bank_reference': 'GOV-REF-002'})
+        self.assertEqual(gov_fee.bank_reference, 'GOV-REF-002')
+
+        gov_fee.action_confirm()
+        gov_fee.write({'bank_reference': 'GOV-REF-003'})
+        self.assertEqual(gov_fee.bank_reference, 'GOV-REF-003')
+
+        gov_fee.write({
+            'linked_account_id': self.env['account.account'].search([], limit=1).id,
+            'journal_id': self.env['account.journal'].search(
+                [('company_id', '=', gov_fee.company_id.id)], limit=1).id,
+        })
+        gov_fee.action_done()
+        with self.assertRaises(UserError):
+            gov_fee.write({'bank_reference': 'GOV-REF-004'})
+
+    def test_medical_insurance_vendor_editable_until_last_stage(self):
+        """المورد (vendor_id) في التأمين الطبي يبقى قابلاً للتعديل من
+        "مسودة" وحتى آخر مرحلة (بعكس بقية حقول الهوية هناك التي تُقفَل
+        فور مغادرة "مسودة") - طلب صريح، ويُقفَل فقط بعد اكتمال السجل."""
+        Insurance = self.env['bank.settlement.medical.insurance']
+        vendor1 = self.env['res.partner'].create({'name': 'مورد تأمين 1', 'supplier_rank': 1})
+        vendor2 = self.env['res.partner'].create({'name': 'مورد تأمين 2', 'supplier_rank': 1})
+        insurance = Insurance.create({
+            'fee_type_id': self.env.ref('bank_settlement.medical_insurance_type_medical_insurance').id,
+            'vendor_id': vendor1.id,
+            'amount': 200.0,
+        })
+
+        insurance.action_submit_review()
+        insurance.write({'vendor_id': vendor2.id})
+        self.assertEqual(insurance.vendor_id, vendor2)
+
+        insurance.action_confirm()
+        insurance.write({'vendor_id': vendor1.id})
+        self.assertEqual(insurance.vendor_id, vendor1)
+
+        insurance.write({
+            'linked_account_id': self.env['account.account'].search([], limit=1).id,
+        })
+        insurance.action_create_insurance_transfer()
+        self.assertEqual(insurance.state, 'done')
+
+        with self.assertRaises(UserError):
+            insurance.write({'vendor_id': vendor2.id})

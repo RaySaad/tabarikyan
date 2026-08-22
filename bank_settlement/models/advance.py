@@ -73,7 +73,13 @@ class BankSettlementAdvance(models.Model):
         بدل أول عضو بالمجموعة، إن وُجد."""
         self.ensure_one()
         if self.state == 'waiting_approval':
-            project_manager = self.employee_id.project_id.user_id if self.employee_id else False
+            # sudo(): project_id حقل "خاص" (Private) من منظور hr.employee
+            # (مخصَّص من recruitment_workflow، غير مُدرَج في hr.employee.
+            # public) - بلا sudo() هنا يفشل أي مستخدم سداد بنكي عادي (بلا
+            # hr.group_hr_user) بمجرد وصول السلفة لهذه المرحلة، رغم أن
+            # القراءة داخلية بحتة (تحديد من يُخطَر) ولا تعرض بيانات الموظف
+            # الخاصة له مباشرة.
+            project_manager = self.employee_id.sudo().project_id.user_id if self.employee_id else False
             return project_manager or self._get_first_group_user(
                 'bank_settlement.group_bank_settlement_manager'
             )
@@ -85,21 +91,27 @@ class BankSettlementAdvance(models.Model):
             return self.create_uid
         return self.env['res.users']
 
-    def _get_previous_stage(self):
+    def _get_returnable_stages(self):
         """للسلفة موافقتان منفصلتان (مسؤول المشروع ثم المدير العام)،
-        فلها خطوتان ذواتا معنى للتراجع خطوة واحدة (بعكس بقية شاشات
-        السداد البنكي التي لها خطوة واحدة فقط - انظر bank_settlement_
-        mixin.py):
-        - approved -> pm_approved: تراجع عن اعتماد المدير العام فقط،
-          مع إبقاء موافقة مسؤول المشروع سارية.
-        - pm_approved -> waiting_approval: تراجع عن موافقة مسؤول
-          المشروع نفسها."""
+        فلها خيار مرحلتين ممكنتين عند التراجع من "تمت الموافقة" (بعكس
+        بقية شاشات السداد البنكي التي لها خيار واحد فقط - انظر
+        bank_settlement_mixin.py):
+        - pm_approved (الأقرب): تراجع عن اعتماد المدير العام فقط، مع
+          إبقاء موافقة مسؤول المشروع سارية.
+        - waiting_approval (الأبعد): تراجع عن الموافقتين معاً دفعة
+          واحدة - يختاره المستخدم صراحة من المعالج إن أراد ذلك.
+        ومن "وافق مسؤول المشروع" نفسها، الخيار الوحيد هو التراجع عن
+        موافقة مسؤول المشروع."""
         self.ensure_one()
+        selection = dict(self._fields['state'].selection)
         if self.state == 'approved':
-            return 'pm_approved'
+            return [
+                ('pm_approved', selection.get('pm_approved')),
+                ('waiting_approval', selection.get('waiting_approval')),
+            ]
         if self.state == 'pm_approved':
-            return 'waiting_approval'
-        return False
+            return [('waiting_approval', selection.get('waiting_approval'))]
+        return []
 
     def action_submit_review(self):
         for rec in self:
@@ -117,7 +129,12 @@ class BankSettlementAdvance(models.Model):
         for rec in self:
             if rec.state != 'waiting_approval':
                 raise UserError('يمكن موافقة مسؤول المشروع في حالة "بانتظار الموافقة" فقط.')
-            project_manager = rec.employee_id.project_id.user_id if rec.employee_id else False
+            # sudo(): نفس سبب _get_stage_responsible_user أعلاه - القراءة
+            # هنا داخلية بحتة لتحديد "من يحق له الضغط"، وليست عرضاً
+            # لبيانات الموظف الخاصة لمن يستدعي الدالة - ثغرة حقيقية
+            # مكتشفة بالاختبار الفعلي (AccessError كان يمنع مسؤول المشروع
+            # الحقيقي نفسه من الموافقة أصلاً).
+            project_manager = rec.employee_id.sudo().project_id.user_id if rec.employee_id else False
             if project_manager:
                 if rec.env.user != project_manager:
                     raise UserError(
@@ -149,25 +166,6 @@ class BankSettlementAdvance(models.Model):
                 rec.move_id = rec._create_settlement_move()
         self.write({'state': 'paid'})
 
-    # action_reset_draft/action_open_reset_wizard غير مُجاوَزتين هنا - نفس
-    # منطق الـ mixin الأساسي يعمل دون تعديل (السلفة لا تحتاج فحصاً إضافياً
-    # لا يوفّره move_id/_check_group الأساسيان).
-
-    def action_cancel(self):
-        """إلغاء - متاح للمحاسب فما فوق (وليس لمن أنشأ السلفة فقط)."""
-        for rec in self:
-            if rec.move_id and rec.move_id.state == 'posted':
-                raise UserError(
-                    'لا يمكن إلغاء هذه السلفة - القيد المحاسبي المرتبط بها '
-                    'مرحّل بالفعل (%s). ألغِه/اعكسه من المحاسبة أولاً.'
-                    % rec.move_id.name
-                )
-            rec._check_group(
-                'bank_settlement.group_bank_settlement_reviewer',
-                'bank_settlement.group_bank_settlement_manager',
-            )
-        self.write({'state': 'cancel'})
-
     def action_reject(self, reason=False):
         """تجاوز - حالة "منفّذة" في السلفة اسمها "paid" (تم الصرف) بدل
         "done" المستخدَمة في بقية شاشات السداد البنكي، والقفل المشترك في
@@ -187,7 +185,7 @@ class BankSettlementAdvance(models.Model):
             )
         for rec in self:
             rec.message_post(body='تم رفض السلفة.<br/>السبب: %s' % reason)
-        self.write({'state': 'rejected', 'rejection_reason': reason})
+        self.write({'state': 'rejected', 'rejection_reason': reason, 'active': False})
 
     _ADVANCE_REASON_MIGRATION_MAP = {
         'salary_advance': 'bank_settlement.advance_reason_salary_advance',

@@ -45,15 +45,14 @@
                         <button name="action_open_return_wizard" string="إرجاع للتصحيح"
                                 type="object" groups="bank_settlement.group_bank_settlement_manager"
                                 invisible="state != 'confirmed'"/>
-                        <button name="action_open_reset_wizard" string="إعادة لمسودة"
-                                type="object" groups="bank_settlement.group_bank_settlement_manager"
-                                invisible="state not in ('under_review', 'confirmed', 'rejected')"/>
                         <button name="action_open_reject_wizard" string="رفض"
                                 type="object" groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state in ('done', 'cancel', 'rejected')"/>
-                        <button name="action_cancel" string="إلغاء"
-                                type="object" groups="bank_settlement.group_bank_settlement_reviewer"
-                                invisible="state in ('done', 'cancel', 'rejected')"/>
+                        <button name="action_open_admin_delete_wizard" string="حذف نهائي إداري"
+                                type="object" class="btn-danger"
+                                groups="bank_settlement.group_bank_settlement_manager"
+                                invisible="not admin_delete_enabled"/>
+                        <field name="admin_delete_enabled" invisible="1"/>
                         <field name="state" widget="statusbar"
                                statusbar_visible="draft,under_review,confirmed,done"/>
                     </header>
@@ -77,6 +76,13 @@
                                        readonly="state != 'draft'"/>
                                 <field name="fee_type_id"
                                        readonly="state != 'draft'"/>
+                                <!-- رقم السداد مرتبط برقم مرجعي يعرفه من يرفع
+                                     الطلب نفسه للجهة الحكومية منذ البداية -
+                                     وليس بيانات سداد بنكي فعلي يُدخلها المحاسب
+                                     لاحقاً كباقي حقول هذه الشاشة، فيبقى مفتوحاً
+                                     وقابلاً للتعديل من "مسودة" مباشرة (طلب صريح). -->
+                                <field name="bank_reference"
+                                       readonly="state in ('done', 'rejected', 'cancel')"/>
                                 <!-- الحساب المرتبط لا يظهر إلا بعد اعتماد المدير
                                      العام، ويبقى قابلاً للتعبئة تحديداً في تلك
                                      الحالة (قبل تسجيل السداد الفعلي). -->
@@ -98,8 +104,6 @@
                                      الصرف تحديداً) - لا تظهر إلا بعد اعتماد
                                      المدير العام. -->
                                 <field name="transfer_date" readonly="state != 'confirmed'"
-                                       invisible="state not in ('confirmed', 'done')"/>
-                                <field name="bank_reference" readonly="state != 'confirmed'"
                                        invisible="state not in ('confirmed', 'done')"/>
                                 <field name="journal_id" readonly="state != 'confirmed'"
                                        invisible="state not in ('confirmed', 'done')"/>

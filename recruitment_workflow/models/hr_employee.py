@@ -102,6 +102,36 @@ class HrEmployee(models.Model):
             ))
         return super().write(vals)
 
+    def unlink(self):
+        # حذف سجل الموظف نهائياً يقطع الرابط الرسمي مع سجلات تدقيق دائمة
+        # (طلب التوظيف الأصلي، تاريخ المنصات، التكاليف، طلبات النقل) يُمنع
+        # حذفها هي نفسها صراحة في كل مكان آخر بالنظام - فالسماح بحذف الموظف
+        # نفسه يُبطل تلك الحماية كلها من الخلف. ثغرة حقيقية سبّبت فقدان
+        # بيانات فعلياً (بلاغ مستخدم: حُذف موظف له سلفة "بانتظار الموافقة"
+        # في bank_settlement، فتعطّلت الشاشة تماماً). الأرشفة (زر "أرشفة")
+        # هي البديل الصحيح دائماً لموظف غادر الشركة أو أُنشئ بالخطأ.
+        # (اسم الموديل، اسم الحقل، الوصف الظاهر في الرسالة) - نفس الأربعة
+        # التي تحمي نفسها من الحذف المباشر فعلياً في كل مكان آخر بالنظام؛
+        # نفحصها هنا مسبقاً برسالة عربية واضحة بدل الاعتماد فقط على قيد
+        # ondelete='restrict' على مستوى قاعدة البيانات (يبقى فعّالاً كخط
+        # حماية أخير حتى لو نسينا إضافة نموذج جديد هنا مستقبلاً).
+        linked_models = [
+            ('recruitment.request', 'employee_id', 'طلب/طلبات توظيف'),
+            ('hr.employee.platform.history', 'employee_id', 'سجل/سجلات تاريخ منصات'),
+            ('hr.employee.cost', 'employee_id', 'تكلفة/تكاليف'),
+            ('hr.employee.platform.transfer.request', 'employee_id', 'طلب/طلبات نقل منصة'),
+        ]
+        for employee in self:
+            for model_name, field_name, description in linked_models:
+                Model = self.env[model_name].sudo()
+                if Model.search_count([(field_name, '=', employee.id)]):
+                    raise UserError(_(
+                        'لا يمكن حذف الموظف "%(employee)s" نهائياً - له '
+                        '%(description)s مرتبطة به يجب الحفاظ على سجلها '
+                        'للتدقيق. استخدم "أرشفة" بدلاً من الحذف.'
+                    ) % {'employee': employee.name, 'description': description})
+        return super().unlink()
+
     def _open_platform_history(self, project, note=False, date_start=None):
         """يفتح فترة جديدة في تاريخ المنصات ويغلق الفترة المفتوحة الحالية
         (إن وُجدت)، ثم يحدّث المنصة الحالية للمندوب.
@@ -112,16 +142,24 @@ class HrEmployee(models.Model):
         :param date_start: تاريخ بداية الفترة الجديدة - يُفترض اليوم إن لم
             يُحدَّد. مهم عند الربط الرجعي لموظفين قدامى كانوا على المنصة
             فعلياً منذ تاريخ سابق، وليس منذ اليوم.
-        """
+
+        sudo() ضروري هنا: platform_history_ids حقل "خاص" من منظور
+        hr.employee (غير مُدرَج في hr.employee.public)، وhr.employee نفسه
+        لا يملك أي مستخدم بمجموعات موديول التوظيف فقط (بلا hr.group_hr_user)
+        صلاحية قراءة/كتابة عليه مباشرة عبر ir.model.access - رغم أن هذه
+        الدالة تُستدعى تحديداً من action_confirm_transfer المخصصة لمجموعة
+        "مدير العمليات" (recruitment_workflow) - ثغرة حقيقية اكتُشفت
+        بالاختبار الفعلي."""
         self.ensure_one()
         if not project:
             return False
+        employee = self.sudo()
         # نضمن وجود حساب تحليلي على المنصة الجديدة هنا بالذات - لحظة النقل
         # الفعلية لموديول التوظيف - قبل ما نعتمد عليه بمزامنة العقد بالأسفل.
         if not project.account_id:
             project._create_default_analytic_account()
         date_start = date_start or fields.Date.context_today(self)
-        open_lines = self.platform_history_ids.filtered(lambda l: not l.date_end)
+        open_lines = employee.platform_history_ids.filtered(lambda l: not l.date_end)
         # لا داعي لفتح فترة جديدة إن كانت نفس المنصة الحالية بدون تغيير فعلي
         if open_lines and open_lines[0].project_id.id == project.id:
             return open_lines[0]
@@ -132,24 +170,33 @@ class HrEmployee(models.Model):
             'date_start': date_start,
             'note': note or False,
         })
-        self.with_context(platform_history_internal_write=True).project_id = project.id
-        self._sync_contract_project()
-        self._sync_partner_analytic_distribution(project)
-        self.message_post(body=_(
+        employee.with_context(platform_history_internal_write=True).project_id = project.id
+        employee._sync_contract_project()
+        employee._sync_partner_analytic_distribution(project)
+        employee.message_post(body=_(
             'تم نقل المندوب إلى المنصة: %s%s'
         ) % (project.display_name, (' — %s' % note) if note else ''))
         return new_line
 
     def _get_personal_partner(self):
         """يجد partner المندوب الشخصي (وليس partner العمل/الشركة) بنفس
-        الترتيب الاحتياطي المستخدم في recruitment_request.py."""
+        الترتيب الاحتياطي المستخدم في recruitment_request.py.
+
+        sudo() ضروري هنا: work_contact_id/address_home_id حقلان "خاصان"
+        (Private) من منظور hr.employee (غير مُدرَجين في hr.employee.public)
+        - بلا sudo() كان أي مستدعٍ من مستخدم بلا hr.group_hr_user (مثل
+        محاسب/مدير عام السداد البنكي عند إتمام الصرف) سيفشل بـ AccessError
+        فور الوصول لهذه الدالة، رغم أنها إرجاع تقني بحت لمعرّف شريك
+        محاسبي (لا تعرض بيانات الموظف الشخصية للمستدعي نفسه) - ثغرة
+        حقيقية مكتشفة بالاختبار الفعلي."""
         self.ensure_one()
-        if 'work_contact_id' in self._fields and self.work_contact_id:
-            return self.work_contact_id
-        if 'address_home_id' in self._fields and self.address_home_id:
-            return self.address_home_id
-        if self.user_id and self.user_id.partner_id:
-            return self.user_id.partner_id
+        employee = self.sudo()
+        if 'work_contact_id' in employee._fields and employee.work_contact_id:
+            return employee.work_contact_id
+        if 'address_home_id' in employee._fields and employee.address_home_id:
+            return employee.address_home_id
+        if employee.user_id and employee.user_id.partner_id:
+            return employee.user_id.partner_id
         return self.env['res.partner']
 
     def _sync_partner_analytic_distribution(self, project):

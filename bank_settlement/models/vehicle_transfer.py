@@ -36,6 +36,24 @@ class BankSettlementVehicleTransfer(models.Model):
         for rec in self:
             rec.employee_partner_id = rec.employee_id._get_personal_partner() if rec.employee_id else False
 
+    @api.onchange('employee_id')
+    def _onchange_employee_id_vehicle(self):
+        """طلب صريح: اختيار الموظف يجب أن يربط سيارته تلقائياً (سائقها
+        الحالي أو المستقبلي)، وليس فقط تقييد قائمة الاختيار وترك المستخدم
+        يختارها يدوياً - كانت القائمة تُقيَّد صحيحاً بالفعل (domain حقل
+        vehicle_id) لكن بلا أي تعبئة تلقائية، فيضطر المستخدم لاختيار نفس
+        السيارة الوحيدة المتاحة يدوياً في كل مرة رغم معرفتها سلفاً.
+        يستبدل أي سيارة سابقة (تخص موظفاً آخر على الأرجح إن تغيّر
+        الموظف) - يطابق نفس منطق تقييد القائمة تماماً."""
+        if not self.employee_id:
+            self.vehicle_id = False
+            return
+        partner = self.employee_id._get_personal_partner()
+        vehicle = self.env['fleet.vehicle'].search([
+            '|', ('driver_id', '=', partner.id), ('future_driver_id', '=', partner.id),
+        ], limit=1) if partner else self.env['fleet.vehicle']
+        self.vehicle_id = vehicle
+
     state = fields.Selection(
         selection=[
             ('draft', 'مسودة'),

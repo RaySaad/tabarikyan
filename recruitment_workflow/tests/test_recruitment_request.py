@@ -30,6 +30,23 @@ class TestRecruitmentRequest(TransactionCase):
         vals.update(kwargs)
         return self.Request.create(vals)
 
+    def _complete_gov_fee_for_request(self, request):
+        """يُكمل سجل "الرسوم الحكومية" في bank_settlement (إن كان الموديول
+        مثبَّتاً ضمن هذه الدفعة من الاختبارات) إلى حالة "منفّذة" - اختصار
+        لأغراض الاختبار فقط عبر sudo() المباشر (يتجاوز خط سير موافقة
+        bank_settlement بالكامل عمداً)، وليس recruitment_workflow نفسه لا
+        يعتمد على bank_settlement أصلاً (العكس صحيح) فلا توجد طريقة
+        "رسمية" هنا لإكماله. ضروري لأي اختبار يحتاج مغادرة مرحلة "تم
+        السداد" بنجاح فعلي: bank_settlement.recruitment_request._validate
+        _stage_exit تضيف شرطاً أعمق (تسجيل+تنفيذ الرسوم الحكومية فعلياً)
+        فوق شرط recruitment_workflow الأساسي (وجود مبلغ فقط) متى ما كان
+        gov_fee_amount > 0 - فمجرد ضبط المبلغ وحده لا يكفي عملياً."""
+        if 'bank_settlement_gov_fee_id' not in request._fields:
+            return  # bank_settlement غير مثبَّت في هذا السياق
+        if not request.bank_settlement_gov_fee_id:
+            request.action_register_gov_fee()
+        request.bank_settlement_gov_fee_id.sudo().write({'state': 'done'})
+
     # ------------------------------------------------------------------
     # التحقق من صحة البيانات (identification_id / mobile)
     # ------------------------------------------------------------------
@@ -119,9 +136,16 @@ class TestRecruitmentRequest(TransactionCase):
         ولا تتغيّر إلا بتغيير المشروع نفسه."""
         # حقل company_id مقيَّد بـgroups="base.group_multi_company" في
         # الواجهة - بدون هذه المجموعة لن يظهر الحقل أصلاً في Form ويفشل
-        # الاختبار بخطأ "حقل غير معروف".
+        # الاختبار بخطأ "حقل غير معروف". لكن ذلك وحده غير كافٍ: فلترة
+        # المجموعات على مستوى الحقل تُدمَج (AND) مع مجموعات ir.model.access
+        # الخاصة بالنموذج نفسها - فلا بد أيضاً من مجموعة تملك حق قراءة
+        # recruitment.request أصلاً (group_pm هنا)، وإلا يبقى الحقل مخفياً
+        # رغم امتلاك base.group_multi_company.
         self.env.user.write({
-            'group_ids': [(4, self.env.ref('base.group_multi_company').id)],
+            'group_ids': [
+                (4, self.env.ref('base.group_multi_company').id),
+                (4, self.group_pm.id),
+            ],
         })
         other_company = self.env['res.company'].create({'name': 'شركة تجريبية أخرى'})
         project = self.env['project.project'].create({
@@ -249,8 +273,14 @@ class TestRecruitmentRequest(TransactionCase):
     def test_write_stage_single_step_blocked_without_approval_rights(self):
         """انتقال خطوة واحدة فقط (المرحلة التالية مباشرة) من مرحلة تتطلب
         موافقة ('project_review') لا يزال يتطلب صلاحية الموافقة عليها -
-        المستخدم الحالي (superuser بدون مجموعات مخصصة) لا يملكها."""
-        project = self.env['project.project'].create({'name': 'منصة تجريبية 2'})
+        المستخدم الحالي (superuser بدون مجموعات مخصصة) لا يملكها.
+
+        user_id=False صراحة على المشروع: بدونها project.project.user_id
+        يُشتق تلقائياً لمن أنشأه (المستخدم الحالي نفسه)، فيصبح هو "مسؤول
+        المشروع المعيّن" تلقائياً ويملك الصلاحية بالخطأ - يُبطل الاختبار."""
+        project = self.env['project.project'].create({
+            'name': 'منصة تجريبية 2', 'user_id': False,
+        })
         request = self._create_request(
             identification_id='1234567891', email='c@example.com', project_id=project.id,
         )
@@ -275,11 +305,12 @@ class TestRecruitmentRequest(TransactionCase):
         project = self.env['project.project'].create({'name': 'منصة تجريبية 3'})
         request = self._create_request(
             identification_id='1234567895', email='g@example.com', project_id=project.id,
-            fee_amount=500.0,
+            fee_amount=500.0, gov_fee_amount=1000.0,
         )
         request.with_context(skip_stage_validation=True).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
         })
+        self._complete_gov_fee_for_request(request)
 
         request.write({'stage_id': self.stage_sponsorship_transfer.id})
         self.assertEqual(request.stage_id.code, 'sponsorship_transfer')
@@ -327,7 +358,12 @@ class TestRecruitmentRequest(TransactionCase):
             'email': 'pm_test_user@example.com',
             'group_ids': [(6, 0, [self.group_pm.id, self.env.ref('base.group_user').id])],
         })
-        project = self.env['project.project'].create({'name': 'منصة تجريبية 3'})
+        # user_id=False صراحة: بدونها يُشتق تلقائياً لمنشئ المشروع (المستخدم
+        # الحالي هنا، وليس pm_user) فيصبح هو "المعيّن تحديداً" بدل أن يُعتمد
+        # على فحص المجموعة العام كما يفترضه هذا الاختبار.
+        project = self.env['project.project'].create({
+            'name': 'منصة تجريبية 3', 'user_id': False,
+        })
         request = self._create_request(
             identification_id='1234567892', email='d@example.com', project_id=project.id,
         )
@@ -438,7 +474,10 @@ class TestRecruitmentRequest(TransactionCase):
         """مغادرة مرحلة "تم السداد" تتطلب مدير العمليات فما فوق - لا يكفي
         أن يكون المستخدم من مستخدمي التطبيق الأساسيين فقط."""
         plain_user = self._create_plain_user('paid_stage_test_user')
-        request = self._create_request(identification_id='1234567897', email='paidstage@example.com')
+        request = self._create_request(
+            identification_id='1234567897', email='paidstage@example.com',
+            gov_fee_amount=1000.0,
+        )
         request.with_context(skip_stage_validation=True).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
         })
@@ -447,6 +486,25 @@ class TestRecruitmentRequest(TransactionCase):
             request.with_user(plain_user).action_next_stage()
 
         self.env.user.write({'group_ids': [(4, self.group_ops.id)]})
+        self._complete_gov_fee_for_request(request)
+        request.action_next_stage()
+        self.assertEqual(request.stage_id.code, 'sponsorship_transfer')
+
+    def test_paid_stage_exit_requires_gov_fee_amount(self):
+        """طلب صريح: لا يمكن مغادرة مرحلة "تم السداد" بمبلغ رسوم حكومية
+        صفري/فارغ - كان بالإمكان تجاوزها بلا أي مبلغ محدَّد، وهو ما لا
+        معنى له (كل طلب توظيف حقيقي يترتب عليه رسوم حكومية لنقل الكفالة)."""
+        self.env.user.write({'group_ids': [(4, self.group_ops.id)]})
+        request = self._create_request(identification_id='1234567844', email='an@example.com')
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
+        })
+
+        with self.assertRaises(UserError):
+            request.action_next_stage()
+
+        request.gov_fee_amount = 1500.0
+        self._complete_gov_fee_for_request(request)
         request.action_next_stage()
         self.assertEqual(request.stage_id.code, 'sponsorship_transfer')
 
@@ -641,6 +699,20 @@ class TestRecruitmentRequest(TransactionCase):
         with self.assertRaises(UserError):
             request.write({'project_manager_id': other_pm.id})
 
+    def test_company_id_cannot_be_written_alone(self):
+        """لا يمكن تعديل company_id مباشرة بمعزل عن project_id - ثغرة
+        حقيقية اكتُشفت بمراجعة شاملة (تدقيق صلاحيات Studio): كان الحقل
+        readonly="1" في الشاشة فقط (تسهيل واجهة)، بلا أي حماية فعلية من
+        جهة الخادم - تعديله مباشرة (RPC، أو بعد إزالة قيد الواجهة عبر
+        Studio) كان يغيّر فرع/شركة الطلب بمعزل عن المشروع الفعلي المختار،
+        رغم اشتقاقه تلقائياً منه حصراً (نفس منطق project_manager_id
+        تماماً أعلاه)."""
+        other_company = self.env['res.company'].create({'name': 'شركة أخرى - قفل الشركة'})
+        request = self._create_request(identification_id='1234567848', email='ar@example.com')
+
+        with self.assertRaises(UserError):
+            request.write({'company_id': other_company.id})
+
     def test_project_edit_syncs_only_in_progress_requests(self):
         """تعديل "مسؤول المشروع" على المشروع نفسه ينعكس تلقائياً على الطلبات
         التي لا تزال قيد التنفيذ فقط - الطلبات المكتملة تحتفظ بالقيمة القديمة
@@ -680,6 +752,9 @@ class TestRecruitmentRequest(TransactionCase):
     def test_action_reject_works_from_new_stage(self):
         """يجب أن يكون رفض الطلب متاحاً من المرحلة الأولى (قبل رفع أي
         مرفقات)، وليس فقط من مراحل الموافقة اللاحقة."""
+        # action_reject تتطلب مجموعة "العمليات" - المستخدم الحالي بلا أي
+        # مجموعة مخصصة افتراضياً؛ الاختبار يستهدف منطق الرفض نفسه لا الصلاحية.
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(identification_id='1234567804', email='o@example.com')
         self.assertEqual(request.stage_id.code, 'new')
 
@@ -694,6 +769,9 @@ class TestRecruitmentRequest(TransactionCase):
     def test_send_car_request_without_available_vehicle_still_submits(self):
         """عدم توفر سيارة حالياً يجب ألا يمنع إرسال الطلب لقسم الأسطول -
         فقط يُظهر تنبيهاً غير معطِّل، والطلب يُرفع لهم بأي حال."""
+        # action_send_car_request تتطلب مجموعة "مسؤول المشروع" - الاختبار
+        # يستهدف منطق التنبيه/الإرسال نفسه لا الصلاحية.
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         project = self.env['project.project'].create({'name': 'منصة تجريبية 11'})
         request = self._create_request(
             identification_id='1234567812', email='v@example.com', project_id=project.id,
@@ -705,9 +783,20 @@ class TestRecruitmentRequest(TransactionCase):
         self.assertEqual(request.car_request_state, 'requested')
         self.assertEqual(result.get('tag'), 'display_notification')
         self.assertEqual(result['params']['type'], 'warning')
+        # ثغرة حقيقية لاحظها المستخدم فعلياً: بدون 'next' هنا، زر "طلب
+        # سيارة" يبقى ظاهراً على الشاشة رغم أن car_requested صار True فعلاً
+        # - الواجهة لا تُعيد تحميل السجل تلقائياً إلا بتحديث الصفحة يدوياً
+        # (F5)، لأن إرجاع أي action صريح من زر type="object" يُلغي إعادة
+        # التحميل التلقائية الافتراضية (انظر الشرح الكامل في الكود). هذا
+        # التسلسل ('next': act_window_close) يُعيد تفعيلها.
+        self.assertEqual(
+            result['params'].get('next'),
+            {'type': 'ir.actions.act_window_close'},
+        )
 
     def test_send_car_request_with_available_vehicle_no_notification(self):
         """توفر سيارة يجب ألا يُظهر أي تنبيه - إرسال طلب عادي فقط."""
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         project = self.env['project.project'].create({'name': 'منصة تجريبية 12'})
         brand = self.env['fleet.vehicle.model.brand'].create({'name': 'ماركة تجريبية 2'})
         model = self.env['fleet.vehicle.model'].create({
@@ -725,6 +814,65 @@ class TestRecruitmentRequest(TransactionCase):
         self.assertTrue(request.car_requested)
         self.assertEqual(request.car_request_state, 'requested')
         self.assertFalse(result)
+
+    # ------------------------------------------------------------------
+    # ربط السيارة بفرع الطلب نفسه (بدل أي سيارة متاحة بغض النظر عن الفرع)
+    # ------------------------------------------------------------------
+    def _create_branch_project_request(self, identification_id, email):
+        """ينشئ فرعاً (شركة تابعة) ومنصة تابعة له وطلباً عليها - مساعد
+        مشترك لاختبارات ربط السيارة بالفرع أدناه."""
+        branch = self.env['res.company'].create({
+            'name': 'فرع تجريبي - ربط سيارة %s' % identification_id,
+            'parent_id': self.env.company.id,
+        })
+        project = self.env['project.project'].create({
+            'name': 'منصة فرع تجريبي - ربط سيارة %s' % identification_id,
+            'company_id': branch.id,
+        })
+        request = self._create_request(
+            identification_id=identification_id, email=email, project_id=project.id,
+        )
+        return branch, request
+
+    def _create_test_vehicle(self, company_id=False):
+        brand = self.env['fleet.vehicle.model.brand'].create({'name': 'ماركة - ربط سيارة'})
+        model = self.env['fleet.vehicle.model'].create({
+            'name': 'موديل - ربط سيارة', 'brand_id': brand.id,
+        })
+        return self.env['fleet.vehicle'].create({
+            'model_id': model.id, 'company_id': company_id,
+        })
+
+    def test_vehicle_from_different_branch_rejected(self):
+        """طلب صريح: لا يمكن ربط طلب توظيف بسيارة تابعة لفرع آخر عن فرع
+        الطلب/الموظف نفسه."""
+        branch, request = self._create_branch_project_request('1234567845', 'ao@example.com')
+        other_branch = self.env['res.company'].create({
+            'name': 'فرع تجريبي آخر - ربط سيارة', 'parent_id': self.env.company.id,
+        })
+        other_branch_vehicle = self._create_test_vehicle(company_id=other_branch.id)
+        self.assertEqual(request.company_id, branch)
+
+        with self.assertRaises(ValidationError):
+            request.vehicle_id = other_branch_vehicle
+
+    def test_vehicle_from_same_branch_allowed(self):
+        branch, request = self._create_branch_project_request('1234567846', 'ap@example.com')
+        same_branch_vehicle = self._create_test_vehicle(company_id=branch.id)
+
+        request.vehicle_id = same_branch_vehicle
+
+        self.assertEqual(request.vehicle_id, same_branch_vehicle)
+
+    def test_vehicle_without_company_allowed_regardless_of_branch(self):
+        """سيارة بلا فرع محدَّد (company_id فارغ - "متاحة لكل الفروع") لا
+        يجب أن يمنعها التحقق - نفس منطق الـdomain في شاشة الأسطول."""
+        branch, request = self._create_branch_project_request('1234567847', 'aq@example.com')
+        shared_vehicle = self._create_test_vehicle(company_id=False)
+
+        request.vehicle_id = shared_vehicle
+
+        self.assertEqual(request.vehicle_id, shared_vehicle)
 
     # ------------------------------------------------------------------
     # جهة اتصال المرشّح الخفيفة (candidate_partner_id) - يجب ألا تتكرر
@@ -752,10 +900,114 @@ class TestRecruitmentRequest(TransactionCase):
 
         self.assertEqual(employee.work_contact_id, partner)
 
+    def test_employee_name_includes_identification_id(self):
+        """طلب صريح: اسم الموظف الفعلي (hr.employee.name) يتضمّن رقم
+        الهوية/الإقامة ملحقاً بفاصل "|" حرفياً في كل مكان - وليس فقط في
+        قوائم البحث/الاختيار."""
+        request = self._create_request(
+            identification_id='1234567840', email='aj@example.com',
+            employee_name='أحمد أحمد زايد عواض',
+        )
+
+        employee = request._create_employee()
+
+        self.assertEqual(employee.name, 'أحمد أحمد زايد عواض|1234567840')
+
+    def test_employee_created_at_sponsorship_done_stage_not_started(self):
+        """طلب صريح: سجل الموظف الرسمي (hr.employee) يُنشأ فور "تم نقل
+        الكفالة" - وليس بانتظار "مباشرة العمل" (آخر مرحلة، بعد استلام
+        السيارة) - حتى يمكن صرف سلفة له قبل استلام السيارة حتى، والسلفة
+        تتطلب سجل hr.employee فعلي موجود مسبقاً."""
+        request = self._create_request(identification_id='1234567841', email='ak@example.com')
+        self.assertFalse(request.employee_id)
+
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.env.ref('recruitment_workflow.stage_sponsorship_done').id,
+        })
+
+        self.assertTrue(request.employee_id)
+        # الطلب نفسه يبقى "قيد التنفيذ" - إنشاء الموظف لا يُنهي الطلب،
+        # فقط "مباشرة العمل" (المرحلة الأخيرة) تفعل ذلك.
+        self.assertEqual(request.state, 'in_progress')
+
+    def test_vehicle_driver_promoted_on_authorize_when_employee_already_exists(self):
+        """بعد تحويل إنشاء الموظف لمرحلة "تم نقل الكفالة" (أسبق من مرحلة
+        السيارة)، ترقية "السائق المستقبلي" إلى "السائق" الفعلي يجب أن
+        تحدث فور تفويض الأسطول للسيارة مباشرة - بدل انتظار مرحلة "مباشرة
+        العمل" اللاحقة (لم تعد هي من تُنشئ الموظف أصلاً في هذا التسلسل)."""
+        self.env.user.write({'group_ids': [
+            (4, self.env.ref('recruitment_workflow.group_recruitment_workflow_fleet').id),
+        ]})
+        project = self.env['project.project'].create({'name': 'منصة تجريبية - ترقية سائق'})
+        brand = self.env['fleet.vehicle.model.brand'].create({'name': 'ماركة - ترقية سائق'})
+        model = self.env['fleet.vehicle.model'].create({
+            'name': 'موديل - ترقية سائق', 'brand_id': brand.id,
+        })
+        vehicle = self.env['fleet.vehicle'].create({
+            'model_id': model.id, 'recruitment_state': 'available',
+        })
+        request = self._create_request(
+            identification_id='1234567842', email='al@example.com', project_id=project.id,
+        )
+        # جهة اتصال المرشّح غالباً موجودة مسبقاً واقعياً بحلول هذه المرحلة
+        # (أُنشئت مبكراً عند تسجيل الرسوم الحكومية مثلاً) - فتُعاد استخدامها
+        # كـwork_contact_id للموظف عند إنشائه، بدل شريك منفصل بلا صلة.
+        candidate_partner = request._get_or_create_candidate_partner()
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.env.ref('recruitment_workflow.stage_sponsorship_done').id,
+        })
+        self.assertTrue(request.employee_id)
+        self.assertEqual(request.employee_id.work_contact_id, candidate_partner)
+        request.write({'vehicle_id': vehicle.id, 'car_request_state': 'received'})
+
+        request.action_fleet_authorize()
+
+        self.assertEqual(vehicle.driver_id, request.employee_id.work_contact_id)
+        self.assertFalse(vehicle.future_driver_id)
+
+    def test_vehicle_driver_matches_employee_name_when_no_prior_candidate_partner(self):
+        """ثغرة حقيقية لاحظها المستخدم فعلياً: طلب بلا أي رسوم حكومية (لا
+        شيء يُنشئ جهة اتصال المرشّح مبكراً) - سجل الموظف يُنشأ عند "تم نقل
+        الكفالة" بلا candidate_partner_id بعد، ثم تُفوَّض له سيارة لاحقاً.
+        "السائق" الظاهر في Fleet كان ينفصل تماماً عن اسم الموظف الرسمي في
+        هذه الحالة (partner مختلف كلياً لا يحمل حتى تنسيق الاسم|رقم
+        الهوية) - يجب أن يتطابقا حرفياً الآن."""
+        self.env.user.write({'group_ids': [
+            (4, self.env.ref('recruitment_workflow.group_recruitment_workflow_fleet').id),
+        ]})
+        project = self.env['project.project'].create({'name': 'منصة تجريبية - سائق بلا رسوم'})
+        brand = self.env['fleet.vehicle.model.brand'].create({'name': 'ماركة - سائق بلا رسوم'})
+        model = self.env['fleet.vehicle.model'].create({
+            'name': 'موديل - سائق بلا رسوم', 'brand_id': brand.id,
+        })
+        vehicle = self.env['fleet.vehicle'].create({
+            'model_id': model.id, 'recruitment_state': 'available',
+        })
+        request = self._create_request(
+            identification_id='1234567843', email='am@example.com', project_id=project.id,
+            employee_name='ليلى المطيري',
+        )
+        # لا استدعاء لـ_get_or_create_candidate_partner هنا إطلاقاً - يحاكي
+        # عدم وجود أي رسوم حكومية سجّلت جهة اتصال المرشّح مبكراً.
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.env.ref('recruitment_workflow.stage_sponsorship_done').id,
+        })
+        self.assertTrue(request.employee_id)
+        self.assertFalse(request.candidate_partner_id)
+
+        request.write({'vehicle_id': vehicle.id, 'car_request_state': 'received'})
+        request.action_fleet_authorize()
+
+        self.assertEqual(vehicle.driver_id, request.employee_id.work_contact_id)
+        self.assertEqual(vehicle.driver_id.name, 'ليلى المطيري|1234567843')
+        self.assertEqual(vehicle.driver_id.name, request.employee_id.name)
+
     # ------------------------------------------------------------------
     # الرسوم الحكومية (نقل الكفالة) - المبلغ الإجمالي فقط
     # ------------------------------------------------------------------
     def test_gov_fee_registered_marks_settled(self):
+        # action_register_gov_fee تتطلب مجموعة "الموارد البشرية".
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(
             identification_id='1234567818', email='ab@example.com',
             gov_fee_amount=1000.0,
@@ -766,11 +1018,13 @@ class TestRecruitmentRequest(TransactionCase):
         self.assertTrue(request.gov_fee_settled)
 
     def test_gov_fee_requires_amount_before_registering(self):
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(identification_id='1234567821', email='ae@example.com')
         with self.assertRaises(UserError):
             request.action_register_gov_fee()
 
     def test_gov_fee_cannot_be_settled_twice(self):
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(
             identification_id='1234567823', email='ag@example.com',
             gov_fee_amount=1000.0,
@@ -795,6 +1049,9 @@ class TestRecruitmentRequest(TransactionCase):
 
     def test_stage_exit_allowed_without_gov_fee_settled_when_no_amount(self):
         """لا قيد إطلاقاً لو لم يُحدَّد أي مبلغ للرسوم الحكومية أصلاً."""
+        # مغادرة مرحلة "جاري نقل الكفالة" تتطلب مجموعة "الموارد البشرية"
+        # (_STAGE_APPROVAL_GROUP) - الاختبار يستهدف شرط المبلغ نفسه لا الصلاحية.
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(
             identification_id='1234567820', email='ad@example.com',
         )
@@ -811,6 +1068,7 @@ class TestRecruitmentRequest(TransactionCase):
         يبقى الحقل مقفولاً للأبد رغم الرجوع لمرحلة سابقة (كان هذا خطأً
         سابقاً: action_return_to_stage لا يمسّ gov_fee_settled إطلاقاً،
         فيبقى readonly="gov_fee_settled" في العرض ساري المفعول للأبد)."""
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(
             identification_id='1234567824', email='ah@example.com',
             gov_fee_amount=1000.0,

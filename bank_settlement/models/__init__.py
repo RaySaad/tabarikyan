@@ -1,4 +1,6 @@
 from . import account_move
+from . import hr_employee
+from . import bank_settlement_deletion_log
 from . import bank_settlement_mixin
 from . import advance_reason
 from . import advance

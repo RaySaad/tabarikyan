@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 
 class BankSettlementGovernmentFee(models.Model):
@@ -59,6 +60,24 @@ class BankSettlementGovernmentFee(models.Model):
         return super()._get_locked_fields_after_approval() + [
             'government_entity_id', 'fee_type_id', 'partner_id',
         ]
+
+    def _get_locked_bank_fields(self):
+        # bank_reference (رقم السداد) هنا مرتبط برقم مرجعي يعرفه من يرفع
+        # الطلب نفسه للجهة الحكومية منذ البداية - وليس بيانات سداد بنكي
+        # فعلي يُدخله المحاسب لاحقاً كباقي شاشات السداد البنكي. طلب صريح:
+        # يبقى مفتوحاً/قابلاً للتعديل من "مسودة" مباشرة، بلا أي قيد حالة
+        # (باستثناء القفل النهائي بعد اكتمال السجل - انظر write() أدناه).
+        return tuple(f for f in super()._get_locked_bank_fields() if f != 'bank_reference')
+
+    def write(self, vals):
+        if 'bank_reference' in vals and not self.env.context.get('bank_settlement_skip_approval_lock'):
+            for rec in self:
+                if rec.state in ('done', 'rejected', 'cancel'):
+                    raise UserError(
+                        'لا يمكن تعديل "رقم السداد" بعد اكتمال السجل '
+                        '(مسددة/مرفوضة/ملغاة).'
+                    )
+        return super().write(vals)
 
     def action_reject(self, reason=False):
         """عند رفض سجل مرتبط بطلب توظيف - يُعاد فتح مبلغ الرسوم الحكومية

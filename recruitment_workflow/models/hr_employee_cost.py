@@ -124,8 +124,14 @@ class HrEmployeeCost(models.Model):
 
     @api.onchange('employee_id')
     def _onchange_employee_id(self):
-        if self.employee_id and self.employee_id.project_id:
-            self.project_id = self.employee_id.project_id
+        # sudo(): project_id حقل "خاص" من منظور hr.employee.public، ومستخدم
+        # مجموعة "العمليات" (المخوَّل بإنشاء تكاليف الموظفين) لا يملك بالضرورة
+        # hr.group_hr_user - AccessError حقيقي عند اختيار الموظف من الواجهة
+        # (اكتُشف بمحاكاة مباشرة، وليس عبر الاختبارات - كانت الاختبارات تُخفيه
+        # بسبب مشاركة ذاكرة التخزين المؤقت مع بيئة الإداري في نفس المعاملة).
+        employee = self.employee_id.sudo()
+        if employee and employee.project_id:
+            self.project_id = employee.project_id
 
     @api.onchange('cost_type_id')
     def _onchange_cost_type_id(self):
@@ -149,11 +155,14 @@ class HrEmployeeCost(models.Model):
         for rec in self:
             if rec.state != 'draft':
                 raise UserError(_('يمكن رفع التكاليف في حالة "مسودة" فقط.'))
-            if not rec.analytic_account_id:
-                raise UserError(_(
-                    'لا يوجد حساب تحليلي على المشروع "%s". تأكد من إعداد '
-                    'الحساب التحليلي للمشروع قبل الرفع للمحاسبة.'
-                ) % rec.project_id.display_name)
+            if not rec.project_id:
+                raise UserError(_('حدد المشروع/المنصة أولاً.'))
+            # الحساب التحليلي لا يُنشأ تلقائياً عند إنشاء المشروع (انظر
+            # ملاحظة التصميم في project_project._create_default_analytic_
+            # account) - يُنشأ هنا لحظة الحاجة الفعلية، تماماً كما تفعل
+            # recruitment_request.py و hr_employee.py.
+            if not rec.project_id.account_id:
+                rec.project_id._create_default_analytic_account()
             if not rec.partner_id:
                 raise UserError(_(
                     'حدد الجهة/المورّد الذي ستُصدَر له الفاتورة قبل الرفع للمحاسبة.'

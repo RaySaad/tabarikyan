@@ -269,11 +269,17 @@ class RecruitmentRequest(models.Model):
         string='يوجد عقد',
         compute='_compute_has_contract',
     )
+    # ondelete='restrict': بدونها الافتراضي 'set null' (الحقل غير required) -
+    # حذف سجل الموظف كان يُفرغ هذا الحقل بصمت على طلب توظيف قد يكون منتهياً
+    # (state=done) منذ زمن، فيفقد الرابط الرسمي الوحيد لسجل HR الفعلي رغم
+    # أن الطلب نفسه سجل تدقيق دائم يُمنع حذفه أصلاً (انظر unlink() أدناه) -
+    # نفس فئة الثغرة المكتشفة في bank_settlement_mixin.employee_id.
     employee_id = fields.Many2one(
         'hr.employee',
         string='الموظف (سجل HR)',
         readonly=True,
         copy=False,
+        ondelete='restrict',
     )
     candidate_partner_id = fields.Many2one(
         'res.partner', string='جهة اتصال المرشّح', readonly=True, copy=False,
@@ -474,14 +480,18 @@ class RecruitmentRequest(models.Model):
                     '4 أحرف إنجليزية تليها 4 أرقام (مثال: RRRD2929).'
                 ))
 
-    _sql_constraints = [
-        (
-            'identification_uniq',
-            'unique(identification_id)',
-            'يوجد طلب توظيف آخر بنفس رقم الهوية! رقم الهوية يمثّل شخصاً '
-            'حقيقياً واحداً ولا يمكن أن يتكرر عبر أي شركة/منصة.',
-        ),
-    ]
+    # _sql_constraints (الصيغة القديمة) لم تعد فعّالة إطلاقاً في هذا
+    # الإصدار من Odoo (تحذير صامت عند التحميل: "no longer supported") -
+    # كان هذا القيد معطَّلاً بالكامل بلا أي رسالة خطأ واضحة، بمعنى أن
+    # التحقق الوحيد الفعلي من تكرار رقم الهوية كان _check_duplicate_employee
+    # (على مستوى Python، عند الخروج من مرحلة "طلب جديد" فقط) بلا أي حماية
+    # حقيقية من جهة قاعدة البيانات نفسها ضد سباق أو استدعاء RPC مباشر.
+    # models.Constraint هي الصيغة الحالية المدعومة فعلياً.
+    _identification_uniq = models.Constraint(
+        'unique(identification_id)',
+        'يوجد طلب توظيف آخر بنفس رقم الهوية! رقم الهوية يمثّل شخصاً '
+        'حقيقياً واحداً ولا يمكن أن يتكرر عبر أي شركة/منصة.',
+    )
 
     def _check_duplicate_employee(self):
         """فحص تكرار رقم الهوية ضد سجلات الموظفين الحالية.
@@ -621,13 +631,27 @@ class RecruitmentRequest(models.Model):
         # بالكامل من الواجهة)، لكن هذا التحقق البرمجي بقي موجوداً بالخطأ -
         # فأي طلب له قيمة قديمة في fee_amount (من قبل حذف الزر) كان يعلق
         # للأبد: يطلب النظام إجراءً عبر زر لم يعد موجوداً إطلاقاً في أي
-        # شاشة (ثغرة حقيقية اكتُشفت من شكوى مستخدم فعلية). الشرط الفعلي
-        # المستخدَم الآن هو الرسوم الحكومية فقط (gov_fee_amount) أدناه.
+        # شاشة (ثغرة حقيقية اكتُشفت من شكوى مستخدم فعلية).
 
-        # مرحلة "جاري نقل الكفالة": لو حُدِّد مبلغ للرسوم الحكومية، يجب
-        # تسجيلها/تسويتها فعلياً قبل المتابعة (زر "تسجيل الرسوم الحكومية")
-        # - يشمل ذلك تسوية حصة الموظف إن وُجدت (فاتورة أو سلفة حسب طريقة
-        # السداد المختارة)، لا يُشترط سداد فعلي بعد - فقط التسجيل.
+        # مرحلة "تم السداد": طلب صريح - يجب تحديد مبلغ الرسوم الحكومية
+        # (gov_fee_amount) إلزامياً قبل مغادرتها (وليس اختيارياً كما كان
+        # سابقاً - كان بالإمكان تجاوز هذه المرحلة بمبلغ صفري/فارغ، وهو ما
+        # لا معنى له: كل طلب توظيف حقيقي يترتب عليه رسوم حكومية لنقل
+        # الكفالة). التسجيل/التسوية الفعلية تبقى في مرحلة "جاري نقل
+        # الكفالة" التالية (الشرط أدناه) - هنا فقط نلزم بوجود المبلغ نفسه.
+        if current_stage.code == 'paid' and self.gov_fee_amount <= 0:
+            raise UserError(_(
+                'لا يمكن الانتقال للمرحلة التالية. يجب تحديد "مبلغ الرسوم '
+                'الحكومية الإجمالي" أولاً (رسوم نقل الكفالة).'
+            ))
+
+        # مرحلة "جاري نقل الكفالة": يجب تسجيل الرسوم الحكومية/تسويتها فعلياً
+        # قبل المتابعة (زر "تسجيل الرسوم الحكومية") - يشمل ذلك تسوية حصة
+        # الموظف إن وُجدت (فاتورة أو سلفة حسب طريقة السداد المختارة)، لا
+        # يُشترط سداد فعلي بعد - فقط التسجيل. الشرط الآن دائماً صحيح عملياً
+        # (self.gov_fee_amount > 0 مضمون من قفل مرحلة "تم السداد" أعلاه)،
+        # لكن يبقى محتفَظاً به كشرط صريح مستقل - دفاعاً عن أي طلب قديم
+        # (أُنشئ قبل هذا الإلزام) قد يصل لهذه المرحلة بمبلغ صفري فعلاً.
         if current_stage.code == 'sponsorship_transfer' and self.gov_fee_amount > 0 \
                 and not self.gov_fee_settled:
             raise UserError(_(
@@ -668,6 +692,18 @@ class RecruitmentRequest(models.Model):
                 'لا يمكن تعديل "مسؤول المشروع" مباشرة على طلب التوظيف.\n'
                 'يُشتق تلقائياً من مسؤول المشروع/المنصة المختارة - لتصحيحه، '
                 'عدّل المسؤول على شاشة المشروع نفسه.'
+            ))
+        # نفس منطق project_manager_id أعلاه بالضبط - ثغرة حقيقية اكتُشفت
+        # بمراجعة شاملة (تدقيق صلاحيات Studio): company_id يظهر readonly="1"
+        # في الشاشة (تسهيل واجهة فقط)، بلا أي حماية فعلية من جهة الخادم -
+        # تعديله مباشرة (RPC، أو بعد إزالة قيد الواجهة عبر Studio) كان
+        # يغيّر فرع/شركة الطلب المحاسبية بمعزل عن المشروع الفعلي المختار،
+        # رغم اشتقاقه تلقائياً منه حصراً (انظر _fill_project_derived_vals).
+        if 'company_id' in vals and 'project_id' not in vals:
+            raise UserError(_(
+                'لا يمكن تعديل "الشركة" مباشرة على طلب التوظيف.\n'
+                'تُشتق تلقائياً من المشروع/المنصة المختارة - لتصحيحها، '
+                'عدّل المشروع نفسه أو شركته.'
             ))
         # عند تغيير project_id نشتق الحقول المرتبطة به (الشركة/مسؤول
         # المشروع/الوظيفة...) صراحة أيضاً - انظر شرح _fill_project_derived_vals
@@ -727,8 +763,18 @@ class RecruitmentRequest(models.Model):
         self.activity_ids.action_feedback(feedback=_('انتقل الطلب لمرحلة أخرى'))
 
         code = self.stage_id.code or ''
-        if code == 'started':
-            # تم مباشرة العمل => إنشاء عقد أوتوماتيك
+        if code == 'sponsorship_done':
+            # تم نقل الكفالة => إنشاء سجل الموظف الرسمي (hr.employee) فوراً،
+            # بدل الانتظار حتى "مباشرة العمل" (طلب صريح): قد تحتاج الشركة
+            # صرف سلفة للموظف قبل استلام السيارة حتى، والسلفة (bank_
+            # settlement.advance) تتطلب سجل hr.employee فعلي موجود مسبقاً -
+            # لا يمكن ربطها بمرشّح لم يُنشأ سجله الرسمي بعد.
+            self._create_employee()
+        elif code == 'started':
+            # تم مباشرة العمل => إنشاء عقد أوتوماتيك (سجل الموظف نفسه غالباً
+            # موجود مسبقاً من "sponsorship_done" أعلاه - _create_contract
+            # يستدعي _create_employee داخلياً وهي دالة متكررة الاستدعاء
+            # بأمان (idempotent)، فتُعيد نفس السجل دون تكرار).
             self._create_contract()
             self.state = 'done'
         elif self.stage_id.is_closing_stage:
@@ -1132,6 +1178,28 @@ class RecruitmentRequest(models.Model):
     # ------------------------------------------------------------------
     # منطق طلب السيارة (التكامل مع الأسطول)
     # ------------------------------------------------------------------
+    @api.constrains('vehicle_id', 'company_id')
+    def _check_vehicle_company(self):
+        """طلب صريح: لا يُسمح بربط طلب توظيف بسيارة تابعة لفرع آخر عن فرع
+        الطلب/الموظف نفسه (مثال: طلب على فرع "اللوجستية 1" لا يجوز ربطه
+        بسيارة تابعة لفرع آخر). domain حقل vehicle_id في شاشة الأسطول
+        (view_recruitment_request_form_fleet) يمنع هذا أصلاً من الواجهة
+        العادية، لكن ذلك مجرد تسهيل قابل للتجاوز عبر RPC/API مباشر - هذا
+        هو التحقق الملزم الفعلي من جهة الخادم. سيارة بلا فرع محدَّد
+        (company_id فارغ - "متاحة لكل الفروع") مستثناة عمداً، مطابقةً
+        لنفس منطق الـdomain."""
+        for rec in self:
+            if rec.vehicle_id and rec.company_id and rec.vehicle_id.company_id \
+                    and rec.vehicle_id.company_id != rec.company_id:
+                raise ValidationError(_(
+                    'لا يمكن ربط الطلب بسيارة "%s" - تابعة لفرع "%s"، بينما '
+                    'الطلب على فرع "%s".'
+                ) % (
+                    rec.vehicle_id.display_name,
+                    rec.vehicle_id.company_id.display_name,
+                    rec.company_id.display_name,
+                ))
+
     def action_send_car_request(self):
         """إرسال طلب سيارة لقسم الأسطول - مسؤول المشروع يطلب سيارة فقط، ولا
         يختار سيارة محدَّدة؛ اختيار السيارة تحديداً مسؤولية قسم الأسطول عند
@@ -1145,6 +1213,13 @@ class RecruitmentRequest(models.Model):
         domain = [('recruitment_state', '=', 'available')]
         if self.project_id:
             domain += ['|', ('project_id', '=', self.project_id.id), ('project_id', '=', False)]
+        # طلب صريح: سيارات فرع آخر عن فرع الطلب لا تُحتسب هنا كمتاحة -
+        # نفس الفلترة المستخدَمة في domain حقل vehicle_id بشاشة الأسطول
+        # (انظر view_recruitment_request_form_fleet)، وإلا يظهر تنبيه
+        # "لا توجد سيارات متاحة" غير دقيق حين توجد سيارات متاحة فعلاً
+        # لكن في فرع آخر فقط.
+        if self.company_id:
+            domain += ['|', ('company_id', '=', self.company_id.id), ('company_id', '=', False)]
         no_vehicles_available = not self.env['fleet.vehicle'].search_count(domain)
 
         self.write({
@@ -1171,6 +1246,20 @@ class RecruitmentRequest(models.Model):
                     ),
                     'type': 'warning',
                     'sticky': True,
+                    # 'next': ثغرة حقيقية لاحظها المستخدم فعلياً: بدون هذا،
+                    # زر "طلب سيارة" يبقى ظاهراً على الشاشة حتى بعد الضغط
+                    # عليه فعلياً (رغم أن car_requested صار True) - ولا
+                    # يختفي إلا بتحديث الصفحة يدوياً (F5). السبب: إرجاع أي
+                    # action صريح (كهذا الإشعار) من زر type="object" يُلغي
+                    # إعادة تحميل السجل التلقائية التي تحدث افتراضياً (فقط
+                    # عند إرجاع None/True بلا action) - انظر
+                    # doActionButton في web/static/src/webclient/actions/
+                    # action_service.js: action غير صريح => act_window_close
+                    # => onClose => reload السجل، بعكس action صريح كهذا.
+                    # تسلسل 'next': act_window_close يُعيد تفعيل نفس مسار
+                    # إعادة التحميل هذا بعد عرض الإشعار مباشرة، بدل تحديث
+                    # كامل للصفحة (tag: 'reload' كان سيعمل لكنه أثقل بلا داعٍ).
+                    'next': {'type': 'ir.actions.act_window_close'},
                 },
             }
 
@@ -1200,9 +1289,25 @@ class RecruitmentRequest(models.Model):
             candidate_partner = rec._get_or_create_candidate_partner()
             if candidate_partner:
                 rec.vehicle_id.sudo().future_driver_id = candidate_partner.id
+            # إن كان سجل الموظف موجوداً مسبقاً (الحالة المعتادة الآن - يُنشأ
+            # عند "تم نقل الكفالة"، قبل هذه المرحلة) نُرقّيه لـ"سائق" فعلي
+            # فوراً، بدل انتظار مرحلة "مباشرة العمل" اللاحقة (انظر شرح كامل
+            # في _promote_vehicle_driver).
+            rec._promote_vehicle_driver()
             rec.message_post(body=_(
                 'تم تفويض السيارة. الطلب الآن لدى مسؤول المشروع للمتابعة.'
             ))
+
+    def _get_formatted_employee_name(self):
+        """اسم الموظف بالتنسيق الموحّد "الاسم|رقم الهوية" - طلب صريح: يظهر
+        حرفياً في كل مكان (سجل الموظف نفسه، جهة اتصال المرشّح الخفيفة
+        candidate_partner_id، وبالتالي أي مكان يعرضها مباشرة كحقل "السائق"
+        في Fleet) - وليس فقط سجل الموظف الرسمي وحده."""
+        self.ensure_one()
+        name = self.employee_name
+        if self.identification_id:
+            name = '%s|%s' % (name, self.identification_id)
+        return name
 
     def _get_or_create_candidate_partner(self):
         """يوجد أو ينشئ partner خفيف يمثّل المرشّح قبل إنشاء سجل الموظف
@@ -1218,6 +1323,16 @@ class RecruitmentRequest(models.Model):
         self.ensure_one()
         if self.candidate_partner_id:
             return self.candidate_partner_id
+        # سجل الموظف الرسمي قد يكون موجوداً مسبقاً الآن (يُنشأ عند "تم نقل
+        # الكفالة"، أسبق من مرحلة السيارة/الرسوم الحكومية أحياناً) دون أن
+        # يمر الطلب بعد بأي مصدر آخر كان يُنشئ جهة اتصال المرشّح - نعيد
+        # استخدام جهة اتصال العمل الخاصة به إن وُجدت، بدل إنشاء partner
+        # منفصل عنها تماماً (كان هذا يُظهر "السائق" في Fleet باسم مختلف
+        # كلياً عن اسم الموظف الرسمي - ثغرة حقيقية لاحظها المستخدم فعلياً).
+        if self.employee_id and 'work_contact_id' in self.employee_id._fields \
+                and self.employee_id.sudo().work_contact_id:
+            self.candidate_partner_id = self.employee_id.sudo().work_contact_id.id
+            return self.candidate_partner_id
         if self.vehicle_id.future_driver_id:
             self.candidate_partner_id = self.vehicle_id.future_driver_id.id
             return self.candidate_partner_id
@@ -1229,7 +1344,7 @@ class RecruitmentRequest(models.Model):
         # ملاحظة: لا نضبط type='private' - هذه القيمة لم تعد موجودة ضمن
         # خيارات res.partner.type في أودو 19 (تبقى contact/invoice/
         # delivery/other فقط)؛ الافتراضي 'contact' مناسب هنا.
-        partner_vals = {'name': self.employee_name}
+        partner_vals = {'name': self._get_formatted_employee_name()}
         # الحقل mobile حُذف من res.partner في أودو 19 (بقي phone فقط) - نتحقق
         # قبل الكتابة بدل افتراض وجوده، بنفس أسلوب set_if المستخدم في بقية
         # الموديول للتعامل مع اختلاف الحقول بين الإصدارات.
@@ -1241,6 +1356,12 @@ class RecruitmentRequest(models.Model):
             partner_vals['email'] = self.email
         partner = Partner.create(partner_vals)
         self.candidate_partner_id = partner.id
+        # سجل الموظف قد يكون موجوداً مسبقاً بلا جهة اتصال عمل بعد (حالة
+        # نادرة) - نربطها به مباشرة كذلك، حتى لا يبقى منفصلاً عن partner
+        # المرشّح الذي أنشأناه للتو.
+        if self.employee_id and 'work_contact_id' in self.employee_id._fields \
+                and not self.employee_id.sudo().work_contact_id:
+            self.employee_id.sudo().work_contact_id = partner.id
         return partner
 
     def _release_vehicle(self):
@@ -1270,7 +1391,8 @@ class RecruitmentRequest(models.Model):
         Employee = self.env['hr.employee'].sudo()
         emp_fields = Employee._fields
 
-        employee_vals = {'name': self.employee_name}
+        employee_name = self._get_formatted_employee_name()
+        employee_vals = {'name': employee_name}
 
         def set_if(field_name, value):
             if value and field_name in emp_fields:
@@ -1281,6 +1403,13 @@ class RecruitmentRequest(models.Model):
         # اتصال العمل الرسمية للموظف الجديد، بدل إنشاء partner مكرر له.
         if self.candidate_partner_id:
             set_if('work_contact_id', self.candidate_partner_id.id)
+            # نطابق اسم جهة الاتصال نفسها مع نفس التنسيق (الاسم|رقم الهوية) -
+            # قد تكون أُنشئت قبل هذا التنسيق (سجل قديم) أو باسم لم يُحدَّث بعد،
+            # فتظهر بدون رقم الهوية في أي مكان يعرضها مباشرة (حقل "السائق" في
+            # Fleet مثلاً) رغم أنها هي نفسها جهة اتصال العمل الرسمية للموظف -
+            # ثغرة حقيقية لاحظها المستخدم فعلياً.
+            if self.candidate_partner_id.name != employee_name:
+                self.candidate_partner_id.sudo().name = employee_name
 
         set_if('mobile_phone', self.mobile)
         set_if('work_email', self.email)
@@ -1310,20 +1439,16 @@ class RecruitmentRequest(models.Model):
                 and hasattr(employee, '_open_platform_history'):
             employee._open_platform_history(
                 self.project_id,
-                note=_('فتح تلقائي عند مباشرة العمل من طلب التوظيف %s') % self.name,
+                note=_('فتح تلقائي عند إنشاء سجل الموظف من طلب التوظيف %s') % self.name,
             )
 
-        # ترقية "السائق المستقبلي" إلى "السائق" الفعلي على السيارة (حقلا
-        # Fleet القياسيان) الآن بعد أن باشر العمل فعلياً - وليس فقط منذ لحظة
-        # التفويض. driver_id هو ما تعرضه واجهات Fleet نفسها (بخلاف حقلنا
-        # المخصَّص recruitment_state المستخدَم داخلياً فقط لفلترة التوفر).
-        if self.vehicle_id:
-            driver_partner = self.vehicle_id.future_driver_id or self._get_employee_partner(employee)
-            if driver_partner:
-                self.vehicle_id.sudo().write({
-                    'driver_id': driver_partner.id,
-                    'future_driver_id': False,
-                })
+        # ترقية "السائق المستقبلي" إلى "السائق" الفعلي على السيارة، إن كانت
+        # سيارة مفوَّضة أصلاً وقت إنشاء الموظف - غالباً غير متوفرة هنا الآن
+        # (سجل الموظف يُنشأ عند "تم نقل الكفالة"، قبل مرحلة طلب السيارة)،
+        # فتُنفَّذ الترقية عندها من action_fleet_authorize نفسها بدلاً (انظر
+        # _promote_vehicle_driver) - هذا الاستدعاء هنا يبقى كحل احتياطي
+        # يغطي أي حالة نادرة صار فيها تفويض السيارة سابقاً لإنشاء الموظف.
+        self._promote_vehicle_driver(employee)
 
         # ربط الحساب البنكي (IBAN) إن وُجد - محاط بحماية حتى لا يفشل الإنشاء
         try:
@@ -1334,6 +1459,28 @@ class RecruitmentRequest(models.Model):
                 'يُرجى إضافة الآيبان يدوياً في سجل الموظف.'
             ))
         return employee
+
+    def _promote_vehicle_driver(self, employee=False):
+        """ترقية "السائق المستقبلي" (future_driver_id) إلى "السائق" الفعلي
+        (driver_id) على السيارة - حقلا Fleet القياسيان، بخلاف حقلنا المخصَّص
+        recruitment_state المستخدَم داخلياً فقط لفلترة التوفر. driver_id هو
+        ما تعرضه واجهات Fleet نفسها.
+
+        تُستدعى من مكانين حسب أيهما يقع أولاً زمنياً (سجل الموظف صار يُنشأ
+        عند "تم نقل الكفالة"، أي غالباً *قبل* تفويض السيارة الآن):
+        - action_fleet_authorize(): إن كان سجل الموظف موجوداً مسبقاً.
+        - _create_employee(): إن كانت السيارة مفوَّضة مسبقاً (حالة نادرة/
+          احتياطية بعد التغيير أعلاه)."""
+        self.ensure_one()
+        employee = employee or self.employee_id
+        if not (self.vehicle_id and employee):
+            return
+        driver_partner = self.vehicle_id.future_driver_id or self._get_employee_partner(employee)
+        if driver_partner:
+            self.vehicle_id.sudo().write({
+                'driver_id': driver_partner.id,
+                'future_driver_id': False,
+            })
 
     def _get_employee_partner(self, employee):
         """يحاول إيجاد partner الموظف الشخصي (لربط حساب بنكي أو تخصيص سيارة

@@ -6,6 +6,7 @@ from . import recruitment_compensation_type
 from . import recruitment_request
 from . import account_move
 from . import fleet_vehicle
+from . import fleet_vehicle_branch_history
 from . import project_project
 from . import hr_employee_platform_history
 from . import hr_employee_cost_type
