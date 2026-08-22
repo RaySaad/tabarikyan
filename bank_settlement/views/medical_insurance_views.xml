@@ -69,15 +69,19 @@
                         <div class="oe_title">
                             <h1><field name="name" readonly="1"/></h1>
                         </div>
+                        <div class="alert alert-warning" role="alert" invisible="not returned_for_correction">
+                            تم إرجاع هذا السجل للتصحيح - الحقول أعلاه قابلة للتعديل مؤقتاً حتى
+                            إعادة الاعتماد.
+                        </div>
                         <group>
                             <group string="بيانات التأمين">
-                                <field name="fee_type_id" readonly="state != 'draft'"/>
+                                <field name="fee_type_id" readonly="state != 'draft' and not returned_for_correction"/>
                                 <!-- طلب صريح: يبقى المورد قابلاً للتعديل من
                                      "مسودة" وحتى آخر مرحلة، لا يُقفَل فور
                                      مغادرة "مسودة" كباقي حقول الهوية هنا. -->
                                 <field name="vendor_id"
                                        readonly="state in ('done', 'rejected', 'cancel')"/>
-                                <field name="company_iban" readonly="state != 'draft'"/>
+                                <field name="company_iban" readonly="state != 'draft' and not returned_for_correction"/>
                                 <!-- تاريخ التحويل الفعلي - خاص بالمحاسب وقت
                                      الصرف تحديداً - لا يظهر إلا بعد اعتماد
                                      المدير العام (نفس منطق دفتر اليومية/
@@ -88,21 +92,21 @@
                             </group>
                             <group string="المبالغ">
                                 <field name="currency_id" invisible="1"/>
-                                <field name="amount" readonly="state != 'draft'"/>
-                                <field name="tax_amount" readonly="state != 'draft'"/>
+                                <field name="amount" readonly="state != 'draft' and not returned_for_correction"/>
+                                <field name="tax_amount" readonly="state != 'draft' and not returned_for_correction"/>
                                 <field name="total_amount"/>
                             </group>
                         </group>
                         <group>
                             <group string="بيانات المندوب">
                                 <field name="employee_id" string="اسم المندوب" required="1"
-                                       readonly="state != 'draft'"/>
+                                       readonly="state != 'draft' and not returned_for_correction"/>
                                 <field name="residency_number"/>
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                             <group string="المنصة">
                                 <field name="project_id" string="التطبيق"
-                                       readonly="state != 'draft'"/>
+                                       readonly="state != 'draft' and not returned_for_correction"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="operating_system" string="نظام التشغيل"/>
                             </group>

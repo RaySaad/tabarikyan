@@ -667,6 +667,75 @@ class TestBankSettlementMixin(TransactionCase):
             )
         self.assertEqual(gov_fee.state, 'confirmed')
 
+    def test_employee_and_amount_editable_after_return_to_correction(self):
+        """ثغرة حقيقية اكتُشفت من الاستخدام الفعلي: "إرجاع للتصحيح" كان
+        يعيد الحالة إلى "تحت المراجعة" فعلياً، لكن الحقول الحساسة
+        (الموظف/المبلغ) كانت تبقى مقفولة (_get_editable_states يسمح
+        بـ"مسودة" فقط) - يُفرغ الميزة من هدفها الوحيد (التصحيح الفعلي).
+        الآن يجب أن يُسمح بتعديلها طالما returned_for_correction=True،
+        دون أي استثناء صريح آخر (skip_lock)."""
+        other_employee = self.env['hr.employee'].create({'name': 'موظف بديل - تصحيح'})
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+
+        gov_fee.action_return_to_previous_stage(
+            target_state='under_review', reason='الموظف والمبلغ كانا خاطئَين',
+        )
+        self.assertEqual(gov_fee.state, 'under_review')
+        self.assertTrue(gov_fee.returned_for_correction)
+
+        gov_fee.write({'employee_id': other_employee.id, 'amount': 750.0})
+
+        self.assertEqual(gov_fee.employee_id, other_employee)
+        self.assertEqual(gov_fee.amount, 750.0)
+
+    def test_returned_for_correction_flag_cleared_and_lock_reengages_after_confirm(self):
+        """بعد تصحيح الحقول وإعادة الاعتماد (action_confirm)، يجب أن
+        تُقفَل الحقول الحساسة من جديد فوراً - نافذة التصحيح مؤقتة فقط،
+        ولا تُبقي السجل مفتوحاً للتعديل إلى الأبد."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+        gov_fee.action_return_to_previous_stage(
+            target_state='under_review', reason='تصحيح المبلغ',
+        )
+        gov_fee.write({'amount': 750.0})
+
+        gov_fee.action_confirm()
+
+        self.assertFalse(gov_fee.returned_for_correction)
+        self.assertEqual(gov_fee.state, 'confirmed')
+        with self.assertRaises(UserError):
+            gov_fee.write({'amount': 999.0})
+
+    def test_advance_employee_editable_after_return_to_pm_approved(self):
+        """نفس السلوك للسلفة (سلسلة حالات مختلفة) - التراجع من "تمت
+        الموافقة" إلى "وافق مسؤول المشروع" يجب أن يسمح بتعديل الموظف/
+        المبلغ أيضاً، وليس فقط في النماذج الأربعة الأساسية."""
+        other_employee = self.env['hr.employee'].create({'name': 'موظف بديل - سلفة'})
+        advance = self.Advance.create({
+            'advance_reason_id': self.env.ref(
+                'bank_settlement.advance_reason_salary_advance').id,
+            'amount': 300.0,
+        })
+        advance.action_submit_review()
+        advance.action_pm_approve()
+        advance.action_confirm()
+
+        advance.action_return_to_previous_stage(reason='اعتماد المدير العام كان خطأً')
+        self.assertEqual(advance.state, 'pm_approved')
+        self.assertTrue(advance.returned_for_correction)
+
+        advance.write({'employee_id': other_employee.id, 'amount': 450.0})
+
+        self.assertEqual(advance.employee_id, other_employee)
+        self.assertEqual(advance.amount, 450.0)
+
+        advance.action_confirm()
+
+        self.assertFalse(advance.returned_for_correction)
+        with self.assertRaises(UserError):
+            advance.write({'amount': 999.0})
+
     def test_return_wizard_rejects_invalid_res_model(self):
         wizard = self.env['bank.settlement.return.wizard'].create({
             'res_model': 'res.partner', 'res_id': self.env.user.partner_id.id,

@@ -69,26 +69,30 @@
                         <div class="oe_title">
                             <h1><field name="name" readonly="1"/></h1>
                         </div>
+                        <div class="alert alert-warning" role="alert" invisible="not returned_for_correction">
+                            تم إرجاع هذا السجل للتصحيح - الحقول أعلاه قابلة للتعديل مؤقتاً حتى
+                            إعادة الاعتماد.
+                        </div>
                         <group>
                             <group string="بيانات المندوب">
-                                <field name="date" readonly="state != 'draft'"/>
+                                <field name="date" readonly="state != 'draft' and not returned_for_correction"/>
                                 <field name="employee_id" string="اسم المندوب" required="1"
-                                       readonly="state != 'draft'"/>
+                                       readonly="state != 'draft' and not returned_for_correction"/>
                                 <field name="residency_number"/>
-                                <field name="iban" readonly="state != 'draft'"/>
+                                <field name="iban" readonly="state != 'draft' and not returned_for_correction"/>
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                             <group string="بيانات المنصة">
                                 <field name="project_id" string="اسم التطبيق"
-                                       readonly="state != 'draft'"/>
+                                       readonly="state != 'draft' and not returned_for_correction"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="platform_employee_id" string="ID رقم"
-                                       readonly="state != 'draft'"/>
+                                       readonly="state != 'draft' and not returned_for_correction"/>
                             </group>
                         </group>
                         <group string="مبلغ التصفية">
                             <field name="currency_id" invisible="1"/>
-                            <field name="settlement_amount" readonly="state != 'draft'"/>
+                            <field name="settlement_amount" readonly="state != 'draft' and not returned_for_correction"/>
                             <!-- الحساب المرتبط ودفتر اليومية لا يظهران إلا بعد
                                  اعتماد المدير العام، ويبقيان قابلين للتعبئة
                                  تحديداً في تلك الحالة (قبل تسجيل السداد الفعلي). -->
