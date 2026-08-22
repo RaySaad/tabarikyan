@@ -100,6 +100,70 @@ class TestFleetVehicleBranchHistory(TransactionCase):
                 'vehicle_id': self.vehicle.id,
             })
 
+    def test_bulk_wizard_transfers_multiple_vehicles(self):
+        """طلب صريح: نقل عدة سيارات دفعة واحدة لفرع مشترك - أغلب سيارات
+        الأسطول مسجَّلة على الشركة الأم، ولا يُعقل نقلها للفروع واحدة تلو
+        الأخرى."""
+        model = self.vehicle.model_id
+        other_vehicle = self.env['fleet.vehicle'].create({'model_id': model.id})
+        third_vehicle = self.env['fleet.vehicle'].create({'model_id': model.id})
+
+        wizard = self.env['fleet.vehicle.branch.bulk.transfer.wizard'].with_user(
+            self.fleet_user
+        ).with_context(
+            active_ids=(self.vehicle | other_vehicle | third_vehicle).ids,
+        ).create({'company_id': self.branch.id})
+
+        self.assertEqual(wizard.vehicle_count, 3)
+        wizard.action_confirm_transfer()
+
+        for vehicle in (self.vehicle, other_vehicle, third_vehicle):
+            self.assertEqual(vehicle.company_id, self.branch)
+            self.assertEqual(vehicle.branch_history_count, 1)
+
+    def test_bulk_wizard_default_get_populates_from_active_ids(self):
+        """الفتح من قائمة السيارات (تحديد عدة سيارات ثم "الإجراءات") يملأ
+        vehicle_ids تلقائياً من active_ids - بدل اضطرار المستخدم لاختيارها
+        يدوياً مرة أخرى."""
+        other_vehicle = self.env['fleet.vehicle'].create({'model_id': self.vehicle.model_id.id})
+
+        wizard = self.env['fleet.vehicle.branch.bulk.transfer.wizard'].with_context(
+            active_ids=(self.vehicle | other_vehicle).ids,
+        ).new({})
+
+        self.assertEqual(wizard.vehicle_ids, self.vehicle | other_vehicle)
+
+    def test_bulk_wizard_idempotent_for_already_transferred_vehicle(self):
+        """سيارة مُنقولة مسبقاً لنفس الفرع الهدف ضمن تحديد جماعي لا يجب أن
+        تُسبِّب خطأً أو فترة تاريخية مكررة - بعكس المعالج الفردي الذي يرفض
+        هذه الحالة صراحة (هنا الاختلاط متوقَّع ومقبول)."""
+        self.vehicle._open_branch_history(self.branch)
+        other_vehicle = self.env['fleet.vehicle'].create({'model_id': self.vehicle.model_id.id})
+
+        wizard = self.env['fleet.vehicle.branch.bulk.transfer.wizard'].create({
+            'vehicle_ids': [(6, 0, (self.vehicle | other_vehicle).ids)],
+            'company_id': self.branch.id,
+        })
+        wizard.action_confirm_transfer()
+
+        self.assertEqual(self.vehicle.branch_history_count, 1)
+        self.assertEqual(other_vehicle.company_id, self.branch)
+
+    def test_bulk_wizard_requires_vehicles(self):
+        empty_wizard = self.env['fleet.vehicle.branch.bulk.transfer.wizard'].create({
+            'company_id': self.branch.id,
+        })
+        with self.assertRaises(UserError):
+            empty_wizard.action_confirm_transfer()
+
+    def test_bulk_wizard_requires_target_branch(self):
+        # company_id إجباري (required=True) على مستوى النموذج نفسه - نفس
+        # منطق test_wizard_rejects_without_target_branch للمعالج الفردي.
+        with self.assertRaises(Exception):
+            self.env['fleet.vehicle.branch.bulk.transfer.wizard'].create({
+                'vehicle_ids': [(6, 0, self.vehicle.ids)],
+            })
+
     def test_non_fleet_user_cannot_open_transfer_wizard_action(self):
         """مستخدم عادي (بلا مجموعة قسم الأسطول) لا يملك حق إنشاء سجل
         المعالج نفسه - نفس مستوى الصلاحية المطلوب لتنفيذ النقل فعلياً."""
