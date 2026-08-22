@@ -288,7 +288,7 @@ class TestRecruitmentRequest(TransactionCase):
         project = self.env['project.project'].create({'name': 'منصة تجريبية 3'})
         request = self._create_request(
             identification_id='1234567895', email='g@example.com', project_id=project.id,
-            fee_amount=500.0,
+            fee_amount=500.0, gov_fee_amount=1000.0,
         )
         request.with_context(skip_stage_validation=True).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
@@ -456,7 +456,10 @@ class TestRecruitmentRequest(TransactionCase):
         """مغادرة مرحلة "تم السداد" تتطلب مدير العمليات فما فوق - لا يكفي
         أن يكون المستخدم من مستخدمي التطبيق الأساسيين فقط."""
         plain_user = self._create_plain_user('paid_stage_test_user')
-        request = self._create_request(identification_id='1234567897', email='paidstage@example.com')
+        request = self._create_request(
+            identification_id='1234567897', email='paidstage@example.com',
+            gov_fee_amount=1000.0,
+        )
         request.with_context(skip_stage_validation=True).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
         })
@@ -465,6 +468,23 @@ class TestRecruitmentRequest(TransactionCase):
             request.with_user(plain_user).action_next_stage()
 
         self.env.user.write({'group_ids': [(4, self.group_ops.id)]})
+        request.action_next_stage()
+        self.assertEqual(request.stage_id.code, 'sponsorship_transfer')
+
+    def test_paid_stage_exit_requires_gov_fee_amount(self):
+        """طلب صريح: لا يمكن مغادرة مرحلة "تم السداد" بمبلغ رسوم حكومية
+        صفري/فارغ - كان بالإمكان تجاوزها بلا أي مبلغ محدَّد، وهو ما لا
+        معنى له (كل طلب توظيف حقيقي يترتب عليه رسوم حكومية لنقل الكفالة)."""
+        self.env.user.write({'group_ids': [(4, self.group_ops.id)]})
+        request = self._create_request(identification_id='1234567844', email='an@example.com')
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
+        })
+
+        with self.assertRaises(UserError):
+            request.action_next_stage()
+
+        request.gov_fee_amount = 1500.0
         request.action_next_stage()
         self.assertEqual(request.stage_id.code, 'sponsorship_transfer')
 
@@ -729,6 +749,16 @@ class TestRecruitmentRequest(TransactionCase):
         self.assertEqual(request.car_request_state, 'requested')
         self.assertEqual(result.get('tag'), 'display_notification')
         self.assertEqual(result['params']['type'], 'warning')
+        # ثغرة حقيقية لاحظها المستخدم فعلياً: بدون 'next' هنا، زر "طلب
+        # سيارة" يبقى ظاهراً على الشاشة رغم أن car_requested صار True فعلاً
+        # - الواجهة لا تُعيد تحميل السجل تلقائياً إلا بتحديث الصفحة يدوياً
+        # (F5)، لأن إرجاع أي action صريح من زر type="object" يُلغي إعادة
+        # التحميل التلقائية الافتراضية (انظر الشرح الكامل في الكود). هذا
+        # التسلسل ('next': act_window_close) يُعيد تفعيلها.
+        self.assertEqual(
+            result['params'].get('next'),
+            {'type': 'ir.actions.act_window_close'},
+        )
 
     def test_send_car_request_with_available_vehicle_no_notification(self):
         """توفر سيارة يجب ألا يُظهر أي تنبيه - إرسال طلب عادي فقط."""
