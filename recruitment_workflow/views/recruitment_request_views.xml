@@ -103,6 +103,15 @@
                             groups="recruitment_workflow.group_recruitment_workflow_operations"
                             invisible="active"/>
 
+                    <!-- غطاء أمان: طلبات قديمة تجاوزت "تم نقل الكفالة" قبل
+                         إضافة الإنشاء التلقائي للموظف عند هذه المرحلة - يظهر
+                         فقط إن لم يوجد سجل موظف بعد رغم تقدّم الطلب لهذه
+                         المرحلة أو ما بعدها (انظر action_create_employee_now). -->
+                    <button name="action_create_employee_now" type="object" string="إنشاء سجل الموظف الآن"
+                            class="btn-secondary"
+                            groups="recruitment_workflow.group_recruitment_workflow_hr"
+                            invisible="employee_id or stage_code not in ('sponsorship_done','car_request','started')"/>
+
                     <!-- غير قابل للنقر عمداً: كل انتقال يجب أن يمر عبر الأزرار
                          الصريحة (موافقة/الانتقال للمرحلة التالية/إرجاع)، لأن
                          النقر المباشر على الشريط يتجاوز action_approve نفسها
