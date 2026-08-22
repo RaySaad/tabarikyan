@@ -135,11 +135,16 @@ class HrEmployee(models.Model):
                 [('name', 'ilike', 'ذمم الموظفين')], limit=1,
             )
         partner = self.sudo().work_contact_id
+        # طلب صريح: يجب أن يفحص الكشف حتى القيود غير المرحّلة (لا يزال
+        # مسودة) - وليس المرحّلة فقط - على حساب "ذمم الموظفين"، بنفس
+        # مبدأ باقي أقسام الكشف أعلاه (سلفة/تصفية/مخالفة) التي أصلاً لا
+        # تشترط أي حالة معينة. يُستبعد "ملغاة" فقط (cancel) - قيد أُلغي
+        # فعلياً لا معنى لعرضه ضمن ذمم الموظف.
         dues_domain = [
             ('account_id', '=', dues_account.id if dues_account else False),
             ('partner_id', '=', partner.id if partner else False),
             ('move_id.is_bank_settlement_move', '=', False),
-            ('move_id.state', '=', 'posted'),
+            ('move_id.state', '!=', 'cancel'),
         ]
         if bank_settlement_move_ids:
             dues_domain.append(('move_id', 'not in', list(bank_settlement_move_ids)))
