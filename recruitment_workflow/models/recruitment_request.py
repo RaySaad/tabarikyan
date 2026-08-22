@@ -1460,6 +1460,38 @@ class RecruitmentRequest(models.Model):
             ))
         return employee
 
+    # الحالات التي يُتيح لها هذا الزر ظهوره: من "تم نقل الكفالة" فصاعداً
+    # (نفس المرحلة التي أصبحت تُنشئ الموظف تلقائياً - انظر
+    # _apply_stage_side_effects) - غطاء أمان لطلبات قديمة تجاوزت هذه
+    # المرحلة *قبل* إضافة الإنشاء التلقائي (لم يكن موجوداً بعد)، فبقيت
+    # بلا سجل موظف رسمي رغم تقدّمها لمراحل لاحقة. "إرجاع للتصحيح" ليس
+    # حلاً هنا: يُمنع تماماً إن كانت الرسوم الحكومية سُدِّدت فعلاً
+    # (bank_settlement._unlock_gov_fee_for_correction) - عن قصد، لحماية
+    # قيد محاسبي منفَّذ فعلاً، وليس عائقاً يجب الالتفاف عليه.
+    _EMPLOYEE_CREATABLE_STAGE_CODES = ('sponsorship_done', 'car_request', 'started')
+
+    def action_create_employee_now(self):
+        """ينشئ سجل الموظف الرسمي (hr.employee) يدوياً لطلب تجاوز مرحلة
+        "تم نقل الكفالة" فعلاً دون أن يُنشأ له سجل موظف - غالباً طلب
+        قديم سبق نشر الإنشاء التلقائي لهذه المرحلة. لا يغيّر مرحلة
+        الطلب نفسها ولا يفتح أي قفل مالي؛ فقط يُكمِل ما كان يُفترض أن
+        يحدث تلقائياً."""
+        for rec in self:
+            rec._check_group('recruitment_workflow.group_recruitment_workflow_hr')
+            if rec.employee_id:
+                raise UserError(_('يوجد سجل موظف مرتبط بهذا الطلب أصلاً.'))
+            if rec.stage_code not in rec._EMPLOYEE_CREATABLE_STAGE_CODES:
+                raise UserError(_(
+                    'لا يمكن إنشاء سجل الموظف قبل مرحلة "تم نقل الكفالة" '
+                    'على الأقل.'
+                ))
+        for rec in self:
+            employee = rec._create_employee()
+            rec.message_post(body=_(
+                'تم إنشاء سجل الموظف يدوياً (%s) - الطلب تجاوز مرحلة '
+                '"تم نقل الكفالة" دون إنشائه تلقائياً.'
+            ) % employee.display_name)
+
     def _promote_vehicle_driver(self, employee=False):
         """ترقية "السائق المستقبلي" (future_driver_id) إلى "السائق" الفعلي
         (driver_id) على السيارة - حقلا Fleet القياسيان، بخلاف حقلنا المخصَّص

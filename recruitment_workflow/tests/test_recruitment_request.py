@@ -508,6 +508,53 @@ class TestRecruitmentRequest(TransactionCase):
         request.action_next_stage()
         self.assertEqual(request.stage_id.code, 'sponsorship_transfer')
 
+    # ------------------------------------------------------------------
+    # إنشاء سجل الموظف يدوياً - غطاء أمان لطلبات قديمة تجاوزت "تم نقل
+    # الكفالة" قبل إضافة الإنشاء التلقائي لهذه المرحلة
+    # ------------------------------------------------------------------
+    def test_create_employee_now_creates_employee_past_sponsorship_done(self):
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
+        request = self._create_request(identification_id='1234567849', email='as@example.com')
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.env.ref('recruitment_workflow.stage_car_request').id,
+        })
+        self.assertFalse(request.employee_id)
+
+        request.action_create_employee_now()
+
+        self.assertTrue(request.employee_id)
+
+    def test_create_employee_now_blocked_before_sponsorship_done(self):
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
+        request = self._create_request(identification_id='1234567850', email='at@example.com')
+        self.assertEqual(request.stage_id.code, 'new')
+
+        with self.assertRaises(UserError):
+            request.action_create_employee_now()
+
+    def test_create_employee_now_blocked_if_employee_already_exists(self):
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
+        request = self._create_request(identification_id='1234567851', email='au@example.com')
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.env.ref('recruitment_workflow.stage_sponsorship_done').id,
+        })
+        self.assertTrue(request.employee_id)
+
+        with self.assertRaises(UserError):
+            request.action_create_employee_now()
+
+    def test_create_employee_now_requires_hr_group(self):
+        """فحص الصلاحية يسبق أي فحص آخر (سواء وُجد سجل موظف أصلاً أو
+        لا) - نتحقق منه هنا بمعزل عن حالة employee_id تحديداً."""
+        plain_user = self._create_plain_user('create_employee_now_test_user')
+        request = self._create_request(identification_id='1234567852', email='av@example.com')
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.env.ref('recruitment_workflow.stage_sponsorship_done').id,
+        })
+
+        with self.assertRaises(UserError):
+            request.with_user(plain_user).action_create_employee_now()
+
     def test_action_reject_allowed_for_assigned_project_manager_at_new_only(self):
         """مسؤول المشروع المعيّن تحديداً يستطيع الرفض من المرحلة الأولى فقط
         (قبل رفع المرفقات) - ليس من أي مرحلة أخرى، وليس مسؤول مشروع آخر غير
