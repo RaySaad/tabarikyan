@@ -168,6 +168,24 @@ class BankSettlementMixin(models.AbstractModel):
         string='الحالة', default='draft', tracking=True, copy=False,
     )
     rejection_reason = fields.Text(string='سبب الرفض', copy=False)
+    # ثغرة حقيقية اكتُشفت من الاستخدام الفعلي: "إرجاع للتصحيح" يعيد
+    # الحالة نفسها (مثال: under_review) التي تحملها أيضاً السجلات التي
+    # لم تُراجَع بعد للمرة الأولى - و_get_editable_states() تقفل الحقول
+    # الحساسة (الموظف/المبلغ...) في أي حالة غير "مسودة" (طلب صريح سابق:
+    # "القفل يبدأ فور إرسال للمراجعة"). فكان "إرجاع للتصحيح" يُرجع الحالة
+    # فعلياً لكن يبقي الحقول مقفولة - يُفرغ الميزة من هدفها الوحيد
+    # (التصحيح الفعلي). هذا الحقل يميّز "أُرجعت للتصحيح تحديداً" عن
+    # "لم تُراجَع بعد للمرة الأولى" رغم تطابق state في الحالتين - يُضبَط
+    # True في action_return_to_previous_stage() أدناه، ويُعاد False
+    # تلقائياً فور إعادة المرحلة التالية فعلياً (action_confirm() هنا،
+    # أو action_pm_approve()/action_confirm() في advance.py) - أي أن
+    # نافذة التصحيح تُغلَق تلقائياً بمجرد إعادة الاعتماد، بما يحافظ على
+    # القاعدة الأصلية (القفل فور المراجعة) لكل الحالات الأخرى.
+    returned_for_correction = fields.Boolean(
+        string='أُرجعت للتصحيح', default=False, copy=False,
+        help='تُضبَط تلقائياً عند "إرجاع للتصحيح" - تسمح مؤقتاً بتعديل '
+             'الحقول الحساسة (الموظف/المبلغ...) حتى إعادة الاعتماد.',
+    )
 
     @api.depends('amount', 'tax_amount')
     def _compute_total_amount(self):
@@ -301,7 +319,7 @@ class BankSettlementMixin(models.AbstractModel):
         # recruitment_request.py: _create_employee().
         if any(f in vals for f in locked) and not skip_lock:
             for rec in self:
-                if rec.state not in rec._get_editable_states():
+                if rec.state not in rec._get_editable_states() and not rec.returned_for_correction:
                     raise UserError(
                         'لا يمكن تعديل بيانات السداد الأساسية (الموظف/'
                         'المنصة/المبلغ) بعد اعتماد المدير العام. استخدم '
@@ -534,7 +552,9 @@ class BankSettlementMixin(models.AbstractModel):
             if rec.state != 'under_review':
                 raise UserError('يمكن تأكيد السجلات في حالة "تحت المراجعة" فقط.')
             rec._check_group('bank_settlement.group_bank_settlement_manager')
-        self.write({'state': 'confirmed'})
+        # إعادة الاعتماد فعلياً تُغلق نافذة التصحيح المؤقتة (returned_for_
+        # correction) - انظر شرحها عند تعريف الحقل أعلاه.
+        self.write({'state': 'confirmed', 'returned_for_correction': False})
 
     def action_done(self):
         """إتمام السداد/التحويل — ينشئ القيد المحاسبي إن لم يكن موجوداً.
@@ -626,7 +646,7 @@ class BankSettlementMixin(models.AbstractModel):
                      'أي موافقة أسبق للمرحلة المختارة).<br/>السبب: %s'
                      % (old_state_label, new_state_label, reason)
             )
-            rec.write({'state': chosen})
+            rec.write({'state': chosen, 'returned_for_correction': True})
 
     def action_open_reject_wizard(self):
         """يفتح معالج "رفض" (يفرض تسجيل السبب) - الزر في الواجهة يستدعي

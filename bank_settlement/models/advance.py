@@ -143,7 +143,10 @@ class BankSettlementAdvance(models.Model):
                     )
             else:
                 rec._check_group('bank_settlement.group_bank_settlement_manager')
-        self.write({'state': 'pm_approved'})
+        # إعادة موافقة مسؤول المشروع فعلياً (بعد إرجاع محتمل من "تمت
+        # الموافقة") تُغلق نافذة التصحيح المؤقتة - انظر returned_for_
+        # correction في bank_settlement_mixin.py.
+        self.write({'state': 'pm_approved', 'returned_for_correction': False})
 
     def action_confirm(self):
         """الموافقة على السلفة (اعتماد المدير العام) - تأتي بعد موافقة
@@ -152,7 +155,7 @@ class BankSettlementAdvance(models.Model):
             if rec.state != 'pm_approved':
                 raise UserError('يمكن اعتماد المدير العام بعد موافقة مسؤول المشروع فقط.')
             rec._check_group('bank_settlement.group_bank_settlement_manager')
-        self.write({'state': 'approved'})
+        self.write({'state': 'approved', 'returned_for_correction': False})
 
     def action_done(self):
         for rec in self:

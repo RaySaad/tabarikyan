@@ -593,51 +593,40 @@ class TestBankSettlementMixin(TransactionCase):
 
         self.assertEqual(gov_fee.state, 'under_review')
 
-    def test_return_wizard_target_state_selection_matches_record(self):
-        """قائمة "الإرجاع إلى مرحلة" في المعالج تُبنى ديناميكياً من
-        _get_returnable_stages() الخاصة بالسجل المستهدف نفسه - وليست
-        قائمة ثابتة لكل النماذج."""
-        gov_fee = self._create_gov_fee()
-        self._complete_to_confirmed(gov_fee)
-        wizard = self.env['bank.settlement.return.wizard'].with_context(
-            default_res_model=gov_fee._name, default_res_id=gov_fee.id,
-        ).new({'res_model': gov_fee._name, 'res_id': gov_fee.id})
+    def test_return_wizard_target_state_selection_is_static_regardless_of_context(self):
+        """ثغرة حقيقية تكررت مرتين في الإنتاج: قائمة "الإرجاع إلى مرحلة"
+        كانت تظهر فارغة رغم أن حالة السجل تسمح فعلياً بالإرجاع. جُرِّب
+        إصلاحان سابقان فشلا كلاهما (قراءة self.res_model/self.res_id،
+        ثم قراءة self.env.context) لأن get_views() - الآلية الفعلية
+        التي يستخدمها العميل لملء القائمة - تستدعي دالة selection= هذه
+        دوماً على سجل فارغ غير مرتبط (env[self._name]) وبمعزل عن أي
+        سياق مُمرَّر فعلياً (موثَّق صراحة في docstring الخاصة بـ
+        ir_ui_view.get_views()، وتحقّقنا منه فعلياً عبر odoo-bin shell).
 
-        self.assertEqual(
-            wizard._selection_target_state(),
-            [('under_review', 'تحت المراجعة')],
-        )
+        الحل: القائمة أصبحت ثابتة تماماً (لا تعتمد على self ولا على
+        self.env.context إطلاقاً) - فيجب أن تُرجِع نفس المحتوى دوماً،
+        حتى لو استُدعيت على سجل فارغ تماماً بلا أي سياق، تماماً كما
+        يفعل fields_get() فعلياً عند فتح المعالج من الواجهة."""
+        empty_recordset = self.env['bank.settlement.return.wizard']
 
-    def test_return_wizard_target_state_selection_survives_context_loss(self):
-        """ثغرة حقيقية اكتُشفت من الاستخدام الفعلي: كانت القائمة تُبنى من
-        self.env.context (مفتاحا default_res_model/default_res_id) بدل
-        حقلي res_model/res_id المخزَّنين فعلياً على المعالج نفسه - فتظهر
-        فارغة ("لا توجد نتائج") بمجرد فقدان سياق فتح الإجراء الأصلي عند
-        أي إعادة حساب لاحقة للقائمة، رغم أن حالة السجل تسمح فعلياً
-        بالإرجاع.
+        selection = empty_recordset._selection_target_state()
 
-        create() هنا (وليس .new()) عمداً - يطابق ما يحدث فعلياً عند فتح
-        المعالج من زر action_open_return_wizard() (سجل TransientModel
-        حقيقي يُحفظ فوراً بمعرّف فعلي، وليس سجلاً افتراضياً بمعرّف وهمي
-        NewId ترتبط قيم حقوله ببيئة الإنشاء تحديداً ولا تصلح لهذا
-        الاختبار). نعيد جلبه بعدها عبر browse() من بيئة الاختبار
-        الأساسية (بلا أي default_res_model/default_res_id في سياقها) -
-        محاكاة حقيقية لفقدان سياق الفتح الأصلي."""
-        gov_fee = self._create_gov_fee()
-        self._complete_to_confirmed(gov_fee)
-        # target_state وreason إجباريان على مستوى قاعدة البيانات
-        # (required=True) - نمررهما صراحة هنا فقط لتفادي قيد NOT NULL
-        # عند create()، فهما ليسا موضوع هذا الاختبار (res_model/res_id
-        # تحديداً، المُمرَّران عبر السياق فقط كما يفعل
-        # action_open_return_wizard() فعلياً).
-        wizard = self.env['bank.settlement.return.wizard'].with_context(
-            default_res_model=gov_fee._name, default_res_id=gov_fee.id,
-        ).create({'target_state': 'under_review', 'reason': 'اختبار'})
-        fresh_wizard = self.env['bank.settlement.return.wizard'].browse(wizard.id)
+        self.assertEqual(selection, [
+            ('under_review', 'تحت المراجعة'),
+            ('pm_approved', 'وافق مسؤول المشروع'),
+            ('waiting_approval', 'بانتظار الموافقة'),
+        ])
 
-        selection = fresh_wizard._selection_target_state()
+    def test_return_wizard_fields_get_never_empty_even_without_any_context(self):
+        """محاكاة حقيقية للمسار الفعلي الذي يستخدمه العميل لملء القائمة
+        (fields_get()/get_views()، وليس استدعاء _selection_target_state
+        مباشرة) - بلا أي سياق default_res_model/default_res_id إطلاقاً،
+        تماماً كحالة السباق الحقيقية التي وقعت في الإنتاج."""
+        fields_data = self.env['bank.settlement.return.wizard'].with_context(
+            {}
+        ).fields_get(['target_state'])
 
-        self.assertEqual(selection, [('under_review', 'تحت المراجعة')])
+        self.assertTrue(fields_data['target_state']['selection'])
 
     def test_advance_return_wizard_allows_choosing_further_stage_directly(self):
         """السلفة تحديداً: من "تمت الموافقة"، يمكن اختيار "بانتظار
@@ -677,6 +666,75 @@ class TestBankSettlementMixin(TransactionCase):
                 target_state='draft', reason='محاولة قفز غير صالحة',
             )
         self.assertEqual(gov_fee.state, 'confirmed')
+
+    def test_employee_and_amount_editable_after_return_to_correction(self):
+        """ثغرة حقيقية اكتُشفت من الاستخدام الفعلي: "إرجاع للتصحيح" كان
+        يعيد الحالة إلى "تحت المراجعة" فعلياً، لكن الحقول الحساسة
+        (الموظف/المبلغ) كانت تبقى مقفولة (_get_editable_states يسمح
+        بـ"مسودة" فقط) - يُفرغ الميزة من هدفها الوحيد (التصحيح الفعلي).
+        الآن يجب أن يُسمح بتعديلها طالما returned_for_correction=True،
+        دون أي استثناء صريح آخر (skip_lock)."""
+        other_employee = self.env['hr.employee'].create({'name': 'موظف بديل - تصحيح'})
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+
+        gov_fee.action_return_to_previous_stage(
+            target_state='under_review', reason='الموظف والمبلغ كانا خاطئَين',
+        )
+        self.assertEqual(gov_fee.state, 'under_review')
+        self.assertTrue(gov_fee.returned_for_correction)
+
+        gov_fee.write({'employee_id': other_employee.id, 'amount': 750.0})
+
+        self.assertEqual(gov_fee.employee_id, other_employee)
+        self.assertEqual(gov_fee.amount, 750.0)
+
+    def test_returned_for_correction_flag_cleared_and_lock_reengages_after_confirm(self):
+        """بعد تصحيح الحقول وإعادة الاعتماد (action_confirm)، يجب أن
+        تُقفَل الحقول الحساسة من جديد فوراً - نافذة التصحيح مؤقتة فقط،
+        ولا تُبقي السجل مفتوحاً للتعديل إلى الأبد."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+        gov_fee.action_return_to_previous_stage(
+            target_state='under_review', reason='تصحيح المبلغ',
+        )
+        gov_fee.write({'amount': 750.0})
+
+        gov_fee.action_confirm()
+
+        self.assertFalse(gov_fee.returned_for_correction)
+        self.assertEqual(gov_fee.state, 'confirmed')
+        with self.assertRaises(UserError):
+            gov_fee.write({'amount': 999.0})
+
+    def test_advance_employee_editable_after_return_to_pm_approved(self):
+        """نفس السلوك للسلفة (سلسلة حالات مختلفة) - التراجع من "تمت
+        الموافقة" إلى "وافق مسؤول المشروع" يجب أن يسمح بتعديل الموظف/
+        المبلغ أيضاً، وليس فقط في النماذج الأربعة الأساسية."""
+        other_employee = self.env['hr.employee'].create({'name': 'موظف بديل - سلفة'})
+        advance = self.Advance.create({
+            'advance_reason_id': self.env.ref(
+                'bank_settlement.advance_reason_salary_advance').id,
+            'amount': 300.0,
+        })
+        advance.action_submit_review()
+        advance.action_pm_approve()
+        advance.action_confirm()
+
+        advance.action_return_to_previous_stage(reason='اعتماد المدير العام كان خطأً')
+        self.assertEqual(advance.state, 'pm_approved')
+        self.assertTrue(advance.returned_for_correction)
+
+        advance.write({'employee_id': other_employee.id, 'amount': 450.0})
+
+        self.assertEqual(advance.employee_id, other_employee)
+        self.assertEqual(advance.amount, 450.0)
+
+        advance.action_confirm()
+
+        self.assertFalse(advance.returned_for_correction)
+        with self.assertRaises(UserError):
+            advance.write({'amount': 999.0})
 
     def test_return_wizard_rejects_invalid_res_model(self):
         wizard = self.env['bank.settlement.return.wizard'].create({
