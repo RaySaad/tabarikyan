@@ -245,6 +245,39 @@ class TestBankSettlementMixin(TransactionCase):
             submitted_fee.unlink()
         self.assertTrue(submitted_fee.exists())
 
+    def test_settlement_move_cannot_be_deleted(self):
+        """ثغرة حقيقية اكتُشفت من الاستخدام الفعلي: مستخدم يملك صلاحية
+        حذف في المحاسبة كان يقدر يحذف القيد المحاسبي الناتج عن السداد
+        البنكي مباشرة (حتى بلا إرجاعه لمسودة أولاً)، بينما سجل السداد
+        نفسه (السلفة/الرسوم الحكومية/...) يبقى ظاهراً بحالة "منفّذة/تم
+        الصرف" وكأن كل شيء سليم - القيد الذي يوثّقه اختفى فعلياً من
+        الدفاتر. يجب منع الحذف نهائياً لأي قيد بهذه العلامة."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_done(gov_fee)
+        move = gov_fee.move_id
+        self.assertTrue(move.is_bank_settlement_move)
+
+        with self.assertRaises(UserError):
+            move.unlink()
+        self.assertTrue(move.exists())
+
+    def test_settlement_move_cannot_be_reset_to_draft(self):
+        """نفس الثغرة أعلاه لكن عبر المسار الآخر: إرجاع القيد لمسودة أولاً
+        (button_draft) هو ما يسمح لاحقاً بحذفه حتى لو مُنع الحذف المباشر
+        من قيد "مرحَّل" بإعدادات الشركة - فيُمنع هذا المسار أيضاً من
+        جذوره. القيد يُنشأ بحالة "مسودة" ولا يُرحَّل تلقائياً (المحاسب
+        يرحّله يدوياً لاحقاً من شاشة القيد نفسها) - فنرحّله هنا صراحة
+        ليطابق الحالة الواقعية وقت اكتشاف الثغرة."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_done(gov_fee)
+        move = gov_fee.move_id
+        move.action_post()
+        self.assertEqual(move.state, 'posted')
+
+        with self.assertRaises(UserError):
+            move.button_draft()
+        self.assertEqual(move.state, 'posted')
+
     def test_transfer_date_only_editable_after_gm_approval(self):
         """تاريخ التحويل - بيانات السداد الفعلي، خاصة بالمحاسب وقت الصرف
         تحديداً - يُمنع تحديده قبل اعتماد المدير العام (لا يظهر أصلاً في
