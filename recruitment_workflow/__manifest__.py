@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Recruitment Workflow - سير عمل طلبات التوظيف',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.2.0',
     'category': 'Human Resources/Recruitment',
     'summary': 'نظام إدارة مراحل طلبات التوظيف ونقل الكفالة وطلب السيارات وإنشاء العقود',
     'description': """
@@ -67,7 +67,7 @@
         'views/fleet_vehicle_views.xml',
         'views/project_project_views.xml',
         'views/hr_employee_views.xml',
-        'views/hr_employee_cost_views.xml',
+        'views/hr_employee_cost_type_views.xml',
         'views/hr_employee_platform_transfer_request_views.xml',
         'views/recruitment_workflow_menus.xml',
         'reports/recruitment_request_report.xml',

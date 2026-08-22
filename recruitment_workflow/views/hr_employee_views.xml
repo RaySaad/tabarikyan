@@ -13,11 +13,6 @@
                         invisible="platform_history_count == 0">
                     <field name="platform_history_count" widget="statinfo" string="فترات المنصات"/>
                 </button>
-                <button name="action_view_costs" type="object"
-                        class="oe_stat_button" icon="fa-money"
-                        invisible="cost_count == 0">
-                    <field name="cost_count" widget="statinfo" string="تكاليف المنصة"/>
-                </button>
                 <button name="action_view_transfer_requests" type="object"
                         class="oe_stat_button" icon="fa-exchange"
                         invisible="pending_transfer_request_count == 0">
