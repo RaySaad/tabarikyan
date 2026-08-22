@@ -608,6 +608,37 @@ class TestBankSettlementMixin(TransactionCase):
             [('under_review', 'تحت المراجعة')],
         )
 
+    def test_return_wizard_target_state_selection_survives_context_loss(self):
+        """ثغرة حقيقية اكتُشفت من الاستخدام الفعلي: كانت القائمة تُبنى من
+        self.env.context (مفتاحا default_res_model/default_res_id) بدل
+        حقلي res_model/res_id المخزَّنين فعلياً على المعالج نفسه - فتظهر
+        فارغة ("لا توجد نتائج") بمجرد فقدان سياق فتح الإجراء الأصلي عند
+        أي إعادة حساب لاحقة للقائمة، رغم أن حالة السجل تسمح فعلياً
+        بالإرجاع.
+
+        create() هنا (وليس .new()) عمداً - يطابق ما يحدث فعلياً عند فتح
+        المعالج من زر action_open_return_wizard() (سجل TransientModel
+        حقيقي يُحفظ فوراً بمعرّف فعلي، وليس سجلاً افتراضياً بمعرّف وهمي
+        NewId ترتبط قيم حقوله ببيئة الإنشاء تحديداً ولا تصلح لهذا
+        الاختبار). نعيد جلبه بعدها عبر browse() من بيئة الاختبار
+        الأساسية (بلا أي default_res_model/default_res_id في سياقها) -
+        محاكاة حقيقية لفقدان سياق الفتح الأصلي."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+        # target_state وreason إجباريان على مستوى قاعدة البيانات
+        # (required=True) - نمررهما صراحة هنا فقط لتفادي قيد NOT NULL
+        # عند create()، فهما ليسا موضوع هذا الاختبار (res_model/res_id
+        # تحديداً، المُمرَّران عبر السياق فقط كما يفعل
+        # action_open_return_wizard() فعلياً).
+        wizard = self.env['bank.settlement.return.wizard'].with_context(
+            default_res_model=gov_fee._name, default_res_id=gov_fee.id,
+        ).create({'target_state': 'under_review', 'reason': 'اختبار'})
+        fresh_wizard = self.env['bank.settlement.return.wizard'].browse(wizard.id)
+
+        selection = fresh_wizard._selection_target_state()
+
+        self.assertEqual(selection, [('under_review', 'تحت المراجعة')])
+
     def test_advance_return_wizard_allows_choosing_further_stage_directly(self):
         """السلفة تحديداً: من "تمت الموافقة"، يمكن اختيار "بانتظار
         الموافقة" مباشرة عبر المعالج (تخطي "وافق مسؤول المشروع")، بدل
