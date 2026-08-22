@@ -1229,6 +1229,17 @@ class RecruitmentRequest(models.Model):
                 'تم تفويض السيارة. الطلب الآن لدى مسؤول المشروع للمتابعة.'
             ))
 
+    def _get_formatted_employee_name(self):
+        """اسم الموظف بالتنسيق الموحّد "الاسم|رقم الهوية" - طلب صريح: يظهر
+        حرفياً في كل مكان (سجل الموظف نفسه، جهة اتصال المرشّح الخفيفة
+        candidate_partner_id، وبالتالي أي مكان يعرضها مباشرة كحقل "السائق"
+        في Fleet) - وليس فقط سجل الموظف الرسمي وحده."""
+        self.ensure_one()
+        name = self.employee_name
+        if self.identification_id:
+            name = '%s|%s' % (name, self.identification_id)
+        return name
+
     def _get_or_create_candidate_partner(self):
         """يوجد أو ينشئ partner خفيف يمثّل المرشّح قبل إنشاء سجل الموظف
         الرسمي - يُستخدم لربطه كـ"سائق مستقبلي" على السيارة فور التفويض
@@ -1243,6 +1254,16 @@ class RecruitmentRequest(models.Model):
         self.ensure_one()
         if self.candidate_partner_id:
             return self.candidate_partner_id
+        # سجل الموظف الرسمي قد يكون موجوداً مسبقاً الآن (يُنشأ عند "تم نقل
+        # الكفالة"، أسبق من مرحلة السيارة/الرسوم الحكومية أحياناً) دون أن
+        # يمر الطلب بعد بأي مصدر آخر كان يُنشئ جهة اتصال المرشّح - نعيد
+        # استخدام جهة اتصال العمل الخاصة به إن وُجدت، بدل إنشاء partner
+        # منفصل عنها تماماً (كان هذا يُظهر "السائق" في Fleet باسم مختلف
+        # كلياً عن اسم الموظف الرسمي - ثغرة حقيقية لاحظها المستخدم فعلياً).
+        if self.employee_id and 'work_contact_id' in self.employee_id._fields \
+                and self.employee_id.sudo().work_contact_id:
+            self.candidate_partner_id = self.employee_id.sudo().work_contact_id.id
+            return self.candidate_partner_id
         if self.vehicle_id.future_driver_id:
             self.candidate_partner_id = self.vehicle_id.future_driver_id.id
             return self.candidate_partner_id
@@ -1254,7 +1275,7 @@ class RecruitmentRequest(models.Model):
         # ملاحظة: لا نضبط type='private' - هذه القيمة لم تعد موجودة ضمن
         # خيارات res.partner.type في أودو 19 (تبقى contact/invoice/
         # delivery/other فقط)؛ الافتراضي 'contact' مناسب هنا.
-        partner_vals = {'name': self.employee_name}
+        partner_vals = {'name': self._get_formatted_employee_name()}
         # الحقل mobile حُذف من res.partner في أودو 19 (بقي phone فقط) - نتحقق
         # قبل الكتابة بدل افتراض وجوده، بنفس أسلوب set_if المستخدم في بقية
         # الموديول للتعامل مع اختلاف الحقول بين الإصدارات.
@@ -1266,6 +1287,12 @@ class RecruitmentRequest(models.Model):
             partner_vals['email'] = self.email
         partner = Partner.create(partner_vals)
         self.candidate_partner_id = partner.id
+        # سجل الموظف قد يكون موجوداً مسبقاً بلا جهة اتصال عمل بعد (حالة
+        # نادرة) - نربطها به مباشرة كذلك، حتى لا يبقى منفصلاً عن partner
+        # المرشّح الذي أنشأناه للتو.
+        if self.employee_id and 'work_contact_id' in self.employee_id._fields \
+                and not self.employee_id.sudo().work_contact_id:
+            self.employee_id.sudo().work_contact_id = partner.id
         return partner
 
     def _release_vehicle(self):
@@ -1295,13 +1322,7 @@ class RecruitmentRequest(models.Model):
         Employee = self.env['hr.employee'].sudo()
         emp_fields = Employee._fields
 
-        # اسم الموظف يتضمّن رقم الهوية/الإقامة ملحقاً بفاصل "|" - طلب صريح:
-        # حرفياً في كل مكان (رأس شاشة الموظف، التقارير/المستندات المطبوعة
-        # كـ"كشف حساب" أيضاً)، لتمييز موظفين قد يتشابه اسمهم الكامل دون أي
-        # لبس - وليس فقط في قوائم البحث/الاختيار.
-        employee_name = self.employee_name
-        if self.identification_id:
-            employee_name = '%s|%s' % (employee_name, self.identification_id)
+        employee_name = self._get_formatted_employee_name()
         employee_vals = {'name': employee_name}
 
         def set_if(field_name, value):
@@ -1313,6 +1334,13 @@ class RecruitmentRequest(models.Model):
         # اتصال العمل الرسمية للموظف الجديد، بدل إنشاء partner مكرر له.
         if self.candidate_partner_id:
             set_if('work_contact_id', self.candidate_partner_id.id)
+            # نطابق اسم جهة الاتصال نفسها مع نفس التنسيق (الاسم|رقم الهوية) -
+            # قد تكون أُنشئت قبل هذا التنسيق (سجل قديم) أو باسم لم يُحدَّث بعد،
+            # فتظهر بدون رقم الهوية في أي مكان يعرضها مباشرة (حقل "السائق" في
+            # Fleet مثلاً) رغم أنها هي نفسها جهة اتصال العمل الرسمية للموظف -
+            # ثغرة حقيقية لاحظها المستخدم فعلياً.
+            if self.candidate_partner_id.name != employee_name:
+                self.candidate_partner_id.sudo().name = employee_name
 
         set_if('mobile_phone', self.mobile)
         set_if('work_email', self.email)

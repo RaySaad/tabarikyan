@@ -842,6 +842,43 @@ class TestRecruitmentRequest(TransactionCase):
         self.assertEqual(vehicle.driver_id, request.employee_id.work_contact_id)
         self.assertFalse(vehicle.future_driver_id)
 
+    def test_vehicle_driver_matches_employee_name_when_no_prior_candidate_partner(self):
+        """ثغرة حقيقية لاحظها المستخدم فعلياً: طلب بلا أي رسوم حكومية (لا
+        شيء يُنشئ جهة اتصال المرشّح مبكراً) - سجل الموظف يُنشأ عند "تم نقل
+        الكفالة" بلا candidate_partner_id بعد، ثم تُفوَّض له سيارة لاحقاً.
+        "السائق" الظاهر في Fleet كان ينفصل تماماً عن اسم الموظف الرسمي في
+        هذه الحالة (partner مختلف كلياً لا يحمل حتى تنسيق الاسم|رقم
+        الهوية) - يجب أن يتطابقا حرفياً الآن."""
+        self.env.user.write({'group_ids': [
+            (4, self.env.ref('recruitment_workflow.group_recruitment_workflow_fleet').id),
+        ]})
+        project = self.env['project.project'].create({'name': 'منصة تجريبية - سائق بلا رسوم'})
+        brand = self.env['fleet.vehicle.model.brand'].create({'name': 'ماركة - سائق بلا رسوم'})
+        model = self.env['fleet.vehicle.model'].create({
+            'name': 'موديل - سائق بلا رسوم', 'brand_id': brand.id,
+        })
+        vehicle = self.env['fleet.vehicle'].create({
+            'model_id': model.id, 'recruitment_state': 'available',
+        })
+        request = self._create_request(
+            identification_id='1234567843', email='am@example.com', project_id=project.id,
+            employee_name='ليلى المطيري',
+        )
+        # لا استدعاء لـ_get_or_create_candidate_partner هنا إطلاقاً - يحاكي
+        # عدم وجود أي رسوم حكومية سجّلت جهة اتصال المرشّح مبكراً.
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.env.ref('recruitment_workflow.stage_sponsorship_done').id,
+        })
+        self.assertTrue(request.employee_id)
+        self.assertFalse(request.candidate_partner_id)
+
+        request.write({'vehicle_id': vehicle.id, 'car_request_state': 'received'})
+        request.action_fleet_authorize()
+
+        self.assertEqual(vehicle.driver_id, request.employee_id.work_contact_id)
+        self.assertEqual(vehicle.driver_id.name, 'ليلى المطيري|1234567843')
+        self.assertEqual(vehicle.driver_id.name, request.employee_id.name)
+
     # ------------------------------------------------------------------
     # الرسوم الحكومية (نقل الكفالة) - المبلغ الإجمالي فقط
     # ------------------------------------------------------------------
