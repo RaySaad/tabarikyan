@@ -42,6 +42,34 @@ class TestFleetVehicleBranchHistory(TransactionCase):
         self.assertEqual(current.company_id, self.branch)
         self.assertFalse(current.date_end)
 
+    def test_transfer_updates_company_even_when_user_lacks_branch_membership(self):
+        """ثغرة حقيقية اكتُشفت من الاستخدام الفعلي: نقل سيارة (فردي أو
+        جماعي) إلى فرع لا تشمله عضوية المستخدم (قسم الأسطول) في
+        company_ids كان يُنشئ سجل تاريخ الفروع بنجاح، لكنه يفشل بصمت في
+        تحديث company_id على السيارة نفسها فعلياً - بسبب قاعدة أودو
+        الأساسية "Fleet vehicle: Multi Company" (ir_rule_fleet_vehicle)
+        التي تقيّد الكتابة على fleet.vehicle بالشركات التي يملك المستخدم
+        عضوية فيها. السيارة تبقى ظاهرة بشركتها القديمة حتى بعد تحديث
+        الصفحة، بينما "تاريخ الفروع" يُظهر الفترة الجديدة الصحيحة - تناقض
+        مباشر لاحظه المستخدم."""
+        restricted_user = self.env['res.users'].create({
+            'name': 'مسؤول أسطول - بلا عضوية بالفرع الهدف',
+            'login': 'fleet_no_branch_membership_user',
+            'email': 'fleet_no_branch_membership_user@example.com',
+            # عمداً بلا self.branch هنا - فقط الشركة الحالية للسيارة.
+            'company_ids': [(6, 0, [self.env.company.id])],
+            'company_id': self.env.company.id,
+            'group_ids': [(6, 0, [self.fleet_group.id, self.env.ref('base.group_user').id])],
+        })
+
+        self.vehicle.with_user(restricted_user)._open_branch_history(
+            self.branch, note='نقل تجريبي - بلا عضوية بالفرع',
+        )
+
+        self.assertEqual(self.vehicle.company_id, self.branch)
+        current = self.vehicle.branch_history_ids.filtered('is_current')
+        self.assertEqual(current.company_id, self.branch)
+
     def test_second_transfer_closes_previous_period(self):
         other_branch = self.env['res.company'].create({
             'name': 'فرع تجريبي 2 - سيارات', 'parent_id': self.env.company.id,

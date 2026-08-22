@@ -72,17 +72,33 @@ class FleetVehicle(models.Model):
         # لا داعي لفتح فترة جديدة إن كان نفس الفرع الحالي بدون تغيير فعلي
         if open_lines and open_lines[0].company_id.id == company.id:
             return open_lines[0]
-        open_lines.write({'date_end': date_start})
+        # sudo() على كل الكتابات هنا (بما فيها company_id على السيارة نفسها
+        # أدناه) - ثغرة حقيقية اكتُشفت من الاستخدام الفعلي: قاعدة أودو
+        # الأساسية "Fleet vehicle: Multi Company" (ir_rule_fleet_vehicle في
+        # موديول fleet) تقيّد الكتابة على fleet.vehicle بـ company_id ضمن
+        # شركات المستخدم (company_ids) - فمستخدم قسم الأسطول الذي لا تشمل
+        # عضويته الفرع الهدف تحديداً كانت كتابة company_id عليه تُرفَض
+        # بصمت (سجل تاريخ الفروع يُنشأ بنجاح لأنه مُسنَد أصلاً، لكن حقل
+        # company_id نفسه على السيارة يبقى بلا تغيير) - رغم أن صلاحية هذا
+        # الإجراء بالذات محكومة أصلاً عبر مجموعة قسم الأسطول على مستوى
+        # المعالج (wizard) نفسه، فلا داعي لتقييد إضافي هنا يمنع بالضبط
+        # الغرض من الميزة (نقل سيارة *إلى* فرع قد لا يكون المستخدم عضواً
+        # فيه أصلاً).
+        open_lines.sudo().write({'date_end': date_start})
         new_line = self.env['fleet.vehicle.branch.history'].sudo().create({
             'vehicle_id': self.id,
             'company_id': company.id,
             'date_start': date_start,
             'note': note or False,
         })
-        self.company_id = company.id
+        self.sudo().company_id = company.id
+        # company.sudo(): نفس سبب sudo() أعلاه بالضبط - قراءة اسم شركة لا
+        # يملك المستخدم عضوية فيها (company_ids) تفشل هي الأخرى بـ
+        # AccessError على res.company نفسها (قاعدة أودو الأساسية)، فتمنع
+        # حتى مجرد تسجيل رسالة إعلامية بسيطة بالنقل.
         self.message_post(body=_(
             'تم نقل السيارة إلى الفرع: %s%s'
-        ) % (company.display_name, (' — %s' % note) if note else ''))
+        ) % (company.sudo().display_name, (' — %s' % note) if note else ''))
         return new_line
 
     def action_open_branch_transfer_wizard(self):
