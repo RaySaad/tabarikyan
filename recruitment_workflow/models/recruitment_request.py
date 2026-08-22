@@ -737,8 +737,18 @@ class RecruitmentRequest(models.Model):
         self.activity_ids.action_feedback(feedback=_('انتقل الطلب لمرحلة أخرى'))
 
         code = self.stage_id.code or ''
-        if code == 'started':
-            # تم مباشرة العمل => إنشاء عقد أوتوماتيك
+        if code == 'sponsorship_done':
+            # تم نقل الكفالة => إنشاء سجل الموظف الرسمي (hr.employee) فوراً،
+            # بدل الانتظار حتى "مباشرة العمل" (طلب صريح): قد تحتاج الشركة
+            # صرف سلفة للموظف قبل استلام السيارة حتى، والسلفة (bank_
+            # settlement.advance) تتطلب سجل hr.employee فعلي موجود مسبقاً -
+            # لا يمكن ربطها بمرشّح لم يُنشأ سجله الرسمي بعد.
+            self._create_employee()
+        elif code == 'started':
+            # تم مباشرة العمل => إنشاء عقد أوتوماتيك (سجل الموظف نفسه غالباً
+            # موجود مسبقاً من "sponsorship_done" أعلاه - _create_contract
+            # يستدعي _create_employee داخلياً وهي دالة متكررة الاستدعاء
+            # بأمان (idempotent)، فتُعيد نفس السجل دون تكرار).
             self._create_contract()
             self.state = 'done'
         elif self.stage_id.is_closing_stage:
@@ -1210,6 +1220,11 @@ class RecruitmentRequest(models.Model):
             candidate_partner = rec._get_or_create_candidate_partner()
             if candidate_partner:
                 rec.vehicle_id.sudo().future_driver_id = candidate_partner.id
+            # إن كان سجل الموظف موجوداً مسبقاً (الحالة المعتادة الآن - يُنشأ
+            # عند "تم نقل الكفالة"، قبل هذه المرحلة) نُرقّيه لـ"سائق" فعلي
+            # فوراً، بدل انتظار مرحلة "مباشرة العمل" اللاحقة (انظر شرح كامل
+            # في _promote_vehicle_driver).
+            rec._promote_vehicle_driver()
             rec.message_post(body=_(
                 'تم تفويض السيارة. الطلب الآن لدى مسؤول المشروع للمتابعة.'
             ))
@@ -1280,7 +1295,14 @@ class RecruitmentRequest(models.Model):
         Employee = self.env['hr.employee'].sudo()
         emp_fields = Employee._fields
 
-        employee_vals = {'name': self.employee_name}
+        # اسم الموظف يتضمّن رقم الهوية/الإقامة ملحقاً بفاصل "|" - طلب صريح:
+        # حرفياً في كل مكان (رأس شاشة الموظف، التقارير/المستندات المطبوعة
+        # كـ"كشف حساب" أيضاً)، لتمييز موظفين قد يتشابه اسمهم الكامل دون أي
+        # لبس - وليس فقط في قوائم البحث/الاختيار.
+        employee_name = self.employee_name
+        if self.identification_id:
+            employee_name = '%s|%s' % (employee_name, self.identification_id)
+        employee_vals = {'name': employee_name}
 
         def set_if(field_name, value):
             if value and field_name in emp_fields:
@@ -1320,20 +1342,16 @@ class RecruitmentRequest(models.Model):
                 and hasattr(employee, '_open_platform_history'):
             employee._open_platform_history(
                 self.project_id,
-                note=_('فتح تلقائي عند مباشرة العمل من طلب التوظيف %s') % self.name,
+                note=_('فتح تلقائي عند إنشاء سجل الموظف من طلب التوظيف %s') % self.name,
             )
 
-        # ترقية "السائق المستقبلي" إلى "السائق" الفعلي على السيارة (حقلا
-        # Fleet القياسيان) الآن بعد أن باشر العمل فعلياً - وليس فقط منذ لحظة
-        # التفويض. driver_id هو ما تعرضه واجهات Fleet نفسها (بخلاف حقلنا
-        # المخصَّص recruitment_state المستخدَم داخلياً فقط لفلترة التوفر).
-        if self.vehicle_id:
-            driver_partner = self.vehicle_id.future_driver_id or self._get_employee_partner(employee)
-            if driver_partner:
-                self.vehicle_id.sudo().write({
-                    'driver_id': driver_partner.id,
-                    'future_driver_id': False,
-                })
+        # ترقية "السائق المستقبلي" إلى "السائق" الفعلي على السيارة، إن كانت
+        # سيارة مفوَّضة أصلاً وقت إنشاء الموظف - غالباً غير متوفرة هنا الآن
+        # (سجل الموظف يُنشأ عند "تم نقل الكفالة"، قبل مرحلة طلب السيارة)،
+        # فتُنفَّذ الترقية عندها من action_fleet_authorize نفسها بدلاً (انظر
+        # _promote_vehicle_driver) - هذا الاستدعاء هنا يبقى كحل احتياطي
+        # يغطي أي حالة نادرة صار فيها تفويض السيارة سابقاً لإنشاء الموظف.
+        self._promote_vehicle_driver(employee)
 
         # ربط الحساب البنكي (IBAN) إن وُجد - محاط بحماية حتى لا يفشل الإنشاء
         try:
@@ -1344,6 +1362,28 @@ class RecruitmentRequest(models.Model):
                 'يُرجى إضافة الآيبان يدوياً في سجل الموظف.'
             ))
         return employee
+
+    def _promote_vehicle_driver(self, employee=False):
+        """ترقية "السائق المستقبلي" (future_driver_id) إلى "السائق" الفعلي
+        (driver_id) على السيارة - حقلا Fleet القياسيان، بخلاف حقلنا المخصَّص
+        recruitment_state المستخدَم داخلياً فقط لفلترة التوفر. driver_id هو
+        ما تعرضه واجهات Fleet نفسها.
+
+        تُستدعى من مكانين حسب أيهما يقع أولاً زمنياً (سجل الموظف صار يُنشأ
+        عند "تم نقل الكفالة"، أي غالباً *قبل* تفويض السيارة الآن):
+        - action_fleet_authorize(): إن كان سجل الموظف موجوداً مسبقاً.
+        - _create_employee(): إن كانت السيارة مفوَّضة مسبقاً (حالة نادرة/
+          احتياطية بعد التغيير أعلاه)."""
+        self.ensure_one()
+        employee = employee or self.employee_id
+        if not (self.vehicle_id and employee):
+            return
+        driver_partner = self.vehicle_id.future_driver_id or self._get_employee_partner(employee)
+        if driver_partner:
+            self.vehicle_id.sudo().write({
+                'driver_id': driver_partner.id,
+                'future_driver_id': False,
+            })
 
     def _get_employee_partner(self, employee):
         """يحاول إيجاد partner الموظف الشخصي (لربط حساب بنكي أو تخصيص سيارة

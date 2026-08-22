@@ -777,6 +777,71 @@ class TestRecruitmentRequest(TransactionCase):
 
         self.assertEqual(employee.work_contact_id, partner)
 
+    def test_employee_name_includes_identification_id(self):
+        """طلب صريح: اسم الموظف الفعلي (hr.employee.name) يتضمّن رقم
+        الهوية/الإقامة ملحقاً بفاصل "|" حرفياً في كل مكان - وليس فقط في
+        قوائم البحث/الاختيار."""
+        request = self._create_request(
+            identification_id='1234567840', email='aj@example.com',
+            employee_name='أحمد أحمد زايد عواض',
+        )
+
+        employee = request._create_employee()
+
+        self.assertEqual(employee.name, 'أحمد أحمد زايد عواض|1234567840')
+
+    def test_employee_created_at_sponsorship_done_stage_not_started(self):
+        """طلب صريح: سجل الموظف الرسمي (hr.employee) يُنشأ فور "تم نقل
+        الكفالة" - وليس بانتظار "مباشرة العمل" (آخر مرحلة، بعد استلام
+        السيارة) - حتى يمكن صرف سلفة له قبل استلام السيارة حتى، والسلفة
+        تتطلب سجل hr.employee فعلي موجود مسبقاً."""
+        request = self._create_request(identification_id='1234567841', email='ak@example.com')
+        self.assertFalse(request.employee_id)
+
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.env.ref('recruitment_workflow.stage_sponsorship_done').id,
+        })
+
+        self.assertTrue(request.employee_id)
+        # الطلب نفسه يبقى "قيد التنفيذ" - إنشاء الموظف لا يُنهي الطلب،
+        # فقط "مباشرة العمل" (المرحلة الأخيرة) تفعل ذلك.
+        self.assertEqual(request.state, 'in_progress')
+
+    def test_vehicle_driver_promoted_on_authorize_when_employee_already_exists(self):
+        """بعد تحويل إنشاء الموظف لمرحلة "تم نقل الكفالة" (أسبق من مرحلة
+        السيارة)، ترقية "السائق المستقبلي" إلى "السائق" الفعلي يجب أن
+        تحدث فور تفويض الأسطول للسيارة مباشرة - بدل انتظار مرحلة "مباشرة
+        العمل" اللاحقة (لم تعد هي من تُنشئ الموظف أصلاً في هذا التسلسل)."""
+        self.env.user.write({'group_ids': [
+            (4, self.env.ref('recruitment_workflow.group_recruitment_workflow_fleet').id),
+        ]})
+        project = self.env['project.project'].create({'name': 'منصة تجريبية - ترقية سائق'})
+        brand = self.env['fleet.vehicle.model.brand'].create({'name': 'ماركة - ترقية سائق'})
+        model = self.env['fleet.vehicle.model'].create({
+            'name': 'موديل - ترقية سائق', 'brand_id': brand.id,
+        })
+        vehicle = self.env['fleet.vehicle'].create({
+            'model_id': model.id, 'recruitment_state': 'available',
+        })
+        request = self._create_request(
+            identification_id='1234567842', email='al@example.com', project_id=project.id,
+        )
+        # جهة اتصال المرشّح غالباً موجودة مسبقاً واقعياً بحلول هذه المرحلة
+        # (أُنشئت مبكراً عند تسجيل الرسوم الحكومية مثلاً) - فتُعاد استخدامها
+        # كـwork_contact_id للموظف عند إنشائه، بدل شريك منفصل بلا صلة.
+        candidate_partner = request._get_or_create_candidate_partner()
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.env.ref('recruitment_workflow.stage_sponsorship_done').id,
+        })
+        self.assertTrue(request.employee_id)
+        self.assertEqual(request.employee_id.work_contact_id, candidate_partner)
+        request.write({'vehicle_id': vehicle.id, 'car_request_state': 'received'})
+
+        request.action_fleet_authorize()
+
+        self.assertEqual(vehicle.driver_id, request.employee_id.work_contact_id)
+        self.assertFalse(vehicle.future_driver_id)
+
     # ------------------------------------------------------------------
     # الرسوم الحكومية (نقل الكفالة) - المبلغ الإجمالي فقط
     # ------------------------------------------------------------------
