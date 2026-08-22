@@ -92,11 +92,13 @@ class FleetVehicle(models.Model):
             'note': note or False,
         })
         self.sudo().company_id = company.id
-        # company.sudo(): نفس سبب sudo() أعلاه بالضبط - قراءة اسم شركة لا
-        # يملك المستخدم عضوية فيها (company_ids) تفشل هي الأخرى بـ
-        # AccessError على res.company نفسها (قاعدة أودو الأساسية)، فتمنع
-        # حتى مجرد تسجيل رسالة إعلامية بسيطة بالنقل.
-        self.message_post(body=_(
+        # self.sudo().message_post() (وليس company.sudo() فقط للاسم): نفس
+        # سبب sudo() أعلاه بالضبط - إنشاء رسالة دردشة على سيارة صار
+        # company_id عليها الآن فرعاً لا يملك المستخدم عضوية فيه يفشل هو
+        # الآخر بـ AccessError (قاعدة أودو الأساسية على mail.message
+        # تتحقق من company_id أيضاً)، فيمنع حتى مجرد تسجيل رسالة إعلامية
+        # بسيطة بالنقل - ثغرة حقيقية مكتشفة بالاختبار الفعلي.
+        self.sudo().message_post(body=_(
             'تم نقل السيارة إلى الفرع: %s%s'
         ) % (company.sudo().display_name, (' — %s' % note) if note else ''))
         return new_line

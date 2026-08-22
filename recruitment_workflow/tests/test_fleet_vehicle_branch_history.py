@@ -159,7 +159,13 @@ class TestFleetVehicleBranchHistory(TransactionCase):
             active_ids=(self.vehicle | other_vehicle).ids,
         ).new({})
 
-        self.assertEqual(wizard.vehicle_ids, self.vehicle | other_vehicle)
+        # .new() يُرجع سجلات افتراضية بمعرّفات وهمية (NewId) مرتبطة بمعرّف
+        # السجل الحقيقي عبر origin - فلا تُطابق مباشرة (==) السجلات
+        # الحقيقية رغم تمثيلها لنفس البيانات؛ نقارن المعرّفات الحقيقية.
+        self.assertEqual(
+            set(wizard.vehicle_ids.mapped(lambda v: v._origin.id)),
+            set((self.vehicle | other_vehicle).ids),
+        )
 
     def test_bulk_wizard_idempotent_for_already_transferred_vehicle(self):
         """سيارة مُنقولة مسبقاً لنفس الفرع الهدف ضمن تحديد جماعي لا يجب أن

@@ -30,6 +30,23 @@ class TestRecruitmentRequest(TransactionCase):
         vals.update(kwargs)
         return self.Request.create(vals)
 
+    def _complete_gov_fee_for_request(self, request):
+        """يُكمل سجل "الرسوم الحكومية" في bank_settlement (إن كان الموديول
+        مثبَّتاً ضمن هذه الدفعة من الاختبارات) إلى حالة "منفّذة" - اختصار
+        لأغراض الاختبار فقط عبر sudo() المباشر (يتجاوز خط سير موافقة
+        bank_settlement بالكامل عمداً)، وليس recruitment_workflow نفسه لا
+        يعتمد على bank_settlement أصلاً (العكس صحيح) فلا توجد طريقة
+        "رسمية" هنا لإكماله. ضروري لأي اختبار يحتاج مغادرة مرحلة "تم
+        السداد" بنجاح فعلي: bank_settlement.recruitment_request._validate
+        _stage_exit تضيف شرطاً أعمق (تسجيل+تنفيذ الرسوم الحكومية فعلياً)
+        فوق شرط recruitment_workflow الأساسي (وجود مبلغ فقط) متى ما كان
+        gov_fee_amount > 0 - فمجرد ضبط المبلغ وحده لا يكفي عملياً."""
+        if 'bank_settlement_gov_fee_id' not in request._fields:
+            return  # bank_settlement غير مثبَّت في هذا السياق
+        if not request.bank_settlement_gov_fee_id:
+            request.action_register_gov_fee()
+        request.bank_settlement_gov_fee_id.sudo().write({'state': 'done'})
+
     # ------------------------------------------------------------------
     # التحقق من صحة البيانات (identification_id / mobile)
     # ------------------------------------------------------------------
@@ -293,6 +310,7 @@ class TestRecruitmentRequest(TransactionCase):
         request.with_context(skip_stage_validation=True).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
         })
+        self._complete_gov_fee_for_request(request)
 
         request.write({'stage_id': self.stage_sponsorship_transfer.id})
         self.assertEqual(request.stage_id.code, 'sponsorship_transfer')
@@ -468,6 +486,7 @@ class TestRecruitmentRequest(TransactionCase):
             request.with_user(plain_user).action_next_stage()
 
         self.env.user.write({'group_ids': [(4, self.group_ops.id)]})
+        self._complete_gov_fee_for_request(request)
         request.action_next_stage()
         self.assertEqual(request.stage_id.code, 'sponsorship_transfer')
 
@@ -485,6 +504,7 @@ class TestRecruitmentRequest(TransactionCase):
             request.action_next_stage()
 
         request.gov_fee_amount = 1500.0
+        self._complete_gov_fee_for_request(request)
         request.action_next_stage()
         self.assertEqual(request.stage_id.code, 'sponsorship_transfer')
 

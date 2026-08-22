@@ -235,9 +235,13 @@ class TestRecruitmentRequestIntegration(TransactionCase):
         self.assertEqual(request.bank_settlement_gov_fee_id, gov_fee)
         self.assertTrue(gov_fee.exists())
 
-    def test_paid_stage_free_without_gov_fee_amount(self):
-        """بدون أي مبلغ رسوم حكومية على الطلب أصلاً، لا قيد على مغادرة
-        مرحلة "تم السداد"."""
+    def test_paid_stage_blocked_without_gov_fee_amount(self):
+        """طلب صريح لاحقاً (بعد بناء هذا الموديول): مبلغ الرسوم الحكومية
+        صار إلزامياً لمغادرة "تم السداد" - عكس السلوك الأصلي هنا تماماً
+        (كان يُسمح بمبلغ صفري/فارغ بلا أي قيد). الشرط الأساسي مُعرَّف في
+        recruitment_workflow نفسها (_validate_stage_exit)، ويُستدعى أولاً
+        عبر super() هنا قبل شرط bank_settlement الإضافي (تسجيل/تنفيذ
+        الرسوم فعلياً) - فيمنع حتى الوصول لذلك الشرط الأعمق أصلاً."""
         request = self._create_request(
             identification_id='1234567836', email='bs6@example.com',
             gov_fee_amount=0.0,
@@ -246,5 +250,5 @@ class TestRecruitmentRequestIntegration(TransactionCase):
             'stage_id': self.stage_paid.id,
         })
 
-        request.action_next_stage()
-        self.assertEqual(request.stage_id.code, 'sponsorship_transfer')
+        with self.assertRaises(UserError):
+            request.action_next_stage()
