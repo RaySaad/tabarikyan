@@ -667,32 +667,59 @@ class TestBankSettlementMixin(TransactionCase):
             )
         self.assertEqual(gov_fee.state, 'confirmed')
 
-    def test_employee_and_amount_editable_after_return_to_correction(self):
+    def test_amount_editable_but_employee_stays_locked_after_return_to_correction(self):
         """ثغرة حقيقية اكتُشفت من الاستخدام الفعلي: "إرجاع للتصحيح" كان
-        يعيد الحالة إلى "تحت المراجعة" فعلياً، لكن الحقول الحساسة
-        (الموظف/المبلغ) كانت تبقى مقفولة (_get_editable_states يسمح
-        بـ"مسودة" فقط) - يُفرغ الميزة من هدفها الوحيد (التصحيح الفعلي).
-        الآن يجب أن يُسمح بتعديلها طالما returned_for_correction=True،
-        دون أي استثناء صريح آخر (skip_lock)."""
+        يعيد الحالة إلى "تحت المراجعة" فعلياً، لكن المبلغ كان يبقى
+        مقفولاً (_get_editable_states يسمح بـ"مسودة" فقط) - يُفرغ الميزة
+        من هدفها الوحيد. لكن طلب صريح لاحق: هوية الموظف تحديداً يجب أن
+        تبقى مقفولة دائماً حتى أثناء نافذة التصحيح - فقط المبلغ (وبيانات
+        السداد البنكي، انظر الاختبار التالي) يُسمح بتعديلها؛ لو كان
+        الموظف نفسه خاطئاً فالحل رفض السجل وإنشاء سجل صحيح جديد."""
         other_employee = self.env['hr.employee'].create({'name': 'موظف بديل - تصحيح'})
         gov_fee = self._create_gov_fee()
         self._complete_to_confirmed(gov_fee)
 
         gov_fee.action_return_to_previous_stage(
-            target_state='under_review', reason='الموظف والمبلغ كانا خاطئَين',
+            target_state='under_review', reason='المبلغ كان خاطئاً',
         )
         self.assertEqual(gov_fee.state, 'under_review')
         self.assertTrue(gov_fee.returned_for_correction)
 
-        gov_fee.write({'employee_id': other_employee.id, 'amount': 750.0})
-
-        self.assertEqual(gov_fee.employee_id, other_employee)
+        gov_fee.write({'amount': 750.0})
         self.assertEqual(gov_fee.amount, 750.0)
 
+        with self.assertRaises(UserError):
+            gov_fee.write({'employee_id': other_employee.id})
+
+    def test_bank_payment_fields_editable_during_correction_window(self):
+        """الحساب المرتبط/دفتر اليومية (بيانات السداد البنكي) يجب أن
+        تُفتح أيضاً أثناء نافذة "إرجاع للتصحيح" - وليس المبلغ فقط - طلب
+        صريح. عادةً لا يُسمح بتحديدها إلا في حالة "مؤكدة" تحديداً
+        (_get_bank_fields_editable_state) - إرجاع السجل يُخرجه من تلك
+        الحالة، فبدون returned_for_correction كانت ستبقى مقفولة تماماً
+        كالمبلغ. (bank_reference مستثنى عمداً هنا من هذا الاختبار - مفتوح
+        دائماً في هذا النموذج تحديداً بغض النظر عن الحالة، انظر
+        government_fee.py)."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+        other_journal = self.env['account.journal'].search(
+            [('company_id', '=', gov_fee.company_id.id), ('id', '!=', gov_fee.journal_id.id)],
+            limit=1,
+        )
+        self.assertTrue(other_journal, 'يلزم دفتر يومية ثانٍ لهذا الاختبار')
+
+        gov_fee.action_return_to_previous_stage(
+            target_state='under_review', reason='الحساب البنكي كان خاطئاً',
+        )
+
+        gov_fee.write({'journal_id': other_journal.id})
+
+        self.assertEqual(gov_fee.journal_id, other_journal)
+
     def test_returned_for_correction_flag_cleared_and_lock_reengages_after_confirm(self):
-        """بعد تصحيح الحقول وإعادة الاعتماد (action_confirm)، يجب أن
-        تُقفَل الحقول الحساسة من جديد فوراً - نافذة التصحيح مؤقتة فقط،
-        ولا تُبقي السجل مفتوحاً للتعديل إلى الأبد."""
+        """بعد تصحيح المبلغ وإعادة الاعتماد (action_confirm)، يجب أن
+        يُقفَل من جديد فوراً - نافذة التصحيح مؤقتة فقط، ولا تُبقي السجل
+        مفتوحاً للتعديل إلى الأبد."""
         gov_fee = self._create_gov_fee()
         self._complete_to_confirmed(gov_fee)
         gov_fee.action_return_to_previous_stage(
@@ -707,10 +734,10 @@ class TestBankSettlementMixin(TransactionCase):
         with self.assertRaises(UserError):
             gov_fee.write({'amount': 999.0})
 
-    def test_advance_employee_editable_after_return_to_pm_approved(self):
+    def test_advance_amount_editable_but_employee_locked_after_return_to_pm_approved(self):
         """نفس السلوك للسلفة (سلسلة حالات مختلفة) - التراجع من "تمت
-        الموافقة" إلى "وافق مسؤول المشروع" يجب أن يسمح بتعديل الموظف/
-        المبلغ أيضاً، وليس فقط في النماذج الأربعة الأساسية."""
+        الموافقة" إلى "وافق مسؤول المشروع" يسمح بتعديل المبلغ فقط، وليس
+        الموظف، وليس فقط في النماذج الأربعة الأساسية."""
         other_employee = self.env['hr.employee'].create({'name': 'موظف بديل - سلفة'})
         advance = self.Advance.create({
             'advance_reason_id': self.env.ref(
@@ -721,14 +748,15 @@ class TestBankSettlementMixin(TransactionCase):
         advance.action_pm_approve()
         advance.action_confirm()
 
-        advance.action_return_to_previous_stage(reason='اعتماد المدير العام كان خطأً')
+        advance.action_return_to_previous_stage(reason='المبلغ كان خطأً')
         self.assertEqual(advance.state, 'pm_approved')
         self.assertTrue(advance.returned_for_correction)
 
-        advance.write({'employee_id': other_employee.id, 'amount': 450.0})
-
-        self.assertEqual(advance.employee_id, other_employee)
+        advance.write({'amount': 450.0})
         self.assertEqual(advance.amount, 450.0)
+
+        with self.assertRaises(UserError):
+            advance.write({'employee_id': other_employee.id})
 
         advance.action_confirm()
 

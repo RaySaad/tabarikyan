@@ -48,11 +48,6 @@
                         <button name="action_open_reject_wizard" string="رفض"
                                 type="object" groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state in ('done', 'cancel', 'rejected')"/>
-                        <button name="action_open_admin_delete_wizard" string="حذف نهائي إداري"
-                                type="object" class="btn-danger"
-                                groups="bank_settlement.group_bank_settlement_manager"
-                                invisible="not admin_delete_enabled"/>
-                        <field name="admin_delete_enabled" invisible="1"/>
                         <field name="state" widget="statusbar"
                                statusbar_visible="draft,under_review,confirmed,done"/>
                     </header>
@@ -71,15 +66,16 @@
                             <h1><field name="name" readonly="1"/></h1>
                         </div>
                         <div class="alert alert-warning" role="alert" invisible="not returned_for_correction">
-                            تم إرجاع هذا السجل للتصحيح - الحقول أعلاه قابلة للتعديل مؤقتاً حتى
-                            إعادة الاعتماد.
+                            تم إرجاع هذا السجل للتصحيح - يمكن تعديل المبلغ وبيانات السداد
+                            البنكي (الحساب/دفتر اليومية/رقم السداد) مؤقتاً حتى إعادة الاعتماد.
+                            هوية الموظف/المنصة تبقى مقفولة.
                         </div>
                         <group>
                             <group string="بيانات الرسوم">
                                 <field name="government_entity_id"
-                                       readonly="state != 'draft' and not returned_for_correction"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="fee_type_id"
-                                       readonly="state != 'draft' and not returned_for_correction"/>
+                                       readonly="state != 'draft'"/>
                                 <!-- رقم السداد مرتبط برقم مرجعي يعرفه من يرفع
                                      الطلب نفسه للجهة الحكومية منذ البداية -
                                      وليس بيانات سداد بنكي فعلي يُدخلها المحاسب
@@ -88,17 +84,18 @@
                                 <field name="bank_reference"
                                        readonly="state in ('done', 'rejected', 'cancel')"/>
                                 <!-- الحساب المرتبط لا يظهر إلا بعد اعتماد المدير
-                                     العام، ويبقى قابلاً للتعبئة تحديداً في تلك
-                                     الحالة (قبل تسجيل السداد الفعلي). -->
-                                <field name="linked_account_id" readonly="state != 'confirmed'"
-                                       invisible="state not in ('confirmed', 'done')"/>
+                                     العام (أو أثناء "إرجاع للتصحيح")، ويبقى قابلاً
+                                     للتعبئة تحديداً في تلك الحالة (قبل تسجيل
+                                     السداد الفعلي). -->
+                                <field name="linked_account_id" readonly="state != 'confirmed' and not returned_for_correction"
+                                       invisible="state not in ('confirmed', 'done') and not returned_for_correction"/>
                             </group>
                             <group string="بيانات الموظف">
-                                <field name="employee_category" readonly="state != 'draft' and not returned_for_correction"/>
+                                <field name="employee_category" readonly="state != 'draft'"/>
                                 <field name="employee_id" required="not recruitment_request_id"
-                                       readonly="state != 'draft' and not returned_for_correction"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="residency_number"/>
-                                <field name="partner_id" readonly="state != 'draft' and not returned_for_correction"/>
+                                <field name="partner_id" readonly="state != 'draft'"/>
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                         </group>
@@ -106,17 +103,17 @@
                             <group>
                                 <!-- بيانات السداد الفعلي (خاصة بالمحاسب وقت
                                      الصرف تحديداً) - لا تظهر إلا بعد اعتماد
-                                     المدير العام. -->
-                                <field name="transfer_date" readonly="state != 'confirmed'"
-                                       invisible="state not in ('confirmed', 'done')"/>
-                                <field name="journal_id" readonly="state != 'confirmed'"
-                                       invisible="state not in ('confirmed', 'done')"/>
+                                     المدير العام (أو أثناء "إرجاع للتصحيح"). -->
+                                <field name="transfer_date" readonly="state != 'confirmed' and not returned_for_correction"
+                                       invisible="state not in ('confirmed', 'done') and not returned_for_correction"/>
+                                <field name="journal_id" readonly="state != 'confirmed' and not returned_for_correction"
+                                       invisible="state not in ('confirmed', 'done') and not returned_for_correction"/>
                                 <field name="currency_id" invisible="1"/>
                                 <field name="amount" readonly="state != 'draft' and not returned_for_correction"/>
                             </group>
                             <group>
                                 <field name="project_id"
-                                       readonly="state != 'draft' and not returned_for_correction"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="operating_system"/>
                             </group>

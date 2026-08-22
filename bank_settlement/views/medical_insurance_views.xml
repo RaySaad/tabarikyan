@@ -48,11 +48,6 @@
                         <button name="action_open_reject_wizard" string="رفض"
                                 type="object" groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state in ('done', 'cancel', 'rejected')"/>
-                        <button name="action_open_admin_delete_wizard" string="حذف نهائي إداري"
-                                type="object" class="btn-danger"
-                                groups="bank_settlement.group_bank_settlement_manager"
-                                invisible="not admin_delete_enabled"/>
-                        <field name="admin_delete_enabled" invisible="1"/>
                         <field name="state" widget="statusbar"
                                statusbar_visible="draft,under_review,confirmed,done"/>
                     </header>
@@ -70,43 +65,44 @@
                             <h1><field name="name" readonly="1"/></h1>
                         </div>
                         <div class="alert alert-warning" role="alert" invisible="not returned_for_correction">
-                            تم إرجاع هذا السجل للتصحيح - الحقول أعلاه قابلة للتعديل مؤقتاً حتى
-                            إعادة الاعتماد.
+                            تم إرجاع هذا السجل للتصحيح - يمكن تعديل المبلغ وتاريخ التحويل
+                            مؤقتاً حتى إعادة الاعتماد. هوية الموظف/المنصة تبقى مقفولة.
                         </div>
                         <group>
                             <group string="بيانات التأمين">
-                                <field name="fee_type_id" readonly="state != 'draft' and not returned_for_correction"/>
+                                <field name="fee_type_id" readonly="state != 'draft'"/>
                                 <!-- طلب صريح: يبقى المورد قابلاً للتعديل من
                                      "مسودة" وحتى آخر مرحلة، لا يُقفَل فور
                                      مغادرة "مسودة" كباقي حقول الهوية هنا. -->
                                 <field name="vendor_id"
                                        readonly="state in ('done', 'rejected', 'cancel')"/>
-                                <field name="company_iban" readonly="state != 'draft' and not returned_for_correction"/>
+                                <field name="company_iban" readonly="state != 'draft'"/>
                                 <!-- تاريخ التحويل الفعلي - خاص بالمحاسب وقت
                                      الصرف تحديداً - لا يظهر إلا بعد اعتماد
-                                     المدير العام (نفس منطق دفتر اليومية/
-                                     الحساب المرتبط في بقية الشاشات، رغم أن
-                                     هذه الشاشة لا تستخدمهما مباشرة). -->
-                                <field name="transfer_date" readonly="state != 'confirmed'"
-                                       invisible="state not in ('confirmed', 'done')"/>
+                                     المدير العام (أو أثناء "إرجاع للتصحيح"،
+                                     نفس منطق دفتر اليومية/الحساب المرتبط في
+                                     بقية الشاشات، رغم أن هذه الشاشة لا
+                                     تستخدمهما مباشرة). -->
+                                <field name="transfer_date" readonly="state != 'confirmed' and not returned_for_correction"
+                                       invisible="state not in ('confirmed', 'done') and not returned_for_correction"/>
                             </group>
                             <group string="المبالغ">
                                 <field name="currency_id" invisible="1"/>
                                 <field name="amount" readonly="state != 'draft' and not returned_for_correction"/>
-                                <field name="tax_amount" readonly="state != 'draft' and not returned_for_correction"/>
+                                <field name="tax_amount" readonly="state != 'draft'"/>
                                 <field name="total_amount"/>
                             </group>
                         </group>
                         <group>
                             <group string="بيانات المندوب">
                                 <field name="employee_id" string="اسم المندوب" required="1"
-                                       readonly="state != 'draft' and not returned_for_correction"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="residency_number"/>
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                             <group string="المنصة">
                                 <field name="project_id" string="التطبيق"
-                                       readonly="state != 'draft' and not returned_for_correction"/>
+                                       readonly="state != 'draft'"/>
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="operating_system" string="نظام التشغيل"/>
                             </group>

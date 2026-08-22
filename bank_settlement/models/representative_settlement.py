@@ -44,3 +44,8 @@ class BankSettlementRepresentative(models.Model):
         return super()._get_locked_fields_after_approval() + [
             'settlement_amount', 'iban', 'platform_employee_id', 'date',
         ]
+
+    def _get_correction_editable_fields(self):
+        # settlement_amount هو اسم المبلغ هنا (بدل amount نفسه) - انظر
+        # الشرح أعلاه.
+        return ['settlement_amount']
