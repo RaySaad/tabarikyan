@@ -782,6 +782,65 @@ class TestRecruitmentRequest(TransactionCase):
         self.assertFalse(result)
 
     # ------------------------------------------------------------------
+    # ربط السيارة بفرع الطلب نفسه (بدل أي سيارة متاحة بغض النظر عن الفرع)
+    # ------------------------------------------------------------------
+    def _create_branch_project_request(self, identification_id, email):
+        """ينشئ فرعاً (شركة تابعة) ومنصة تابعة له وطلباً عليها - مساعد
+        مشترك لاختبارات ربط السيارة بالفرع أدناه."""
+        branch = self.env['res.company'].create({
+            'name': 'فرع تجريبي - ربط سيارة %s' % identification_id,
+            'parent_id': self.env.company.id,
+        })
+        project = self.env['project.project'].create({
+            'name': 'منصة فرع تجريبي - ربط سيارة %s' % identification_id,
+            'company_id': branch.id,
+        })
+        request = self._create_request(
+            identification_id=identification_id, email=email, project_id=project.id,
+        )
+        return branch, request
+
+    def _create_test_vehicle(self, company_id=False):
+        brand = self.env['fleet.vehicle.model.brand'].create({'name': 'ماركة - ربط سيارة'})
+        model = self.env['fleet.vehicle.model'].create({
+            'name': 'موديل - ربط سيارة', 'brand_id': brand.id,
+        })
+        return self.env['fleet.vehicle'].create({
+            'model_id': model.id, 'company_id': company_id,
+        })
+
+    def test_vehicle_from_different_branch_rejected(self):
+        """طلب صريح: لا يمكن ربط طلب توظيف بسيارة تابعة لفرع آخر عن فرع
+        الطلب/الموظف نفسه."""
+        branch, request = self._create_branch_project_request('1234567845', 'ao@example.com')
+        other_branch = self.env['res.company'].create({
+            'name': 'فرع تجريبي آخر - ربط سيارة', 'parent_id': self.env.company.id,
+        })
+        other_branch_vehicle = self._create_test_vehicle(company_id=other_branch.id)
+        self.assertEqual(request.company_id, branch)
+
+        with self.assertRaises(ValidationError):
+            request.vehicle_id = other_branch_vehicle
+
+    def test_vehicle_from_same_branch_allowed(self):
+        branch, request = self._create_branch_project_request('1234567846', 'ap@example.com')
+        same_branch_vehicle = self._create_test_vehicle(company_id=branch.id)
+
+        request.vehicle_id = same_branch_vehicle
+
+        self.assertEqual(request.vehicle_id, same_branch_vehicle)
+
+    def test_vehicle_without_company_allowed_regardless_of_branch(self):
+        """سيارة بلا فرع محدَّد (company_id فارغ - "متاحة لكل الفروع") لا
+        يجب أن يمنعها التحقق - نفس منطق الـdomain في شاشة الأسطول."""
+        branch, request = self._create_branch_project_request('1234567847', 'aq@example.com')
+        shared_vehicle = self._create_test_vehicle(company_id=False)
+
+        request.vehicle_id = shared_vehicle
+
+        self.assertEqual(request.vehicle_id, shared_vehicle)
+
+    # ------------------------------------------------------------------
     # جهة اتصال المرشّح الخفيفة (candidate_partner_id) - يجب ألا تتكرر
     # ------------------------------------------------------------------
     def test_get_or_create_candidate_partner_reused_across_calls(self):

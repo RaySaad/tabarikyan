@@ -1166,6 +1166,28 @@ class RecruitmentRequest(models.Model):
     # ------------------------------------------------------------------
     # منطق طلب السيارة (التكامل مع الأسطول)
     # ------------------------------------------------------------------
+    @api.constrains('vehicle_id', 'company_id')
+    def _check_vehicle_company(self):
+        """طلب صريح: لا يُسمح بربط طلب توظيف بسيارة تابعة لفرع آخر عن فرع
+        الطلب/الموظف نفسه (مثال: طلب على فرع "اللوجستية 1" لا يجوز ربطه
+        بسيارة تابعة لفرع آخر). domain حقل vehicle_id في شاشة الأسطول
+        (view_recruitment_request_form_fleet) يمنع هذا أصلاً من الواجهة
+        العادية، لكن ذلك مجرد تسهيل قابل للتجاوز عبر RPC/API مباشر - هذا
+        هو التحقق الملزم الفعلي من جهة الخادم. سيارة بلا فرع محدَّد
+        (company_id فارغ - "متاحة لكل الفروع") مستثناة عمداً، مطابقةً
+        لنفس منطق الـdomain."""
+        for rec in self:
+            if rec.vehicle_id and rec.company_id and rec.vehicle_id.company_id \
+                    and rec.vehicle_id.company_id != rec.company_id:
+                raise ValidationError(_(
+                    'لا يمكن ربط الطلب بسيارة "%s" - تابعة لفرع "%s"، بينما '
+                    'الطلب على فرع "%s".'
+                ) % (
+                    rec.vehicle_id.display_name,
+                    rec.vehicle_id.company_id.display_name,
+                    rec.company_id.display_name,
+                ))
+
     def action_send_car_request(self):
         """إرسال طلب سيارة لقسم الأسطول - مسؤول المشروع يطلب سيارة فقط، ولا
         يختار سيارة محدَّدة؛ اختيار السيارة تحديداً مسؤولية قسم الأسطول عند
@@ -1179,6 +1201,13 @@ class RecruitmentRequest(models.Model):
         domain = [('recruitment_state', '=', 'available')]
         if self.project_id:
             domain += ['|', ('project_id', '=', self.project_id.id), ('project_id', '=', False)]
+        # طلب صريح: سيارات فرع آخر عن فرع الطلب لا تُحتسب هنا كمتاحة -
+        # نفس الفلترة المستخدَمة في domain حقل vehicle_id بشاشة الأسطول
+        # (انظر view_recruitment_request_form_fleet)، وإلا يظهر تنبيه
+        # "لا توجد سيارات متاحة" غير دقيق حين توجد سيارات متاحة فعلاً
+        # لكن في فرع آخر فقط.
+        if self.company_id:
+            domain += ['|', ('company_id', '=', self.company_id.id), ('company_id', '=', False)]
         no_vehicles_available = not self.env['fleet.vehicle'].search_count(domain)
 
         self.write({
