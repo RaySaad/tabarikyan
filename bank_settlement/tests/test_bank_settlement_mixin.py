@@ -797,6 +797,23 @@ class TestBankSettlementMixin(TransactionCase):
         advance.action_confirm()
         self.assertEqual(advance.state, 'approved')
 
+    def test_advance_rejects_states_belonging_to_other_bank_settlement_screens(self):
+        """تحويل state في advance.py من استبدال كامل لـ selection إلى
+        selection_add (لإسكات تحذير أودو "overrides existing selection")
+        يُبقي under_review/confirmed/done "صالحة" تقنياً على مستوى تعريف
+        الحقل (موروثة من bank_settlement_mixin، غير مستخدمة إطلاقاً في
+        سلسلة حالات السلفة الفعلية) - القيد الجديد (_check_state_values)
+        يجب أن يمنع كتابتها فعلياً، محافظاً على نفس الحماية التي كان
+        الاستبدال الكامل السابق يوفّرها تلقائياً."""
+        advance = self.Advance.create({
+            'advance_reason_id': self.env.ref(
+                'bank_settlement.advance_reason_salary_advance').id,
+            'amount': 300.0,
+        })
+        for invalid_state in ('under_review', 'confirmed', 'done'):
+            with self.assertRaises(UserError):
+                advance.write({'state': invalid_state})
+
     def test_advance_return_to_previous_stage_second_step(self):
         """التراجع من "وافق مسؤول المشروع" يعيد السلفة إلى "بانتظار
         الموافقة" - الخطوة الثانية ذات المعنى في سلسلة السلفة."""

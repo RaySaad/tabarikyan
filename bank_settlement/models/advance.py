@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 
@@ -35,18 +35,49 @@ class BankSettlementAdvance(models.Model):
     # المشروع ← تمت الموافقة (المدير العام) ← تم الصرف. موافقة مسؤول
     # المشروع تأتي أولاً، ثم اعتماد المدير العام - نفس التسلسل المعتاد
     # في الشركات.
+    #
+    # selection_add (وليس استبدالاً كاملاً لـ selection كما كان سابقاً):
+    # الاستبدال الكامل كان يصدر تحذيراً من أودو عند كل تحميل للموديول
+    # ("selection=... overrides existing selection; use selection_add
+    # instead") - ظهر متكرراً بسجلات الإنتاج وتسبَّب بحالة "Warning"
+    # (برتقالي) على odoo.sh. selection_add لا يحذف قيم القائمة الأساسية
+    # (under_review/confirmed/done) - تبقى "صالحة" تقنياً على مستوى تعريف
+    # الحقل، رغم عدم استخدامها إطلاقاً هنا - القيد أدناه (_check_state_
+    # values) يمنع فعلياً كتابتها على سلفة، معوّضاً الحماية التي كان
+    # التصريح الكامل يوفّرها تلقائياً.
     state = fields.Selection(
-        selection=[
-            ('draft', 'مسودة'),
+        selection_add=[
             ('waiting_approval', 'بانتظار الموافقة'),
             ('pm_approved', 'وافق مسؤول المشروع'),
             ('approved', 'تمت الموافقة'),
             ('paid', 'تم الصرف'),
-            ('rejected', 'مرفوضة'),
-            ('cancel', 'ملغاة'),
         ],
-        default='draft', tracking=True, copy=False,
+        ondelete={
+            'waiting_approval': 'cascade',
+            'pm_approved': 'cascade',
+            'approved': 'cascade',
+            'paid': 'cascade',
+        },
     )
+
+    _INVALID_STATES = ('under_review', 'confirmed', 'done')
+
+    @api.constrains('state')
+    def _check_state_values(self):
+        """يمنع القيم الثلاث الموروثة من bank_settlement_mixin (under_
+        review/confirmed/done) - غير مستخدمة إطلاقاً في سلسلة حالات
+        السلفة (انظر شرح selection_add أعلاه) لكنها تبقى "صالحة" تقنياً
+        على مستوى تعريف الحقل؛ هذا الفحص يمنع فعلياً أي كتابة مباشرة
+        لها (RPC مباشر، أو بعد تعديل عبر Odoo Studio) - نفس الحماية
+        التي كان الاستبدال الكامل السابق للـ selection يوفّرها تلقائياً
+        قبل التحويل لـ selection_add."""
+        for rec in self:
+            if rec.state in self._INVALID_STATES:
+                raise UserError(_(
+                    'حالة "%s" غير صالحة للسلفة - سلسلة حالات السلفة '
+                    'مختلفة عن بقية شاشات السداد البنكي (بانتظار '
+                    'الموافقة/وافق مسؤول المشروع/تمت الموافقة/تم الصرف).'
+                ) % dict(rec._fields['state'].selection).get(rec.state, rec.state))
 
     def _sequence_code(self):
         return 'bank.settlement.advance'

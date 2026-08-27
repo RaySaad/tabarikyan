@@ -6,6 +6,7 @@ from odoo.exceptions import UserError
 
 
 class HrEmployee(models.Model):
+    _name = 'hr.employee'
     _inherit = 'hr.employee'
 
     # نفس حماية recruitment_workflow.hr_employee.unlink() بالضبط، لكن هنا
