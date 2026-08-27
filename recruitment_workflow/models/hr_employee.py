@@ -4,6 +4,7 @@ from odoo.exceptions import UserError
 
 
 class HrEmployee(models.Model):
+    _name = 'hr.employee'
     _inherit = ['hr.employee', 'recruitment.workflow.analytic.mixin']
 
     project_id = fields.Many2one(

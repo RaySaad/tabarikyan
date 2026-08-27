@@ -12,7 +12,7 @@
                     وقابل للتعديل لكل موظف قبل التأكيد).
                 </div>
                 <group>
-                    <field name="project_id"/>
+                    <field name="project_id" options="{'no_create': True}"/>
                     <field name="note" placeholder="مثال: ربط رجعي - بيانات قديمة"/>
                 </group>
                 <field name="line_ids">

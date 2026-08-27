@@ -70,7 +70,7 @@
                     ستُنقَل <field name="vehicle_count" class="fw-bold d-inline"/> سيارة إلى الفرع المختار.
                 </div>
                 <group>
-                    <field name="company_id"/>
+                    <field name="company_id" options="{'no_create': True}"/>
                     <field name="note" placeholder="ملاحظة اختيارية..."/>
                 </group>
                 <field name="vehicle_ids" widget="many2many_tags" readonly="1"/>

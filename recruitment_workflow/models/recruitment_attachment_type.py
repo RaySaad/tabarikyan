@@ -35,11 +35,17 @@ class RecruitmentRequestAttachment(models.Model):
         string='نوع المرفق',
         required=True,
     )
+    # translate=False صراحة: الحقل المصدر (attachment_type_id.name) قابل
+    # للترجمة، لكن هذا الحقل نفسه لا يُعرَض للمستخدم لاختيار لغته بشكل
+    # مستقل (مجرد نسخة مخزَّنة لعرض/فرز سريع) - وبلا هذا التحديد كان
+    # أودو يحذّر أن الحقل المترجَم المخزَّن هذا "لن يُحسَب صحيحاً في كل
+    # اللغات" (نفس القيمة تُخزَّن بغض النظر عن لغة من يحفظ السجل).
     name = fields.Char(
         string='المرفق',
         related='attachment_type_id.name',
         store=True,
         readonly=True,
+        translate=False,
     )
     sequence = fields.Integer(string='الترتيب', default=10)
     required = fields.Boolean(
