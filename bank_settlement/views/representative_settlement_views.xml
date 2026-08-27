@@ -25,6 +25,23 @@
             </field>
         </record>
 
+        <record id="view_bank_settlement_representative_search" model="ir.ui.view">
+            <field name="name">bank.settlement.representative.search</field>
+            <field name="model">bank.settlement.representative</field>
+            <field name="arch" type="xml">
+                <search string="تصفيات المناديب">
+                    <field name="name"/>
+                    <field name="employee_id" string="اسم المندوب"/>
+                    <field name="project_id" string="اسم التطبيق"/>
+                    <filter name="inactive" string="مؤرشف" domain="[('active', '=', False)]"/>
+                    <group>
+                        <filter name="group_by_state" string="الحالة" context="{'group_by': 'state'}"/>
+                        <filter name="group_by_employee" string="الموظف" context="{'group_by': 'employee_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
         <record id="view_bank_settlement_representative_form" model="ir.ui.view">
             <field name="name">bank.settlement.representative.form</field>
             <field name="model">bank.settlement.representative</field>
