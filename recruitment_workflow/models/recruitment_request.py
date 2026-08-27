@@ -502,7 +502,11 @@ class RecruitmentRequest(models.Model):
         self.ensure_one()
         if not self.identification_id:
             return
-        Employee = self.env['hr.employee'].sudo()
+        # active_test=False: البحث الافتراضي في أودو يستثني الموظفين
+        # المؤرشفين (مثلاً موظف سابق انتهت خدمته) - كان هذا يسمح بتسلل
+        # طلب توظيف جديد بنفس رقم هوية موظف قديم مؤرشف دون أن يُكتشف
+        # التكرار إطلاقاً هنا (طلب صريح: تفعيل المطابقة مع المؤرشف أيضاً).
+        Employee = self.env['hr.employee'].sudo().with_context(active_test=False)
         emp_fields = Employee._fields
         domain = ['|', ('identification_id', '=', self.identification_id)]
         if 'l10n_sa_employee_code' in emp_fields:
@@ -1076,12 +1080,18 @@ class RecruitmentRequest(models.Model):
         # طلبات التوظيف سجل تدقيق ومراجعة دائم - يُمنع حذفها نهائياً حتى
         # لممن يملك صلاحية الحذف على مستوى ir.model.access (مثلاً المدير
         # الفني عبر الواجهة التقنية)، حفاظاً على السجل التاريخي الكامل.
-        # الأرشفة (عبر الرفض أو الإجراءات المخصصة) هي البديل الوحيد.
-        raise UserError(_(
-            'لا يمكن حذف طلبات التوظيف نهائياً، للحفاظ على سجل تدقيق '
-            'ومراجعة كامل. استخدم "رفض" لأرشفة الطلب بدلاً من ذلك - '
-            'يبقى السجل محفوظاً ويمكن استرجاعه من الأرشيف لاحقاً.'
-        ))
+        # الأرشفة (عبر الرفض أو الإجراءات المخصصة) هي البديل الوحيد -
+        # باستثناء الطلبات المرفوضة فعلاً (state == 'rejected'): طلب صريح
+        # من المستخدم للسماح بحذف نهائي لها تحديداً (تنظيف بيانات خاطئة/
+        # مكررة تم رفضها بالفعل)، بينما تبقى بقية الحالات محمية بالكامل.
+        non_rejected = self.filtered(lambda rec: rec.state != 'rejected')
+        if non_rejected:
+            raise UserError(_(
+                'لا يمكن حذف طلبات التوظيف نهائياً إلا بعد رفضها أولاً، '
+                'للحفاظ على سجل تدقيق ومراجعة كامل. استخدم "رفض" لأرشفة '
+                'الطلب، ثم يمكن حذفه بعد ذلك إن لزم.'
+            ))
+        return super().unlink()
 
     def action_reset_to_draft(self):
         for rec in self:
