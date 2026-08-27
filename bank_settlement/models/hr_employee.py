@@ -1,13 +1,27 @@
 # -*- coding: utf-8 -*-
 from datetime import date
 
-from odoo import models, _
+from odoo import fields, models, _
 from odoo.exceptions import UserError
 
 
 class HrEmployee(models.Model):
     _name = 'hr.employee'
     _inherit = 'hr.employee'
+
+    # توسيع صلاحية قراءة has_work_entries (حقل بولياني بسيط، لا بيانات
+    # حساسة) لتشمل مستخدمي السداد البنكي أيضاً - كانت مقتصرة على
+    # base.group_system/hr.group_hr_user فقط في hr_work_entry الأساسي.
+    # نمنح group_bank_settlement_user وصول قراءة لسجل الموظف نفسه
+    # (ضروري لعملهم)، وهذا التعارض بين صلاحية قراءة النموذج وصلاحية
+    # قراءة هذا الحقل تحديداً كان يسبب تحذير "عدم اتساق في صلاحيات
+    # الوصول" على زر "فتح إدخالات العمل" في نموذج الموظف (رغم أن الزر
+    # نفسه محمي بـgroups=hr.group_hr_manager ولا يظهر لهم فعلياً - مجرد
+    # تحذير استشاري، لكن إصلاحه الصحيح هو هذا بالضبط حسب توصية أودو
+    # نفسها في رسالة التحذير).
+    has_work_entries = fields.Boolean(
+        groups='base.group_system,hr.group_hr_user,bank_settlement.group_bank_settlement_user',
+    )
 
     # نفس حماية recruitment_workflow.hr_employee.unlink() بالضبط، لكن هنا
     # لنماذج bank_settlement تحديداً (سلفة/رسوم حكومية/تأمين طبي/تحويل
