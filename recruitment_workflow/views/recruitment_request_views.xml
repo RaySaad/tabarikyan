@@ -137,7 +137,7 @@
                         <div class="oe_stat_button" style="cursor:default;"
                              groups="recruitment_workflow.group_recruitment_workflow_operations"
                              invisible="not fee_move_id">
-                            <i class="fa fa-fw fa-money"/>
+                            <i class="fa fa-fw fa-money" title="فاتورة الرسوم" role="img"/>
                             <div class="o_stat_info">
                                 <span class="o_stat_text">فاتورة الرسوم</span>
                                 <field name="fee_payment_state" widget="badge" class="o_stat_value"/>
@@ -365,13 +365,13 @@
                                 </span>
                             </div>
                             <div>
-                                <span><i class="fa fa-id-card me-1"/><field name="identification_id"/></span>
+                                <span><i class="fa fa-id-card me-1" title="رقم الهوية" role="img"/><field name="identification_id"/></span>
                             </div>
                             <div>
-                                <span><i class="fa fa-phone me-1"/><field name="mobile"/></span>
+                                <span><i class="fa fa-phone me-1" title="الجوال" role="img"/><field name="mobile"/></span>
                             </div>
                             <div t-if="record.job_id.value">
-                                <span><i class="fa fa-briefcase me-1"/><field name="job_id"/></span>
+                                <span><i class="fa fa-briefcase me-1" title="الوظيفة" role="img"/><field name="job_id"/></span>
                             </div>
                             <div class="mt-2">
                                 <field name="attachment_progress" widget="progressbar"/>

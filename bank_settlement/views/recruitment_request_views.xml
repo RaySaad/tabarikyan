@@ -14,7 +14,7 @@
                     <div class="oe_stat_button" style="cursor:default;"
                          groups="bank_settlement.group_bank_settlement_user"
                          invisible="not bank_settlement_gov_fee_id">
-                        <i class="fa fa-fw fa-university"/>
+                        <i class="fa fa-fw fa-university" title="الرسوم الحكومية" role="img"/>
                         <div class="o_stat_info">
                             <span class="o_stat_text">الرسوم الحكومية</span>
                             <field name="bank_settlement_gov_fee_state" widget="badge" class="o_stat_value"/>
