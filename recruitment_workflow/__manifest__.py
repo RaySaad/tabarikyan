@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Recruitment Workflow - سير عمل طلبات التوظيف',
-    'version': '19.0.1.8.1',
+    'version': '19.0.1.9.0',
     'category': 'Human Resources/Recruitment',
     'summary': 'نظام إدارة مراحل طلبات التوظيف ونقل الكفالة وطلب السيارات وإنشاء العقود',
     'description': """

@@ -281,6 +281,20 @@ class RecruitmentRequest(models.Model):
         copy=False,
         ondelete='restrict',
     )
+    # يُضبط تلقائياً True فقط عند الإنشاء من "طلب استقدام" (bank_settlement -
+    # موظف يُستقدَم من الخارج وليس نقل كفالة من كفيل آخر). الرسوم الحكومية
+    # مسدَّدة والموظف منشأ مسبقاً هناك قبل وجود طلب التوظيف هذا أصلاً، فهذا
+    # العلم يتحكم بثلاثة أشياء فقط أينما ظهر أدناه: (1) تخطي مراحل نقل
+    # الكفالة الثلاث (تم السداد/جاري النقل/تم النقل) في _next_stage()، (2)
+    # تخطي فحص تكرار رقم الهوية واشتراط المشروع عند "طلب جديد" (نُفِّذا
+    # مسبقاً هناك، والمشروع يُشترط بدلاً من ذلك عند مغادرة "مراجعة مسؤول
+    # المشروع")، (3) قفل حقلي الاسم/رقم الهوية في الواجهة (ثابتان بمجرد
+    # ربطهما بسجل موظف حقيقي فعلي). لا يُنشئ أي مسار جديد لإنشاء الموظف -
+    # employee_id مضبوط منذ البداية فيكفي الحارس الموجود أصلاً في
+    # _create_employee() (if self.employee_id: return) لمنع أي تكرار.
+    is_import_request = fields.Boolean(
+        string='طلب استقدام', default=False, copy=False, readonly=True,
+    )
     candidate_partner_id = fields.Many2one(
         'res.partner', string='جهة اتصال المرشّح', readonly=True, copy=False,
         help='جهة اتصال خفيفة تمثّل المرشّح قبل إنشاء سجل الموظف الرسمي - '
@@ -590,14 +604,22 @@ class RecruitmentRequest(models.Model):
     def _get_stage_by_code(self, code):
         return self.env['recruitment.stage'].search([('code', '=', code)], limit=1)
 
+    # مراحل نقل الكفالة الحكومية - لا معنى لها لطلب استقدام (الموظف
+    # يُستقدَم من الخارج، ليس منقولاً من كفيل آخر): الرسوم مسدَّدة والموظف
+    # منشأ مسبقاً في "طلب استقدام" قبل وجود طلب التوظيف هذا أصلاً.
+    _IMPORT_SKIPPED_STAGE_CODES = ('paid', 'sponsorship_transfer', 'sponsorship_done')
+
     def _next_stage(self):
         self.ensure_one()
         stages = self.env['recruitment.stage'].search([], order='sequence')
         stage_ids = stages.ids
         if self.stage_id.id in stage_ids:
-            idx = stage_ids.index(self.stage_id.id)
-            if idx + 1 < len(stage_ids):
-                return stages[idx + 1]
+            idx = stage_ids.index(self.stage_id.id) + 1
+            while idx < len(stage_ids) and self.is_import_request \
+                    and stages[idx].code in self._IMPORT_SKIPPED_STAGE_CODES:
+                idx += 1
+            if idx < len(stage_ids):
+                return stages[idx]
         return False
 
     def _validate_stage_exit(self, current_stage):
@@ -612,11 +634,23 @@ class RecruitmentRequest(models.Model):
                 'المرفقات الناقصة:\n- %s'
             ) % '\n- '.join(missing))
 
-        # فحص تكرار الموظف عند الخروج من المرحلة الأولى (الطلب الجديد)
-        if current_stage.code == 'new':
+        # فحص تكرار الموظف عند الخروج من المرحلة الأولى (الطلب الجديد) -
+        # يُستثنى طلب الاستقدام: فُحص مسبقاً في "طلب استقدام" (bank_
+        # settlement) قبل إنشاء سجل الموظف نفسه هناك.
+        if current_stage.code == 'new' and not self.is_import_request:
             self._check_duplicate_employee()
 
-        if current_stage.require_project and not self.project_id:
+        # طلب الاستقدام: اختيار المشروع/المنصة مؤجَّل عمداً عن "طلب جديد"
+        # إلى مرحلة "مراجعة مسؤول المشروع" (الشرط أدناه) بدلاً من هنا.
+        if current_stage.require_project and not self.project_id \
+                and not (self.is_import_request and current_stage.code == 'new'):
+            raise UserError(_(
+                'لا يمكن الانتقال للمرحلة التالية. يجب تحديد المشروع/المنصة '
+                '(مثال: كيتا، هنقرستيشن) التي سيعمل عليها المندوب أولاً.'
+            ))
+
+        if current_stage.code == 'project_review' and self.is_import_request \
+                and not self.project_id:
             raise UserError(_(
                 'لا يمكن الانتقال للمرحلة التالية. يجب تحديد المشروع/المنصة '
                 '(مثال: كيتا، هنقرستيشن) التي سيعمل عليها المندوب أولاً.'
@@ -1411,18 +1445,20 @@ class RecruitmentRequest(models.Model):
     # ------------------------------------------------------------------
     # إنشاء العقد الأوتوماتيكي
     # ------------------------------------------------------------------
-    def _create_employee(self):
-        """إنشاء سجل الموظف في الموارد البشرية إن لم يكن موجوداً.
+    def _build_employee_vals(self):
+        """يبني قاموس القيم لإنشاء/تحديث سجل الموظف من حقول طلب التوظيف.
+
+        مُستخرجة من _create_employee() لتُستخدم في مسارين: الإنشاء
+        المباشر هنا (Employee.create(...))، ومزامنة الحقول الإضافية
+        لطلبات الاستقدام (employee.write(...) عبر bank_settlement -
+        الموظف هناك يُنشأ مبكراً ببيانات أساسية فقط، ثم تُستكمل بقية
+        الحقول لاحقاً على نفس السجل بنفس هذه الخريطة بالضبط).
 
         يطبّق خريطة الحقول الموسّعة حسب البروبوزل، ويضيف كل حقل فقط
         إن كان موجوداً في نموذج hr.employee (اعتماد مرن مع التخصيصات).
         """
         self.ensure_one()
-        if self.employee_id:
-            return self.employee_id
-
-        Employee = self.env['hr.employee'].sudo()
-        emp_fields = Employee._fields
+        emp_fields = self.env['hr.employee']._fields
 
         employee_name = self._get_formatted_employee_name()
         employee_vals = {'name': employee_name}
@@ -1462,6 +1498,17 @@ class RecruitmentRequest(models.Model):
         set_if('sex', self.gender)
         set_if('marital', self.marital)
         set_if('passport_id', self.passport_no)
+        return employee_vals
+
+    def _create_employee(self):
+        """إنشاء سجل الموظف في الموارد البشرية إن لم يكن موجوداً."""
+        self.ensure_one()
+        if self.employee_id:
+            return self.employee_id
+
+        Employee = self.env['hr.employee'].sudo()
+        emp_fields = Employee._fields
+        employee_vals = self._build_employee_vals()
 
         employee = Employee.create(employee_vals)
         self.employee_id = employee.id

@@ -14,6 +14,10 @@
                   groups="bank_settlement.group_bank_settlement_user,recruitment_workflow.group_recruitment_workflow_project_manager"
                   sequence="15"/>
 
+        <menuitem id="menu_recruitment_import_request" name="طلبات الاستقدام"
+                  parent="menu_bank_settlement_root"
+                  action="action_recruitment_import_request" sequence="5"/>
+
         <menuitem id="menu_bank_settlement_advance" name="السلف"
                   parent="menu_bank_settlement_root"
                   action="action_bank_settlement_advance" sequence="10"/>

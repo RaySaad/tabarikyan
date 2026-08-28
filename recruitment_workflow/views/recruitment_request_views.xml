@@ -156,8 +156,13 @@
 
                     <group>
                         <group string="بيانات الموظف">
-                            <field name="employee_name"/>
-                            <field name="identification_id" placeholder="1XXXXXXXXX أو 2XXXXXXXXX"/>
+                            <!-- طلب استقدام: الاسم/رقم الهوية ثابتان هنا - أُدخلا
+                                 وربطا فعلياً بسجل موظف حقيقي في "طلب استقدام" قبل
+                                 إنشاء هذا الطلب، فتعديلهما هنا لن يُحدِّث السجل
+                                 الرسمي (انظر is_import_request). -->
+                            <field name="employee_name" readonly="is_import_request"/>
+                            <field name="identification_id" placeholder="1XXXXXXXXX أو 2XXXXXXXXX"
+                                   readonly="is_import_request"/>
                             <field name="mobile" placeholder="05XXXXXXXX"/>
                             <field name="email" widget="email"/>
                             <field name="passport_no"/>
