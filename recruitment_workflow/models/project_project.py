@@ -102,6 +102,14 @@ class ProjectProject(models.Model):
             ])
             if not requests:
                 continue
+            # project_id مُضاف هنا (نفس القيمة الحالية بالضبط دائماً - هذه
+            # الطلبات مفلترة بـ project_id = project.id أعلاه) حتى يبقى
+            # ضمن نفس vals التي تشتق منها project_manager_id (انظر حماية
+            # write() لهذا الحقل: يرفض تعديله بمعزل عن project_id، خشية
+            # انتحال هوية مسؤول المشروع - يجب أن يصلا معاً دائماً). قفل
+            # "لا تعديل للمشروع بعد مراجعة مسؤول المشروع" في write() أصبح
+            # الآن يقارن القيمة الفعلية قبل الرفض (لا يرفض إعادة كتابة نفس
+            # القيمة) - فلا تعارض بين الحمايتين بعد الآن.
             sync_vals = {'project_id': project.id}
             if 'user_id' in tracked_fields:
                 sync_vals['project_manager_id'] = project.user_id.id

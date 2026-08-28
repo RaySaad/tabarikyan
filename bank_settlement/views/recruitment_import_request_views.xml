@@ -91,7 +91,16 @@
                                 <field name="currency_id" invisible="1"/>
                                 <field name="bank_settlement_gov_fee_state" readonly="1"
                                        invisible="not bank_settlement_gov_fee_id"/>
-                                <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                                <!-- قيمة أولية فقط (أفضل تخمين وقت رفع الطلب،
+                                     قبل معرفة المشروع بعد) - تُصحَّح تلقائياً
+                                     على طلب التوظيف الناتج بمجرد اختيار
+                                     المشروع الفعلي في "مراجعة مسؤول المشروع"
+                                     (نفس الاشتقاق التلقائي المعتاد)، وتُنسخ
+                                     القيمة المُصحَّحة لاحقاً لسجل الرسوم
+                                     الحكومية هنا أيضاً (انظر
+                                     _sync_gov_fee_platform_company). -->
+                                <field name="company_id" groups="base.group_multi_company"
+                                       readonly="state != 'draft'"/>
                             </group>
                             <group string="بيانات الموظف الأساسية"
                                    invisible="state in ('draft', 'fee_registered')">

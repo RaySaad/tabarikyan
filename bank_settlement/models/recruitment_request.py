@@ -46,8 +46,15 @@ class RecruitmentRequest(models.Model):
         - لم تُسدَّد بعد (مسودة/تحت المراجعة/مؤكدة) => move_id فارغ حتماً
           في هذه الحالات (لا يُنشأ إلا داخل action_done نفسها)، فيُحذف
           السجل بأمان بلا أي قيد محاسبي معلَّق، ليُنشأ سجل جديد بالمبلغ
-          المصحَّح تلقائياً عند إعادة الضغط على "تسجيل الرسوم الحكومية"."""
+          المصحَّح تلقائياً عند إعادة الضغط على "تسجيل الرسوم الحكومية".
+
+        طلب الاستقدام مستثنى بالكامل (انظر شرح الاستثناء في
+        recruitment_workflow.recruitment_request._unlock_gov_fee_for_
+        correction) - رسومه مسدَّدة عمداً منذ إنشائه، وليست شيئاً يُفترض
+        أن "إرجاع للتصحيح" يمسّه هنا إطلاقاً."""
         self.ensure_one()
+        if self.is_import_request:
+            return super()._unlock_gov_fee_for_correction()
         gov_fee = self.bank_settlement_gov_fee_id
         if gov_fee:
             if gov_fee.state == 'done':
@@ -151,7 +158,11 @@ class RecruitmentRequest(models.Model):
         سجل الموظف الموجود مسبقاً - انظر شرح الاستدعاء في
         _apply_stage_side_effects أعلاه. تستخدم بالضبط نفس خريطة الحقول
         المستخدمة في _create_employee() العادية (_build_employee_vals)،
-        التي لن تُستدعى أصلاً لهذه الطلبات (employee_id موجود مسبقاً)."""
+        التي لن تُستدعى أصلاً لهذه الطلبات (employee_id موجود مسبقاً).
+
+        تُكمِل أيضاً ربط سجل الرسوم الحكومية (المُسجَّل والمسدَّد مسبقاً
+        في "طلب استقدام" *قبل* معرفة المشروع) بالمنصة والشركة الصحيحتين
+        الآن - انظر _sync_gov_fee_platform_company أدناه."""
         self.ensure_one()
         if not (self.is_import_request and self.employee_id):
             return
@@ -174,6 +185,30 @@ class RecruitmentRequest(models.Model):
                 self.project_id,
                 note=_('فتح تلقائي عند تعبئة بيانات المشروع لطلب استقدام %s') % self.name,
             )
+
+        self._sync_gov_fee_platform_company()
+
+    def _sync_gov_fee_platform_company(self):
+        """يكتب المنصة (project_id) والشركة الصحيحتين (المُشتقتين تلقائياً
+        من المشروع على طلب التوظيف نفسه - نفس آلية _fill_project_derived_
+        vals القياسية، بلا أي استثناء لطلبات الاستقدام) على سجل الرسوم
+        الحكومية المرتبط - كان قد سُجِّل وسُدِّد مسبقاً في "طلب استقدام"
+        *قبل* معرفة المشروع، فبقيت شركته الافتراضية الأولية (وقت رفع
+        الطلب) عالقة بلا تصحيح، والمنصة/الحساب التحليلي (analytic_
+        account_id، حقل محسوب من project_id) فارغين تماماً.
+
+        للعرض على سجل الرسوم فقط (يُتجاوز قفل "بعد الاعتماد" عمداً عبر
+        bank_settlement_skip_approval_lock، بنفس آلية _create_employee()
+        أعلاه) - لا يمس القيد المحاسبي (move_id) المُنشأ مسبقاً إطلاقاً؛
+        توزيعه التحليلي يبقى مهمة يدوية للمحاسب عند الحاجة (طلب صريح)."""
+        self.ensure_one()
+        gov_fee = self.bank_settlement_gov_fee_id
+        if not (gov_fee and self.project_id):
+            return
+        gov_fee.with_context(bank_settlement_skip_approval_lock=True).write({
+            'project_id': self.project_id.id,
+            'company_id': self.company_id.id,
+        })
 
         try:
             self._create_employee_bank_account(employee)
