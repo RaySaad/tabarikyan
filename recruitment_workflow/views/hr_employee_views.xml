@@ -31,6 +31,32 @@
         </field>
     </record>
 
+    <!-- زر "فتح إدخالات العمل" (hr_work_entry) يظهر شرطاً بحقل has_work_
+         entries المقصور على base.group_system/hr.group_hr_user - لا علاقة
+         له بمستخدمي السداد البنكي إطلاقاً (بيانات رواتب/حضور، وليست سلف/
+         رسوم/تصفيات). كان يظهر لهم رغم ذلك (تعريفه الأصلي بلا قيد كافٍ)،
+         مسبباً تحذير "عدم اتساق في صلاحيات الوصول" عند كل تحديث للموديول.
+         نقيّده هنا ليطابق تماماً صلاحية الحقل نفسه.
+
+         سجل منفصل عمداً، يرث مباشرة من عرض hr_work_entry نفسه (وليس من
+         hr.view_employee_form الأساسي كالعرض أعلاه) - لأن أودو يدمج
+         العروض المتفرّعة من نفس الأصل بترتيب حقل priority (الافتراضي 16)،
+         وعرض hr_work_entry يحمل priority=90 (يُطبَّق متأخراً عمداً)، فزر
+         "فتح إدخالات العمل" لم يكن موجوداً بعد في الشجرة المُجمَّعة وقت
+         معالجة عرضنا أعلاه (priority الافتراضي) - فشل xpath هناك فعلياً
+         عند الاختبار. الوراثة من عرض hr_work_entry مباشرة تضمن وجود الزر
+         دائماً بغض النظر عن أي ترتيب priority مستقبلي. -->
+    <record id="view_hr_employee_form_inherit_recruitment_work_entries" model="ir.ui.view">
+        <field name="name">hr.employee.form.recruitment.work.entries.groups</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr_work_entry.hr_employee_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@id='open_work_entries']" position="attributes">
+                <attribute name="groups">base.group_system,hr.group_hr_user</attribute>
+            </xpath>
+        </field>
+    </record>
+
     <!-- إضافة "تجميع حسب المنصة" في بحث الموظفين - يسمح بعرض الموظفين
          مجمّعين ككيتا/هنقرستيشن... بدل قائمة مسطّحة واحدة -->
     <record id="view_employee_filter_inherit_recruitment" model="ir.ui.view">

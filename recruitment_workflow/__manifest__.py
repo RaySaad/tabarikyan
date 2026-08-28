@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Recruitment Workflow - سير عمل طلبات التوظيف',
-    'version': '19.0.1.9.1',
+    'version': '19.0.1.9.2',
     'category': 'Human Resources/Recruitment',
     'summary': 'نظام إدارة مراحل طلبات التوظيف ونقل الكفالة وطلب السيارات وإنشاء العقود',
     'description': """
@@ -47,6 +47,12 @@
         'project',
         'analytic',
         'account',
+        # اعتماد صريح - views/hr_employee_views.xml يستهدف زر "فتح إدخالات
+        # العمل" (open_work_entries) المُعرَّف في hr_work_entry ليقيّد
+        # صلاحيته (انظر شرح الاستهداف هناك). بدون هذا الاعتماد، لا يوجد
+        # ترتيب مضمون بين الموديولين - قد يُحمَّل hr_work_entry بعدنا
+        # فيفشل تحميل هذا الـxpath (العنصر غير موجود بعد وقت الفحص).
+        'hr_work_entry',
     ],
     'data': [
         'security/recruitment_workflow_security.xml',

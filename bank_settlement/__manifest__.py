@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'السداد البنكي - Bank Settlement',
-    'version': '19.0.1.13.4',
+    'version': '19.0.1.13.5',
     'category': 'Accounting/Accounting',
     'summary': 'إدارة السلف، الرسوم الحكومية، تحويلات المركبات، التأمين الطبي، وتصفيات المناديب',
     'description': """
@@ -33,13 +33,6 @@ recruitment_workflow لبيانات المناديب (hr.employee) والمنص�
         'mail',
         'account',
         'hr',
-        # اعتماد صريح على hr_work_entry - لضمان تحميله *قبل* bank_settlement
-        # دائماً (أودو يحمّل الاعتمادات أولاً). دون هذا، لا يوجد ترتيب
-        # مضمون بين الموديولين، وإعادة تعريفنا لصلاحيات حقل
-        # has_work_entries (انظر hr_employee.py) قد يُلغى بإعادة تعريف
-        # hr_work_entry الأصلي له إن حُمِّل بعدنا - وهو ما كان يحدث فعلياً
-        # على Staging (343 موديولاً، لا رابط معلن بين الاثنين).
-        'hr_work_entry',
         'project',
         'analytic',
         'recruitment_workflow',
