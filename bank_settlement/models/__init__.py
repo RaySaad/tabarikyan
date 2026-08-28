@@ -1,5 +1,6 @@
 from . import account_move
 from . import hr_employee
+from . import ir_cron
 from . import bank_settlement_mixin
 from . import advance_reason
 from . import advance
