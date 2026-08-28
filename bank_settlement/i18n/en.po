@@ -80,6 +80,7 @@ msgstr "<strong>Statement Period</strong>"
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_needaction
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_needaction
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_needaction
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__message_needaction
 msgid "Action Needed"
 msgstr ""
 
@@ -105,6 +106,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_ids
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_ids
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__activity_ids
 msgid "Activities"
 msgstr ""
 
@@ -115,6 +117,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_exception_decoration
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_exception_decoration
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_exception_decoration
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__activity_exception_decoration
 msgid "Activity Exception Decoration"
 msgstr ""
 
@@ -125,6 +128,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_state
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_state
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_state
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__activity_state
 msgid "Activity State"
 msgstr ""
 
@@ -135,6 +139,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_type_icon
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_type_icon
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_type_icon
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__activity_type_icon
 msgid "Activity Type Icon"
 msgstr ""
 
@@ -145,6 +150,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_attachment_count
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_attachment_count
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_attachment_count
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__message_attachment_count
 msgid "Attachment Count"
 msgstr ""
 
@@ -167,6 +173,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_return_wizard__create_uid
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__create_uid
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer_type__create_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__create_uid
 msgid "Created by"
 msgstr ""
 
@@ -184,6 +191,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_return_wizard__create_date
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__create_date
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer_type__create_date
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__create_date
 msgid "Created on"
 msgstr ""
 
@@ -205,6 +213,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer_type__display_name
 #: model:ir.model.fields,field_description:bank_settlement.field_hr_employee__display_name
 #: model:ir.model.fields,field_description:bank_settlement.field_recruitment_request__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__display_name
 msgid "Display Name"
 msgstr ""
 
@@ -238,6 +247,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_follower_ids
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_follower_ids
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_follower_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__message_follower_ids
 msgid "Followers"
 msgstr ""
 
@@ -248,6 +258,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_partner_ids
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_partner_ids
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_partner_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__message_partner_ids
 msgid "Followers (Partners)"
 msgstr ""
 
@@ -258,6 +269,7 @@ msgstr ""
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__activity_type_icon
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__activity_type_icon
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__activity_type_icon
+#: model:ir.model.fields,help:bank_settlement.field_recruitment_import_request__activity_type_icon
 msgid "Font awesome icon e.g. fa-tasks"
 msgstr ""
 
@@ -278,6 +290,7 @@ msgstr "Full Time Representative"
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__has_message
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__has_message
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__has_message
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__has_message
 msgid "Has Message"
 msgstr ""
 
@@ -304,6 +317,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer_type__id
 #: model:ir.model.fields,field_description:bank_settlement.field_hr_employee__id
 #: model:ir.model.fields,field_description:bank_settlement.field_recruitment_request__id
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__id
 msgid "ID"
 msgstr ""
 
@@ -325,6 +339,7 @@ msgstr "ID Number (within the App)"
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_exception_icon
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_exception_icon
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_exception_icon
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__activity_exception_icon
 msgid "Icon"
 msgstr ""
 
@@ -335,6 +350,7 @@ msgstr ""
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__activity_exception_icon
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__activity_exception_icon
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__activity_exception_icon
+#: model:ir.model.fields,help:bank_settlement.field_recruitment_import_request__activity_exception_icon
 msgid "Icon to indicate an exception activity."
 msgstr ""
 
@@ -345,6 +361,7 @@ msgstr ""
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__message_needaction
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__message_needaction
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__message_needaction
+#: model:ir.model.fields,help:bank_settlement.field_recruitment_import_request__message_needaction
 msgid "If checked, new messages require your attention."
 msgstr ""
 
@@ -361,6 +378,8 @@ msgstr ""
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__message_has_sms_error
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__message_has_error
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__message_has_sms_error
+#: model:ir.model.fields,help:bank_settlement.field_recruitment_import_request__message_has_error
+#: model:ir.model.fields,help:bank_settlement.field_recruitment_import_request__message_has_sms_error
 msgid "If checked, some messages have a delivery error."
 msgstr ""
 
@@ -371,6 +390,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_is_follower
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_is_follower
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_is_follower
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__message_is_follower
 msgid "Is Follower"
 msgstr ""
 
@@ -393,6 +413,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_return_wizard__write_uid
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__write_uid
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer_type__write_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__write_uid
 msgid "Last Updated by"
 msgstr ""
 
@@ -410,6 +431,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_return_wizard__write_date
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__write_date
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer_type__write_date
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__write_date
 msgid "Last Updated on"
 msgstr ""
 
@@ -420,6 +442,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_has_error
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_has_error
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_has_error
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__message_has_error
 msgid "Message Delivery error"
 msgstr ""
 
@@ -430,6 +453,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_ids
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_ids
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__message_ids
 msgid "Messages"
 msgstr ""
 
@@ -440,6 +464,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__my_activity_date_deadline
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__my_activity_date_deadline
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__my_activity_date_deadline
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__my_activity_date_deadline
 msgid "My Activity Deadline"
 msgstr ""
 
@@ -450,6 +475,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_calendar_event_id
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_calendar_event_id
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_calendar_event_id
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__activity_calendar_event_id
 msgid "Next Activity Calendar Event"
 msgstr ""
 
@@ -460,6 +486,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_date_deadline
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_date_deadline
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_date_deadline
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__activity_date_deadline
 msgid "Next Activity Deadline"
 msgstr ""
 
@@ -470,6 +497,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_summary
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_summary
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_summary
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__activity_summary
 msgid "Next Activity Summary"
 msgstr ""
 
@@ -480,6 +508,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_type_id
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_type_id
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_type_id
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__activity_type_id
 msgid "Next Activity Type"
 msgstr ""
 
@@ -490,6 +519,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_needaction_counter
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_needaction_counter
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_needaction_counter
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__message_needaction_counter
 msgid "Number of Actions"
 msgstr ""
 
@@ -500,6 +530,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_has_error_counter
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_has_error_counter
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_has_error_counter
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__message_has_error_counter
 msgid "Number of errors"
 msgstr ""
 
@@ -510,6 +541,7 @@ msgstr ""
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__message_needaction_counter
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__message_needaction_counter
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__message_needaction_counter
+#: model:ir.model.fields,help:bank_settlement.field_recruitment_import_request__message_needaction_counter
 msgid "Number of messages requiring action"
 msgstr ""
 
@@ -520,6 +552,7 @@ msgstr ""
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__message_has_error_counter
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__message_has_error_counter
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__message_has_error_counter
+#: model:ir.model.fields,help:bank_settlement.field_recruitment_import_request__message_has_error_counter
 msgid "Number of messages with delivery error"
 msgstr ""
 
@@ -530,6 +563,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__rating_ids
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__rating_ids
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__rating_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__rating_ids
 msgid "Ratings"
 msgstr ""
 
@@ -540,6 +574,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_user_id
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_user_id
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_user_id
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__activity_user_id
 msgid "Responsible User"
 msgstr ""
 
@@ -550,6 +585,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_has_sms_error
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_has_sms_error
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_has_sms_error
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__message_has_sms_error
 msgid "SMS Delivery error"
 msgstr ""
 
@@ -565,6 +601,7 @@ msgstr ""
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__activity_state
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__activity_state
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__activity_state
+#: model:ir.model.fields,help:bank_settlement.field_recruitment_import_request__activity_state
 msgid ""
 "Status based on activities\n"
 "Overdue: Due date is already passed\n"
@@ -579,6 +616,7 @@ msgstr ""
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__activity_exception_decoration
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__activity_exception_decoration
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__activity_exception_decoration
+#: model:ir.model.fields,help:bank_settlement.field_recruitment_import_request__activity_exception_decoration
 msgid "Type of the exception activity on record."
 msgstr ""
 
@@ -589,6 +627,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__website_message_ids
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__website_message_ids
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__website_message_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__website_message_ids
 msgid "Website Messages"
 msgstr ""
 
@@ -599,6 +638,7 @@ msgstr ""
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__website_message_ids
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__website_message_ids
 #: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__website_message_ids
+#: model:ir.model.fields,help:bank_settlement.field_recruitment_import_request__website_message_ids
 msgid "Website communication history"
 msgstr ""
 
@@ -674,12 +714,15 @@ msgstr "Submit for Review"
 msgid ""
 "إلزامي فقط عند اختيار \"تاريخ محدد\" - يُحسَب تلقائياً من تاريخ بداية العقد "
 "عند اختيار \"من بداية العقد\"."
-msgstr "Required only when \"Specific Date\" is selected - automatically calculated from the contract start date when \"From Contract Start\" is selected."
+msgstr ""
+"Required only when \"Specific Date\" is selected - automatically calculated "
+"from the contract start date when \"From Contract Start\" is selected."
 
 #. module: bank_settlement
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_employee_statement_wizard_form
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_reject_wizard_form
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_return_wizard_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_form
 msgid "إلغاء"
 msgstr "Cancel"
 
@@ -694,7 +737,11 @@ msgid ""
 "إن أُنشئ هذا السجل تلقائياً من طلب توظيف (مرحلة نقل الكفالة) قبل وجود سجل "
 "الموظف الرسمي، يُربَط هنا - ويُكمَل حقل \"اسم الموظف\" أعلاه تلقائياً بمجرد "
 "إنشاء ذلك السجل لاحقاً."
-msgstr "If this record was automatically created from a recruitment request (sponsorship transfer stage) before the official employee record existed, it is linked here - and the \"Employee Name\" field above is automatically filled in once that record is created later."
+msgstr ""
+"If this record was automatically created from a recruitment request "
+"(sponsorship transfer stage) before the official employee record existed, it"
+" is linked here - and the \"Employee Name\" field above is automatically "
+"filled in once that record is created later."
 
 #. module: bank_settlement
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_form
@@ -707,7 +754,11 @@ msgid ""
 "اختر المرحلة السابقة التي تريد إرجاع هذا السجل إليها للتصحيح - أي موافقة "
 "سابقة لهذه المرحلة تبقى سارية. قد تظهر هنا مراحل غير قابلة فعلياً للاختيار "
 "من حالة هذا السجل تحديداً - سيتم رفضها عند التأكيد إن لم تكن صالحة."
-msgstr "Choose the previous stage you want to return this record to for correction - any approval prior to this stage remains valid. Stages that aren't actually selectable from this record's specific status may appear here - they will be rejected upon confirmation if not valid."
+msgstr ""
+"Choose the previous stage you want to return this record to for correction -"
+" any approval prior to this stage remains valid. Stages that aren't actually"
+" selectable from this record's specific status may appear here - they will "
+"be rejected upon confirmation if not valid."
 
 #. module: bank_settlement
 #. odoo-python
@@ -737,6 +788,7 @@ msgstr "Representative Name"
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__employee_id
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__employee_id
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__employee_id
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__employee_name
 msgid "اسم الموظف"
 msgstr "Employee Name"
 
@@ -768,6 +820,7 @@ msgstr "IBAN"
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_list
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_list
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_list
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_list
 msgid "الإجمالي"
 msgstr "Total"
 
@@ -833,6 +886,7 @@ msgstr "Government Entities"
 #. module: bank_settlement
 #: model:ir.model,name:bank_settlement.model_bank_settlement_government_entity
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__government_entity_id
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__government_entity_id
 msgid "الجهة الحكومية"
 msgstr "Government Entity"
 
@@ -848,6 +902,8 @@ msgstr "Government Entity"
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_search
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_search
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_search
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__state
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_search
 msgid "الحالة"
 msgstr "Status"
 
@@ -886,7 +942,16 @@ msgid ""
 "أيضاً دفاتر الشركة الرئيسية (الأعلى في تسلسل الفروع) - نفس منطق الفروع "
 "المستخدم في كل شاشات المحاسبة القياسية بـ Odoo، لا تقتصر على دفاتر فرعكم "
 "فقط."
-msgstr "The journal this entry will be recorded on - explicitly specified instead of automatically picking the first available bank journal. Not restricted to \"bank\" type only, so you can choose custom journals you already have (such as \"Government Payments\"), without needing a vendor bill or a specific partner - the entry is recorded directly without needing to link it to a particular party/partner. The list also includes the parent company's journals (highest in the branch hierarchy) - the same branch logic used across all standard Odoo accounting screens, not limited to your branch's journals only."
+msgstr ""
+"The journal this entry will be recorded on - explicitly specified instead of"
+" automatically picking the first available bank journal. Not restricted to "
+"\"bank\" type only, so you can choose custom journals you already have (such"
+" as \"Government Payments\"), without needing a vendor bill or a specific "
+"partner - the entry is recorded directly without needing to link it to a "
+"particular party/partner. The list also includes the parent company's "
+"journals (highest in the branch hierarchy) - the same branch logic used "
+"across all standard Odoo accounting screens, not limited to your branch's "
+"journals only."
 
 #. module: bank_settlement
 #: model:ir.actions.act_window,name:bank_settlement.action_bank_settlement_government_fee
@@ -937,7 +1002,11 @@ msgid ""
 "السيارة المرتبطة بهذا التحويل (مثال: مصروف وقود لسيارة محددة) - تُقيَّد "
 "القائمة تلقائياً بسيارات الموظف المختار أعلاه (سائقها الحالي أو المستقبلي)، "
 "ويمكن تركها فارغة إن كان التحويل عاماً غير مرتبط بسيارة بعينها."
-msgstr "The vehicle linked to this transfer (e.g. a fuel expense for a specific vehicle) - the list is automatically restricted to the vehicles of the employee selected above (their current or future driver), and can be left empty if the transfer is general and not linked to a specific vehicle."
+msgstr ""
+"The vehicle linked to this transfer (e.g. a fuel expense for a specific "
+"vehicle) - the list is automatically restricted to the vehicles of the "
+"employee selected above (their current or future driver), and can be left "
+"empty if the transfer is general and not linked to a specific vehicle."
 
 #. module: bank_settlement
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__company_id
@@ -946,6 +1015,7 @@ msgstr "The vehicle linked to this transfer (e.g. a fuel expense for a specific 
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__company_id
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__company_id
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__company_id
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__company_id
 msgid "الشركة"
 msgstr "Company"
 
@@ -960,7 +1030,11 @@ msgid ""
 "الشريك الذي يُسجَّل على القيد المحاسبي لهذه الرسوم - يُشتق تلقائياً من "
 "الموظف المختار، أو يُضبط مبكراً (جهة اتصال المرشّح) عند إنشاء السجل تلقائياً"
 " من طلب توظيف قبل وجود سجل موظف رسمي بعد. يمكن تعديله يدوياً عند الحاجة."
-msgstr "The partner recorded on the journal entry for this fee - automatically derived from the selected employee, or set early (candidate contact) when the record is automatically created from a recruitment request before an official employee record exists yet. Can be edited manually when needed."
+msgstr ""
+"The partner recorded on the journal entry for this fee - automatically "
+"derived from the selected employee, or set early (candidate contact) when "
+"the record is automatically created from a recruitment request before an "
+"official employee record exists yet. Can be edited manually when needed."
 
 #. module: bank_settlement
 #: model_terms:ir.ui.view,arch_db:bank_settlement.report_hr_employee_statement
@@ -974,6 +1048,7 @@ msgstr "Total Net (Credit/Debit)"
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__currency_id
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__currency_id
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__currency_id
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__currency_id
 msgid "العملة"
 msgstr "Currency"
 
@@ -1033,7 +1108,9 @@ msgstr "Platform"
 msgid ""
 "المنصة (كيتا/هنقرستيشن/جاهز) - تُقترح تلقائياً من المنصة الحالية للموظف "
 "المختار، ويمكن تغييرها يدوياً إن لزم."
-msgstr "The platform (Keeta/Hungerstation/Jahez) - automatically suggested from the selected employee's current platform, and can be changed manually if needed."
+msgstr ""
+"The platform (Keeta/Hungerstation/Jahez) - automatically suggested from the "
+"selected employee's current platform, and can be changed manually if needed."
 
 #. module: bank_settlement
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__vendor_id
@@ -1198,7 +1275,8 @@ msgid ""
 "تم إرجاع هذا السجل للتصحيح - يمكن تعديل المبلغ وبيانات السداد\n"
 "                            البنكي (الحساب/دفتر اليومية/رقم السداد) مؤقتاً حتى إعادة الاعتماد.\n"
 "                            هوية الموظف/المنصة تبقى مقفولة."
-msgstr "This record has been returned for correction - the amount and bank settlement\n"
+msgstr ""
+"This record has been returned for correction - the amount and bank settlement\n"
 "                            details (account/journal/payment reference) can be temporarily edited until re-approval.\n"
 "                            The employee/platform identity remains locked."
 
@@ -1208,7 +1286,8 @@ msgid ""
 "تم إرجاع هذا السجل للتصحيح - يمكن تعديل المبلغ وبيانات السداد\n"
 "                            البنكي (الحساب/دفتر اليومية/رقم السداد) مؤقتاً حتى إعادة الاعتماد.\n"
 "                            هوية الموظف/المنصة/المركبة تبقى مقفولة."
-msgstr "This record has been returned for correction - the amount and bank settlement\n"
+msgstr ""
+"This record has been returned for correction - the amount and bank settlement\n"
 "                            details (account/journal/payment reference) can be temporarily edited until re-approval.\n"
 "                            The employee/platform/vehicle identity remains locked."
 
@@ -1217,7 +1296,8 @@ msgstr "This record has been returned for correction - the amount and bank settl
 msgid ""
 "تم إرجاع هذا السجل للتصحيح - يمكن تعديل المبلغ وتاريخ التحويل\n"
 "                            مؤقتاً حتى إعادة الاعتماد. هوية الموظف/المنصة تبقى مقفولة."
-msgstr "This record has been returned for correction - the amount and transfer date\n"
+msgstr ""
+"This record has been returned for correction - the amount and transfer date\n"
 "                            can be temporarily edited until re-approval. The employee/platform identity remains locked."
 
 #. module: bank_settlement
@@ -1226,7 +1306,8 @@ msgid ""
 "تم إرجاع هذا السجل للتصحيح - يمكن تعديل مبلغ التصفية وبيانات\n"
 "                            السداد البنكي (الحساب/دفتر اليومية) مؤقتاً حتى إعادة الاعتماد.\n"
 "                            هوية المندوب/المنصة تبقى مقفولة."
-msgstr "This record has been returned for correction - the settlement amount and bank\n"
+msgstr ""
+"This record has been returned for correction - the settlement amount and bank\n"
 "                            settlement details (account/journal) can be temporarily edited until re-approval.\n"
 "                            The representative/platform identity remains locked."
 
@@ -1264,7 +1345,9 @@ msgstr "Approved"
 msgid ""
 "تُضبَط تلقائياً عند \"إرجاع للتصحيح\" - تسمح مؤقتاً بتعديل الحقول الحساسة "
 "(الموظف/المبلغ...) حتى إعادة الاعتماد."
-msgstr "Automatically set when \"Return for Correction\" is used - temporarily allows editing sensitive fields (employee/amount...) until re-approval."
+msgstr ""
+"Automatically set when \"Return for Correction\" is used - temporarily "
+"allows editing sensitive fields (employee/amount...) until re-approval."
 
 #. module: bank_settlement
 #. odoo-python
@@ -1272,7 +1355,10 @@ msgstr "Automatically set when \"Return for Correction\" is used - temporarily a
 msgid ""
 "حالة \"%s\" غير صالحة للسلفة - سلسلة حالات السلفة مختلفة عن بقية شاشات "
 "السداد البنكي (بانتظار الموافقة/وافق مسؤول المشروع/تمت الموافقة/تم الصرف)."
-msgstr "Status \"%s\" is not valid for an advance - the advance status flow is different from the rest of the bank settlement screens (Pending Approval/Project Manager Approved/Approved/Disbursed)."
+msgstr ""
+"Status \"%s\" is not valid for an advance - the advance status flow is "
+"different from the rest of the bank settlement screens (Pending "
+"Approval/Project Manager Approved/Approved/Disbursed)."
 
 #. module: bank_settlement
 #: model:ir.model.fields,field_description:bank_settlement.field_recruitment_request__bank_settlement_gov_fee_state
@@ -1390,6 +1476,8 @@ msgstr "Advance Reason"
 
 #. module: bank_settlement
 #: model:ir.model.fields,field_description:bank_settlement.field_recruitment_request__bank_settlement_gov_fee_id
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__bank_settlement_gov_fee_id
 msgid "سجل الرسوم الحكومية"
 msgstr "Government Fee Record"
 
@@ -1419,7 +1507,9 @@ msgstr "Employee's Company/Branch"
 msgid ""
 "صلاحيات إدارة السلف والرسوم الحكومية وتحويلات المركبات والتأمين الطبي "
 "وتصفيات المناديب"
-msgstr "Permissions for managing advances, government fees, vehicle transfers, medical insurance, and representative settlements"
+msgstr ""
+"Permissions for managing advances, government fees, vehicle transfers, "
+"medical insurance, and representative settlements"
 
 #. module: bank_settlement
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_employee_statement_wizard_form
@@ -1438,6 +1528,7 @@ msgstr "Payment Method"
 
 #. module: bank_settlement
 #: model:ir.model,name:bank_settlement.model_recruitment_request
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
 msgid "طلب التوظيف"
 msgstr "Recruitment Request"
 
@@ -1487,7 +1578,10 @@ msgid ""
 "لا يمكن إرجاع القيد المحاسبي \"%s\" لمسودة - هو قيد سداد بنكي مرتبط بسجل "
 "معتمد، يجب الحفاظ عليه معتمداً للتدقيق. استخدم قيداً عكسياً أو الإلغاء بدلاً"
 " من ذلك."
-msgstr "Journal entry \"%s\" cannot be reset to draft - it is a bank settlement entry linked to an approved record and must remain posted for auditing. Use a reversal entry or cancellation instead."
+msgstr ""
+"Journal entry \"%s\" cannot be reset to draft - it is a bank settlement "
+"entry linked to an approved record and must remain posted for auditing. Use "
+"a reversal entry or cancellation instead."
 
 #. module: bank_settlement
 #. odoo-python
@@ -1497,7 +1591,12 @@ msgid ""
 "معتمد (سلفة، رسوم حكومية، تأمين طبي، تحويل مركبة، أو تصفية) يجب الحفاظ عليه "
 "للتدقيق. إن احتاج الأمر تصحيحاً، استخدم قيداً عكسياً أو الإلغاء بدلاً من "
 "الحذف."
-msgstr "Journal entry \"%s\" cannot be permanently deleted - it is a bank settlement entry linked to an approved record (advance, government fee, medical insurance, vehicle transfer, or settlement) that must be kept for auditing. If correction is needed, use a reversal entry or cancellation instead of deleting."
+msgstr ""
+"Journal entry \"%s\" cannot be permanently deleted - it is a bank settlement"
+" entry linked to an approved record (advance, government fee, medical "
+"insurance, vehicle transfer, or settlement) that must be kept for auditing. "
+"If correction is needed, use a reversal entry or cancellation instead of "
+"deleting."
 
 #. module: bank_settlement
 #. odoo-python
@@ -1506,7 +1605,11 @@ msgid ""
 "لا يمكن حذف الموظف \"%s\" نهائياً - له سجل/سجلات سداد بنكي مرتبطة به (سلفة، "
 "رسوم حكومية، تأمين طبي، تحويل مركبة، أو تصفية) يجب الحفاظ على سجلها للتدقيق."
 " استخدم \"أرشفة\" بدلاً من الحذف."
-msgstr "Employee \"%s\" cannot be permanently deleted - they have bank settlement record(s) linked to them (advance, government fee, medical insurance, vehicle transfer, or settlement) whose record must be kept for auditing. Use \"Archive\" instead of deleting."
+msgstr ""
+"Employee \"%s\" cannot be permanently deleted - they have bank settlement "
+"record(s) linked to them (advance, government fee, medical insurance, "
+"vehicle transfer, or settlement) whose record must be kept for auditing. Use"
+" \"Archive\" instead of deleting."
 
 #. module: bank_settlement
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_search
@@ -1514,6 +1617,7 @@ msgstr "Employee \"%s\" cannot be permanently deleted - they have bank settlemen
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_search
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_search
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_search
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_search
 msgid "مؤرشف"
 msgstr "Archived"
 
@@ -1571,6 +1675,7 @@ msgstr "Paid"
 #: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_mixin__state__draft
 #: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_representative__state__draft
 #: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_vehicle_transfer__state__draft
+#: model:ir.model.fields.selection,name:bank_settlement.selection__recruitment_import_request__state__draft
 msgid "مسودة"
 msgstr "Draft"
 
@@ -1598,6 +1703,8 @@ msgstr "Print Employee Statement Wizard"
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__notes
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_form
 #: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_form
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__notes
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_form
 msgid "ملاحظات"
 msgstr "Notes"
 
@@ -1667,6 +1774,7 @@ msgstr "Transfer Type"
 #. module: bank_settlement
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__fee_type_id
 #: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__fee_type_id
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__fee_type_id
 msgid "نوع الرسوم"
 msgstr "Fee Type"
 
@@ -1741,7 +1849,9 @@ msgstr "Another fee type already has the same name."
 msgid ""
 "يُشتق تلقائياً من المنصة المختارة أعلاه - لتحقيق العزل المالي لكل منصة في "
 "القيود المحاسبية."
-msgstr "Automatically derived from the platform selected above - to achieve financial isolation per platform in the journal entries."
+msgstr ""
+"Automatically derived from the platform selected above - to achieve "
+"financial isolation per platform in the journal entries."
 
 #. module: bank_settlement
 #: model:ir.model.fields,help:bank_settlement.field_account_bank_statement_line__is_bank_settlement_move
@@ -1750,4 +1860,361 @@ msgid ""
 "يُضبط تلقائياً عند إنشاء القيد من السداد البنكي - يُستخدم لحصر رؤية "
 "\"مستخدم/محاسب\" السداد البنكي على قيودهم المرتبطة فقط (انظر ir.rule في "
 "security.xml)، دون الحاجة لصلاحية محاسبية واسعة تكشف بقية قيود الشركة."
-msgstr "Automatically set when the entry is created from bank settlement - used to restrict the \"user/accountant\" bank settlement visibility to only their linked entries (see ir.rule in security.xml), without needing broad accounting permissions that expose the rest of the company's entries."
+msgstr ""
+"Automatically set when the entry is created from bank settlement - used to "
+"restrict the \"user/accountant\" bank settlement visibility to only their "
+"linked entries (see ir.rule in security.xml), without needing broad "
+"accounting permissions that expose the rest of the company's entries."
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_form
+msgid "1XXXXXXXXX أو 2XXXXXXXXX"
+msgstr "1XXXXXXXXX or 2XXXXXXXXX"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_form
+msgid "<span class=\"o_stat_text\">سجل الرسوم الحكومية</span>"
+msgstr "<span class=\"o_stat_text\">Government Fee Record</span>"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_request_form_inherit_bank_settlement
+msgid "<span class=\"o_stat_text\">طلب الاستقدام</span>"
+msgstr "<span class=\"o_stat_text\">Import Request</span>"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_form
+msgid "<span class=\"o_stat_text\">طلب التوظيف</span>"
+msgstr "<span class=\"o_stat_text\">Recruitment Request</span>"
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid ""
+"أُنشئ تلقائياً من طلب استقدام %s - الرسوم الحكومية مسدَّدة وسجل الموظف موجود"
+" مسبقاً."
+msgstr ""
+"Automatically created from import request %s - government fees are settled "
+"and the employee record already exists."
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_form
+msgid "إرجاع لمسودة"
+msgstr "Reset to Draft"
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__import_request_id
+msgid ""
+"إن أُنشئ هذا السجل من \"طلب استقدام\" - يُربَط هنا فور التسجيل (قبل وجود سجل"
+" موظف أو حتى طلب توظيف بعد). نفس مبرر recruitment_request_id أعلاه بالضبط، "
+"لكن هنا الرسوم مسجَّلة أبكر حتى - قبل إدخال بيانات الموظف نفسها."
+msgstr ""
+"If this record was created from an \"Import Request\" - linked here as soon "
+"as it is registered (before an employee record or even a recruitment request"
+" exists yet). Same rationale as recruitment_request_id above exactly, but "
+"here the fee is registered even earlier - before the employee data itself is"
+" entered."
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_recruitment_request__import_request_id
+msgid ""
+"إن أُنشئ هذا الطلب تلقائياً من \"طلب استقدام\" (is_import_request) - يشير "
+"هنا لسجله الأصلي هناك (الرسوم/الموظف أُنشئا منه)."
+msgstr ""
+"If this request was automatically created from an \"Import Request\" "
+"(is_import_request) - points here to its original record there (the "
+"fee/employee were created from it)."
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_form
+msgid "إنشاء الموظف وطلب التوظيف"
+msgstr "Create Employee and Recruitment Request"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__email
+msgid "البريد الإلكتروني"
+msgstr "Email"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__employee_id
+msgid "الموظف (سجل HR)"
+msgstr "Employee (HR Record)"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__recruitment_import_request__state__fee_registered
+msgid "بانتظار سداد الرسوم"
+msgstr "Awaiting Fee Payment"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_form
+msgid "بيانات الرسوم الحكومية"
+msgstr "Government Fee Details"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_form
+msgid "بيانات الموظف الأساسية"
+msgstr "Basic Employee Details"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_form
+msgid "تأكيد سداد الرسوم"
+msgstr "Confirm Fee Payment"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_form
+msgid "تسجيل الرسوم الحكومية"
+msgstr "Register Government Fee"
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_request.py:0
+msgid ""
+"تعذّر ربط الحساب البنكي تلقائياً بعد تعبئة بيانات الاستقدام. يُرجى إضافة "
+"الآيبان يدوياً في سجل الموظف."
+msgstr ""
+"Could not automatically link the bank account after entering the import "
+"data. Please add the IBAN manually on the employee record."
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid "تم إنشاء سجل الموظف (%(emp)s) وطلب التوظيف %(req)s تلقائياً."
+msgstr ""
+"Employee record (%(emp)s) and recruitment request %(req)s were created "
+"automatically."
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid "تم تأكيد سداد الرسوم الحكومية. يمكن الآن إدخال بيانات الموظف."
+msgstr "Government fee payment confirmed. Employee data can now be entered."
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid ""
+"تم تسجيل سجل الرسوم الحكومية %s في السداد البنكي - يُتابَع اعتماده وسداده من"
+" هناك."
+msgstr ""
+"Government fee record %s has been registered in Bank Settlement - its "
+"approval and payment are tracked from there."
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__recruitment_import_request__state__fee_paid
+msgid "تم سداد الرسوم - إدخال بيانات الموظف"
+msgstr "Fees Paid - Enter Employee Data"
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid "جديد"
+msgstr "New"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__candidate_partner_id
+msgid "جهة اتصال المرشّح"
+msgstr "Candidate's Contact"
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_recruitment_import_request__candidate_partner_id
+msgid ""
+"جهة اتصال خفيفة تُنشأ فور تسجيل الرسوم الحكومية (لا يوجد سجل موظف رسمي بعد) "
+"- يُعاد اسمها لاحقاً باسم الموظف الفعلي عند إدخال بياناته، ثم تُستخدم كجهة "
+"اتصال عمله الرسمية."
+msgstr ""
+"A lightweight contact created as soon as the government fee is registered "
+"(no official employee record exists yet) - renamed later to the actual "
+"employee name once their data is entered, then used as their official work "
+"contact."
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__bank_settlement_gov_fee_state
+msgid "حالة سداد الرسوم"
+msgstr "Fee Payment Status"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__mobile
+msgid "رقم الجوال"
+msgstr "Mobile Number"
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid ""
+"رقم الجوال غير صالح. يجب أن يكون رقم جوال سعودي صحيح يبدأ بـ 05 أو 9665 أو "
+"+9665 ويتكون من العدد الصحيح من الأرقام."
+msgstr ""
+"Invalid mobile number. Must be a valid Saudi mobile number starting with 05,"
+" 9665, or +9665 with the correct number of digits."
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__name
+msgid "رقم الطلب"
+msgstr "Request Number"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__identification_id
+msgid "رقم الهوية / الإقامة"
+msgstr "ID / Iqama Number"
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid "رقم الهوية يجب أن يبدأ بالرقم 1 (مواطن) أو 2 (مقيم)."
+msgstr "The ID number must start with 1 (citizen) or 2 (resident)."
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid "رقم الهوية يجب أن يتكون من 10 أرقام بالضبط (تم إدخال %s رقم)."
+msgstr ""
+"The ID number must consist of exactly 10 digits (%s digit(s) entered)."
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid "رقم الهوية يجب أن يحتوي على أرقام فقط."
+msgstr "The ID number must contain digits only."
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_recruitment_import_request__mobile
+msgid "رقم جوال سعودي: 05XXXXXXXX أو 9665XXXXXXXX أو +9665XXXXXXXX."
+msgstr "A Saudi mobile number: 05XXXXXXXX, 9665XXXXXXXX, or +9665XXXXXXXX."
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_recruitment_import_request
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_form
+msgid "طلب استقدام"
+msgstr "Import Request"
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_request.py:0
+msgid "طلب الاستقدام"
+msgstr "Import Request"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_request__import_request_id
+msgid "طلب الاستقدام الأصلي"
+msgstr "Original Import Request"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__import_request_id
+msgid "طلب الاستقدام المرتبط"
+msgstr "Related Import Request"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__recruitment_request_id
+msgid "طلب التوظيف الناتج"
+msgstr "Resulting Recruitment Request"
+
+#. module: bank_settlement
+#: model:ir.actions.act_window,name:bank_settlement.action_recruitment_import_request
+#: model:ir.ui.menu,name:bank_settlement.menu_recruitment_import_request
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_list
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_import_request_search
+msgid "طلبات الاستقدام"
+msgstr "Import Requests"
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_request.py:0
+msgid "فتح تلقائي عند تعبئة بيانات المشروع لطلب استقدام %s"
+msgstr ""
+"Automatically opened when project data is filled in for import request %s"
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid "لا يمكن إرجاع طلب مكتمل إلى \"مسودة\"."
+msgstr "Cannot reset a completed request to \"Draft\"."
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid "لا يمكن إلغاء طلب اكتمل بالفعل وتحوّل لطلب توظيف (%s)."
+msgstr ""
+"Cannot cancel a request that has already been completed and converted into "
+"recruitment request (%s)."
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid "لا يمكن إنشاء سجل الموظف قبل تأكيد سداد الرسوم أولاً."
+msgstr ""
+"Cannot create the employee record before confirming fee payment first."
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid "لا يمكن تأكيد السداد قبل تسجيل الرسوم الحكومية أولاً."
+msgstr "Cannot confirm payment before registering the government fee first."
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid "لا يمكن تسجيل الرسوم إلا من حالة \"مسودة\"."
+msgstr "Fees can only be registered from the \"Draft\" state."
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid ""
+"لا يمكن حذف هذا السجل نهائياً بعد مغادرة \"مسودة\" إلا إن كان \"ملغى\". "
+"استخدم \"إلغاء\" بدلاً من ذلك إن احتجت إيقافه."
+msgstr ""
+"This record cannot be permanently deleted after leaving \"Draft\" unless it "
+"is \"Cancelled\". Use \"Cancel\" instead if you need to stop it."
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid "لا يوجد سجل رسوم حكومية مرتبط بعد."
+msgstr "No government fee record linked yet."
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_request.py:0
+msgid "لا يوجد طلب استقدام أصلي مرتبط."
+msgstr "No original import request linked."
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid "لا يوجد طلب توظيف مرتبط بعد."
+msgstr "No recruitment request linked yet."
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid ""
+"لم يُؤكَّد سداد الرسوم الحكومية بعد من السداد البنكي (%s) - يجب إتمامه من "
+"هناك أولاً."
+msgstr ""
+"Government fee payment has not yet been confirmed from Bank Settlement (%s) "
+"- it must be completed there first."
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__gov_fee_amount
+msgid "مبلغ الرسوم الحكومية"
+msgstr "Government Fee Amount"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__recruitment_import_request__state__done
+msgid "مكتمل - تحوّل لطلب توظيف"
+msgstr "Completed - Converted to Recruitment Request"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__recruitment_import_request__state__cancel
+msgid "ملغى"
+msgstr "Cancelled"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_import_request__active
+msgid "نشط"
+msgstr "Active"
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_recruitment_import_request__identification_id
+msgid "يجب أن يتكون من 10 أرقام ويبدأ بالرقم 1 أو 2."
+msgstr "Must consist of 10 digits and start with 1 or 2."
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid ""
+"يجب إدخال بيانات الموظف الأساسية أولاً. الحقول الناقصة:\n"
+"- %s"
+msgstr ""
+"Basic employee data must be entered first. Missing fields:\n"
+"- %s"
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid "يجب تحديد مبلغ الرسوم الحكومية أولاً."
+msgstr "The government fee amount must be specified first."
+
+#. module: bank_settlement
+#: code:addons/bank_settlement/models/recruitment_import_request.py:0
+msgid ""
+"يوجد موظف مسجّل بالفعل بنفس رقم الهوية (%(id)s): %(emp)s.\n"
+"لا يمكن متابعة الطلب لتفادي التكرار."
+msgstr ""
+"An employee is already registered with the same ID number (%(id)s): %(emp)s.\n"
+"The request cannot proceed, to avoid duplication."

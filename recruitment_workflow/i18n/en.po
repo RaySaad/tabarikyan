@@ -19,7 +19,9 @@ msgstr ""
 #. odoo-python
 #: code:addons/recruitment_workflow/models/recruitment_request.py:0
 msgid " تنبيه: لا توجد سيارة متاحة حالياً - سيتابع الأسطول الطلب فور توفرها."
-msgstr " Note: No vehicle is currently available - Fleet will follow up on the request once one becomes available."
+msgstr ""
+" Note: No vehicle is currently available - Fleet will follow up on the "
+"request once one becomes available."
 
 #. module: recruitment_workflow
 #: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
@@ -41,7 +43,8 @@ msgid ""
 "                    <p>المرحلة الحالية: <strong t-out=\"object.stage_id.name or ''\"/></p>\n"
 "                </div>\n"
 "            "
-msgstr "<div style=\"margin:0px;padding:0px;font-size:14px;\" dir=\"ltr\">\n"
+msgstr ""
+"<div style=\"margin:0px;padding:0px;font-size:14px;\" dir=\"ltr\">\n"
 "                    <p>Hello,</p>\n"
 "                    <p>Recruitment request <strong t-out=\"object.name or ''\">REC/2026/00001</strong>\n"
 "                       for employee <strong t-out=\"object.employee_name or ''\"/> has been approved.</p>\n"
@@ -58,7 +61,8 @@ msgid ""
 "                    <p>السبب: <span t-out=\"object.rejection_reason or 'غير محدد'\"/></p>\n"
 "                </div>\n"
 "            "
-msgstr "<div style=\"margin:0px;padding:0px;font-size:14px;\" dir=\"ltr\">\n"
+msgstr ""
+"<div style=\"margin:0px;padding:0px;font-size:14px;\" dir=\"ltr\">\n"
 "                    <p>Hello,</p>\n"
 "                    <p>We regret to inform you that recruitment request <strong t-out=\"object.name or ''\"/> has been rejected.</p>\n"
 "                    <p>Reason: <span t-out=\"object.rejection_reason or 'Not specified'\"/></p>\n"
@@ -572,7 +576,8 @@ msgstr "Work Schemes Available on the Platform"
 msgid ""
 "أنظمة العمل/الأجر (بالطلبات، بالعمولة، راتب ثابت...) التي\n"
 "                تُربَط لاحقاً بكل منصة/مشروع من سجل المشروع نفسه."
-msgstr "Work/pay schemes (per order, commission, fixed salary...) that\n"
+msgstr ""
+"Work/pay schemes (per order, commission, fixed salary...) that\n"
 "                are later linked to each platform/project from the project record itself."
 
 #. module: recruitment_workflow
@@ -582,7 +587,11 @@ msgid ""
 "أنظمة العمل/الأجر التي تدعمها هذه المنصة (بالطلبات، بالعمولة، راتب ثابت...)."
 " تحدِّد خيارات حقل \"نظام العمل\" في طلب التوظيف عند اختيار هذه المنصة - فلا"
 " تظهر إلا الأنظمة المرتبطة بها."
-msgstr "Work/pay schemes supported by this platform (per order, commission, fixed salary...). Determines the options of the \"Work Scheme\" field on the recruitment request when this platform is selected - only linked schemes will appear."
+msgstr ""
+"Work/pay schemes supported by this platform (per order, commission, fixed "
+"salary...). Determines the options of the \"Work Scheme\" field on the "
+"recruitment request when this platform is selected - only linked schemes "
+"will appear."
 
 #. module: recruitment_workflow
 #: model:ir.actions.act_window,name:recruitment_workflow.action_recruitment_attachment_type
@@ -610,13 +619,17 @@ msgstr "Required"
 msgid ""
 "إجمالي رسوم نقل الكفالة الحكومية (تُسدَّد للجهة الحكومية خارج هذا النظام - "
 "هذا فقط لتسجيل المبلغ)."
-msgstr "Total government sponsorship transfer fee (paid to the government entity outside this system - this is only for recording the amount)."
+msgstr ""
+"Total government sponsorship transfer fee (paid to the government entity "
+"outside this system - this is only for recording the amount)."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_recruitment_attachment_type__required
 #: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request_attachment__required
 msgid "إذا كان إجبارياً، يجب رفع هذا المرفق قبل الانتقال للمرحلة التالية."
-msgstr "If required, this attachment must be uploaded before moving to the next stage."
+msgstr ""
+"If required, this attachment must be uploaded before moving to the next "
+"stage."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -688,7 +701,8 @@ msgstr "Close Vehicle Request and Proceed"
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_recruitment_return_wizard__target_stage_id
 msgid "اختر المرحلة السابقة التي تريد إرجاع الطلب إليها للتصحيح."
-msgstr "Choose the previous stage you want to return the request to for correction."
+msgstr ""
+"Choose the previous stage you want to return the request to for correction."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_project_project__recruitment_hidden
@@ -701,7 +715,11 @@ msgid ""
 "استخدمه لدمج أكثر من فرع/شركة داخلية لنفس المنصة تحت اسم واحد ظاهر للمتقدمين"
 " على الموقع (مثال: \"جاهز\" و\"جاهز1\" كلاهما يظهران للمتقدم كخيار واحد باسم"
 " \"جاهز\" فقط). اتركه فارغاً لاستخدام اسم المشروع نفسه."
-msgstr "Use this to merge more than one internal branch/company for the same platform under one name shown to website applicants (e.g. \"Jahez\" and \"Jahez1\" both appear to the applicant as a single option named \"Jahez\" only). Leave empty to use the project's own name."
+msgstr ""
+"Use this to merge more than one internal branch/company for the same "
+"platform under one name shown to website applicants (e.g. \"Jahez\" and "
+"\"Jahez1\" both appear to the applicant as a single option named \"Jahez\" "
+"only). Leave empty to use the project's own name."
 
 #. module: recruitment_workflow
 #: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form_fleet
@@ -817,7 +835,10 @@ msgstr "Category"
 msgid ""
 "التصنيف يحدد دفتر اليومية المقترح تلقائياً، ويُستخدم للفلترة والتجميع في "
 "التقارير (مثال: كل \"المدفوعات الحكومية\" مع بعض)."
-msgstr "The category determines the automatically suggested journal, and is used for filtering and grouping in reports (e.g. all \"Government Payments\" together)."
+msgstr ""
+"The category determines the automatically suggested journal, and is used for"
+" filtering and grouping in reports (e.g. all \"Government Payments\" "
+"together)."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__main_application
@@ -852,7 +873,9 @@ msgstr "Default Vendor"
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__fee_partner_id
 msgid "الجهة التي ستُصدَر لها فاتورة المورد (مكتب استقدام، جهة حكومية...)."
-msgstr "The party the vendor bill will be issued to (recruitment office, government entity...)."
+msgstr ""
+"The party the vendor bill will be issued to (recruitment office, government "
+"entity...)."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__fee_partner_id
@@ -864,7 +887,9 @@ msgstr "Beneficiary (Vendor)"
 msgid ""
 "الجهة/المورّد الذي تُصدَر له فاتورة المورد افتراضياً لهذا النوع (مثال: "
 "الجوازات، مؤسسة التأمينات GOSI...). يمكن تغييره لكل سجل تكلفة عند الحاجة."
-msgstr "The party/vendor the vendor bill is issued to by default for this type (e.g. Passports, GOSI...). Can be changed per cost record when needed."
+msgstr ""
+"The party/vendor the vendor bill is issued to by default for this type (e.g."
+" Passports, GOSI...). Can be changed per cost record when needed."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__state
@@ -895,7 +920,9 @@ msgstr "Platform Analytic Account"
 msgid ""
 "الحساب المحاسبي لسطر فاتورة المورد. يُوزَّع تحليلياً تلقائياً على حساب "
 "المشروع/المنصة عند الرفع للمحاسبة."
-msgstr "The accounting account for the vendor bill line. Automatically distributed analytically to the project/platform's account when posted to accounting."
+msgstr ""
+"The accounting account for the vendor bill line. Automatically distributed "
+"analytically to the project/platform's account when posted to accounting."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__wage
@@ -917,7 +944,9 @@ msgstr "Code"
 msgid ""
 "الرمز المختصر للعنوان الوطني السعودي (مثال: RRRD2929) - 4 أحرف تليها 4 "
 "أرقام."
-msgstr "The short code of the Saudi National Address (e.g. RRRD2929) - 4 letters followed by 4 digits."
+msgstr ""
+"The short code of the Saudi National Address (e.g. RRRD2929) - 4 letters "
+"followed by 4 digits."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_bulk_transfer_wizard__vehicle_ids
@@ -948,7 +977,8 @@ msgid ""
 "                            تُغلق الفترة الحالية في تاريخ المنصات وتُفتح فترة جديدة تلقائياً\n"
 "                            بعد اعتماد النقل نهائياً، مع تحديث الحساب التحليلي المستخدم\n"
 "                            للمتابعة والحسابات."
-msgstr "The vehicle assigned to the employee (if any) stays with them and is not affected by the transfer.\n"
+msgstr ""
+"The vehicle assigned to the employee (if any) stays with them and is not affected by the transfer.\n"
 "                            The current period in the platform history is closed and a new period is opened automatically\n"
 "                            once the transfer is finally approved, along with updating the analytic account used\n"
 "                            for tracking and accounting."
@@ -1062,7 +1092,11 @@ msgid ""
 "القسم الذي يُعبَّأ تلقائياً في طلب التوظيف عند اختيار هذه المنصة كمشروع - "
 "مباشرة، بغض النظر عن الوظيفة الافتراضية. إن تُرك فارغاً، يُشتق القسم بدلاً "
 "منه من قسم \"الوظيفة الافتراضية\" أدناه إن وُجدت."
-msgstr "The department automatically filled in the recruitment request when this platform is selected as the project - directly, regardless of the default job position. If left empty, the department is instead derived from the \"Default Job Position\"'s department below, if any."
+msgstr ""
+"The department automatically filled in the recruitment request when this "
+"platform is selected as the project - directly, regardless of the default "
+"job position. If left empty, the department is instead derived from the "
+"\"Default Job Position\"'s department below, if any."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__name
@@ -1154,7 +1188,11 @@ msgid ""
 "المشروع/المنصة الحالية التي يعمل عليها المندوب (كيتا، هنقرستيشن...). تُستخدم"
 " لفصل المتابعة والحسابات لكل منصة. لا يمكن تعديلها مباشرة - استخدم زر \"طلب "
 "نقل لمنصة أخرى\" (يمر بخط سير موافقة، مع الاحتفاظ بالتاريخ الكامل)."
-msgstr "The project/platform the representative currently works on (Keeta, Hungerstation...). Used to separate tracking and accounting per platform. Cannot be edited directly - use the \"Request Transfer to Another Platform\" button (goes through an approval workflow, keeping the full history)."
+msgstr ""
+"The project/platform the representative currently works on (Keeta, "
+"Hungerstation...). Used to separate tracking and accounting per platform. "
+"Cannot be edited directly - use the \"Request Transfer to Another Platform\""
+" button (goes through an approval workflow, keeping the full history)."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request_attachment__file
@@ -1182,7 +1220,10 @@ msgstr "Platform / Project"
 msgid ""
 "المنصة التي تتبعها هذه السيارة ضمن الأسطول (اختياري). إن تُرك فارغاً، تكون "
 "السيارة متاحة لأي منصة عند طلب سيارة في التوظيف."
-msgstr "The platform this vehicle belongs to within the fleet (optional). If left empty, the vehicle is available to any platform when a vehicle is requested in recruitment."
+msgstr ""
+"The platform this vehicle belongs to within the fleet (optional). If left "
+"empty, the vehicle is available to any platform when a vehicle is requested "
+"in recruitment."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__project_id
@@ -1190,7 +1231,10 @@ msgid ""
 "المنصة التي سيعمل عليها المندوب (مثال: كيتا، هنقرستيشن). تُستخدم لفصل "
 "المتابعة والحسابات (Analytic Account) لكل منصة، ولفلترة سيارات الأسطول "
 "التابعة لنفس المنصة."
-msgstr "The platform the representative will work on (e.g. Keeta, Hungerstation). Used to separate tracking and accounting (Analytic Account) per platform, and to filter fleet vehicles belonging to the same platform."
+msgstr ""
+"The platform the representative will work on (e.g. Keeta, Hungerstation). "
+"Used to separate tracking and accounting (Analytic Account) per platform, "
+"and to filter fleet vehicles belonging to the same platform."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__new_project_id
@@ -1211,7 +1255,10 @@ msgid ""
 "المنصة الحالية للموظف \"%(employee)s\" تغيّرت منذ إنشاء هذا الطلب (أصبحت "
 "%(actual)s بدل %(expected)s) - ألغِ هذا الطلب وأنشئ طلباً جديداً بالبيانات "
 "الصحيحة."
-msgstr "Employee \"%(employee)s\"'s current platform has changed since this request was created (now %(actual)s instead of %(expected)s) - cancel this request and create a new one with the correct data."
+msgstr ""
+"Employee \"%(employee)s\"'s current platform has changed since this request "
+"was created (now %(actual)s instead of %(expected)s) - cancel this request "
+"and create a new one with the correct data."
 
 #. module: recruitment_workflow
 #: model:res.groups,name:recruitment_workflow.group_recruitment_workflow_hr
@@ -1238,7 +1285,9 @@ msgstr "Employee and Contract"
 #. odoo-python
 #: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
 msgid "الموظف يعمل بالفعل على هذه المنصة. اختر منصة مختلفة لإتمام النقل."
-msgstr "The employee already works on this platform. Choose a different platform to complete the transfer."
+msgstr ""
+"The employee already works on this platform. Choose a different platform to "
+"complete the transfer."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard__line_ids
@@ -1263,7 +1312,11 @@ msgid ""
 "الوظيفة (وبالتالي القسم إن لم يُحدَّد أعلاه) التي تُعبَّأ تلقائياً في طلب "
 "التوظيف عند اختيار هذه المنصة كمشروع. اتركها فارغة إن كانت هذه المنصة تستقبل"
 " أكثر من مسمى وظيفي."
-msgstr "The job position (and consequently the department if not specified above) automatically filled in the recruitment request when this platform is selected as the project. Leave it empty if this platform receives more than one job title."
+msgstr ""
+"The job position (and consequently the department if not specified above) "
+"automatically filled in the recruitment request when this platform is "
+"selected as the project. Leave it empty if this platform receives more than "
+"one job title."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_project_project__default_job_id
@@ -1421,7 +1474,9 @@ msgstr "Representatives' Platform History"
 msgid ""
 "تتبّع طلب التوظيف عبر مراحله المعتمدة من الطلب الجديد حتى مباشرة العمل "
 "وإنشاء العقد."
-msgstr "Track the recruitment request through its approved stages, from a new request until the employee starts work and the contract is created."
+msgstr ""
+"Track the recruitment request through its approved stages, from a new "
+"request until the employee starts work and the contract is created."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__require_project
@@ -1446,7 +1501,9 @@ msgstr "Requires Approval"
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_fleet_vehicle__recruitment_state
 msgid "تحدد ما إذا كانت السيارة متاحة لتخصيصها في طلبات التوظيف."
-msgstr "Determines whether the vehicle is available to be assigned in recruitment requests."
+msgstr ""
+"Determines whether the vehicle is available to be assigned in recruitment "
+"requests."
 
 #. module: recruitment_workflow
 #: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
@@ -1456,7 +1513,8 @@ msgstr "Register Government Fees"
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_recruitment_stage__is_closing_stage
 msgid "تشير إلى أن الطلب اكتمل (تم مباشرة العمل)."
-msgstr "Indicates that the request is complete (the employee has started work)."
+msgstr ""
+"Indicates that the request is complete (the employee has started work)."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_recruitment_stage__require_validation
@@ -1490,14 +1548,17 @@ msgstr "Authorize Vehicle (Final Approval)"
 msgid ""
 "تم إرجاع الطلب من مرحلة \"%(from)s\" إلى مرحلة \"%(to)s\" للتصحيح.\n"
 "السبب: %(reason)s"
-msgstr "The request was returned from stage \"%(from)s\" to stage \"%(to)s\" for correction.\n"
+msgstr ""
+"The request was returned from stage \"%(from)s\" to stage \"%(to)s\" for correction.\n"
 "Reason: %(reason)s"
 
 #. module: recruitment_workflow
 #. odoo-python
 #: code:addons/recruitment_workflow/models/recruitment_request.py:0
 msgid "تم إرسال الطلب لقسم الأسطول رغم ذلك، وسيتابعونه فور توفر سيارة مناسبة."
-msgstr "The request was sent to the Fleet department anyway, and they will follow up once a suitable vehicle becomes available."
+msgstr ""
+"The request was sent to the Fleet department anyway, and they will follow up"
+" once a suitable vehicle becomes available."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields.selection,name:recruitment_workflow.selection__recruitment_request__car_request_state__requested
@@ -1522,7 +1583,9 @@ msgstr "A fee invoice has already been issued for this request."
 msgid ""
 "تم إصدار فاتورة رسوم %(move)s (مسودة) لفريق المحاسبة لمراجعتها واعتمادها "
 "وسدادها من تطبيق المحاسبة مباشرة."
-msgstr "Fee invoice %(move)s (draft) has been issued for the accounting team to review, approve and pay directly from the Accounting app."
+msgstr ""
+"Fee invoice %(move)s (draft) has been issued for the accounting team to "
+"review, approve and pay directly from the Accounting app."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -1530,7 +1593,9 @@ msgstr "Fee invoice %(move)s (draft) has been issued for the accounting team to 
 msgid ""
 "تم إنشاء الموظف لكن تعذّر ربط الحساب البنكي تلقائياً. يُرجى إضافة الآيبان "
 "يدوياً في سجل الموظف."
-msgstr "The employee was created but the bank account could not be linked automatically. Please add the IBAN manually on the employee record."
+msgstr ""
+"The employee was created but the bank account could not be linked "
+"automatically. Please add the IBAN manually on the employee record."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -1539,7 +1604,10 @@ msgid ""
 "تم إنشاء سجل الموظف %s. لم يُعثر على نموذج عقد (Payroll) على هذا النظام، لذا"
 " لم يُنشأ عقد تلقائي. يمكن تثبيت وحدة العقود/الرواتب لتفعيل الإنشاء التلقائي"
 " للعقود."
-msgstr "Employee record %s was created. No contract model (Payroll) was found on this system, so no contract was created automatically. You can install the Contracts/Payroll module to enable automatic contract creation."
+msgstr ""
+"Employee record %s was created. No contract model (Payroll) was found on "
+"this system, so no contract was created automatically. You can install the "
+"Contracts/Payroll module to enable automatic contract creation."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -1547,19 +1615,24 @@ msgstr "Employee record %s was created. No contract model (Payroll) was found on
 msgid ""
 "تم إنشاء سجل الموظف يدوياً (%s) - الطلب تجاوز مرحلة \"تم نقل الكفالة\" دون "
 "إنشائه تلقائياً."
-msgstr "The employee record was created manually (%s) - the request passed the \"Sponsorship Transferred\" stage without it being created automatically."
+msgstr ""
+"The employee record was created manually (%s) - the request passed the "
+"\"Sponsorship Transferred\" stage without it being created automatically."
 
 #. module: recruitment_workflow
 #: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
 msgid ""
 "تم إنشاء سجل الموظف. لإنشاء عقد تلقائي يلزم تثبيت وحدة العقود (Payroll)."
-msgstr "The employee record has been created. To automatically create a contract, the Contracts (Payroll) module must be installed."
+msgstr ""
+"The employee record has been created. To automatically create a contract, "
+"the Contracts (Payroll) module must be installed."
 
 #. module: recruitment_workflow
 #. odoo-python
 #: code:addons/recruitment_workflow/models/recruitment_request.py:0
 msgid "تم إنشاء/تحديث العقد %s أوتوماتيكياً وربطه بالموظف %s."
-msgstr "Contract %s was automatically created/updated and linked to employee %s."
+msgstr ""
+"Contract %s was automatically created/updated and linked to employee %s."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields.selection,name:recruitment_workflow.selection__recruitment_request__car_request_state__received
@@ -1599,7 +1672,9 @@ msgstr "Transferred"
 msgid ""
 "تم تحديث بيانات المشروع تلقائياً (مسؤول المشروع/الشركة) بعد تعديلها على "
 "المشروع \"%s\"."
-msgstr "The project data (project manager/company) was automatically updated after it was changed on project \"%s\"."
+msgstr ""
+"The project data (project manager/company) was automatically updated after "
+"it was changed on project \"%s\"."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -1611,7 +1686,9 @@ msgstr "Government fees have already been registered for this request."
 #. odoo-python
 #: code:addons/recruitment_workflow/models/recruitment_request.py:0
 msgid "تم تفويض السيارة. الطلب الآن لدى مسؤول المشروع للمتابعة."
-msgstr "The vehicle has been authorized. The request is now with the project manager for follow-up."
+msgstr ""
+"The vehicle has been authorized. The request is now with the project manager"
+" for follow-up."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -1633,7 +1710,9 @@ msgstr "Started Work"
 #: model:recruitment.stage,description:recruitment_workflow.stage_started
 msgid ""
 "تم مباشرة العمل، يُنشأ عقد أوتوماتيك في النظام ويُسجّل في المشروع المختار."
-msgstr "Work has started; a contract is automatically created in the system and recorded on the selected project."
+msgstr ""
+"Work has started; a contract is automatically created in the system and "
+"recorded on the selected project."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -1649,7 +1728,9 @@ msgstr "Sponsorship Transferred - HR"
 #. module: recruitment_workflow
 #: model:recruitment.stage,description:recruitment_workflow.stage_sponsorship_done
 msgid "تم نقل الكفالة بنجاح، يتولى قسم الموارد البشرية المتابعة."
-msgstr "The sponsorship was transferred successfully; the HR department takes over follow-up."
+msgstr ""
+"The sponsorship was transferred successfully; the HR department takes over "
+"follow-up."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -1667,13 +1748,15 @@ msgstr "The request has been restored from the archive."
 #. odoo-python
 #: code:addons/recruitment_workflow/models/recruitment_request.py:0
 msgid "تمت إعادة تفعيل الطلب من الأرشيف وإرجاعه للبداية."
-msgstr "The request has been reactivated from the archive and reset to the start."
+msgstr ""
+"The request has been reactivated from the archive and reset to the start."
 
 #. module: recruitment_workflow
 #. odoo-python
 #: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
 msgid "تمت إعادة طلب النقل لمسودة للتصحيح.<br/>السبب: %s"
-msgstr "The transfer request has been reset to draft for correction.<br/>Reason: %s"
+msgstr ""
+"The transfer request has been reset to draft for correction.<br/>Reason: %s"
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -1694,7 +1777,9 @@ msgstr "Recorded in the branch history log for each transferred vehicle."
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard__note
 msgid "تُسجَّل في سجل تاريخ المنصات لكل موظف (مثال: \"ربط رجعي - بيانات قديمة\")."
-msgstr "Recorded in the platform history log for each employee (e.g. \"Retroactive linking - old data\")."
+msgstr ""
+"Recorded in the platform history log for each employee (e.g. \"Retroactive "
+"linking - old data\")."
 
 #. module: recruitment_workflow
 #: model:recruitment.stage,description:recruitment_workflow.stage_sponsorship_transfer
@@ -1731,7 +1816,13 @@ msgid ""
 "_get_or_create_candidate_partner()، وتُعاد نفسها في كل استخدام لاحق بدل "
 "إنشاء جهات اتصال مكررة - ثم تُعاد استخدامها كجهة اتصال العمل الرسمية للموظف "
 "عند إنشائه."
-msgstr "A lightweight contact representing the candidate before the official employee record is created - created the first time it's needed (vehicle authorization, government fee registration, etc.) via _get_or_create_candidate_partner(), and the same one is reused on every later use instead of creating duplicate contacts - it is then reused as the employee's official work contact once created."
+msgstr ""
+"A lightweight contact representing the candidate before the official "
+"employee record is created - created the first time it's needed (vehicle "
+"authorization, government fee registration, etc.) via "
+"_get_or_create_candidate_partner(), and the same one is reused on every "
+"later use instead of creating duplicate contacts - it is then reused as the "
+"employee's official work contact once created."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle__recruitment_state
@@ -1784,7 +1875,11 @@ msgid ""
 "حدِّد هذا الخيار فقط للمنصات التي تريد أن تظهر في القائمة المنسدلة بنموذج "
 "التسجيل العام على الموقع الإلكتروني (/careers/register). باقي المشاريع في "
 "النظام (محاسبة، تقنية معلومات...) لن تظهر أبداً للزوار العامين."
-msgstr "Enable this option only for platforms you want to appear in the dropdown of the public registration form on the website (/careers/register). Other projects in the system (accounting, IT...) will never appear to public visitors."
+msgstr ""
+"Enable this option only for platforms you want to appear in the dropdown of "
+"the public registration form on the website (/careers/register). Other "
+"projects in the system (accounting, IT...) will never appear to public "
+"visitors."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_project_project__recruitment_hidden
@@ -1793,7 +1888,12 @@ msgid ""
 "التوظيف (مثال: مشاريع إدارية/داخلية غير متعلقة بالتوظيف كـ\"Internal\")، دون"
 " التأثير على استخدامه في تطبيق المشاريع نفسه. لا علاقة له بظهوره على الموقع "
 "الإلكتروني."
-msgstr "Enable this option to hide this specific project from the platform selection list in the recruitment request (e.g. administrative/internal projects unrelated to recruitment like \"Internal\"), without affecting its use in the Projects app itself. It has no relation to its visibility on the website."
+msgstr ""
+"Enable this option to hide this specific project from the platform selection"
+" list in the recruitment request (e.g. administrative/internal projects "
+"unrelated to recruitment like \"Internal\"), without affecting its use in "
+"the Projects app itself. It has no relation to its visibility on the "
+"website."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_cost_type__expense_account_id
@@ -1805,7 +1905,9 @@ msgstr "Expense Account"
 msgid ""
 "دفتر اليومية (من نوع مشتريات) الذي ستُنشأ عليه فاتورة المورد. اترك فارغاً "
 "لاستخدام دفتر المشتريات الافتراضي للشركة."
-msgstr "The journal (of type Purchases) the vendor bill will be created on. Leave empty to use the company's default purchases journal."
+msgstr ""
+"The journal (of type Purchases) the vendor bill will be created on. Leave "
+"empty to use the company's default purchases journal."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_cost_type__journal_id
@@ -1877,7 +1979,9 @@ msgstr "Mobile Number"
 msgid ""
 "رقم الجوال غير صالح. يجب أن يكون رقم جوال سعودي صحيح يبدأ بـ 05 أو 9665 أو "
 "+9665 ويتكون من العدد الصحيح من الأرقام."
-msgstr "Invalid mobile number. It must be a valid Saudi mobile number starting with 05, 9665, or +9665, and made up of the correct number of digits."
+msgstr ""
+"Invalid mobile number. It must be a valid Saudi mobile number starting with "
+"05, 9665, or +9665, and made up of the correct number of digits."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__name
@@ -1899,7 +2003,8 @@ msgstr "The ID number must start with 1 (citizen) or 2 (resident)."
 #. odoo-python
 #: code:addons/recruitment_workflow/models/recruitment_request.py:0
 msgid "رقم الهوية يجب أن يتكون من 10 أرقام بالضبط (تم إدخال %s رقم)."
-msgstr "The ID number must consist of exactly 10 digits (%s digits were entered)."
+msgstr ""
+"The ID number must consist of exactly 10 digits (%s digits were entered)."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -1920,7 +2025,8 @@ msgstr "Stage Code"
 #. module: recruitment_workflow
 #: model:ir.model.constraint,message:recruitment_workflow.constraint_recruitment_stage_code_uniq
 msgid "رمز المرحلة يجب أن يكون فريداً - يوجد مرحلة أخرى بنفس الرمز."
-msgstr "The stage code must be unique - another stage already has the same code."
+msgstr ""
+"The stage code must be unique - another stage already has the same code."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__stage_code
@@ -1928,7 +2034,9 @@ msgstr "The stage code must be unique - another stage already has the same code.
 msgid ""
 "رمز فني فريد يستخدمه النظام للتحكم في المنطق. مثال: new, project_review, "
 "payment ..."
-msgstr "A unique technical code used by the system to control logic. Example: new, project_review, payment ..."
+msgstr ""
+"A unique technical code used by the system to control logic. Example: new, "
+"project_review, payment ..."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_reset_wizard__reason
@@ -1976,7 +2084,9 @@ msgstr "Vehicle to the selected branch."
 #: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_return_wizard_form
 msgid ""
 "سيتم إرجاع الطلب للمرحلة المختارة للتصحيح، مع إشعار المسؤول وتسجيل السبب."
-msgstr "The request will be returned to the selected stage for correction, with the responsible person notified and the reason logged."
+msgstr ""
+"The request will be returned to the selected stage for correction, with the "
+"responsible person notified and the reason logged."
 
 #. module: recruitment_workflow
 #: model:ir.module.category,name:recruitment_workflow.module_category_recruitment_workflow
@@ -2011,7 +2121,9 @@ msgstr "Personal Photo"
 msgid ""
 "صيغة العنوان الوطني المختصر غير صحيحة. يجب أن يتكون من 4 أحرف إنجليزية تليها"
 " 4 أرقام (مثال: RRRD2929)."
-msgstr "Invalid short national address format. It must consist of 4 English letters followed by 4 digits (e.g. RRRD2929)."
+msgstr ""
+"Invalid short national address format. It must consist of 4 English letters "
+"followed by 4 digits (e.g. RRRD2929)."
 
 #. module: recruitment_workflow
 #: model:ir.actions.report,name:recruitment_workflow.action_report_recruitment_request
@@ -2057,7 +2169,11 @@ msgid ""
 "طلب جديد من الموظف، يحدد فيه نظام التشغيل والتطبيق الرئيسي. المرفقات إجبارية"
 " ولا ينتقل للمرحلة الثانية إلا بعد اكتمال كامل المرفقات. مع كنترول على رقم "
 "الهوية ورقم الجوال."
-msgstr "A new request from the employee, specifying the work scheme and the main app. Attachments are required and it cannot move to the second stage until all attachments are complete. With validation on the ID number and mobile number."
+msgstr ""
+"A new request from the employee, specifying the work scheme and the main "
+"app. Attachments are required and it cannot move to the second stage until "
+"all attachments are complete. With validation on the ID number and mobile "
+"number."
 
 #. module: recruitment_workflow
 #: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
@@ -2177,7 +2293,11 @@ msgid ""
 "عند وجود أكثر من فرع نشط (متاح للتسجيل) بنفس \"الاسم المعروض للمتقدمين\"، "
 "يُختار الفرع المحدَّد هنا كوجهة تلقائية لطلبات الموقع الجديدة. إن لم يُحدَّد"
 " أي فرع كافتراضي، يُختار الأقدم."
-msgstr "When more than one active branch (available for registration) shares the same \"Display Name for Applicants\", the branch set here is chosen as the automatic destination for new website requests. If no branch is set as default, the oldest one is chosen."
+msgstr ""
+"When more than one active branch (available for registration) shares the "
+"same \"Display Name for Applicants\", the branch set here is chosen as the "
+"automatic destination for new website requests. If no branch is set as "
+"default, the oldest one is chosen."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields.selection,name:recruitment_workflow.selection__fleet_vehicle__recruitment_state__unavailable
@@ -2199,7 +2319,9 @@ msgstr "Fee Invoice"
 #. odoo-python
 #: code:addons/recruitment_workflow/models/recruitment_request.py:0
 msgid "فتح تلقائي عند إنشاء سجل الموظف من طلب التوظيف %s"
-msgstr "Automatically opened when the employee record is created from recruitment request %s"
+msgstr ""
+"Automatically opened when the employee record is created from recruitment "
+"request %s"
 
 #. module: recruitment_workflow
 #: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_form_inherit_recruitment
@@ -2254,7 +2376,8 @@ msgstr "No pending vehicle requests from recruitment at the moment"
 msgid ""
 "لا يمكن إرجاع الطلب لمرحلة سابقة بهذه الطريقة.\n"
 "استخدم زر \"إرجاع للتصحيح\" لتسجيل سبب الإرجاع."
-msgstr "The request cannot be returned to a previous stage this way.\n"
+msgstr ""
+"The request cannot be returned to a previous stage this way.\n"
 "Use the \"Return for Correction\" button to record the return reason."
 
 #. module: recruitment_workflow
@@ -2263,7 +2386,9 @@ msgstr "The request cannot be returned to a previous stage this way.\n"
 msgid ""
 "لا يمكن إعادة الطلب لمسودة مباشرة. استخدم زر \"إعادة لمسودة\" لتسجيل سبب "
 "الإرجاع."
-msgstr "The request cannot be reset to draft directly. Use the \"Reset to Draft\" button to record the return reason."
+msgstr ""
+"The request cannot be reset to draft directly. Use the \"Reset to Draft\" "
+"button to record the return reason."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -2271,37 +2396,47 @@ msgstr "The request cannot be reset to draft directly. Use the \"Reset to Draft\
 msgid ""
 "لا يمكن إعادة هذا الطلب لمسودة - النقل تم فعلاً. أنشئ طلب نقل جديداً إن "
 "احتجت عكس النقل."
-msgstr "This request cannot be reset to draft - the transfer has already been executed. Create a new transfer request if you need to reverse the transfer."
+msgstr ""
+"This request cannot be reset to draft - the transfer has already been "
+"executed. Create a new transfer request if you need to reverse the transfer."
 
 #. module: recruitment_workflow
 #. odoo-python
 #: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
 msgid "لا يمكن إلغاء طلب نقل تم تنفيذه بالفعل."
-msgstr "A transfer request that has already been executed cannot be cancelled."
+msgstr ""
+"A transfer request that has already been executed cannot be cancelled."
 
 #. module: recruitment_workflow
 #. odoo-python
 #: code:addons/recruitment_workflow/models/recruitment_request.py:0
 msgid "لا يمكن إنشاء سجل الموظف قبل مرحلة \"تم نقل الكفالة\" على الأقل."
-msgstr "The employee record cannot be created before at least the \"Sponsorship Transferred\" stage."
+msgstr ""
+"The employee record cannot be created before at least the \"Sponsorship "
+"Transferred\" stage."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_recruitment_stage__require_attachments
 msgid ""
 "لا يمكن الانتقال للمرحلة التالية إلا بعد إرفاق جميع المرفقات الإجبارية."
-msgstr "Cannot move to the next stage until all required attachments are uploaded."
+msgstr ""
+"Cannot move to the next stage until all required attachments are uploaded."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_recruitment_stage__require_project
 msgid ""
 "لا يمكن الانتقال للمرحلة التالية إلا بعد تحديد المشروع/المنصة (مثال: كيتا، "
 "هنقرستيشن) التي سيعمل عليها المندوب."
-msgstr "Cannot move to the next stage until the project/platform (e.g. Keeta, Hungerstation) the representative will work on is specified."
+msgstr ""
+"Cannot move to the next stage until the project/platform (e.g. Keeta, "
+"Hungerstation) the representative will work on is specified."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_recruitment_stage__require_car
 msgid "لا يمكن الانتقال للمرحلة التالية إلا بعد تخصيص سيارة متاحة من الأسطول."
-msgstr "Cannot move to the next stage until an available vehicle from the fleet is assigned."
+msgstr ""
+"Cannot move to the next stage until an available vehicle from the fleet is "
+"assigned."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -2310,7 +2445,8 @@ msgid ""
 "لا يمكن الانتقال للمرحلة التالية. المرفقات الإجبارية غير مكتملة.\n"
 "المرفقات الناقصة:\n"
 "- %s"
-msgstr "Cannot move to the next stage. Required attachments are incomplete.\n"
+msgstr ""
+"Cannot move to the next stage. Required attachments are incomplete.\n"
 "Missing attachments:\n"
 "- %s"
 
@@ -2320,7 +2456,8 @@ msgstr "Cannot move to the next stage. Required attachments are incomplete.\n"
 msgid ""
 "لا يمكن الانتقال للمرحلة التالية. طلب السيارة لم يُعتمد بعد.\n"
 "يجب أن يوافق مسؤول الأسطول على الطلب (تفويض السيارة) أولاً."
-msgstr "Cannot move to the next stage. The vehicle request has not been approved yet.\n"
+msgstr ""
+"Cannot move to the next stage. The vehicle request has not been approved yet.\n"
 "The fleet manager must approve the request (authorize the vehicle) first."
 
 #. module: recruitment_workflow
@@ -2329,7 +2466,9 @@ msgstr "Cannot move to the next stage. The vehicle request has not been approved
 msgid ""
 "لا يمكن الانتقال للمرحلة التالية. يجب تحديد \"مبلغ الرسوم الحكومية "
 "الإجمالي\" أولاً (رسوم نقل الكفالة)."
-msgstr "Cannot move to the next stage. The \"Total Government Fee Amount\" must be set first (sponsorship transfer fee)."
+msgstr ""
+"Cannot move to the next stage. The \"Total Government Fee Amount\" must be "
+"set first (sponsorship transfer fee)."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -2337,7 +2476,9 @@ msgstr "Cannot move to the next stage. The \"Total Government Fee Amount\" must 
 msgid ""
 "لا يمكن الانتقال للمرحلة التالية. يجب تحديد المشروع/المنصة (مثال: كيتا، "
 "هنقرستيشن) التي سيعمل عليها المندوب أولاً."
-msgstr "Cannot move to the next stage. The project/platform (e.g. Keeta, Hungerstation) the representative will work on must be specified first."
+msgstr ""
+"Cannot move to the next stage. The project/platform (e.g. Keeta, "
+"Hungerstation) the representative will work on must be specified first."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -2345,7 +2486,8 @@ msgstr "Cannot move to the next stage. The project/platform (e.g. Keeta, Hungers
 msgid ""
 "لا يمكن الانتقال للمرحلة التالية. يجب تخصيص سيارة متاحة من الأسطول.\n"
 "في حال عدم توفر سيارة لا يمكن متابعة الطلب."
-msgstr "Cannot move to the next stage. An available vehicle from the fleet must be assigned.\n"
+msgstr ""
+"Cannot move to the next stage. An available vehicle from the fleet must be assigned.\n"
 "If no vehicle is available, the request cannot proceed."
 
 #. module: recruitment_workflow
@@ -2354,7 +2496,9 @@ msgstr "Cannot move to the next stage. An available vehicle from the fleet must 
 msgid ""
 "لا يمكن الانتقال للمرحلة التالية. يجب تسجيل الرسوم الحكومية أولاً (زر "
 "\"تسجيل الرسوم الحكومية\")."
-msgstr "Cannot move to the next stage. Government fees must be registered first (\"Register Government Fees\" button)."
+msgstr ""
+"Cannot move to the next stage. Government fees must be registered first "
+"(\"Register Government Fees\" button)."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -2362,7 +2506,9 @@ msgstr "Cannot move to the next stage. Government fees must be registered first 
 msgid ""
 "لا يمكن القفز عدة مراحل دفعة واحدة (مثلاً بالنقر على فقاعة متقدمة في شريط "
 "الحالة). استخدم الأزرار الصريحة للانتقال خطوة بخطوة."
-msgstr "Cannot skip multiple stages at once (e.g. by clicking an advanced bubble in the status bar). Use the explicit buttons to move step by step."
+msgstr ""
+"Cannot skip multiple stages at once (e.g. by clicking an advanced bubble in "
+"the status bar). Use the explicit buttons to move step by step."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -2370,7 +2516,8 @@ msgstr "Cannot skip multiple stages at once (e.g. by clicking an advanced bubble
 msgid ""
 "لا يمكن القفز عدة مراحل دفعة واحدة.\n"
 "استخدم أزرار الموافقة/الانتقال للمرحلة التالية للتنقل خطوة بخطوة."
-msgstr "Cannot skip multiple stages at once.\n"
+msgstr ""
+"Cannot skip multiple stages at once.\n"
 "Use the approve/move-to-next-stage buttons to navigate step by step."
 
 #. module: recruitment_workflow
@@ -2379,7 +2526,8 @@ msgstr "Cannot skip multiple stages at once.\n"
 msgid ""
 "لا يمكن تعديل \"الشركة\" مباشرة على طلب التوظيف.\n"
 "تُشتق تلقائياً من المشروع/المنصة المختارة - لتصحيحها، عدّل المشروع نفسه أو شركته."
-msgstr "\"Company\" cannot be edited directly on the recruitment request.\n"
+msgstr ""
+"\"Company\" cannot be edited directly on the recruitment request.\n"
 "It is automatically derived from the selected project/platform - to correct it, edit the project itself or its company."
 
 #. module: recruitment_workflow
@@ -2388,7 +2536,8 @@ msgstr "\"Company\" cannot be edited directly on the recruitment request.\n"
 msgid ""
 "لا يمكن تعديل \"المشروع/المنصة\" بعد مرحلة \"مراجعة مسؤول المشروع\".\n"
 "إن كانت المنصة خاطئة، استخدم \"إرجاع للتصحيح\" لإرجاع الطلب لمرحلة \"مراجعة مسؤول المشروع\" أولاً."
-msgstr "\"Project/Platform\" cannot be edited after the \"Project Manager Review\" stage.\n"
+msgstr ""
+"\"Project/Platform\" cannot be edited after the \"Project Manager Review\" stage.\n"
 "If the platform is wrong, use \"Return for Correction\" to return the request to the \"Project Manager Review\" stage first."
 
 #. module: recruitment_workflow
@@ -2397,7 +2546,8 @@ msgstr "\"Project/Platform\" cannot be edited after the \"Project Manager Review
 msgid ""
 "لا يمكن تعديل \"المنصة الحالية\" مباشرة.\n"
 "استخدم زر \"طلب نقل لمنصة أخرى\" في سجل الموظف - يمر بخط سير موافقة (مسؤول المنصة الحالية ثم مدير العمليات) بدل التعديل المباشر."
-msgstr "\"Current Platform\" cannot be edited directly.\n"
+msgstr ""
+"\"Current Platform\" cannot be edited directly.\n"
 "Use the \"Request Transfer to Another Platform\" button on the employee record - it goes through an approval workflow (current platform manager then operations manager) instead of direct editing."
 
 #. module: recruitment_workflow
@@ -2406,7 +2556,8 @@ msgstr "\"Current Platform\" cannot be edited directly.\n"
 msgid ""
 "لا يمكن تعديل \"مسؤول المشروع\" مباشرة على طلب التوظيف.\n"
 "يُشتق تلقائياً من مسؤول المشروع/المنصة المختارة - لتصحيحه، عدّل المسؤول على شاشة المشروع نفسه."
-msgstr "\"Project Manager\" cannot be edited directly on the recruitment request.\n"
+msgstr ""
+"\"Project Manager\" cannot be edited directly on the recruitment request.\n"
 "It is automatically derived from the manager of the selected project/platform - to correct it, edit the manager on the project screen itself."
 
 #. module: recruitment_workflow
@@ -2415,7 +2566,10 @@ msgstr "\"Project Manager\" cannot be edited directly on the recruitment request
 msgid ""
 "لا يمكن تعديل بيانات طلب النقل (الموظف/المنصة الجديدة/التاريخ) بعد \"إرسال "
 "للمراجعة\" - أعد الطلب لمسودة أولاً (زر \"إعادة لمسودة\") إن احتجت تصحيحها."
-msgstr "The transfer request's data (employee/new platform/date) cannot be edited after \"Submit for Review\" - reset the request to draft first (\"Reset to Draft\" button) if you need to correct it."
+msgstr ""
+"The transfer request's data (employee/new platform/date) cannot be edited "
+"after \"Submit for Review\" - reset the request to draft first (\"Reset to "
+"Draft\" button) if you need to correct it."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -2423,7 +2577,10 @@ msgstr "The transfer request's data (employee/new platform/date) cannot be edite
 msgid ""
 "لا يمكن حذف الموظف \"%(employee)s\" نهائياً - له %(description)s مرتبطة به "
 "يجب الحفاظ على سجلها للتدقيق. استخدم \"أرشفة\" بدلاً من الحذف."
-msgstr "Employee \"%(employee)s\" cannot be permanently deleted - they have %(description)s linked to them whose record must be kept for auditing. Use \"Archive\" instead of deleting."
+msgstr ""
+"Employee \"%(employee)s\" cannot be permanently deleted - they have "
+"%(description)s linked to them whose record must be kept for auditing. Use "
+"\"Archive\" instead of deleting."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -2431,7 +2588,10 @@ msgstr "Employee \"%(employee)s\" cannot be permanently deleted - they have %(de
 msgid ""
 "لا يمكن حذف سجلات تاريخ الفروع نهائياً، للحفاظ على سجل تدقيق ومراجعة كامل. "
 "أنشئ عملية نقل جديدة لتصحيح الفترة الحالية إن احتجت ذلك."
-msgstr "Branch history records cannot be permanently deleted, to preserve a complete audit trail. Create a new transfer operation to correct the current period if needed."
+msgstr ""
+"Branch history records cannot be permanently deleted, to preserve a complete"
+" audit trail. Create a new transfer operation to correct the current period "
+"if needed."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -2439,7 +2599,10 @@ msgstr "Branch history records cannot be permanently deleted, to preserve a comp
 msgid ""
 "لا يمكن حذف سجلات تاريخ المنصات نهائياً، للحفاظ على سجل تدقيق ومراجعة كامل. "
 "أنشئ طلب نقل منصة جديداً لتصحيح الفترة الحالية إن احتجت ذلك."
-msgstr "Platform history records cannot be permanently deleted, to preserve a complete audit trail. Create a new platform transfer request to correct the current period if needed."
+msgstr ""
+"Platform history records cannot be permanently deleted, to preserve a "
+"complete audit trail. Create a new platform transfer request to correct the "
+"current period if needed."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -2447,7 +2610,9 @@ msgstr "Platform history records cannot be permanently deleted, to preserve a co
 msgid ""
 "لا يمكن حذف طلب النقل نهائياً بعد مغادرة \"مسودة\" - للحفاظ على سجل تدقيق "
 "ومراجعة كامل. استخدم زر \"إلغاء\" بدلاً من ذلك."
-msgstr "The transfer request cannot be permanently deleted after leaving \"Draft\" - to preserve a complete audit trail. Use the \"Cancel\" button instead."
+msgstr ""
+"The transfer request cannot be permanently deleted after leaving \"Draft\" -"
+" to preserve a complete audit trail. Use the \"Cancel\" button instead."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -2455,20 +2620,27 @@ msgstr "The transfer request cannot be permanently deleted after leaving \"Draft
 msgid ""
 "لا يمكن حذف طلبات التوظيف نهائياً إلا بعد رفضها أولاً، للحفاظ على سجل تدقيق "
 "ومراجعة كامل. استخدم \"رفض\" لأرشفة الطلب، ثم يمكن حذفه بعد ذلك إن لزم."
-msgstr "Recruitment requests cannot be permanently deleted until they are rejected first, to preserve a complete audit trail. Use \"Reject\" to archive the request, after which it can be deleted if needed."
+msgstr ""
+"Recruitment requests cannot be permanently deleted until they are rejected "
+"first, to preserve a complete audit trail. Use \"Reject\" to archive the "
+"request, after which it can be deleted if needed."
 
 #. module: recruitment_workflow
 #. odoo-python
 #: code:addons/recruitment_workflow/models/recruitment_request.py:0
 msgid "لا يمكن ربط الطلب بسيارة \"%s\" - تابعة لفرع \"%s\"، بينما الطلب على فرع \"%s\"."
-msgstr "The request cannot be linked to vehicle \"%s\" - it belongs to branch \"%s\", while the request is on branch \"%s\"."
+msgstr ""
+"The request cannot be linked to vehicle \"%s\" - it belongs to branch "
+"\"%s\", while the request is on branch \"%s\"."
 
 #. module: recruitment_workflow
 #: model:recruitment.stage,description:recruitment_workflow.stage_paid
 msgid ""
 "لا ينتقل الطلب للمرحلة التالية إلا بعد تأكيد المحاسب لاستلام/تنفيذ السداد "
 "فعلياً."
-msgstr "The request does not move to the next stage until the accountant confirms the payment has actually been received/executed."
+msgstr ""
+"The request does not move to the next stage until the accountant confirms "
+"the payment has actually been received/executed."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields.selection,name:recruitment_workflow.selection__recruitment_request__car_request_state__none
@@ -2512,7 +2684,8 @@ msgstr "You do not have permission to perform this action."
 msgid ""
 "ليست لديك الصلاحية للموافقة على هذه المرحلة (%(stage)s).\n"
 "هذه المرحلة تتطلب موافقة \"%(assignee)s\" تحديداً (مسؤول المشروع المعيّن على هذا الطلب)."
-msgstr "You do not have permission to approve this stage (%(stage)s).\n"
+msgstr ""
+"You do not have permission to approve this stage (%(stage)s).\n"
 "This stage specifically requires the approval of \"%(assignee)s\" (the project manager assigned to this request)."
 
 #. module: recruitment_workflow
@@ -2521,7 +2694,8 @@ msgstr "You do not have permission to approve this stage (%(stage)s).\n"
 msgid ""
 "ليست لديك الصلاحية للموافقة على هذه المرحلة (%s).\n"
 "هذه المرحلة تتطلب صلاحية المستوى المناسب."
-msgstr "You do not have permission to approve this stage (%s).\n"
+msgstr ""
+"You do not have permission to approve this stage (%s).\n"
 "This stage requires the appropriate access level."
 
 #. module: recruitment_workflow
@@ -2699,7 +2873,9 @@ msgstr "Personal Information"
 msgid ""
 "مقترح تلقائياً من تاريخ تعيين الموظف (تاريخ إنشاء سجله)، ويمكن تعديله لكل "
 "موظف على حدة قبل التأكيد."
-msgstr "Automatically suggested from the employee's hire date (their record's creation date), and can be edited per employee before confirming."
+msgstr ""
+"Automatically suggested from the employee's hire date (their record's "
+"creation date), and can be edited per employee before confirming."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields.selection,name:recruitment_workflow.selection__recruitment_request__state__done
@@ -2761,7 +2937,8 @@ msgid ""
 "موظف بالمنصة المختارة،\n"
 "                    كل واحد بتاريخ بداية خاص به (مقترح تلقائياً من تاريخ تعيينه،\n"
 "                    وقابل للتعديل لكل موظف قبل التأكيد)."
-msgstr "employee(s) to the selected platform,\n"
+msgstr ""
+"employee(s) to the selected platform,\n"
 "                    each with their own start date (automatically suggested from their hire date,\n"
 "                    editable per employee before confirming)."
 
@@ -2800,7 +2977,10 @@ msgstr "Work Scheme and App"
 msgid ""
 "نظام العمل/الأجر الذي سيعمل به المندوب (بالطلبات، بالعمولة، راتب ثابت...). "
 "تُفلتَر الخيارات المتاحة هنا تلقائياً حسب المشروع/المنصة المختارة أعلاه."
-msgstr "The work/pay scheme the representative will work under (per order, commission, fixed salary...). The options available here are automatically filtered based on the project/platform selected above."
+msgstr ""
+"The work/pay scheme the representative will work under (per order, "
+"commission, fixed salary...). The options available here are automatically "
+"filtered based on the project/platform selected above."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_bulk_transfer_wizard__company_id
@@ -2846,7 +3026,9 @@ msgstr "Fee Type"
 msgid ""
 "نوع الرسوم المطلوب سدادها (تأشيرة، رسوم توظيف، إلخ) - يحدد الحساب المحاسبي "
 "ودفتر اليومية المستخدم عند إصدار الفاتورة."
-msgstr "The type of fee to be paid (visa, recruitment fee, etc.) - determines the accounting account and journal used when issuing the invoice."
+msgstr ""
+"The type of fee to be paid (visa, recruitment fee, etc.) - determines the "
+"accounting account and journal used when issuing the invoice."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request_attachment__attachment_type_id
@@ -2877,7 +3059,8 @@ msgstr "Transferred by"
 #. odoo-python
 #: code:addons/recruitment_workflow/models/recruitment_request.py:0
 msgid "هذا الطلب في المرحلة الأولى، لا توجد مرحلة سابقة للإرجاع إليها."
-msgstr "This request is at the first stage; there is no previous stage to return to."
+msgstr ""
+"This request is at the first stage; there is no previous stage to return to."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -2885,7 +3068,8 @@ msgstr "This request is at the first stage; there is no previous stage to return
 msgid ""
 "هذا المعالج مخصَّص لربط موظفين قدامى ليس لهم منصة أصلاً فقط. الموظف/الموظفون التالون يعملون بالفعل على منصة أخرى - استخدم \"طلب نقل لمنصة أخرى\" من سجل كل واحد منهم بدلاً من ذلك:\n"
 "%s"
-msgstr "This wizard is intended only for assigning existing employees who have no platform at all. The following employee(s) already work on another platform - use \"Request Transfer to Another Platform\" from each of their records instead:\n"
+msgstr ""
+"This wizard is intended only for assigning existing employees who have no platform at all. The following employee(s) already work on another platform - use \"Request Transfer to Another Platform\" from each of their records instead:\n"
 "%s"
 
 #. module: recruitment_workflow
@@ -2893,14 +3077,17 @@ msgstr "This wizard is intended only for assigning existing employees who have n
 msgid ""
 "هذه الطلبات قادمة من موديول التوظيف، وتحتاج استلام وموافقة\n"
 "                مسؤول الأسطول قبل أن يكمل الموظف الجديد إجراءاته."
-msgstr "These requests come from the Recruitment module, and need the fleet manager's\n"
+msgstr ""
+"These requests come from the Recruitment module, and need the fleet manager's\n"
 "                receipt and approval before the new employee can complete their procedures."
 
 #. module: recruitment_workflow
 #. odoo-python
 #: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
 msgid "هذه الموافقة تتطلب مسؤول المنصة الحالية للموظف تحديداً (%s)."
-msgstr "This approval specifically requires the employee's current platform manager (%s)."
+msgstr ""
+"This approval specifically requires the employee's current platform manager "
+"(%s)."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -2927,17 +3114,22 @@ msgstr "Clarify the missing or incorrect data that needs to be corrected..."
 #: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_transfer_reset_wizard__reason
 msgid ""
 "وضّح سبب إعادة الطلب لمسودة (مثال: بيانات خاطئة، تراجع الموظف عن النقل)."
-msgstr "Clarify the reason for resetting the request to draft (e.g. incorrect data, employee withdrew from the transfer)."
+msgstr ""
+"Clarify the reason for resetting the request to draft (e.g. incorrect data, "
+"employee withdrew from the transfer)."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_fleet_vehicle_branch_history__date_end
 msgid "يبقى فارغاً طالما السيارة لا تزال تابعة لهذا الفرع حالياً."
-msgstr "Stays empty as long as the vehicle still currently belongs to this branch."
+msgstr ""
+"Stays empty as long as the vehicle still currently belongs to this branch."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_history__date_end
 msgid "يبقى فارغاً طالما المندوب لا يزال يعمل على هذه المنصة حالياً."
-msgstr "Stays empty as long as the representative still currently works on this platform."
+msgstr ""
+"Stays empty as long as the representative still currently works on this "
+"platform."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_recruitment_stage__fold
@@ -3010,25 +3202,35 @@ msgid ""
 "يربط مع أسطول السيارات المتاحة. في حال وجود سيارات متاحة يُرسل الطلب لقسم "
 "الأسطول لاستلامه والتفويض، ثم يعود لمسؤول المشروع. في حال عدم وجود سيارة لا "
 "يقبل الانتقال للخطوة التالية."
-msgstr "Links with the available vehicle fleet. If vehicles are available, the request is sent to the Fleet department to receive and authorize it, then it returns to the project manager. If no vehicle is available, moving to the next step is not accepted."
+msgstr ""
+"Links with the available vehicle fleet. If vehicles are available, the "
+"request is sent to the Fleet department to receive and authorize it, then it"
+" returns to the project manager. If no vehicle is available, moving to the "
+"next step is not accepted."
 
 #. module: recruitment_workflow
 #. odoo-python
 #: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
 msgid "يمكن إرسال طلبات النقل في حالة \"مسودة\" فقط للمراجعة."
-msgstr "Transfer requests can only be submitted for review while in \"Draft\" status."
+msgstr ""
+"Transfer requests can only be submitted for review while in \"Draft\" "
+"status."
 
 #. module: recruitment_workflow
 #. odoo-python
 #: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
 msgid "يمكن اعتماد مدير العمليات بعد موافقة مسؤول المنصة الحالية فقط."
-msgstr "Operations manager approval is only possible after the current platform manager's approval."
+msgstr ""
+"Operations manager approval is only possible after the current platform "
+"manager's approval."
 
 #. module: recruitment_workflow
 #. odoo-python
 #: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
 msgid "يمكن موافقة مسؤول المنصة الحالية في حالة \"بانتظار الموافقة\" فقط."
-msgstr "The current platform manager can approve only while in \"Pending Approval\" status."
+msgstr ""
+"The current platform manager can approve only while in \"Pending Approval\" "
+"status."
 
 #. module: recruitment_workflow
 #. odoo-python
@@ -3040,14 +3242,18 @@ msgstr "An employee record is already linked to this request."
 #. odoo-python
 #: code:addons/recruitment_workflow/wizard/hr_employee_platform_bulk_assign_wizard.py:0
 msgid "يوجد سطر بدون موظف محدد - احذفه قبل التأكيد."
-msgstr "There is a line without a specified employee - remove it before confirming."
+msgstr ""
+"There is a line without a specified employee - remove it before confirming."
 
 #. module: recruitment_workflow
 #: model:ir.model.constraint,message:recruitment_workflow.constraint_recruitment_request_identification_uniq
 msgid ""
 "يوجد طلب توظيف آخر بنفس رقم الهوية! رقم الهوية يمثّل شخصاً حقيقياً واحداً "
 "ولا يمكن أن يتكرر عبر أي شركة/منصة."
-msgstr "Another recruitment request already has the same ID number! The ID number represents one real person and cannot be repeated across any company/platform."
+msgstr ""
+"Another recruitment request already has the same ID number! The ID number "
+"represents one real person and cannot be repeated across any "
+"company/platform."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__has_contract
@@ -3060,7 +3266,8 @@ msgstr "Contract Exists"
 msgid ""
 "يوجد موظف مسجّل بالفعل بنفس رقم الهوية (%(id)s): %(emp)s.\n"
 "لا يمكن متابعة الطلب لتفادي التكرار."
-msgstr "An employee is already registered with the same ID number (%(id)s): %(emp)s.\n"
+msgstr ""
+"An employee is already registered with the same ID number (%(id)s): %(emp)s.\n"
 "The request cannot proceed to avoid duplication."
 
 #. module: recruitment_workflow
@@ -3074,10 +3281,19 @@ msgstr "Automatically calculated from the Gregorian date."
 #: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__analytic_account_id
 #: model:ir.model.fields,help:recruitment_workflow.field_recruitment_workflow_analytic_mixin__analytic_account_id
 msgid "يُسحب تلقائياً من الحساب التحليلي المرتبط بالمشروع/المنصة المختارة."
-msgstr "Automatically pulled from the analytic account linked to the selected project/platform."
+msgstr ""
+"Automatically pulled from the analytic account linked to the selected "
+"project/platform."
 
 #. module: recruitment_workflow
 #: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__gov_fee_settled
 msgid ""
 "يُضبط تلقائياً بعد تسجيل الرسوم الحكومية - يمنع تكرار العملية لهذا الطلب."
-msgstr "Automatically set after government fees are registered - prevents duplicating the operation for this request."
+msgstr ""
+"Automatically set after government fees are registered - prevents "
+"duplicating the operation for this request."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__is_import_request
+msgid "طلب استقدام"
+msgstr "Import Request"
