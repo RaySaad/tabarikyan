@@ -203,6 +203,10 @@ class RecruitmentImportRequest(models.Model):
                 'partner_id': partner.id,
                 'company_id': rec.company_id.id,
                 'transfer_date': fields.Date.context_today(rec),
+                # يُعفي حقل "اسم الموظف" من الإلزام هناك (انظر شرح الحقل
+                # وشرط required في government_fee_views.xml) - لا يوجد
+                # موظف بعد في هذه المرحلة المبكرة عمداً.
+                'import_request_id': rec.id,
             })
             rec.bank_settlement_gov_fee_id = gov_fee.id
             rec.state = 'fee_registered'

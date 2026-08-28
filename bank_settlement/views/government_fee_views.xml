@@ -71,6 +71,7 @@
                     </header>
                     <sheet>
                         <field name="recruitment_request_id" invisible="1"/>
+                        <field name="import_request_id" invisible="1"/>
                         <div class="oe_button_box" name="button_box">
                             <button name="action_view_move" type="object"
                                     class="oe_stat_button" icon="fa-file-text-o"
@@ -110,7 +111,8 @@
                             </group>
                             <group string="بيانات الموظف">
                                 <field name="employee_category" readonly="state != 'draft'"/>
-                                <field name="employee_id" required="not recruitment_request_id"
+                                <field name="employee_id"
+                                       required="not recruitment_request_id and not import_request_id"
                                        readonly="state != 'draft'"/>
                                 <field name="residency_number"/>
                                 <field name="partner_id" readonly="state != 'draft'"/>
