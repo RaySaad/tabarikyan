@@ -14,9 +14,22 @@
                   groups="bank_settlement.group_bank_settlement_user,recruitment_workflow.group_recruitment_workflow_project_manager"
                   sequence="15"/>
 
+        <!-- طلب استقدام: نموذج مُعرَّف تقنياً في bank_settlement (يحتاج
+             الربط المباشر مع bank.settlement.government.fee - انظر شرح
+             نفس السبب في recruitment_request.py)، لكنه من منظور
+             المستخدم إجراء توظيف بحت - فتظهر قائمته هنا داخل "سير عمل
+             التوظيف" بجانب "طلبات التوظيف" مباشرة، وليس داخل تطبيق
+             السداد البنكي (كان يظهر هناك سابقاً فقط، مكاناً غير متوقَّع
+             للمستخدم - ثغرة حقيقية اكتُشفت من الاستخدام الفعلي).
+             groups= صراحة هنا (بخلاف بقية عناصر هذا الملف التي تتوارثها
+             من menu_bank_settlement_root) لأن الأصل هنا هو قائمة
+             recruitment_workflow، المرئية لمستخدمين قد لا يملكون صلاحية
+             نموذج bank_settlement أصلاً. -->
         <menuitem id="menu_recruitment_import_request" name="طلبات الاستقدام"
-                  parent="menu_bank_settlement_root"
-                  action="action_recruitment_import_request" sequence="5"/>
+                  parent="recruitment_workflow.menu_recruitment_workflow_root"
+                  action="action_recruitment_import_request"
+                  groups="bank_settlement.group_bank_settlement_user"
+                  sequence="5"/>
 
         <menuitem id="menu_bank_settlement_advance" name="السلف"
                   parent="menu_bank_settlement_root"
