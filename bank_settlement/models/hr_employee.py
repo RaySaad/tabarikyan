@@ -9,7 +9,7 @@ class HrEmployee(models.Model):
     _name = 'hr.employee'
     _inherit = 'hr.employee'
 
-    # توسيع صلاحية قراءة has_work_entries (حقل بولياني بسيط، لا بيانات
+    # توسيع صلاحية قراءة has_work_entries (حقل بولياني محسوب، لا بيانات
     # حساسة) لتشمل مستخدمي السداد البنكي أيضاً - كانت مقتصرة على
     # base.group_system/hr.group_hr_user فقط في hr_work_entry الأساسي.
     # نمنح group_bank_settlement_user وصول قراءة لسجل الموظف نفسه
@@ -19,6 +19,15 @@ class HrEmployee(models.Model):
     # نفسه محمي بـgroups=hr.group_hr_manager ولا يظهر لهم فعلياً - مجرد
     # تحذير استشاري، لكن إصلاحه الصحيح هو هذا بالضبط حسب توصية أودو
     # نفسها في رسالة التحذير).
+    #
+    # ملاحظة مهمة: هذا التوسيع يعتمد بالكامل على تحميل bank_settlement
+    # *بعد* hr_work_entry (اعتماد صريح في __manifest__.py) - دمج خاصية
+    # groups بين موديولات متعددة تُعيد تعريف نفس الحقل يحسمه ترتيب
+    # التحميل فقط: آخر موديول يُحمَّل يفوز. بدون هذا الاعتماد الصريح، لا
+    # يوجد ترتيب مضمون بين الموديولين، وإعادة تعريف hr_work_entry
+    # الأصلي (الأضيق) قد تُلغي هذا التوسيع كلياً إن حُمِّل بعدنا - وهو ما
+    # كان يحدث فعلياً (لا نُكرر compute= هنا عمداً: لا يُمسَح، يبقى من
+    # التعريف الأصلي طالما لم نُعيّنه صراحة لقيمة أخرى).
     has_work_entries = fields.Boolean(
         groups='base.group_system,hr.group_hr_user,bank_settlement.group_bank_settlement_user',
     )
