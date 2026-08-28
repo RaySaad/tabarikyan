@@ -49,8 +49,19 @@ class IrCron(models.Model):
             if os.path.exists(en_path):
                 importer.load_file(en_path, 'en_US')
             importer.save(overwrite=True, force_overwrite=True)
+
+        # save() يكتب مباشرة في قاعدة البيانات (SQL خام) لتفادي قيد
+        # "Record cannot be modified"/عدم دعم force_overwrite عبر المسار
+        # العادي - هذا يتجاوز آلية إبطال الذاكرة المؤقتة (cache
+        # invalidation) التي تُفعَّل تلقائياً عادة عند الكتابة عبر ORM
+        # العادي. بنية القوائم (menus) تحديداً مخزَّنة مؤقتاً لكل (مستخدم/
+        # لغة) - بلا هذا التفريغ الصريح، يستمر عرض القوائم القديمة رغم
+        # صحة القيمة الفعلية في قاعدة البيانات. clear_all_caches تُبلِّغ
+        # أيضاً بقية عمليات الخادم (workers) تلقائياً عبر آلية أودو
+        # المدمجة، وليس فقط العملية الحالية.
+        self.env.registry.clear_all_caches()
         self.env.cr.commit()
-        _logger.info('bank_settlement: force-loaded ar_001/en_US translations (deferred one-time cron)')
+        _logger.info('bank_settlement: force-loaded ar_001/en_US translations and cleared all caches (deferred one-time cron)')
         # لا تعطيل يدوي هنا عمداً: تعديل سجل ir.cron من داخل تنفيذه هو
         # نفسه يفشل بـ"Record cannot be modified right now" (أودو يقفل
         # السجل أثناء التشغيل). بدلاً من ذلك، فترة التكرار في سكربت
