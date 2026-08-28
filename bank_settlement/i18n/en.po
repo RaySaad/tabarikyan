@@ -1,0 +1,1753 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* bank_settlement
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0-20260606\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-28 04:11+0000\n"
+"PO-Revision-Date: 2026-08-28 04:11+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: bank_settlement
+#. odoo-python
+#: code:addons/bank_settlement/wizard/employee_statement_wizard.py:0
+msgid "\"إلى تاريخ\" يجب أن يكون بعد أو يساوي \"من تاريخ\"."
+msgstr "\"To Date\" must be after or equal to \"From Date\"."
+
+#. module: bank_settlement
+#: model:ir.actions.report,print_report_name:bank_settlement.action_report_hr_employee_statement
+msgid "'كشف حساب - %s' % (object.employee_id.name)"
+msgstr "'Statement - %s' % (object.employee_id.name)"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_request_form_inherit_bank_settlement
+msgid "<i class=\"fa fa-fw fa-university\" title=\"الرسوم الحكومية\" role=\"img\"/>"
+msgstr "<i class=\"fa fa-fw fa-university\" title=\"Government Fees\" role=\"img\"/>"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_recruitment_request_form_inherit_bank_settlement
+msgid "<span class=\"o_stat_text\">الرسوم الحكومية</span>"
+msgstr "<span class=\"o_stat_text\">Government Fees</span>"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_form
+msgid "<span class=\"o_stat_text\">القيد المحاسبي</span>"
+msgstr "<span class=\"o_stat_text\">Journal Entry</span>"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_form
+msgid "<span class=\"o_stat_text\">فاتورة المورد</span>"
+msgstr "<span class=\"o_stat_text\">Vendor Bill</span>"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_form
+msgid "<span class=\"o_stat_text\">قيد الجهة الحكومية</span>"
+msgstr "<span class=\"o_stat_text\">Government Entity Entry</span>"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.report_hr_employee_statement
+msgid "<strong>الشركة/الفرع</strong>"
+msgstr "<strong>Company/Branch</strong>"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.report_hr_employee_statement
+msgid "<strong>المنصة الحالية</strong>"
+msgstr "<strong>Current Platform</strong>"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.report_hr_employee_statement
+msgid "<strong>رقم الإقامة</strong>"
+msgstr "<strong>Iqama Number</strong>"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.report_hr_employee_statement
+msgid "<strong>فترة الكشف</strong>"
+msgstr "<strong>Statement Period</strong>"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__message_needaction
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__message_needaction
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__message_needaction
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_needaction
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_needaction
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_needaction
+msgid "Action Needed"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__active
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance_reason__active
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_entity__active
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__active
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee_type__active
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__active
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance_type__active
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__active
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__active
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__active
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer_type__active
+msgid "Active"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__activity_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__activity_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__activity_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_ids
+msgid "Activities"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__activity_exception_decoration
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__activity_exception_decoration
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__activity_exception_decoration
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_exception_decoration
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_exception_decoration
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_exception_decoration
+msgid "Activity Exception Decoration"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__activity_state
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__activity_state
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__activity_state
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_state
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_state
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_state
+msgid "Activity State"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__activity_type_icon
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__activity_type_icon
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__activity_type_icon
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_type_icon
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_type_icon
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_type_icon
+msgid "Activity Type Icon"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__message_attachment_count
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__message_attachment_count
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__message_attachment_count
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_attachment_count
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_attachment_count
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_attachment_count
+msgid "Attachment Count"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_bank_settlement_mixin
+msgid "Bank Settlement Mixin"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__create_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance_reason__create_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_employee_statement_wizard__create_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_entity__create_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__create_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee_type__create_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__create_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance_type__create_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_reject_wizard__create_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__create_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_return_wizard__create_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__create_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer_type__create_uid
+msgid "Created by"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__create_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance_reason__create_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_employee_statement_wizard__create_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_entity__create_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__create_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee_type__create_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__create_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance_type__create_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_reject_wizard__create_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__create_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_return_wizard__create_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__create_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer_type__create_date
+msgid "Created on"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_account_move__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance_reason__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_employee_statement_wizard__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_entity__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee_type__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance_type__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_reject_wizard__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_return_wizard__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer_type__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_hr_employee__display_name
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_request__display_name
+msgid "Display Name"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_hr_employee
+msgid "Employee"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__employee_partner_id
+msgid "Employee Partner"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_advance__residency_number
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__residency_number
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_medical_insurance__residency_number
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__residency_number
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__residency_number
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__residency_number
+msgid ""
+"Enter the employee's National Identification Number issued by the government"
+" (e.g., Aadhaar, SIN, NIN). This is used for official records and statutory "
+"compliance."
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__message_follower_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__message_follower_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__message_follower_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_follower_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_follower_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_follower_ids
+msgid "Followers"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__message_partner_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__message_partner_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__message_partner_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_partner_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_partner_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_partner_ids
+msgid "Followers (Partners)"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_advance__activity_type_icon
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__activity_type_icon
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_medical_insurance__activity_type_icon
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__activity_type_icon
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__activity_type_icon
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__activity_type_icon
+msgid "Font awesome icon e.g. fa-tasks"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_advance__employee_category__full_time_rep
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_government_fee__employee_category__full_time_rep
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_medical_insurance__employee_category__full_time_rep
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_mixin__employee_category__full_time_rep
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_representative__employee_category__full_time_rep
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_vehicle_transfer__employee_category__full_time_rep
+msgid "Full Time مندوب"
+msgstr "Full Time Representative"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__has_message
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__has_message
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__has_message
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__has_message
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__has_message
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__has_message
+msgid "Has Message"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_hr_employee__has_work_entries
+msgid "Has Work Entries"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_account_move__id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance_reason__id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_employee_statement_wizard__id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_entity__id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee_type__id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance_type__id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_reject_wizard__id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_return_wizard__id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer_type__id
+#: model:ir.model.fields,field_description:bank_settlement.field_hr_employee__id
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_request__id
+msgid "ID"
+msgstr ""
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_list
+msgid "ID رقم"
+msgstr "ID Number"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__platform_employee_id
+msgid "ID رقم (داخل التطبيق)"
+msgstr "ID Number (within the App)"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__activity_exception_icon
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__activity_exception_icon
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__activity_exception_icon
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_exception_icon
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_exception_icon
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_exception_icon
+msgid "Icon"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_advance__activity_exception_icon
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__activity_exception_icon
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_medical_insurance__activity_exception_icon
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__activity_exception_icon
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__activity_exception_icon
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__activity_exception_icon
+msgid "Icon to indicate an exception activity."
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_advance__message_needaction
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__message_needaction
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_medical_insurance__message_needaction
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__message_needaction
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__message_needaction
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__message_needaction
+msgid "If checked, new messages require your attention."
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_advance__message_has_error
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_advance__message_has_sms_error
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__message_has_error
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__message_has_sms_error
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_medical_insurance__message_has_error
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_medical_insurance__message_has_sms_error
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__message_has_error
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__message_has_sms_error
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__message_has_error
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__message_has_sms_error
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__message_has_error
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__message_has_sms_error
+msgid "If checked, some messages have a delivery error."
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__message_is_follower
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__message_is_follower
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__message_is_follower
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_is_follower
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_is_follower
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_is_follower
+msgid "Is Follower"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_account_move
+msgid "Journal Entry"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__write_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance_reason__write_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_employee_statement_wizard__write_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_entity__write_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__write_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee_type__write_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__write_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance_type__write_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_reject_wizard__write_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__write_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_return_wizard__write_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__write_uid
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer_type__write_uid
+msgid "Last Updated by"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__write_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance_reason__write_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_employee_statement_wizard__write_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_entity__write_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__write_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee_type__write_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__write_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance_type__write_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_reject_wizard__write_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__write_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_return_wizard__write_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__write_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer_type__write_date
+msgid "Last Updated on"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__message_has_error
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__message_has_error
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__message_has_error
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_has_error
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_has_error
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_has_error
+msgid "Message Delivery error"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__message_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__message_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__message_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_ids
+msgid "Messages"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__my_activity_date_deadline
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__my_activity_date_deadline
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__my_activity_date_deadline
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__my_activity_date_deadline
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__my_activity_date_deadline
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__my_activity_date_deadline
+msgid "My Activity Deadline"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__activity_calendar_event_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__activity_calendar_event_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__activity_calendar_event_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_calendar_event_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_calendar_event_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_calendar_event_id
+msgid "Next Activity Calendar Event"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__activity_date_deadline
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__activity_date_deadline
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__activity_date_deadline
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_date_deadline
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_date_deadline
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_date_deadline
+msgid "Next Activity Deadline"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__activity_summary
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__activity_summary
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__activity_summary
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_summary
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_summary
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_summary
+msgid "Next Activity Summary"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__activity_type_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__activity_type_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__activity_type_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_type_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_type_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_type_id
+msgid "Next Activity Type"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__message_needaction_counter
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__message_needaction_counter
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__message_needaction_counter
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_needaction_counter
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_needaction_counter
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_needaction_counter
+msgid "Number of Actions"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__message_has_error_counter
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__message_has_error_counter
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__message_has_error_counter
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_has_error_counter
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_has_error_counter
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_has_error_counter
+msgid "Number of errors"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_advance__message_needaction_counter
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__message_needaction_counter
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_medical_insurance__message_needaction_counter
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__message_needaction_counter
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__message_needaction_counter
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__message_needaction_counter
+msgid "Number of messages requiring action"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_advance__message_has_error_counter
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__message_has_error_counter
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_medical_insurance__message_has_error_counter
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__message_has_error_counter
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__message_has_error_counter
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__message_has_error_counter
+msgid "Number of messages with delivery error"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__rating_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__rating_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__rating_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__rating_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__rating_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__rating_ids
+msgid "Ratings"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__activity_user_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__activity_user_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__activity_user_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__activity_user_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__activity_user_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__activity_user_id
+msgid "Responsible User"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__message_has_sms_error
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__message_has_sms_error
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__message_has_sms_error
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__message_has_sms_error
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__message_has_sms_error
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__message_has_sms_error
+msgid "SMS Delivery error"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_advance__payment_method__stc_pay
+msgid "STC Pay"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_advance__activity_state
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__activity_state
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_medical_insurance__activity_state
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__activity_state
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__activity_state
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__activity_state
+msgid ""
+"Status based on activities\n"
+"Overdue: Due date is already passed\n"
+"Today: Activity date is today\n"
+"Planned: Future activities."
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_advance__activity_exception_decoration
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__activity_exception_decoration
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_medical_insurance__activity_exception_decoration
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__activity_exception_decoration
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__activity_exception_decoration
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__activity_exception_decoration
+msgid "Type of the exception activity on record."
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__website_message_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__website_message_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__website_message_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__website_message_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__website_message_ids
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__website_message_ids
+msgid "Website Messages"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_advance__website_message_ids
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__website_message_ids
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_medical_insurance__website_message_ids
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__website_message_ids
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__website_message_ids
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__website_message_ids
+msgid "Website communication history"
+msgstr ""
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__company_iban
+msgid "آيبان الشركة"
+msgstr "Company IBAN"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__employee_iban
+msgid "آيبان الموظف"
+msgstr "Employee IBAN"
+
+#. module: bank_settlement
+#: model:ir.actions.act_window,name:bank_settlement.action_bank_settlement_advance_reason
+#: model:ir.ui.menu,name:bank_settlement.menu_bank_settlement_config_advance_reason
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_reason_list
+msgid "أسباب السلف"
+msgstr "Advance Reasons"
+
+#. module: bank_settlement
+#: model:ir.actions.act_window,name:bank_settlement.action_bank_settlement_government_fee_type
+#: model:ir.ui.menu,name:bank_settlement.menu_bank_settlement_config_government_fee_type
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_type_list
+msgid "أنواع الرسوم الحكومية"
+msgstr "Government Fee Types"
+
+#. module: bank_settlement
+#: model:ir.actions.act_window,name:bank_settlement.action_bank_settlement_vehicle_transfer_type
+#: model:ir.ui.menu,name:bank_settlement.menu_bank_settlement_config_vehicle_transfer_type
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_type_list
+msgid "أنواع تحويل المركبات"
+msgstr "Vehicle Transfer Types"
+
+#. module: bank_settlement
+#: model:ir.actions.act_window,name:bank_settlement.action_bank_settlement_medical_insurance_type
+#: model:ir.ui.menu,name:bank_settlement.menu_bank_settlement_config_medical_insurance_type
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_type_list
+msgid "أنواع رسوم التأمين الطبي"
+msgstr "Medical Insurance Fee Types"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__returned_for_correction
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__returned_for_correction
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__returned_for_correction
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__returned_for_correction
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__returned_for_correction
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__returned_for_correction
+msgid "أُرجعت للتصحيح"
+msgstr "Returned for Correction"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_return_wizard_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_form
+msgid "إرجاع للتصحيح"
+msgstr "Return for Correction"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_form
+msgid "إرسال للمراجعة"
+msgstr "Submit for Review"
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_employee_statement_wizard__date_from
+msgid ""
+"إلزامي فقط عند اختيار \"تاريخ محدد\" - يُحسَب تلقائياً من تاريخ بداية العقد "
+"عند اختيار \"من بداية العقد\"."
+msgstr "Required only when \"Specific Date\" is selected - automatically calculated from the contract start date when \"From Contract Start\" is selected."
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_employee_statement_wizard_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_reject_wizard_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_return_wizard_form
+msgid "إلغاء"
+msgstr "Cancel"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_employee_statement_wizard__date_to
+msgid "إلى تاريخ"
+msgstr "To Date"
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__recruitment_request_id
+msgid ""
+"إن أُنشئ هذا السجل تلقائياً من طلب توظيف (مرحلة نقل الكفالة) قبل وجود سجل "
+"الموظف الرسمي، يُربَط هنا - ويُكمَل حقل \"اسم الموظف\" أعلاه تلقائياً بمجرد "
+"إنشاء ذلك السجل لاحقاً."
+msgstr "If this record was automatically created from a recruitment request (sponsorship transfer stage) before the official employee record existed, it is linked here - and the \"Employee Name\" field above is automatically filled in once that record is created later."
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_form
+msgid "إنشاء تحويل التأمين"
+msgstr "Create Insurance Transfer"
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_return_wizard__target_state
+msgid ""
+"اختر المرحلة السابقة التي تريد إرجاع هذا السجل إليها للتصحيح - أي موافقة "
+"سابقة لهذه المرحلة تبقى سارية. قد تظهر هنا مراحل غير قابلة فعلياً للاختيار "
+"من حالة هذا السجل تحديداً - سيتم رفضها عند التأكيد إن لم تكن صالحة."
+msgstr "Choose the previous stage you want to return this record to for correction - any approval prior to this stage remains valid. Stages that aren't actually selectable from this record's specific status may appear here - they will be rejected upon confirmation if not valid."
+
+#. module: bank_settlement
+#. odoo-python
+#: code:addons/bank_settlement/wizard/employee_statement_wizard.py:0
+msgid "اختر الموظف أولاً."
+msgstr "Select the employee first."
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_list
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_search
+msgid "اسم التطبيق"
+msgstr "App Name"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_list
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_search
+msgid "اسم المندوب"
+msgstr "Representative Name"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__employee_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__employee_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__employee_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__employee_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__employee_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__employee_id
+msgid "اسم الموظف"
+msgstr "Employee Name"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_form
+msgid "اعتماد التحويل"
+msgstr "Approve Transfer"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_form
+msgid "اعتماد المدير العام"
+msgstr "General Manager Approval"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__iban
+msgid "الأيبان"
+msgstr "IBAN"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__total_amount
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__total_amount
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__total_amount
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__total_amount
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__total_amount
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__total_amount
+#: model_terms:ir.ui.view,arch_db:bank_settlement.report_hr_employee_statement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_list
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_list
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_list
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_list
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_list
+msgid "الإجمالي"
+msgstr "Total"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_return_wizard__target_state
+msgid "الإرجاع إلى مرحلة"
+msgstr "Return to Stage"
+
+#. module: bank_settlement
+#: model:ir.ui.menu,name:bank_settlement.menu_bank_settlement_config
+msgid "الإعدادات"
+msgstr "Settings"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance_reason__name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_entity__name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee_type__name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance_type__name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer_type__name
+msgid "الاسم"
+msgstr "Name"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.report_hr_employee_statement
+msgid "البيان"
+msgstr "Description"
+
+#. module: bank_settlement
+#: model:ir.actions.act_window,name:bank_settlement.action_bank_settlement_medical_insurance
+#: model:ir.ui.menu,name:bank_settlement.menu_bank_settlement_medical_insurance
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_list
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_search
+msgid "التأمين الطبي"
+msgstr "Medical Insurance"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__date
+#: model_terms:ir.ui.view,arch_db:bank_settlement.report_hr_employee_statement
+msgid "التاريخ"
+msgstr "Date"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance_reason__sequence
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_entity__sequence
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee_type__sequence
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance_type__sequence
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer_type__sequence
+msgid "الترتيب"
+msgstr "Sequence"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_form
+msgid "التطبيق"
+msgstr "App"
+
+#. module: bank_settlement
+#: model:ir.actions.act_window,name:bank_settlement.action_bank_settlement_government_entity
+#: model:ir.ui.menu,name:bank_settlement.menu_bank_settlement_config_government_entity
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_entity_list
+msgid "الجهات الحكومية"
+msgstr "Government Entities"
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_bank_settlement_government_entity
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__government_entity_id
+msgid "الجهة الحكومية"
+msgstr "Government Entity"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__state
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__state
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__state
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__state
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__state
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__state
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_search
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_search
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_search
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_search
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_search
+msgid "الحالة"
+msgstr "Status"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__analytic_account_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__analytic_account_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__analytic_account_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__analytic_account_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__analytic_account_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__analytic_account_id
+msgid "الحساب التحليلي"
+msgstr "Analytic Account"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__linked_account_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__linked_account_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__linked_account_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__linked_account_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__linked_account_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__linked_account_id
+msgid "الحساب المرتبط"
+msgstr "Linked Account"
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_advance__journal_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__journal_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_medical_insurance__journal_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__journal_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__journal_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__journal_id
+msgid ""
+"الدفتر الذي سيُسجَّل فيه هذا القيد - يُحدَّد صراحة بدل اختيار أول دفتر بنكي "
+"متاح تلقائياً. غير مقيَّد بنوع \"بنكي\" فقط، حتى تختار دفاتر مخصصة موجودة "
+"أصلاً لديكم (مثل \"المدفوعات الحكومية\")، دون الحاجة لفاتورة مورد أو شريك "
+"محدَّد - القيد يُسجَّل مباشرة بلا حاجة لربطه بجهة/شريك معيّن. تشمل القائمة "
+"أيضاً دفاتر الشركة الرئيسية (الأعلى في تسلسل الفروع) - نفس منطق الفروع "
+"المستخدم في كل شاشات المحاسبة القياسية بـ Odoo، لا تقتصر على دفاتر فرعكم "
+"فقط."
+msgstr "The journal this entry will be recorded on - explicitly specified instead of automatically picking the first available bank journal. Not restricted to \"bank\" type only, so you can choose custom journals you already have (such as \"Government Payments\"), without needing a vendor bill or a specific partner - the entry is recorded directly without needing to link it to a particular party/partner. The list also includes the parent company's journals (highest in the branch hierarchy) - the same branch logic used across all standard Odoo accounting screens, not limited to your branch's journals only."
+
+#. module: bank_settlement
+#: model:ir.actions.act_window,name:bank_settlement.action_bank_settlement_government_fee
+#: model:ir.ui.menu,name:bank_settlement.menu_bank_settlement_government_fee
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_list
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_search
+msgid "الرسوم الحكومية"
+msgstr "Government Fees"
+
+#. module: bank_settlement
+#: model:ir.module.category,name:bank_settlement.module_category_bank_settlement
+#: model:ir.ui.menu,name:bank_settlement.menu_bank_settlement_root
+#: model:res.groups.privilege,name:bank_settlement.privilege_bank_settlement
+msgid "السداد البنكي"
+msgstr "Bank Settlement"
+
+#. module: bank_settlement
+#: model:res.groups,name:bank_settlement.group_bank_settlement_reviewer
+msgid "السداد البنكي / محاسب"
+msgstr "Bank Settlement / Accountant"
+
+#. module: bank_settlement
+#: model:res.groups,name:bank_settlement.group_bank_settlement_manager
+msgid "السداد البنكي / مدير عام"
+msgstr "Bank Settlement / General Manager"
+
+#. module: bank_settlement
+#: model:res.groups,name:bank_settlement.group_bank_settlement_user
+msgid "السداد البنكي / مستخدم"
+msgstr "Bank Settlement / User"
+
+#. module: bank_settlement
+#: model:ir.actions.act_window,name:bank_settlement.action_bank_settlement_advance
+#: model:ir.ui.menu,name:bank_settlement.menu_bank_settlement_advance
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_list
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_search
+msgid "السلف"
+msgstr "Advances"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__vehicle_id
+msgid "السيارة"
+msgstr "Vehicle"
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__vehicle_id
+msgid ""
+"السيارة المرتبطة بهذا التحويل (مثال: مصروف وقود لسيارة محددة) - تُقيَّد "
+"القائمة تلقائياً بسيارات الموظف المختار أعلاه (سائقها الحالي أو المستقبلي)، "
+"ويمكن تركها فارغة إن كان التحويل عاماً غير مرتبط بسيارة بعينها."
+msgstr "The vehicle linked to this transfer (e.g. a fuel expense for a specific vehicle) - the list is automatically restricted to the vehicles of the employee selected above (their current or future driver), and can be left empty if the transfer is general and not linked to a specific vehicle."
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__company_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__company_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__company_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__company_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__company_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__company_id
+msgid "الشركة"
+msgstr "Company"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__partner_id
+msgid "الشريك"
+msgstr "Partner"
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__partner_id
+msgid ""
+"الشريك الذي يُسجَّل على القيد المحاسبي لهذه الرسوم - يُشتق تلقائياً من "
+"الموظف المختار، أو يُضبط مبكراً (جهة اتصال المرشّح) عند إنشاء السجل تلقائياً"
+" من طلب توظيف قبل وجود سجل موظف رسمي بعد. يمكن تعديله يدوياً عند الحاجة."
+msgstr "The partner recorded on the journal entry for this fee - automatically derived from the selected employee, or set early (candidate contact) when the record is automatically created from a recruitment request before an official employee record exists yet. Can be edited manually when needed."
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.report_hr_employee_statement
+msgid "الصافي الإجمالي (له/عليه)"
+msgstr "Total Net (Credit/Debit)"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__currency_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__currency_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__currency_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__currency_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__currency_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__currency_id
+msgid "العملة"
+msgstr "Currency"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__move_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__move_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__move_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__move_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__move_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__move_id
+msgid "القيد المحاسبي"
+msgstr "Journal Entry"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__name
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__name
+msgid "الكود"
+msgstr "Code"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_form
+msgid "المبالغ"
+msgstr "Amounts"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__amount
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__amount
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__amount
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__amount
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__amount
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__amount
+msgid "المبلغ"
+msgstr "Amount"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__project_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__project_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__project_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__project_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__project_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__project_id
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_form
+msgid "المنصة"
+msgstr "Platform"
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_advance__project_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__project_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_medical_insurance__project_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__project_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__project_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__project_id
+msgid ""
+"المنصة (كيتا/هنقرستيشن/جاهز) - تُقترح تلقائياً من المنصة الحالية للموظف "
+"المختار، ويمكن تغييرها يدوياً إن لزم."
+msgstr "The platform (Keeta/Hungerstation/Jahez) - automatically suggested from the selected employee's current platform, and can be changed manually if needed."
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__vendor_id
+msgid "المورد"
+msgstr "Vendor"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_employee_statement_wizard__employee_id
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_search
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_search
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_search
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_search
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_search
+msgid "الموظف"
+msgstr "Employee"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_reject_wizard__res_model
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_return_wizard__res_model
+msgid "النموذج"
+msgstr "Model"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_advance__state__waiting_approval
+msgid "بانتظار الموافقة"
+msgstr "Pending Approval"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_employee_statement_wizard__date_mode
+msgid "بداية الكشف"
+msgstr "Statement Start"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_form
+msgid "بيانات التأمين"
+msgstr "Insurance Details"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_form
+msgid "بيانات الرسوم"
+msgstr "Fee Details"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_form
+msgid "بيانات السداد البنكي"
+msgstr "Bank Settlement Details"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_form
+msgid "بيانات السلفة"
+msgstr "Advance Details"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_form
+msgid "بيانات المندوب"
+msgstr "Representative Information"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_form
+msgid "بيانات المنصة"
+msgstr "Platform Information"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_form
+msgid "بيانات الموظف"
+msgstr "Employee Information"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_form
+msgid "تأكيد"
+msgstr "Confirm"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_return_wizard_form
+msgid "تأكيد الإرجاع للتصحيح"
+msgstr "Confirm Return for Correction"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_reject_wizard_form
+msgid "تأكيد الرفض"
+msgstr "Confirm Rejection"
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_bank_settlement_medical_insurance
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_form
+msgid "تأمين / فحص طبي"
+msgstr "Insurance / Medical Checkup"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__transfer_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__transfer_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__transfer_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__transfer_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__transfer_date
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__transfer_date
+msgid "تاريخ التحويل"
+msgstr "Transfer Date"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_employee_statement_wizard__date_mode__custom
+msgid "تاريخ محدد"
+msgstr "Specific Date"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_advance__state__under_review
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_government_fee__state__under_review
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_medical_insurance__state__under_review
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_mixin__state__under_review
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_representative__state__under_review
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_vehicle_transfer__state__under_review
+msgid "تحت المراجعة"
+msgstr "Under Review"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_advance__payment_method__bank_transfer
+msgid "تحويل بنكي"
+msgstr "Bank Transfer"
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_bank_settlement_vehicle_transfer
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_form
+msgid "تحويل مركبة"
+msgstr "Vehicle Transfer"
+
+#. module: bank_settlement
+#: model:ir.actions.act_window,name:bank_settlement.action_bank_settlement_vehicle_transfer
+#: model:ir.ui.menu,name:bank_settlement.menu_bank_settlement_vehicle_transfer
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_list
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_search
+msgid "تحويلات المركبات"
+msgstr "Vehicle Transfers"
+
+#. module: bank_settlement
+#: model:ir.actions.act_window,name:bank_settlement.action_bank_settlement_representative
+#: model:ir.ui.menu,name:bank_settlement.menu_bank_settlement_representative
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_list
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_search
+msgid "تصفيات المناديب"
+msgstr "Representative Settlements"
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_bank_settlement_representative
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_form
+msgid "تصفية مندوب"
+msgstr "Representative Settlement"
+
+#. module: bank_settlement
+#. odoo-python
+#: code:addons/bank_settlement/models/hr_employee.py:0
+msgid "تصفية مندوب - %s"
+msgstr "Representative Settlement - %s"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_form
+msgid ""
+"تم إرجاع هذا السجل للتصحيح - يمكن تعديل المبلغ وبيانات السداد\n"
+"                            البنكي (الحساب/دفتر اليومية/رقم السداد) مؤقتاً حتى إعادة الاعتماد.\n"
+"                            هوية الموظف/المنصة تبقى مقفولة."
+msgstr "This record has been returned for correction - the amount and bank settlement\n"
+"                            details (account/journal/payment reference) can be temporarily edited until re-approval.\n"
+"                            The employee/platform identity remains locked."
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_form
+msgid ""
+"تم إرجاع هذا السجل للتصحيح - يمكن تعديل المبلغ وبيانات السداد\n"
+"                            البنكي (الحساب/دفتر اليومية/رقم السداد) مؤقتاً حتى إعادة الاعتماد.\n"
+"                            هوية الموظف/المنصة/المركبة تبقى مقفولة."
+msgstr "This record has been returned for correction - the amount and bank settlement\n"
+"                            details (account/journal/payment reference) can be temporarily edited until re-approval.\n"
+"                            The employee/platform/vehicle identity remains locked."
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_form
+msgid ""
+"تم إرجاع هذا السجل للتصحيح - يمكن تعديل المبلغ وتاريخ التحويل\n"
+"                            مؤقتاً حتى إعادة الاعتماد. هوية الموظف/المنصة تبقى مقفولة."
+msgstr "This record has been returned for correction - the amount and transfer date\n"
+"                            can be temporarily edited until re-approval. The employee/platform identity remains locked."
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_form
+msgid ""
+"تم إرجاع هذا السجل للتصحيح - يمكن تعديل مبلغ التصفية وبيانات\n"
+"                            السداد البنكي (الحساب/دفتر اليومية) مؤقتاً حتى إعادة الاعتماد.\n"
+"                            هوية المندوب/المنصة تبقى مقفولة."
+msgstr "This record has been returned for correction - the settlement amount and bank\n"
+"                            settlement details (account/journal) can be temporarily edited until re-approval.\n"
+"                            The representative/platform identity remains locked."
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_medical_insurance__state__done
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_vehicle_transfer__state__done
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_form
+msgid "تم التحويل"
+msgstr "Transferred"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_form
+msgid "تم السداد"
+msgstr "Paid"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_advance__state__paid
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_form
+msgid "تم الصرف"
+msgstr "Disbursed"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_advance__state__approved
+msgid "تمت الموافقة"
+msgstr "Approved"
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_advance__returned_for_correction
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__returned_for_correction
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_medical_insurance__returned_for_correction
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__returned_for_correction
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__returned_for_correction
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__returned_for_correction
+msgid ""
+"تُضبَط تلقائياً عند \"إرجاع للتصحيح\" - تسمح مؤقتاً بتعديل الحقول الحساسة "
+"(الموظف/المبلغ...) حتى إعادة الاعتماد."
+msgstr "Automatically set when \"Return for Correction\" is used - temporarily allows editing sensitive fields (employee/amount...) until re-approval."
+
+#. module: bank_settlement
+#. odoo-python
+#: code:addons/bank_settlement/models/advance.py:0
+msgid ""
+"حالة \"%s\" غير صالحة للسلفة - سلسلة حالات السلفة مختلفة عن بقية شاشات "
+"السداد البنكي (بانتظار الموافقة/وافق مسؤول المشروع/تمت الموافقة/تم الصرف)."
+msgstr "Status \"%s\" is not valid for an advance - the advance status flow is different from the rest of the bank settlement screens (Pending Approval/Project Manager Approved/Approved/Disbursed)."
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_request__bank_settlement_gov_fee_state
+msgid "حالة سداد الرسوم الحكومية"
+msgstr "Government Fee Payment Status"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.report_hr_employee_statement
+msgid "حتى اليوم"
+msgstr "Until Today"
+
+#. module: bank_settlement
+#. odoo-python
+#: code:addons/bank_settlement/wizard/employee_statement_wizard.py:0
+msgid "حدد \"من تاريخ\"، أو اختر \"من بداية العقد\"."
+msgstr "Set \"From Date\", or select \"From Contract Start\"."
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_advance__linked_account_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__linked_account_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_medical_insurance__linked_account_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__linked_account_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__linked_account_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__linked_account_id
+msgid "حساب الأستاذ العام المرتبط بهذا النوع من المصروفات"
+msgstr "The general ledger account linked to this expense type"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.report_hr_employee_statement
+msgid "دائن (له)"
+msgstr "Credit"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__journal_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__journal_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__journal_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__journal_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__journal_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__journal_id
+msgid "دفتر اليومية"
+msgstr "Journal"
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_bank_settlement_government_fee
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_form
+msgid "رسوم حكومية"
+msgstr "Government Fees"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_form
+msgid "رفض"
+msgstr "Reject"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_reject_wizard_form
+msgid "رفض السجل"
+msgstr "Reject Record"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__stc_number
+msgid "رقم STC Pay"
+msgstr "STC Pay Number"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__residency_number
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__residency_number
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__residency_number
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__residency_number
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__residency_number
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__residency_number
+msgid "رقم الإقامة"
+msgstr "Iqama Number"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_reject_wizard__res_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_return_wizard__res_id
+msgid "رقم السجل"
+msgstr "Record Number"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__bank_reference
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__bank_reference
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__bank_reference
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__bank_reference
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__bank_reference
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__bank_reference
+msgid "رقم السداد البنكي"
+msgstr "Bank Payment Reference"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_return_wizard__reason
+msgid "سبب الإرجاع للتصحيح"
+msgstr "Reason for Return for Correction"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__rejection_reason
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__rejection_reason
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__rejection_reason
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__rejection_reason
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_reject_wizard__reason
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__rejection_reason
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__rejection_reason
+msgid "سبب الرفض"
+msgstr "Rejection Reason"
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_bank_settlement_advance_reason
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__advance_reason_id
+msgid "سبب السلفة"
+msgstr "Advance Reason"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_recruitment_request__bank_settlement_gov_fee_id
+msgid "سجل الرسوم الحكومية"
+msgstr "Government Fee Record"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_form
+msgid "سلفة"
+msgstr "Advance"
+
+#. module: bank_settlement
+#. odoo-python
+#: code:addons/bank_settlement/models/hr_employee.py:0
+msgid "سلفة - %s"
+msgstr "Advance - %s"
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_bank_settlement_advance
+msgid "سلفة موظف"
+msgstr "Employee Advance"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_employee_statement_wizard__company_id
+msgid "شركة/فرع الموظف"
+msgstr "Employee's Company/Branch"
+
+#. module: bank_settlement
+#: model:ir.module.category,description:bank_settlement.module_category_bank_settlement
+msgid ""
+"صلاحيات إدارة السلف والرسوم الحكومية وتحويلات المركبات والتأمين الطبي "
+"وتصفيات المناديب"
+msgstr "Permissions for managing advances, government fees, vehicle transfers, medical insurance, and representative settlements"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_employee_statement_wizard_form
+msgid "طباعة كشف حساب"
+msgstr "Print Statement"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_form
+msgid "طريقة الاستلام"
+msgstr "Receipt Method"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__payment_method
+msgid "طريقة الدفع"
+msgstr "Payment Method"
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_recruitment_request
+msgid "طلب التوظيف"
+msgstr "Recruitment Request"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__recruitment_request_id
+msgid "طلب التوظيف المرتبط"
+msgstr "Related Recruitment Request"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__attachment_count
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__attachment_count
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__attachment_count
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__attachment_count
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__attachment_count
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__attachment_count
+msgid "عدد المرفقات"
+msgstr "Attachment Count"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_account_bank_statement_line__is_bank_settlement_move
+#: model:ir.model.fields,field_description:bank_settlement.field_account_move__is_bank_settlement_move
+msgid "قيد سداد بنكي"
+msgstr "Bank Settlement Entry"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.report_hr_employee_statement
+msgid "كشف حساب"
+msgstr "Statement"
+
+#. module: bank_settlement
+#: model:ir.actions.act_window,name:bank_settlement.action_bank_settlement_employee_statement_wizard
+#: model:ir.actions.report,name:bank_settlement.action_report_hr_employee_statement
+#: model:ir.ui.menu,name:bank_settlement.menu_bank_settlement_employee_statement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_employee_statement_wizard_form
+msgid "كشف حساب الموظف"
+msgstr "Employee Statement"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.report_hr_employee_statement
+msgid "لا توجد حركات مسجَّلة ضمن هذه الفترة."
+msgstr "No transactions recorded within this period."
+
+#. module: bank_settlement
+#. odoo-python
+#: code:addons/bank_settlement/models/account_move.py:0
+msgid ""
+"لا يمكن إرجاع القيد المحاسبي \"%s\" لمسودة - هو قيد سداد بنكي مرتبط بسجل "
+"معتمد، يجب الحفاظ عليه معتمداً للتدقيق. استخدم قيداً عكسياً أو الإلغاء بدلاً"
+" من ذلك."
+msgstr "Journal entry \"%s\" cannot be reset to draft - it is a bank settlement entry linked to an approved record and must remain posted for auditing. Use a reversal entry or cancellation instead."
+
+#. module: bank_settlement
+#. odoo-python
+#: code:addons/bank_settlement/models/account_move.py:0
+msgid ""
+"لا يمكن حذف القيد المحاسبي \"%s\" نهائياً - هو قيد سداد بنكي مرتبط بسجل "
+"معتمد (سلفة، رسوم حكومية، تأمين طبي، تحويل مركبة، أو تصفية) يجب الحفاظ عليه "
+"للتدقيق. إن احتاج الأمر تصحيحاً، استخدم قيداً عكسياً أو الإلغاء بدلاً من "
+"الحذف."
+msgstr "Journal entry \"%s\" cannot be permanently deleted - it is a bank settlement entry linked to an approved record (advance, government fee, medical insurance, vehicle transfer, or settlement) that must be kept for auditing. If correction is needed, use a reversal entry or cancellation instead of deleting."
+
+#. module: bank_settlement
+#. odoo-python
+#: code:addons/bank_settlement/models/hr_employee.py:0
+msgid ""
+"لا يمكن حذف الموظف \"%s\" نهائياً - له سجل/سجلات سداد بنكي مرتبطة به (سلفة، "
+"رسوم حكومية، تأمين طبي، تحويل مركبة، أو تصفية) يجب الحفاظ على سجلها للتدقيق."
+" استخدم \"أرشفة\" بدلاً من الحذف."
+msgstr "Employee \"%s\" cannot be permanently deleted - they have bank settlement record(s) linked to them (advance, government fee, medical insurance, vehicle transfer, or settlement) whose record must be kept for auditing. Use \"Archive\" instead of deleting."
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_search
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_government_fee_search
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_search
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_search
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_search
+msgid "مؤرشف"
+msgstr "Archived"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_advance__state__confirmed
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_government_fee__state__confirmed
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_medical_insurance__state__confirmed
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_mixin__state__confirmed
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_representative__state__confirmed
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_vehicle_transfer__state__confirmed
+msgid "مؤكدة"
+msgstr "Confirmed"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__settlement_amount
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_representative_form
+msgid "مبلغ التصفية"
+msgstr "Settlement Amount"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__tax_amount
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__tax_amount
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__tax_amount
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__tax_amount
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__tax_amount
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__tax_amount
+msgid "مبلغ الضريبة"
+msgstr "Tax Amount"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.report_hr_employee_statement
+msgid "مدين (عليه)"
+msgstr "Debit"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_advance__state__rejected
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_government_fee__state__rejected
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_medical_insurance__state__rejected
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_mixin__state__rejected
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_representative__state__rejected
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_vehicle_transfer__state__rejected
+msgid "مرفوضة"
+msgstr "Rejected"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_government_fee__state__done
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_representative__state__done
+msgid "مسددة"
+msgstr "Paid"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_advance__state__draft
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_government_fee__state__draft
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_medical_insurance__state__draft
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_mixin__state__draft
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_representative__state__draft
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_vehicle_transfer__state__draft
+msgid "مسودة"
+msgstr "Draft"
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_bank_settlement_return_wizard
+msgid "معالج إرجاع سجل السداد البنكي للتصحيح"
+msgstr "Return Bank Settlement Record for Correction Wizard"
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_bank_settlement_reject_wizard
+msgid "معالج رفض سجل السداد البنكي"
+msgstr "Reject Bank Settlement Record Wizard"
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_bank_settlement_employee_statement_wizard
+msgid "معالج طباعة كشف حساب الموظف"
+msgstr "Print Employee Statement Wizard"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__notes
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__notes
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__notes
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__notes
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__notes
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__notes
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_form
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_vehicle_transfer_form
+msgid "ملاحظات"
+msgstr "Notes"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_advance__state__cancel
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_government_fee__state__cancel
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_medical_insurance__state__cancel
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_mixin__state__cancel
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_representative__state__cancel
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_vehicle_transfer__state__cancel
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_form
+msgid "ملغاة"
+msgstr "Cancelled"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.report_hr_employee_statement
+msgid "من بداية السجل"
+msgstr "From Record Start"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_employee_statement_wizard__date_mode__contract_start
+msgid "من بداية العقد"
+msgstr "From Contract Start"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_employee_statement_wizard__date_from
+msgid "من تاريخ"
+msgstr "From Date"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_advance__state__done
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_mixin__state__done
+msgid "منفّذة"
+msgstr "Executed"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_advance_form
+msgid "موافقة مسؤول المشروع"
+msgstr "Project Manager Approval"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_advance__employee_category__foreign_admin
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_government_fee__employee_category__foreign_admin
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_medical_insurance__employee_category__foreign_admin
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_mixin__employee_category__foreign_admin
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_representative__employee_category__foreign_admin
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_vehicle_transfer__employee_category__foreign_admin
+msgid "موظف إداري أجنبي"
+msgstr "Foreign Administrative Employee"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__operating_system
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__operating_system
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__operating_system
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__operating_system
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__operating_system
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__operating_system
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_medical_insurance_form
+msgid "نظام التشغيل"
+msgstr "Work Scheme"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__transfer_type_id
+msgid "نوع التحويل"
+msgstr "Transfer Type"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__fee_type_id
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__fee_type_id
+msgid "نوع الرسوم"
+msgstr "Fee Type"
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_bank_settlement_government_fee_type
+msgid "نوع الرسوم الحكومية"
+msgstr "Government Fee Type"
+
+#. module: bank_settlement
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_advance__employee_category
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_government_fee__employee_category
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_medical_insurance__employee_category
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_mixin__employee_category
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_representative__employee_category
+#: model:ir.model.fields,field_description:bank_settlement.field_bank_settlement_vehicle_transfer__employee_category
+msgid "نوع الموظف"
+msgstr "Employee Type"
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_bank_settlement_vehicle_transfer_type
+msgid "نوع تحويل المركبة"
+msgstr "Vehicle Transfer Type"
+
+#. module: bank_settlement
+#: model:ir.model,name:bank_settlement.model_bank_settlement_medical_insurance_type
+msgid "نوع رسوم التأمين الطبي"
+msgstr "Medical Insurance Fee Type"
+
+#. module: bank_settlement
+#: model:ir.model.fields.selection,name:bank_settlement.selection__bank_settlement_advance__state__pm_approved
+msgid "وافق مسؤول المشروع"
+msgstr "Project Manager Approved"
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_return_wizard_form
+msgid "وضّح سبب إرجاع هذا السجل للتصحيح..."
+msgstr "Clarify the reason for returning this record for correction..."
+
+#. module: bank_settlement
+#: model_terms:ir.ui.view,arch_db:bank_settlement.view_bank_settlement_reject_wizard_form
+msgid "وضّح سبب رفض هذا السجل..."
+msgstr "Clarify the reason for rejecting this record..."
+
+#. module: bank_settlement
+#: model:ir.model.constraint,message:bank_settlement.constraint_bank_settlement_government_entity_name_uniq
+msgid "يوجد جهة حكومية أخرى بنفس الاسم بالفعل."
+msgstr "Another government entity already has the same name."
+
+#. module: bank_settlement
+#: model:ir.model.constraint,message:bank_settlement.constraint_bank_settlement_advance_reason_name_uniq
+msgid "يوجد سبب سلفة آخر بنفس الاسم بالفعل."
+msgstr "Another advance reason already has the same name."
+
+#. module: bank_settlement
+#: model:ir.model.constraint,message:bank_settlement.constraint_bank_settlement_vehicle_transfer_type_name_uniq
+msgid "يوجد نوع تحويل آخر بنفس الاسم بالفعل."
+msgstr "Another transfer type already has the same name."
+
+#. module: bank_settlement
+#: model:ir.model.constraint,message:bank_settlement.constraint_bank_settlement_government_fee_type_name_uniq
+#: model:ir.model.constraint,message:bank_settlement.constraint_bank_settlement_medical_insurance_type_name_uniq
+msgid "يوجد نوع رسوم آخر بنفس الاسم بالفعل."
+msgstr "Another fee type already has the same name."
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_advance__analytic_account_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_government_fee__analytic_account_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_medical_insurance__analytic_account_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_mixin__analytic_account_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_representative__analytic_account_id
+#: model:ir.model.fields,help:bank_settlement.field_bank_settlement_vehicle_transfer__analytic_account_id
+msgid ""
+"يُشتق تلقائياً من المنصة المختارة أعلاه - لتحقيق العزل المالي لكل منصة في "
+"القيود المحاسبية."
+msgstr "Automatically derived from the platform selected above - to achieve financial isolation per platform in the journal entries."
+
+#. module: bank_settlement
+#: model:ir.model.fields,help:bank_settlement.field_account_bank_statement_line__is_bank_settlement_move
+#: model:ir.model.fields,help:bank_settlement.field_account_move__is_bank_settlement_move
+msgid ""
+"يُضبط تلقائياً عند إنشاء القيد من السداد البنكي - يُستخدم لحصر رؤية "
+"\"مستخدم/محاسب\" السداد البنكي على قيودهم المرتبطة فقط (انظر ir.rule في "
+"security.xml)، دون الحاجة لصلاحية محاسبية واسعة تكشف بقية قيود الشركة."
+msgstr "Automatically set when the entry is created from bank settlement - used to restrict the \"user/accountant\" bank settlement visibility to only their linked entries (see ir.rule in security.xml), without needing broad accounting permissions that expose the rest of the company's entries."
