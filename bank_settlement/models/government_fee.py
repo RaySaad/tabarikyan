@@ -32,6 +32,14 @@ class BankSettlementGovernmentFee(models.Model):
              'قبل وجود سجل الموظف الرسمي، يُربَط هنا - ويُكمَل حقل '
              '"اسم الموظف" أعلاه تلقائياً بمجرد إنشاء ذلك السجل لاحقاً.',
     )
+    import_request_id = fields.Many2one(
+        'recruitment.import.request', string='طلب الاستقدام المرتبط',
+        readonly=True, copy=False,
+        help='إن أُنشئ هذا السجل من "طلب استقدام" - يُربَط هنا فور التسجيل '
+             '(قبل وجود سجل موظف أو حتى طلب توظيف بعد). نفس مبرر '
+             'recruitment_request_id أعلاه بالضبط، لكن هنا الرسوم مسجَّلة '
+             'أبكر حتى - قبل إدخال بيانات الموظف نفسها.',
+    )
 
     state = fields.Selection(
         selection=[

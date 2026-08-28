@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 from datetime import date
 
-from odoo import models, _
+from odoo import fields, models, _
 from odoo.exceptions import UserError
 
 
 class HrEmployee(models.Model):
+    _name = 'hr.employee'
     _inherit = 'hr.employee'
 
     # نفس حماية recruitment_workflow.hr_employee.unlink() بالضبط، لكن هنا

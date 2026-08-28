@@ -42,5 +42,13 @@
             <field name="company_id" eval="False"/>
         </record>
 
+        <record id="seq_recruitment_import_request" model="ir.sequence">
+            <field name="name">طلبات الاستقدام - Import Request</field>
+            <field name="code">recruitment.import.request</field>
+            <field name="prefix">Imp/</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
     </data>
 </odoo>

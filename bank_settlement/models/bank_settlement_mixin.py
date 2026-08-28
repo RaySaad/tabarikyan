@@ -415,21 +415,26 @@ class BankSettlementMixin(models.AbstractModel):
         # بعد مغادرة "مسودة" (حتى لممن يملك صلاحية الحذف على مستوى ir.
         # model.access، مثل مدير عام السداد البنكي)، حفاظاً على أثر كامل
         # لكل سجل رُفع للمراجعة أو اعتُمد أو نُفِّذ فعلياً - بنفس مبدأ
-        # recruitment_workflow.recruitment_request.unlink(). "رفض" أو
-        # "إرجاع للتصحيح" هما البديلان الوحيدان لمن غادر "مسودة" ضمن سير
-        # العمل الطبيعي. يُتجاوز عمداً عبر نفس سياق تجاوز القفل العام
-        # (bank_settlement_skip_approval_lock) في حالة نظامية واحدة محدَّدة
-        # فقط، وليس حذفاً يدوياً حراً: حذف سجل "الرسوم الحكومية" غير
-        # المسدَّد بعد عند "إرجاع للتصحيح" من recruitment_workflow (انظر
-        # bank_settlement/models/recruitment_request.py:
+        # recruitment_workflow.recruitment_request.unlink(). "إرجاع للتصحيح"
+        # يبقى البديل الوحيد لمن غادر "مسودة" ضمن سير العمل الطبيعي، فيما
+        # عدا "مرفوضة": السجل المرفوض نهائياً لا قيمة تدقيقية إضافية من
+        # إبقائه (حالة نهائية بلا أثر مالي/سداد فعلي - بنفس مبدأ الاستثناء
+        # المطابق في recruitment_workflow.recruitment_request.unlink())،
+        # ويحتاج فريق السداد البنكي حذف "العالق" منها فعلياً لتنظيف
+        # القوائم. يُتجاوز الشرط بالكامل أيضاً عبر نفس سياق تجاوز القفل
+        # العام (bank_settlement_skip_approval_lock) في حالة نظامية واحدة
+        # محدَّدة فقط، وليس حذفاً يدوياً حراً: حذف سجل "الرسوم الحكومية"
+        # غير المسدَّد بعد عند "إرجاع للتصحيح" من recruitment_workflow
+        # (انظر bank_settlement/models/recruitment_request.py:
         # _unlock_gov_fee_for_correction).
         if not self.env.context.get('bank_settlement_skip_approval_lock'):
             for rec in self:
-                if rec.state != 'draft':
+                if rec.state not in ('draft', 'rejected'):
                     raise UserError(
-                        'لا يمكن حذف هذا السجل نهائياً بعد مغادرة "مسودة" - '
-                        'للحفاظ على سجل تدقيق ومراجعة كامل. استخدم "رفض" '
-                        'أو "إرجاع للتصحيح" بدلاً من ذلك إن احتجت إيقافه.'
+                        'لا يمكن حذف هذا السجل نهائياً بعد مغادرة "مسودة" '
+                        'إلا إن كان "مرفوضاً" - للحفاظ على سجل تدقيق ومراجعة '
+                        'كامل لبقية الحالات. استخدم "رفض" أو "إرجاع للتصحيح" '
+                        'بدلاً من ذلك إن احتجت إيقافه.'
                     )
         return super().unlink()
 

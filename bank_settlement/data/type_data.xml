@@ -29,6 +29,10 @@
             <field name="name">رسوم نقل كفالة</field>
             <field name="sequence">30</field>
         </record>
+        <record id="government_fee_type_import_request" model="bank.settlement.government.fee.type">
+            <field name="name">رسوم استقدام</field>
+            <field name="sequence">40</field>
+        </record>
 
         <!-- نوع تحويل المركبة -->
         <record id="vehicle_transfer_type_sticker_purchase" model="bank.settlement.vehicle.transfer.type">

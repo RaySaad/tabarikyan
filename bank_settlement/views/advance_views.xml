@@ -24,6 +24,23 @@
             </field>
         </record>
 
+        <record id="view_bank_settlement_advance_search" model="ir.ui.view">
+            <field name="name">bank.settlement.advance.search</field>
+            <field name="model">bank.settlement.advance</field>
+            <field name="arch" type="xml">
+                <search string="السلف">
+                    <field name="name"/>
+                    <field name="employee_id"/>
+                    <field name="advance_reason_id"/>
+                    <filter name="inactive" string="مؤرشف" domain="[('active', '=', False)]"/>
+                    <group>
+                        <filter name="group_by_state" string="الحالة" context="{'group_by': 'state'}"/>
+                        <filter name="group_by_employee" string="الموظف" context="{'group_by': 'employee_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
         <record id="view_bank_settlement_advance_form" model="ir.ui.view">
             <field name="name">bank.settlement.advance.form</field>
             <field name="model">bank.settlement.advance</field>

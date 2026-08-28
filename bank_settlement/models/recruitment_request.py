@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+from odoo import fields, models, _
 from odoo.exceptions import UserError
 
 
@@ -22,6 +22,12 @@ class RecruitmentRequest(models.Model):
         related='bank_settlement_gov_fee_id.state', string='حالة سداد الرسوم الحكومية',
         readonly=True,
     )
+    import_request_id = fields.Many2one(
+        'recruitment.import.request', string='طلب الاستقدام الأصلي',
+        readonly=True, copy=False,
+        help='إن أُنشئ هذا الطلب تلقائياً من "طلب استقدام" (is_import_request) '
+             '- يشير هنا لسجله الأصلي هناك (الرسوم/الموظف أُنشئا منه).',
+    )
 
     def action_register_gov_fee(self):
         result = super().action_register_gov_fee()
@@ -40,8 +46,15 @@ class RecruitmentRequest(models.Model):
         - لم تُسدَّد بعد (مسودة/تحت المراجعة/مؤكدة) => move_id فارغ حتماً
           في هذه الحالات (لا يُنشأ إلا داخل action_done نفسها)، فيُحذف
           السجل بأمان بلا أي قيد محاسبي معلَّق، ليُنشأ سجل جديد بالمبلغ
-          المصحَّح تلقائياً عند إعادة الضغط على "تسجيل الرسوم الحكومية"."""
+          المصحَّح تلقائياً عند إعادة الضغط على "تسجيل الرسوم الحكومية".
+
+        طلب الاستقدام مستثنى بالكامل (انظر شرح الاستثناء في
+        recruitment_workflow.recruitment_request._unlock_gov_fee_for_
+        correction) - رسومه مسدَّدة عمداً منذ إنشائه، وليست شيئاً يُفترض
+        أن "إرجاع للتصحيح" يمسّه هنا إطلاقاً."""
         self.ensure_one()
+        if self.is_import_request:
+            return super()._unlock_gov_fee_for_correction()
         gov_fee = self.bank_settlement_gov_fee_id
         if gov_fee:
             if gov_fee.state == 'done':
@@ -114,6 +127,96 @@ class RecruitmentRequest(models.Model):
             'project_id': self.project_id.id,
             'transfer_date': fields.Date.context_today(self),
         }).id
+
+    def action_view_import_request(self):
+        self.ensure_one()
+        if not self.import_request_id:
+            raise UserError(_('لا يوجد طلب استقدام أصلي مرتبط.'))
+        return {
+            'name': _('طلب الاستقدام'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'recruitment.import.request',
+            'res_id': self.import_request_id.id,
+            'view_mode': 'form',
+        }
+
+    def _apply_stage_side_effects(self):
+        super()._apply_stage_side_effects()
+        self.ensure_one()
+        # طلب الاستقدام: الموظف أُنشئ مبكراً في "طلب استقدام" ببيانات
+        # أساسية فقط - مرحلة "تم نقل الكفالة" (التي تنشئ الموظف عادة)
+        # متخطاة بالكامل له، فنزامن هنا بدلاً منها الحقول الإضافية
+        # (الجنسية/الحالة الاجتماعية/الجواز/المشروع/الوظيفة/القسم...) فور
+        # اكتمالها: عند مغادرة "طلب جديد" (تُعبَّأ هناك) وتحديد المشروع في
+        # "مراجعة مسؤول المشروع" - أي عند الدخول إلى "مراجعة مدير
+        # العمليات" التالية لها مباشرة، تكون كل الحقول متوفرة معاً.
+        if self.stage_id.code == 'operations_review' and self.is_import_request:
+            self._sync_employee_extra_fields()
+
+    def _sync_employee_extra_fields(self):
+        """يكتب الحقول الإضافية (غير الأساسية الأربعة) من طلب التوظيف على
+        سجل الموظف الموجود مسبقاً - انظر شرح الاستدعاء في
+        _apply_stage_side_effects أعلاه. تستخدم بالضبط نفس خريطة الحقول
+        المستخدمة في _create_employee() العادية (_build_employee_vals)،
+        التي لن تُستدعى أصلاً لهذه الطلبات (employee_id موجود مسبقاً).
+
+        تُكمِل أيضاً ربط سجل الرسوم الحكومية (المُسجَّل والمسدَّد مسبقاً
+        في "طلب استقدام" *قبل* معرفة المشروع) بالمنصة والشركة الصحيحتين
+        الآن - انظر _sync_gov_fee_platform_company أدناه."""
+        self.ensure_one()
+        if not (self.is_import_request and self.employee_id):
+            return
+        employee = self.employee_id.sudo()
+        vals = self._build_employee_vals()
+        # الاسم/جهة الاتصال مضبوطان ومطابقان مسبقاً من "طلب استقدام" - لا
+        # داعي لإعادة كتابتهما هنا. project_id ممنوع كتابته مباشرة عبر
+        # write() أصلاً (hr_employee.write() يرفضه بقصد - انظر شرحه هناك)،
+        # فهو يُضبط حصراً عبر _open_platform_history() أدناه، وهي البوابة
+        # الوحيدة المخوَّلة لتغييره.
+        vals.pop('name', None)
+        vals.pop('work_contact_id', None)
+        vals.pop('project_id', None)
+        if vals:
+            employee.write(vals)
+
+        if self.project_id and 'project_id' in employee._fields \
+                and hasattr(employee, '_open_platform_history'):
+            employee._open_platform_history(
+                self.project_id,
+                note=_('فتح تلقائي عند تعبئة بيانات المشروع لطلب استقدام %s') % self.name,
+            )
+
+        self._sync_gov_fee_platform_company()
+
+    def _sync_gov_fee_platform_company(self):
+        """يكتب المنصة (project_id) والشركة الصحيحتين (المُشتقتين تلقائياً
+        من المشروع على طلب التوظيف نفسه - نفس آلية _fill_project_derived_
+        vals القياسية، بلا أي استثناء لطلبات الاستقدام) على سجل الرسوم
+        الحكومية المرتبط - كان قد سُجِّل وسُدِّد مسبقاً في "طلب استقدام"
+        *قبل* معرفة المشروع، فبقيت شركته الافتراضية الأولية (وقت رفع
+        الطلب) عالقة بلا تصحيح، والمنصة/الحساب التحليلي (analytic_
+        account_id، حقل محسوب من project_id) فارغين تماماً.
+
+        للعرض على سجل الرسوم فقط (يُتجاوز قفل "بعد الاعتماد" عمداً عبر
+        bank_settlement_skip_approval_lock، بنفس آلية _create_employee()
+        أعلاه) - لا يمس القيد المحاسبي (move_id) المُنشأ مسبقاً إطلاقاً؛
+        توزيعه التحليلي يبقى مهمة يدوية للمحاسب عند الحاجة (طلب صريح)."""
+        self.ensure_one()
+        gov_fee = self.bank_settlement_gov_fee_id
+        if not (gov_fee and self.project_id):
+            return
+        gov_fee.with_context(bank_settlement_skip_approval_lock=True).write({
+            'project_id': self.project_id.id,
+            'company_id': self.company_id.id,
+        })
+
+        try:
+            self._create_employee_bank_account(employee)
+        except Exception:
+            self.message_post(body=_(
+                'تعذّر ربط الحساب البنكي تلقائياً بعد تعبئة بيانات الاستقدام. '
+                'يُرجى إضافة الآيبان يدوياً في سجل الموظف.'
+            ))
 
     def _create_employee(self):
         employee = super()._create_employee()

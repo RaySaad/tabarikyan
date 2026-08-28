@@ -107,14 +107,41 @@ class TestRecruitmentRequest(TransactionCase):
             stage.unlink()
 
     def test_request_cannot_be_deleted_even_by_manager(self):
-        """طلبات التوظيف سجل تدقيق دائم - يُمنع حذفها نهائياً حتى لمن يملك
-        صلاحية الحذف على مستوى ir.model.access (مدير سير العمل كامل
-        الصلاحيات)؛ الأرشفة هي البديل الوحيد."""
+        """طلبات التوظيف سجل تدقيق دائم - يُمنع حذفها نهائياً ما دامت غير
+        مرفوضة، حتى لمن يملك صلاحية الحذف على مستوى ir.model.access (مدير
+        سير العمل كامل الصلاحيات)؛ الأرشفة (الرفض) هي البديل الوحيد."""
         self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(identification_id='1123456785', email='y@example.com')
 
         with self.assertRaises(UserError):
             request.unlink()
+
+    def test_rejected_request_can_be_deleted_by_manager(self):
+        """طلب استُثني صراحة: يُسمح بالحذف النهائي للطلبات المرفوضة تحديداً
+        (بعد الأرشفة عبر action_reject)، بخلاف أي حالة أخرى."""
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
+        request = self._create_request(identification_id='1123456786', email='y2@example.com')
+        request.action_reject(reason='بيانات غير صحيحة')
+        self.assertEqual(request.state, 'rejected')
+
+        request.unlink()
+
+        self.assertFalse(request.exists())
+
+    def test_duplicate_check_matches_archived_employee(self):
+        """_check_duplicate_employee يجب أن يكتشف التكرار حتى لو كان
+        الموظف صاحب نفس رقم الهوية مؤرشفاً (مثلاً موظف سابق انتهت خدمته) -
+        البحث الافتراضي في أودو يستثني السجلات المؤرشفة، وهذا كان يسمح
+        بتسلل رقم هوية مكرر دون اكتشاف."""
+        employee = self.env['hr.employee'].create({
+            'name': 'موظف سابق مؤرشف', 'identification_id': '1123456787',
+        })
+        employee.active = False
+
+        request = self._create_request(identification_id='1123456787', email='y3@example.com')
+
+        with self.assertRaises(UserError):
+            request._check_duplicate_employee()
 
     def test_short_national_address_invalid_rejected(self):
         with self.assertRaises(ValidationError):
@@ -759,6 +786,69 @@ class TestRecruitmentRequest(TransactionCase):
 
         with self.assertRaises(UserError):
             request.write({'company_id': other_company.id})
+
+    def test_project_id_editable_before_project_manager_approval(self):
+        """ثغرة حقيقية اكتُشفت من بلاغ مستخدم مباشر: project_id (المنصة)
+        كان بلا أي حماية إطلاقاً في أي مرحلة. القفل الآن يبدأ فقط بعد
+        مغادرة "مراجعة مسؤول المشروع" - يبقى قابلاً للتعديل في "طلب
+        جديد" و"مراجعة مسؤول المشروع" أنفسهما (قد يحتاج مسؤول المشروع
+        تصحيحه قبل موافقته هو نفسه)."""
+        project_a = self.env['project.project'].create({'name': 'منصة أ - قفل المشروع'})
+        project_b = self.env['project.project'].create({'name': 'منصة ب - قفل المشروع'})
+        request = self._create_request(
+            identification_id='1234567855', email='project_lock_1@example.com',
+            project_id=project_a.id,
+        )
+        self.assertEqual(request.stage_code, 'new')
+
+        request.write({'project_id': project_b.id})
+        self.assertEqual(request.project_id, project_b)
+
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_project_review.id,
+        })
+        request.write({'project_id': project_a.id})
+        self.assertEqual(request.project_id, project_a)
+
+    def test_project_id_locked_after_project_manager_approval(self):
+        project_a = self.env['project.project'].create({'name': 'منصة أ - قفل المشروع 2'})
+        project_b = self.env['project.project'].create({'name': 'منصة ب - قفل المشروع 2'})
+        request = self._create_request(
+            identification_id='1234567856', email='project_lock_2@example.com',
+            project_id=project_a.id,
+        )
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_operations_review.id,
+        })
+
+        with self.assertRaises(UserError):
+            request.write({'project_id': project_b.id})
+        self.assertEqual(request.project_id, project_a)
+
+    def test_project_id_change_after_lock_cannot_smuggle_company_change(self):
+        """كان تعديل project_id بعد القفل يُسرِّب معه تغيير company_id/
+        project_manager_id ضمن نفس عملية الحفظ (يُشتقان تلقائياً من
+        project_id الجديد) - متجاوزاً حمايتيهما المخصَّصتين اللتين
+        تفحصان فقط التعديل المباشر بمعزل عن project_id. القفل الجديد
+        على project_id نفسه يمنع هذا المسار بالكامل أيضاً."""
+        other_company = self.env['res.company'].create({'name': 'شركة أخرى - تسريب المشروع'})
+        project_a = self.env['project.project'].create({'name': 'منصة أ - تسريب'})
+        project_b = self.env['project.project'].create({
+            'name': 'منصة ب - تسريب', 'company_id': other_company.id,
+        })
+        request = self._create_request(
+            identification_id='1234567857', email='project_lock_3@example.com',
+            project_id=project_a.id,
+        )
+        original_company = request.company_id
+        self.assertNotEqual(original_company, other_company)
+        request.with_context(skip_stage_validation=True).write({
+            'stage_id': self.stage_operations_review.id,
+        })
+
+        with self.assertRaises(UserError):
+            request.write({'project_id': project_b.id, 'company_id': project_b.company_id.id})
+        self.assertEqual(request.company_id, original_company)
 
     def test_project_edit_syncs_only_in_progress_requests(self):
         """تعديل "مسؤول المشروع" على المشروع نفسه ينعكس تلقائياً على الطلبات

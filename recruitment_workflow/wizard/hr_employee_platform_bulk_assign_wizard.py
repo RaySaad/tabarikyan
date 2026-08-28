@@ -16,11 +16,14 @@ class HrEmployeePlatformBulkAssignWizard(models.TransientModel):
         string='عدد الموظفين',
         compute='_compute_employee_count',
     )
+    # 'no_create' حقيقتها خاصية عرض (واجهة)، تُضبط في XML على الحقل
+    # (انظر hr_employee_platform_bulk_assign_wizard_views.xml) - وليست
+    # معاملاً صالحاً لتعريف الحقل نفسه ببايثون (كانت تُتجاهَل بصمت هنا
+    # بلا أي تأثير فعلي، وتصدر تحذيراً عند كل تحميل للموديول).
     project_id = fields.Many2one(
         'project.project',
         string='المنصة / المشروع',
         required=True,
-        options="{'no_create': True}",
     )
     note = fields.Char(
         string='ملاحظة',

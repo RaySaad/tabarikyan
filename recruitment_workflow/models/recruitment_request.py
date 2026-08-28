@@ -281,6 +281,20 @@ class RecruitmentRequest(models.Model):
         copy=False,
         ondelete='restrict',
     )
+    # يُضبط تلقائياً True فقط عند الإنشاء من "طلب استقدام" (bank_settlement -
+    # موظف يُستقدَم من الخارج وليس نقل كفالة من كفيل آخر). الرسوم الحكومية
+    # مسدَّدة والموظف منشأ مسبقاً هناك قبل وجود طلب التوظيف هذا أصلاً، فهذا
+    # العلم يتحكم بثلاثة أشياء فقط أينما ظهر أدناه: (1) تخطي مراحل نقل
+    # الكفالة الثلاث (تم السداد/جاري النقل/تم النقل) في _next_stage()، (2)
+    # تخطي فحص تكرار رقم الهوية واشتراط المشروع عند "طلب جديد" (نُفِّذا
+    # مسبقاً هناك، والمشروع يُشترط بدلاً من ذلك عند مغادرة "مراجعة مسؤول
+    # المشروع")، (3) قفل حقلي الاسم/رقم الهوية في الواجهة (ثابتان بمجرد
+    # ربطهما بسجل موظف حقيقي فعلي). لا يُنشئ أي مسار جديد لإنشاء الموظف -
+    # employee_id مضبوط منذ البداية فيكفي الحارس الموجود أصلاً في
+    # _create_employee() (if self.employee_id: return) لمنع أي تكرار.
+    is_import_request = fields.Boolean(
+        string='طلب استقدام', default=False, copy=False, readonly=True,
+    )
     candidate_partner_id = fields.Many2one(
         'res.partner', string='جهة اتصال المرشّح', readonly=True, copy=False,
         help='جهة اتصال خفيفة تمثّل المرشّح قبل إنشاء سجل الموظف الرسمي - '
@@ -502,7 +516,11 @@ class RecruitmentRequest(models.Model):
         self.ensure_one()
         if not self.identification_id:
             return
-        Employee = self.env['hr.employee'].sudo()
+        # active_test=False: البحث الافتراضي في أودو يستثني الموظفين
+        # المؤرشفين (مثلاً موظف سابق انتهت خدمته) - كان هذا يسمح بتسلل
+        # طلب توظيف جديد بنفس رقم هوية موظف قديم مؤرشف دون أن يُكتشف
+        # التكرار إطلاقاً هنا (طلب صريح: تفعيل المطابقة مع المؤرشف أيضاً).
+        Employee = self.env['hr.employee'].sudo().with_context(active_test=False)
         emp_fields = Employee._fields
         domain = ['|', ('identification_id', '=', self.identification_id)]
         if 'l10n_sa_employee_code' in emp_fields:
@@ -586,14 +604,22 @@ class RecruitmentRequest(models.Model):
     def _get_stage_by_code(self, code):
         return self.env['recruitment.stage'].search([('code', '=', code)], limit=1)
 
+    # مراحل نقل الكفالة الحكومية - لا معنى لها لطلب استقدام (الموظف
+    # يُستقدَم من الخارج، ليس منقولاً من كفيل آخر): الرسوم مسدَّدة والموظف
+    # منشأ مسبقاً في "طلب استقدام" قبل وجود طلب التوظيف هذا أصلاً.
+    _IMPORT_SKIPPED_STAGE_CODES = ('paid', 'sponsorship_transfer', 'sponsorship_done')
+
     def _next_stage(self):
         self.ensure_one()
         stages = self.env['recruitment.stage'].search([], order='sequence')
         stage_ids = stages.ids
         if self.stage_id.id in stage_ids:
-            idx = stage_ids.index(self.stage_id.id)
-            if idx + 1 < len(stage_ids):
-                return stages[idx + 1]
+            idx = stage_ids.index(self.stage_id.id) + 1
+            while idx < len(stage_ids) and self.is_import_request \
+                    and stages[idx].code in self._IMPORT_SKIPPED_STAGE_CODES:
+                idx += 1
+            if idx < len(stage_ids):
+                return stages[idx]
         return False
 
     def _validate_stage_exit(self, current_stage):
@@ -608,11 +634,23 @@ class RecruitmentRequest(models.Model):
                 'المرفقات الناقصة:\n- %s'
             ) % '\n- '.join(missing))
 
-        # فحص تكرار الموظف عند الخروج من المرحلة الأولى (الطلب الجديد)
-        if current_stage.code == 'new':
+        # فحص تكرار الموظف عند الخروج من المرحلة الأولى (الطلب الجديد) -
+        # يُستثنى طلب الاستقدام: فُحص مسبقاً في "طلب استقدام" (bank_
+        # settlement) قبل إنشاء سجل الموظف نفسه هناك.
+        if current_stage.code == 'new' and not self.is_import_request:
             self._check_duplicate_employee()
 
-        if current_stage.require_project and not self.project_id:
+        # طلب الاستقدام: اختيار المشروع/المنصة مؤجَّل عمداً عن "طلب جديد"
+        # إلى مرحلة "مراجعة مسؤول المشروع" (الشرط أدناه) بدلاً من هنا.
+        if current_stage.require_project and not self.project_id \
+                and not (self.is_import_request and current_stage.code == 'new'):
+            raise UserError(_(
+                'لا يمكن الانتقال للمرحلة التالية. يجب تحديد المشروع/المنصة '
+                '(مثال: كيتا، هنقرستيشن) التي سيعمل عليها المندوب أولاً.'
+            ))
+
+        if current_stage.code == 'project_review' and self.is_import_request \
+                and not self.project_id:
             raise UserError(_(
                 'لا يمكن الانتقال للمرحلة التالية. يجب تحديد المشروع/المنصة '
                 '(مثال: كيتا، هنقرستيشن) التي سيعمل عليها المندوب أولاً.'
@@ -680,7 +718,40 @@ class RecruitmentRequest(models.Model):
             rec._on_enter_stage(next_stage)
         return True
 
+    # المشروع/المنصة قابل للتعديل فقط في "طلب جديد" (اختياره الأول) و
+    # "مراجعة مسؤول المشروع" (قد يحتاج مسؤول المشروع تصحيحه قبل موافقته
+    # هو نفسه) - يُقفل تماماً بعد ذلك. لا معنى للسماح بتغيير المنصة بعد
+    # موافقة مسؤول المشروع/مدير العمليات/المدير العام عليها تحديداً.
+    _PROJECT_EDITABLE_STAGE_CODES = ('new', 'project_review')
+
     def write(self, vals):
+        # ثغرة حقيقية اكتُشفت من بلاغ مستخدم مباشر: project_id (المنصة)
+        # كان بلا أي حماية إطلاقاً - لا readonly بالواجهة في أي مرحلة، ولا
+        # قيد من جهة الخادم - قابل للتعديل في أي وقت من أي مرحلة. وأخطر من
+        # ذلك: بما أن تغييره يُشتق معه تلقائياً company_id/project_manager_id
+        # (انظر _fill_project_derived_vals أدناه) ضمن نفس عملية الحفظ، كان
+        # هذا يتيح تغيير الشركة/مسؤول المشروع خلسة عبر project_id نفسه -
+        # متجاوزاً الحمايتين المخصَّصتين لهما أدناه تماماً (تفحصان فقط
+        # التعديل المباشر بمعزل عن project_id، وليس التعديل المشتق منه).
+        if 'project_id' in vals:
+            for rec in self:
+                # لا نرفض إعادة كتابة *نفس* المشروع الحالي بلا تغيير فعلي -
+                # ثغرة حقيقية اكتُشفت من الاستخدام الفعلي: project.project.
+                # _sync_recruitment_requests_in_progress() تكتب project_id
+                # ضمن vals كلما تغيّر مسؤول المشروع/الشركة على المشروع نفسه
+                # (لضمان اشتقاق project_manager_id/company_id معه بأمان -
+                # انظر الشرح أعلاه) - بنفس القيمة الحالية بالضبط، فكان هذا
+                # يمنع تلك المزامنة التلقائية بالكامل لأي طلب تجاوز "مراجعة
+                # مسؤول المشروع"، رغم أن المنصة نفسها لم تتغيّر إطلاقاً.
+                if vals['project_id'] == rec.project_id.id:
+                    continue
+                if rec.stage_code and rec.stage_code not in self._PROJECT_EDITABLE_STAGE_CODES:
+                    raise UserError(_(
+                        'لا يمكن تعديل "المشروع/المنصة" بعد مرحلة "مراجعة '
+                        'مسؤول المشروع".\n'
+                        'إن كانت المنصة خاطئة، استخدم "إرجاع للتصحيح" '
+                        'لإرجاع الطلب لمرحلة "مراجعة مسؤول المشروع" أولاً.'
+                    ))
         # project_manager_id يُشتَق تلقائياً من project_id.user_id فقط (عبر
         # _onchange_project_id) ويُحفظ ضمن نفس عملية الحفظ التي تغيّر
         # project_id. أي محاولة لتغييره بمعزل عن project_id (مثلاً عبر RPC
@@ -1053,12 +1124,18 @@ class RecruitmentRequest(models.Model):
         # طلبات التوظيف سجل تدقيق ومراجعة دائم - يُمنع حذفها نهائياً حتى
         # لممن يملك صلاحية الحذف على مستوى ir.model.access (مثلاً المدير
         # الفني عبر الواجهة التقنية)، حفاظاً على السجل التاريخي الكامل.
-        # الأرشفة (عبر الرفض أو الإجراءات المخصصة) هي البديل الوحيد.
-        raise UserError(_(
-            'لا يمكن حذف طلبات التوظيف نهائياً، للحفاظ على سجل تدقيق '
-            'ومراجعة كامل. استخدم "رفض" لأرشفة الطلب بدلاً من ذلك - '
-            'يبقى السجل محفوظاً ويمكن استرجاعه من الأرشيف لاحقاً.'
-        ))
+        # الأرشفة (عبر الرفض أو الإجراءات المخصصة) هي البديل الوحيد -
+        # باستثناء الطلبات المرفوضة فعلاً (state == 'rejected'): طلب صريح
+        # من المستخدم للسماح بحذف نهائي لها تحديداً (تنظيف بيانات خاطئة/
+        # مكررة تم رفضها بالفعل)، بينما تبقى بقية الحالات محمية بالكامل.
+        non_rejected = self.filtered(lambda rec: rec.state != 'rejected')
+        if non_rejected:
+            raise UserError(_(
+                'لا يمكن حذف طلبات التوظيف نهائياً إلا بعد رفضها أولاً، '
+                'للحفاظ على سجل تدقيق ومراجعة كامل. استخدم "رفض" لأرشفة '
+                'الطلب، ثم يمكن حذفه بعد ذلك إن لزم.'
+            ))
+        return super().unlink()
 
     def action_reset_to_draft(self):
         for rec in self:
@@ -1155,8 +1232,19 @@ class RecruitmentRequest(models.Model):
         لمعالجة أي سجل "رسوم حكومية" مرتبط بالسداد البنكي أولاً - تحذفه
         إن لم تُسدَّد الرسوم فعلاً بعد، أو تمنع "إرجاع للتصحيح" كلياً
         (بإثارة استثناء) إن كانت قد سُدِّدت فعلاً - قبل استدعاء super()
-        هنا."""
+        هنا.
+
+        طلب الاستقدام مستثنى بالكامل: رسومه مسدَّدة عمداً ونهائياً منذ
+        اللحظة الأولى لإنشاء طلب التوظيف (سُدِّدت في "طلب استقدام" *قبل*
+        وجوده أصلاً) - وليست شيئاً يُفترض أن "إرجاع للتصحيح" يفتحه هنا
+        إطلاقاً. بدون هذا الاستثناء، كان "إرجاع للتصحيح" يُمنَع بالكامل
+        لهذه الطلبات في *كل* مرحلة (حتى تصحيحات لا علاقة لها بالرسوم
+        كالمشروع/المرفقات) - ثغرة حقيقية اكتُشفت من الاستخدام الفعلي،
+        لأن bank_settlement._unlock_gov_fee_for_correction يفحص فقط حالة
+        الرسوم المرتبطة بمعزل عن المرحلة المُراد الإرجاع إليها."""
         self.ensure_one()
+        if self.is_import_request:
+            return
         if self.gov_fee_settled:
             self.gov_fee_settled = False
 
@@ -1378,18 +1466,20 @@ class RecruitmentRequest(models.Model):
     # ------------------------------------------------------------------
     # إنشاء العقد الأوتوماتيكي
     # ------------------------------------------------------------------
-    def _create_employee(self):
-        """إنشاء سجل الموظف في الموارد البشرية إن لم يكن موجوداً.
+    def _build_employee_vals(self):
+        """يبني قاموس القيم لإنشاء/تحديث سجل الموظف من حقول طلب التوظيف.
+
+        مُستخرجة من _create_employee() لتُستخدم في مسارين: الإنشاء
+        المباشر هنا (Employee.create(...))، ومزامنة الحقول الإضافية
+        لطلبات الاستقدام (employee.write(...) عبر bank_settlement -
+        الموظف هناك يُنشأ مبكراً ببيانات أساسية فقط، ثم تُستكمل بقية
+        الحقول لاحقاً على نفس السجل بنفس هذه الخريطة بالضبط).
 
         يطبّق خريطة الحقول الموسّعة حسب البروبوزل، ويضيف كل حقل فقط
         إن كان موجوداً في نموذج hr.employee (اعتماد مرن مع التخصيصات).
         """
         self.ensure_one()
-        if self.employee_id:
-            return self.employee_id
-
-        Employee = self.env['hr.employee'].sudo()
-        emp_fields = Employee._fields
+        emp_fields = self.env['hr.employee']._fields
 
         employee_name = self._get_formatted_employee_name()
         employee_vals = {'name': employee_name}
@@ -1429,6 +1519,17 @@ class RecruitmentRequest(models.Model):
         set_if('sex', self.gender)
         set_if('marital', self.marital)
         set_if('passport_id', self.passport_no)
+        return employee_vals
+
+    def _create_employee(self):
+        """إنشاء سجل الموظف في الموارد البشرية إن لم يكن موجوداً."""
+        self.ensure_one()
+        if self.employee_id:
+            return self.employee_id
+
+        Employee = self.env['hr.employee'].sudo()
+        emp_fields = Employee._fields
+        employee_vals = self._build_employee_vals()
 
         employee = Employee.create(employee_vals)
         self.employee_id = employee.id

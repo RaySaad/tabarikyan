@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_recruitment_import_request_list" model="ir.ui.view">
+            <field name="name">recruitment.import.request.list</field>
+            <field name="model">recruitment.import.request</field>
+            <field name="arch" type="xml">
+                <list string="طلبات الاستقدام" decoration-success="state == 'done'"
+                      decoration-muted="state == 'cancel'">
+                    <field name="name"/>
+                    <field name="employee_name"/>
+                    <field name="identification_id"/>
+                    <field name="gov_fee_amount" sum="الإجمالي"/>
+                    <field name="bank_settlement_gov_fee_state" widget="badge"/>
+                    <field name="state" widget="badge"
+                           decoration-success="state == 'done'"
+                           decoration-info="state == 'fee_paid'"
+                           decoration-warning="state == 'fee_registered'"
+                           decoration-muted="state in ('draft', 'cancel')"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_recruitment_import_request_search" model="ir.ui.view">
+            <field name="name">recruitment.import.request.search</field>
+            <field name="model">recruitment.import.request</field>
+            <field name="arch" type="xml">
+                <search string="طلبات الاستقدام">
+                    <field name="name"/>
+                    <field name="employee_name"/>
+                    <field name="identification_id"/>
+                    <filter name="inactive" string="مؤرشف" domain="[('active', '=', False)]"/>
+                    <group>
+                        <filter name="group_by_state" string="الحالة" context="{'group_by': 'state'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_recruitment_import_request_form" model="ir.ui.view">
+            <field name="name">recruitment.import.request.form</field>
+            <field name="model">recruitment.import.request</field>
+            <field name="arch" type="xml">
+                <form string="طلب استقدام">
+                    <header>
+                        <button name="action_register_gov_fee" string="تسجيل الرسوم الحكومية"
+                                type="object" class="btn-primary"
+                                invisible="state != 'draft'"/>
+                        <button name="action_confirm_fee_paid" string="تأكيد سداد الرسوم"
+                                type="object" class="btn-primary"
+                                invisible="state != 'fee_registered'"/>
+                        <button name="action_create_employee_and_request"
+                                string="إنشاء الموظف وطلب التوظيف"
+                                type="object" class="btn-primary"
+                                groups="recruitment_workflow.group_recruitment_workflow_hr"
+                                invisible="state != 'fee_paid'"/>
+                        <button name="action_cancel" string="إلغاء" type="object"
+                                invisible="state in ('done', 'cancel')"/>
+                        <button name="action_reset_draft" string="إرجاع لمسودة" type="object"
+                                groups="bank_settlement.group_bank_settlement_manager"
+                                invisible="state not in ('cancel',)"/>
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="draft,fee_registered,fee_paid,done"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_gov_fee" type="object"
+                                    class="oe_stat_button" icon="fa-university"
+                                    invisible="not bank_settlement_gov_fee_id">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">سجل الرسوم الحكومية</span>
+                                </div>
+                            </button>
+                            <button name="action_view_recruitment_request" type="object"
+                                    class="oe_stat_button" icon="fa-id-card"
+                                    invisible="not recruitment_request_id">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">طلب التوظيف</span>
+                                </div>
+                            </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1><field name="name" readonly="1"/></h1>
+                        </div>
+                        <group>
+                            <group string="بيانات الرسوم الحكومية">
+                                <field name="government_entity_id" readonly="state != 'draft'"/>
+                                <field name="fee_type_id" readonly="state != 'draft'"/>
+                                <field name="gov_fee_amount" readonly="state != 'draft'"/>
+                                <field name="currency_id" invisible="1"/>
+                                <field name="bank_settlement_gov_fee_state" readonly="1"
+                                       invisible="not bank_settlement_gov_fee_id"/>
+                                <!-- قيمة أولية فقط (أفضل تخمين وقت رفع الطلب،
+                                     قبل معرفة المشروع بعد) - تُصحَّح تلقائياً
+                                     على طلب التوظيف الناتج بمجرد اختيار
+                                     المشروع الفعلي في "مراجعة مسؤول المشروع"
+                                     (نفس الاشتقاق التلقائي المعتاد)، وتُنسخ
+                                     القيمة المُصحَّحة لاحقاً لسجل الرسوم
+                                     الحكومية هنا أيضاً (انظر
+                                     _sync_gov_fee_platform_company). -->
+                                <field name="company_id" groups="base.group_multi_company"
+                                       readonly="state != 'draft'"/>
+                            </group>
+                            <group string="بيانات الموظف الأساسية"
+                                   invisible="state in ('draft', 'fee_registered')">
+                                <field name="employee_name" required="state == 'fee_paid'"/>
+                                <field name="identification_id"
+                                       placeholder="1XXXXXXXXX أو 2XXXXXXXXX"
+                                       required="state == 'fee_paid'"/>
+                                <field name="mobile" placeholder="05XXXXXXXX"
+                                       required="state == 'fee_paid'"/>
+                                <field name="email" widget="email" required="state == 'fee_paid'"/>
+                            </group>
+                        </group>
+                        <group string="ملاحظات">
+                            <field name="notes" nolabel="1"/>
+                        </group>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_recruitment_import_request" model="ir.actions.act_window">
+            <field name="name">طلبات الاستقدام</field>
+            <field name="res_model">recruitment.import.request</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+    </data>
+</odoo>

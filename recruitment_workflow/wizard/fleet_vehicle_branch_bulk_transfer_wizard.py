@@ -16,9 +16,11 @@ class FleetVehicleBranchBulkTransferWizard(models.TransientModel):
     vehicle_count = fields.Integer(
         string='عدد السيارات', compute='_compute_vehicle_count',
     )
+    # 'no_create' خاصية عرض تُضبط في XML (انظر الشرح المماثل في
+    # hr_employee_platform_bulk_assign_wizard.py) - وليست معاملاً صالحاً
+    # لتعريف الحقل ببايثون.
     company_id = fields.Many2one(
         'res.company', string='نقل إلى فرع', required=True,
-        options="{'no_create': True}",
     )
     note = fields.Char(
         string='ملاحظة',

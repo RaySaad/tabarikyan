@@ -1,0 +1,3228 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* recruitment_workflow
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0-20260606\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-28 04:04+0000\n"
+"PO-Revision-Date: 2026-08-28 04:04+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid " تنبيه: لا توجد سيارة متاحة حالياً - سيتابع الأسطول الطلب فور توفرها."
+msgstr " تنبيه: لا توجد سيارة متاحة حالياً - سيتابع الأسطول الطلب فور توفرها."
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "05XXXXXXXX"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "1XXXXXXXXX أو 2XXXXXXXXX"
+msgstr "1XXXXXXXXX أو 2XXXXXXXXX"
+
+#. module: recruitment_workflow
+#: model:mail.template,body_html:recruitment_workflow.mail_template_request_approved
+msgid ""
+"<div style=\"margin:0px;padding:0px;font-size:14px;\" dir=\"rtl\">\n"
+"                    <p>مرحباً،</p>\n"
+"                    <p>تمت الموافقة على طلب التوظيف <strong t-out=\"object.name or ''\">REC/2026/00001</strong>\n"
+"                       الخاص بالموظف <strong t-out=\"object.employee_name or ''\"/>.</p>\n"
+"                    <p>المرحلة الحالية: <strong t-out=\"object.stage_id.name or ''\"/></p>\n"
+"                </div>\n"
+"            "
+msgstr ""
+"<div style=\"margin:0px;padding:0px;font-size:14px;\" dir=\"rtl\">\n"
+"                    <p>مرحباً،</p>\n"
+"                    <p>تمت الموافقة على طلب التوظيف <strong t-out=\"object.name or ''\">REC/2026/00001</strong>\n"
+"                       الخاص بالموظف <strong t-out=\"object.employee_name or ''\"/>.</p>\n"
+"                    <p>المرحلة الحالية: <strong t-out=\"object.stage_id.name or ''\"/></p>\n"
+"                </div>\n"
+"            "
+
+#. module: recruitment_workflow
+#: model:mail.template,body_html:recruitment_workflow.mail_template_request_rejected
+msgid ""
+"<div style=\"margin:0px;padding:0px;font-size:14px;\" dir=\"rtl\">\n"
+"                    <p>مرحباً،</p>\n"
+"                    <p>نأسف لإبلاغك بأن طلب التوظيف <strong t-out=\"object.name or ''\"/> قد تم رفضه.</p>\n"
+"                    <p>السبب: <span t-out=\"object.rejection_reason or 'غير محدد'\"/></p>\n"
+"                </div>\n"
+"            "
+msgstr ""
+"<div style=\"margin:0px;padding:0px;font-size:14px;\" dir=\"rtl\">\n"
+"                    <p>مرحباً،</p>\n"
+"                    <p>نأسف لإبلاغك بأن طلب التوظيف <strong t-out=\"object.name or ''\"/> قد تم رفضه.</p>\n"
+"                    <p>السبب: <span t-out=\"object.rejection_reason or 'غير محدد'\"/></p>\n"
+"                </div>\n"
+"            "
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_kanban
+msgid "<i class=\"fa fa-briefcase me-1\" title=\"الوظيفة\" role=\"img\"/>"
+msgstr "<i class=\"fa fa-briefcase me-1\" title=\"الوظيفة\" role=\"img\"/>"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "<i class=\"fa fa-fw fa-money\" title=\"فاتورة الرسوم\" role=\"img\"/>"
+msgstr "<i class=\"fa fa-fw fa-money\" title=\"فاتورة الرسوم\" role=\"img\"/>"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_kanban
+msgid "<i class=\"fa fa-id-card me-1\" title=\"رقم الهوية\" role=\"img\"/>"
+msgstr "<i class=\"fa fa-id-card me-1\" title=\"رقم الهوية\" role=\"img\"/>"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_kanban
+msgid "<i class=\"fa fa-phone me-1\" title=\"الجوال\" role=\"img\"/>"
+msgstr "<i class=\"fa fa-phone me-1\" title=\"الجوال\" role=\"img\"/>"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "<span class=\"o_stat_text\">العقد</span>"
+msgstr "<span class=\"o_stat_text\">العقد</span>"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "<span class=\"o_stat_text\">فاتورة الرسوم</span>"
+msgstr "<span class=\"o_stat_text\">فاتورة الرسوم</span>"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.report_recruitment_request
+msgid "<strong>اسم الموظف</strong>"
+msgstr "<strong>اسم الموظف</strong>"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.report_recruitment_request
+msgid "<strong>البريد الإلكتروني</strong>"
+msgstr "<strong>البريد الإلكتروني</strong>"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.report_recruitment_request
+msgid "<strong>التطبيق الرئيسي</strong>"
+msgstr "<strong>التطبيق الرئيسي</strong>"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.report_recruitment_request
+msgid "<strong>السيارة المخصصة</strong>"
+msgstr "<strong>السيارة المخصصة</strong>"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.report_recruitment_request
+msgid "<strong>القسم</strong>"
+msgstr "<strong>القسم</strong>"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.report_recruitment_request
+msgid "<strong>المرحلة الحالية</strong>"
+msgstr "<strong>المرحلة الحالية</strong>"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.report_recruitment_request
+msgid "<strong>الوظيفة</strong>"
+msgstr "<strong>الوظيفة</strong>"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.report_recruitment_request
+msgid "<strong>رقم الجوال</strong>"
+msgstr "<strong>رقم الجوال</strong>"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.report_recruitment_request
+msgid "<strong>رقم الهوية</strong>"
+msgstr "<strong>رقم الهوية</strong>"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.report_recruitment_request
+msgid "<strong>نظام العمل</strong>"
+msgstr "<strong>نظام العمل</strong>"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__message_needaction
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__message_needaction
+msgid "Action Needed"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__activity_ids
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__activity_ids
+msgid "Activities"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__activity_exception_decoration
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__activity_exception_decoration
+msgid "Activity Exception Decoration"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__activity_state
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__activity_state
+msgid "Activity State"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__activity_type_icon
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__activity_type_icon
+msgid "Activity Type Icon"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__message_attachment_count
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__message_attachment_count
+msgid "Attachment Count"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_bulk_transfer_wizard__create_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_history__create_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_transfer_wizard__create_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_cost_type__create_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard__create_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard_line__create_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_history__create_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__create_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_reset_wizard__create_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_attachment_type__create_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_compensation_type__create_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_reject_wizard__create_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__create_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request_attachment__create_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_return_wizard__create_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__create_uid
+msgid "Created by"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_bulk_transfer_wizard__create_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_history__create_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_transfer_wizard__create_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_cost_type__create_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard__create_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard_line__create_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_history__create_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__create_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_reset_wizard__create_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_attachment_type__create_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_compensation_type__create_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_reject_wizard__create_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__create_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request_attachment__create_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_return_wizard__create_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__create_date
+msgid "Created on"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_account_move__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_bulk_transfer_wizard__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_history__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_transfer_wizard__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_cost_type__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard_line__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_history__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_reset_wizard__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_project_project__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_attachment_type__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_compensation_type__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_reject_wizard__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request_attachment__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_return_wizard__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__display_name
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_workflow_analytic_mixin__display_name
+msgid "Display Name"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_hr_employee
+msgid "Employee"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__message_follower_ids
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__message_follower_ids
+msgid "Followers"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__message_partner_ids
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__message_partner_ids
+msgid "Followers (Partners)"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_transfer_request__activity_type_icon
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__activity_type_icon
+msgid "Font awesome icon e.g. fa-tasks"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__has_message
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__has_message
+msgid "Has Message"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_account_move__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_bulk_transfer_wizard__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_history__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_transfer_wizard__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_cost_type__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard_line__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_history__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_reset_wizard__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_project_project__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_attachment_type__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_compensation_type__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_reject_wizard__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request_attachment__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_return_wizard__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_workflow_analytic_mixin__id
+msgid "ID"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__activity_exception_icon
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__activity_exception_icon
+msgid "Icon"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_transfer_request__activity_exception_icon
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__activity_exception_icon
+msgid "Icon to indicate an exception activity."
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_transfer_request__message_needaction
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__message_needaction
+msgid "If checked, new messages require your attention."
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_transfer_request__message_has_error
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_transfer_request__message_has_sms_error
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__message_has_error
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__message_has_sms_error
+msgid "If checked, some messages have a delivery error."
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__message_is_follower
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__message_is_follower
+msgid "Is Follower"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_account_move
+msgid "Journal Entry"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_bulk_transfer_wizard__write_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_history__write_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_transfer_wizard__write_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_cost_type__write_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard__write_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard_line__write_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_history__write_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__write_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_reset_wizard__write_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_attachment_type__write_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_compensation_type__write_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_reject_wizard__write_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__write_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request_attachment__write_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_return_wizard__write_uid
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__write_uid
+msgid "Last Updated by"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_bulk_transfer_wizard__write_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_history__write_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_transfer_wizard__write_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_cost_type__write_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard__write_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard_line__write_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_history__write_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__write_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_reset_wizard__write_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_attachment_type__write_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_compensation_type__write_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_reject_wizard__write_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__write_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request_attachment__write_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_return_wizard__write_date
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__write_date
+msgid "Last Updated on"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__message_has_error
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__message_has_error
+msgid "Message Delivery error"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__message_ids
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__message_ids
+msgid "Messages"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__my_activity_date_deadline
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__my_activity_date_deadline
+msgid "My Activity Deadline"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__activity_calendar_event_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__activity_calendar_event_id
+msgid "Next Activity Calendar Event"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__activity_date_deadline
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__activity_date_deadline
+msgid "Next Activity Deadline"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__activity_summary
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__activity_summary
+msgid "Next Activity Summary"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__activity_type_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__activity_type_id
+msgid "Next Activity Type"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__message_needaction_counter
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__message_needaction_counter
+msgid "Number of Actions"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__message_has_error_counter
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__message_has_error_counter
+msgid "Number of errors"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_transfer_request__message_needaction_counter
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__message_needaction_counter
+msgid "Number of messages requiring action"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_transfer_request__message_has_error_counter
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__message_has_error_counter
+msgid "Number of messages with delivery error"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_project_project
+msgid "Project"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "RRRD2929"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__rating_ids
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__rating_ids
+msgid "Ratings"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__activity_user_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__activity_user_id
+msgid "Responsible User"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "SA00 0000 0000 0000 0000 0000"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__message_has_sms_error
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__message_has_sms_error
+msgid "SMS Delivery error"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__state
+msgid "State"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_transfer_request__activity_state
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__activity_state
+msgid ""
+"Status based on activities\n"
+"Overdue: Due date is already passed\n"
+"Today: Activity date is today\n"
+"Planned: Future activities."
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_transfer_request__activity_exception_decoration
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__activity_exception_decoration
+msgid "Type of the exception activity on record."
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_fleet_vehicle
+msgid "Vehicle"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__website_message_ids
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__website_message_ids
+msgid "Website Messages"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_transfer_request__website_message_ids
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__website_message_ids
+msgid "Website communication history"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard_line__wizard_id
+msgid "Wizard"
+msgstr ""
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__hr_employee_cost_type__category__other
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__recruitment_request__gender__other
+msgid "أخرى"
+msgstr "أخرى"
+
+#. module: recruitment_workflow
+#: model_terms:ir.actions.act_window,help:recruitment_workflow.action_hr_employee_cost_type
+msgid "أضف أول نوع تكلفة (مثال: تأشيرة، رسوم توظيف...)"
+msgstr "أضف أول نوع تكلفة (مثال: تأشيرة، رسوم توظيف...)"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__recruitment_request__marital__single
+msgid "أعزب"
+msgstr "أعزب"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__recruitment_request__gender__female
+msgid "أنثى"
+msgstr "أنثى"
+
+#. module: recruitment_workflow
+#: model_terms:ir.actions.act_window,help:recruitment_workflow.action_recruitment_request
+msgid "أنشئ أول طلب توظيف"
+msgstr "أنشئ أول طلب توظيف"
+
+#. module: recruitment_workflow
+#: model_terms:ir.actions.act_window,help:recruitment_workflow.action_recruitment_compensation_type
+msgid "أنشئ أول نظام عمل"
+msgstr "أنشئ أول نظام عمل"
+
+#. module: recruitment_workflow
+#: model:ir.actions.act_window,name:recruitment_workflow.action_recruitment_compensation_type
+#: model:ir.ui.menu,name:recruitment_workflow.menu_recruitment_compensation_type
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_compensation_type_list
+msgid "أنظمة العمل"
+msgstr "أنظمة العمل"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_project_project__compensation_type_ids
+msgid "أنظمة العمل المتاحة"
+msgstr "أنظمة العمل المتاحة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__project_compensation_type_ids
+msgid "أنظمة العمل المتاحة على المنصة"
+msgstr "أنظمة العمل المتاحة على المنصة"
+
+#. module: recruitment_workflow
+#: model_terms:ir.actions.act_window,help:recruitment_workflow.action_recruitment_compensation_type
+msgid ""
+"أنظمة العمل/الأجر (بالطلبات، بالعمولة، راتب ثابت...) التي\n"
+"                تُربَط لاحقاً بكل منصة/مشروع من سجل المشروع نفسه."
+msgstr ""
+"أنظمة العمل/الأجر (بالطلبات، بالعمولة، راتب ثابت...) التي\n"
+"                تُربَط لاحقاً بكل منصة/مشروع من سجل المشروع نفسه."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_project_project__compensation_type_ids
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__project_compensation_type_ids
+msgid ""
+"أنظمة العمل/الأجر التي تدعمها هذه المنصة (بالطلبات، بالعمولة، راتب ثابت...)."
+" تحدِّد خيارات حقل \"نظام العمل\" في طلب التوظيف عند اختيار هذه المنصة - فلا"
+" تظهر إلا الأنظمة المرتبطة بها."
+msgstr ""
+"أنظمة العمل/الأجر التي تدعمها هذه المنصة (بالطلبات، بالعمولة، راتب ثابت...)."
+" تحدِّد خيارات حقل \"نظام العمل\" في طلب التوظيف عند اختيار هذه المنصة - فلا"
+" تظهر إلا الأنظمة المرتبطة بها."
+
+#. module: recruitment_workflow
+#: model:ir.actions.act_window,name:recruitment_workflow.action_recruitment_attachment_type
+#: model:ir.ui.menu,name:recruitment_workflow.menu_recruitment_attachment_type
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_attachment_type_list
+msgid "أنواع المرفقات"
+msgstr "أنواع المرفقات"
+
+#. module: recruitment_workflow
+#: model:ir.actions.act_window,name:recruitment_workflow.action_hr_employee_cost_type
+#: model:ir.ui.menu,name:recruitment_workflow.menu_hr_employee_cost_type
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_cost_type_list
+msgid "أنواع تكاليف الموظفين"
+msgstr "أنواع تكاليف الموظفين"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_attachment_type__required
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request_attachment__required
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.report_recruitment_request
+msgid "إجباري"
+msgstr "إجباري"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__gov_fee_amount
+msgid ""
+"إجمالي رسوم نقل الكفالة الحكومية (تُسدَّد للجهة الحكومية خارج هذا النظام - "
+"هذا فقط لتسجيل المبلغ)."
+msgstr ""
+"إجمالي رسوم نقل الكفالة الحكومية (تُسدَّد للجهة الحكومية خارج هذا النظام - "
+"هذا فقط لتسجيل المبلغ)."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_attachment_type__required
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request_attachment__required
+msgid "إذا كان إجبارياً، يجب رفع هذا المرفق قبل الانتقال للمرحلة التالية."
+msgstr "إذا كان إجبارياً، يجب رفع هذا المرفق قبل الانتقال للمرحلة التالية."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_return_wizard_form
+msgid "إرجاع للتصحيح"
+msgstr "إرجاع للتصحيح"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_transfer_request_form
+msgid "إرسال للمراجعة"
+msgstr "إرسال للمراجعة"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "إصدار العقد"
+msgstr "إصدار العقد"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "إعادة الحساب"
+msgstr "إعادة الحساب"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_transfer_reset_wizard_form
+msgid "إعادة طلب النقل لمسودة"
+msgstr "إعادة طلب النقل لمسودة"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "إعادة للبداية"
+msgstr "إعادة للبداية"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_transfer_request_form
+msgid "إعادة لمسودة"
+msgstr "إعادة لمسودة"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "إعادة من الأرشيف"
+msgstr "إعادة من الأرشيف"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_branch_bulk_transfer_wizard_form
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_branch_transfer_wizard_form
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_bulk_assign_wizard_form
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_transfer_request_form
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_transfer_reset_wizard_form
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_reject_wizard_form
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_return_wizard_form
+msgid "إلغاء"
+msgstr "إلغاء"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "إنشاء سجل الموظف الآن"
+msgstr "إنشاء سجل الموظف الآن"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "إنهاء طلب السيارة والمتابعة"
+msgstr "إنهاء طلب السيارة والمتابعة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_return_wizard__target_stage_id
+msgid "اختر المرحلة السابقة التي تريد إرجاع الطلب إليها للتصحيح."
+msgstr "اختر المرحلة السابقة التي تريد إرجاع الطلب إليها للتصحيح."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_project_project__recruitment_hidden
+msgid "استبعاد من قائمة التوظيف"
+msgstr "استبعاد من قائمة التوظيف"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_project_project__recruitment_display_name
+msgid ""
+"استخدمه لدمج أكثر من فرع/شركة داخلية لنفس المنصة تحت اسم واحد ظاهر للمتقدمين"
+" على الموقع (مثال: \"جاهز\" و\"جاهز1\" كلاهما يظهران للمتقدم كخيار واحد باسم"
+" \"جاهز\" فقط). اتركه فارغاً لاستخدام اسم المشروع نفسه."
+msgstr ""
+"استخدمه لدمج أكثر من فرع/شركة داخلية لنفس المنصة تحت اسم واحد ظاهر للمتقدمين"
+" على الموقع (مثال: \"جاهز\" و\"جاهز1\" كلاهما يظهران للمتقدم كخيار واحد باسم"
+" \"جاهز\" فقط). اتركه فارغاً لاستخدام اسم المشروع نفسه."
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form_fleet
+msgid "استلام الطلب"
+msgstr "استلام الطلب"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__name
+msgid "اسم المرحلة"
+msgstr "اسم المرحلة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_attachment_type__name
+msgid "اسم المرفق"
+msgstr "اسم المرفق"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request_attachment__file_name
+msgid "اسم الملف"
+msgstr "اسم الملف"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__employee_name
+msgid "اسم الموظف"
+msgstr "اسم الموظف"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_cost_type__name
+msgid "اسم النوع"
+msgstr "اسم النوع"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "اعتماد (المدير العام)"
+msgstr "اعتماد (المدير العام)"
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,name:recruitment_workflow.stage_gm_approval
+msgid "اعتماد المدير العام"
+msgstr "اعتماد المدير العام"
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,description:recruitment_workflow.stage_gm_approval
+msgid "اعتماد المدير العام: موافقة / رفض."
+msgstr "اعتماد المدير العام: موافقة / رفض."
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_transfer_request_form
+msgid "اعتماد مدير العمليات وتنفيذ النقل"
+msgstr "اعتماد مدير العمليات وتنفيذ النقل"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_reject_wizard_form
+msgid "اكتب سبب الرفض..."
+msgstr "اكتب سبب الرفض..."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_return_wizard__target_stage_id
+msgid "الإرجاع إلى مرحلة"
+msgstr "الإرجاع إلى مرحلة"
+
+#. module: recruitment_workflow
+#: model:ir.ui.menu,name:recruitment_workflow.menu_recruitment_config
+msgid "الإعدادات"
+msgstr "الإعدادات"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_compensation_type__name
+msgid "الاسم"
+msgstr "الاسم"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_project_project__recruitment_display_name
+msgid "الاسم المعروض للمتقدمين (اختياري)"
+msgstr "الاسم المعروض للمتقدمين (اختياري)"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "الانتقال للمرحلة التالية"
+msgstr "الانتقال للمرحلة التالية"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__email
+msgid "البريد الإلكتروني"
+msgstr "البريد الإلكتروني"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__bank_id
+msgid "البنك"
+msgstr "البنك"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "البيانات الشخصية"
+msgstr "البيانات الشخصية"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_cost_type__sequence
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_attachment_type__sequence
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_compensation_type__sequence
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request_attachment__sequence
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__sequence
+msgid "الترتيب"
+msgstr "الترتيب"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_cost_type__category
+msgid "التصنيف"
+msgstr "التصنيف"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_cost_type__category
+msgid ""
+"التصنيف يحدد دفتر اليومية المقترح تلقائياً، ويُستخدم للفلترة والتجميع في "
+"التقارير (مثال: كل \"المدفوعات الحكومية\" مع بعض)."
+msgstr ""
+"التصنيف يحدد دفتر اليومية المقترح تلقائياً، ويُستخدم للفلترة والتجميع في "
+"التقارير (مثال: كل \"المدفوعات الحكومية\" مع بعض)."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__main_application
+msgid "التطبيق الرئيسي"
+msgstr "التطبيق الرئيسي"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__main_application
+msgid "التطبيق الرئيسي الذي سيعمل عليه الموظف."
+msgstr "التطبيق الرئيسي الذي سيعمل عليه الموظف."
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_form_inherit_recruitment
+msgid "التوظيف / الأسطول"
+msgstr "التوظيف / الأسطول"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__gender
+msgid "الجنس"
+msgstr "الجنس"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__country_id
+msgid "الجنسية"
+msgstr "الجنسية"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_cost_type__partner_id
+msgid "الجهة الافتراضية (المورّد)"
+msgstr "الجهة الافتراضية (المورّد)"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__fee_partner_id
+msgid "الجهة التي ستُصدَر لها فاتورة المورد (مكتب استقدام، جهة حكومية...)."
+msgstr "الجهة التي ستُصدَر لها فاتورة المورد (مكتب استقدام، جهة حكومية...)."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__fee_partner_id
+msgid "الجهة المستفيدة (المورّد)"
+msgstr "الجهة المستفيدة (المورّد)"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_cost_type__partner_id
+msgid ""
+"الجهة/المورّد الذي تُصدَر له فاتورة المورد افتراضياً لهذا النوع (مثال: "
+"الجوازات، مؤسسة التأمينات GOSI...). يمكن تغييره لكل سجل تكلفة عند الحاجة."
+msgstr ""
+"الجهة/المورّد الذي تُصدَر له فاتورة المورد افتراضياً لهذا النوع (مثال: "
+"الجوازات، مؤسسة التأمينات GOSI...). يمكن تغييره لكل سجل تكلفة عند الحاجة."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__state
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_search
+msgid "الحالة"
+msgstr "الحالة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__marital
+msgid "الحالة الاجتماعية"
+msgstr "الحالة الاجتماعية"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "الحساب البنكي"
+msgstr "الحساب البنكي"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee__analytic_account_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_history__analytic_account_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__analytic_account_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_workflow_analytic_mixin__analytic_account_id
+msgid "الحساب التحليلي للمنصة"
+msgstr "الحساب التحليلي للمنصة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_cost_type__expense_account_id
+msgid ""
+"الحساب المحاسبي لسطر فاتورة المورد. يُوزَّع تحليلياً تلقائياً على حساب "
+"المشروع/المنصة عند الرفع للمحاسبة."
+msgstr ""
+"الحساب المحاسبي لسطر فاتورة المورد. يُوزَّع تحليلياً تلقائياً على حساب "
+"المشروع/المنصة عند الرفع للمحاسبة."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__wage
+msgid "الراتب"
+msgstr "الراتب"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "الرسوم الحكومية (نقل الكفالة)"
+msgstr "الرسوم الحكومية (نقل الكفالة)"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__code
+msgid "الرمز"
+msgstr "الرمز"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__short_national_address
+msgid ""
+"الرمز المختصر للعنوان الوطني السعودي (مثال: RRRD2929) - 4 أحرف تليها 4 "
+"أرقام."
+msgstr ""
+"الرمز المختصر للعنوان الوطني السعودي (مثال: RRRD2929) - 4 أحرف تليها 4 "
+"أرقام."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_bulk_transfer_wizard__vehicle_ids
+msgid "السيارات"
+msgstr "السيارات"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_history__vehicle_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_transfer_wizard__vehicle_id
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form_fleet
+msgid "السيارة"
+msgstr "السيارة"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "السيارة / الأسطول"
+msgstr "السيارة / الأسطول"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__vehicle_id
+msgid "السيارة المخصصة"
+msgstr "السيارة المخصصة"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_transfer_request_form
+msgid ""
+"السيارة المخصصة للموظف (إن وُجدت) تبقى معه ولا تتأثر بالنقل.\n"
+"                            تُغلق الفترة الحالية في تاريخ المنصات وتُفتح فترة جديدة تلقائياً\n"
+"                            بعد اعتماد النقل نهائياً، مع تحديث الحساب التحليلي المستخدم\n"
+"                            للمتابعة والحسابات."
+msgstr ""
+"السيارة المخصصة للموظف (إن وُجدت) تبقى معه ولا تتأثر بالنقل.\n"
+"                            تُغلق الفترة الحالية في تاريخ المنصات وتُفتح فترة جديدة تلقائياً\n"
+"                            بعد اعتماد النقل نهائياً، مع تحديث الحساب التحليلي المستخدم\n"
+"                            للمتابعة والحسابات."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/wizard/fleet_vehicle_branch_transfer_wizard.py:0
+msgid "السيارة تابعة لهذا الفرع أصلاً."
+msgstr "السيارة تابعة لهذا الفرع أصلاً."
+
+#. module: recruitment_workflow
+#: model:recruitment.attachment.type,name:recruitment_workflow.att_cv
+msgid "السيرة الذاتية"
+msgstr "السيرة الذاتية"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_cost_type__company_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_history__company_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__company_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__company_id
+msgid "الشركة"
+msgstr "الشركة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_reset_wizard__request_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_reject_wizard__request_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_return_wizard__request_id
+msgid "الطلب"
+msgstr "الطلب"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "الطلب: %s"
+msgstr "الطلب: %s"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "الطلب: %s - المبلغ: %s"
+msgstr "الطلب: %s - المبلغ: %s"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "الطلب: %s - المندوب: %s"
+msgstr "الطلب: %s - المندوب: %s"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__contract_ref
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "العقد"
+msgstr "العقد"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__currency_id
+msgid "العملة"
+msgstr "العملة"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "العنوان الوطني"
+msgstr "العنوان الوطني"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__short_national_address
+msgid "العنوان الوطني المختصر"
+msgstr "العنوان الوطني المختصر"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_history__is_current
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_history__is_current
+msgid "الفترة الحالية"
+msgstr "الفترة الحالية"
+
+#. module: recruitment_workflow
+#: model:recruitment.attachment.type,name:recruitment_workflow.att_medical
+msgid "الفحص الطبي"
+msgstr "الفحص الطبي"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_history__company_id
+msgid "الفرع / الشركة"
+msgstr "الفرع / الشركة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_project_project__is_recruitment_default
+msgid "الفرع الافتراضي عند تعدد الفروع النشطة"
+msgstr "الفرع الافتراضي عند تعدد الفروع النشطة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_transfer_wizard__current_company_id
+msgid "الفرع الحالي"
+msgstr "الفرع الحالي"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__department_id
+msgid "القسم"
+msgstr "القسم"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_project_project__department_id
+msgid "القسم (للتوظيف)"
+msgstr "القسم (للتوظيف)"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_project_project__department_id
+msgid ""
+"القسم الذي يُعبَّأ تلقائياً في طلب التوظيف عند اختيار هذه المنصة كمشروع - "
+"مباشرة، بغض النظر عن الوظيفة الافتراضية. إن تُرك فارغاً، يُشتق القسم بدلاً "
+"منه من قسم \"الوظيفة الافتراضية\" أدناه إن وُجدت."
+msgstr ""
+"القسم الذي يُعبَّأ تلقائياً في طلب التوظيف عند اختيار هذه المنصة كمشروع - "
+"مباشرة، بغض النظر عن الوظيفة الافتراضية. إن تُرك فارغاً، يُشتق القسم بدلاً "
+"منه من قسم \"الوظيفة الافتراضية\" أدناه إن وُجدت."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__name
+msgid "الكود"
+msgstr "الكود"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__color
+msgid "اللون"
+msgstr "اللون"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_search
+msgid "المؤرشفة (المرفوضة)"
+msgstr "المؤرشفة (المرفوضة)"
+
+#. module: recruitment_workflow
+#: model:recruitment.attachment.type,name:recruitment_workflow.att_qualification
+msgid "المؤهلات العلمية"
+msgstr "المؤهلات العلمية"
+
+#. module: recruitment_workflow
+#: model:res.groups,name:recruitment_workflow.group_recruitment_workflow_accountant
+msgid "المحاسب"
+msgstr "المحاسب"
+
+#. module: recruitment_workflow
+#: model:account.journal,name:recruitment_workflow.journal_government_payments
+msgid "المدفوعات الحكومية"
+msgstr "المدفوعات الحكومية"
+
+#. module: recruitment_workflow
+#: model:res.groups,name:recruitment_workflow.group_recruitment_workflow_gm
+msgid "المدير العام"
+msgstr "المدير العام"
+
+#. module: recruitment_workflow
+#: model:ir.actions.act_window,name:recruitment_workflow.action_recruitment_stage
+#: model:ir.ui.menu,name:recruitment_workflow.menu_recruitment_stage
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_stage_list
+msgid "المراحل"
+msgstr "المراحل"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_return_wizard__available_stage_ids
+msgid "المراحل المتاحة"
+msgstr "المراحل المتاحة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__stage_id
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_search
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_stage_form
+msgid "المرحلة"
+msgstr "المرحلة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request_attachment__name
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.report_recruitment_request
+msgid "المرفق"
+msgstr "المرفق"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__attachment_line_ids
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.report_recruitment_request
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "المرفقات"
+msgstr "المرفقات"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "المرفقات الإجبارية غير مكتملة. نسبة الاكتمال:"
+msgstr "المرفقات الإجبارية غير مكتملة. نسبة الاكتمال:"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__attachments_complete
+msgid "المرفقات مكتملة"
+msgstr "المرفقات مكتملة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle__project_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_history__project_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__project_id
+msgid "المشروع / المنصة"
+msgstr "المشروع / المنصة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee__project_id
+msgid ""
+"المشروع/المنصة الحالية التي يعمل عليها المندوب (كيتا، هنقرستيشن...). تُستخدم"
+" لفصل المتابعة والحسابات لكل منصة. لا يمكن تعديلها مباشرة - استخدم زر \"طلب "
+"نقل لمنصة أخرى\" (يمر بخط سير موافقة، مع الاحتفاظ بالتاريخ الكامل)."
+msgstr ""
+"المشروع/المنصة الحالية التي يعمل عليها المندوب (كيتا، هنقرستيشن...). تُستخدم"
+" لفصل المتابعة والحسابات لكل منصة. لا يمكن تعديلها مباشرة - استخدم زر \"طلب "
+"نقل لمنصة أخرى\" (يمر بخط سير موافقة، مع الاحتفاظ بالتاريخ الكامل)."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request_attachment__file
+msgid "الملف"
+msgstr "الملف"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_history__employee_id
+msgid "المندوب"
+msgstr "المندوب"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_employee_filter_inherit_recruitment
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_search
+msgid "المنصة"
+msgstr "المنصة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard__project_id
+msgid "المنصة / المشروع"
+msgstr "المنصة / المشروع"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_fleet_vehicle__project_id
+msgid ""
+"المنصة التي تتبعها هذه السيارة ضمن الأسطول (اختياري). إن تُرك فارغاً، تكون "
+"السيارة متاحة لأي منصة عند طلب سيارة في التوظيف."
+msgstr ""
+"المنصة التي تتبعها هذه السيارة ضمن الأسطول (اختياري). إن تُرك فارغاً، تكون "
+"السيارة متاحة لأي منصة عند طلب سيارة في التوظيف."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__project_id
+msgid ""
+"المنصة التي سيعمل عليها المندوب (مثال: كيتا، هنقرستيشن). تُستخدم لفصل "
+"المتابعة والحسابات (Analytic Account) لكل منصة، ولفلترة سيارات الأسطول "
+"التابعة لنفس المنصة."
+msgstr ""
+"المنصة التي سيعمل عليها المندوب (مثال: كيتا، هنقرستيشن). تُستخدم لفصل "
+"المتابعة والحسابات (Analytic Account) لكل منصة، ولفلترة سيارات الأسطول "
+"التابعة لنفس المنصة."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__new_project_id
+msgid "المنصة الجديدة"
+msgstr "المنصة الجديدة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee__project_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__current_project_id
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_form_inherit_recruitment
+msgid "المنصة الحالية"
+msgstr "المنصة الحالية"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid ""
+"المنصة الحالية للموظف \"%(employee)s\" تغيّرت منذ إنشاء هذا الطلب (أصبحت "
+"%(actual)s بدل %(expected)s) - ألغِ هذا الطلب وأنشئ طلباً جديداً بالبيانات "
+"الصحيحة."
+msgstr ""
+"المنصة الحالية للموظف \"%(employee)s\" تغيّرت منذ إنشاء هذا الطلب (أصبحت "
+"%(actual)s بدل %(expected)s) - ألغِ هذا الطلب وأنشئ طلباً جديداً بالبيانات "
+"الصحيحة."
+
+#. module: recruitment_workflow
+#: model:res.groups,name:recruitment_workflow.group_recruitment_workflow_hr
+msgid "الموارد البشرية"
+msgstr "الموارد البشرية"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard_line__employee_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__employee_id
+msgid "الموظف"
+msgstr "الموظف"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__employee_id
+msgid "الموظف (سجل HR)"
+msgstr "الموظف (سجل HR)"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "الموظف والعقد"
+msgstr "الموظف والعقد"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid "الموظف يعمل بالفعل على هذه المنصة. اختر منصة مختلفة لإتمام النقل."
+msgstr "الموظف يعمل بالفعل على هذه المنصة. اختر منصة مختلفة لإتمام النقل."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard__line_ids
+msgid "الموظفون"
+msgstr "الموظفون"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__description
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_stage_form
+msgid "الوصف"
+msgstr "الوصف"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__job_id
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_search
+msgid "الوظيفة"
+msgstr "الوظيفة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_project_project__default_job_id
+msgid ""
+"الوظيفة (وبالتالي القسم إن لم يُحدَّد أعلاه) التي تُعبَّأ تلقائياً في طلب "
+"التوظيف عند اختيار هذه المنصة كمشروع. اتركها فارغة إن كانت هذه المنصة تستقبل"
+" أكثر من مسمى وظيفي."
+msgstr ""
+"الوظيفة (وبالتالي القسم إن لم يُحدَّد أعلاه) التي تُعبَّأ تلقائياً في طلب "
+"التوظيف عند اختيار هذه المنصة كمشروع. اتركها فارغة إن كانت هذه المنصة تستقبل"
+" أكثر من مسمى وظيفي."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_project_project__default_job_id
+msgid "الوظيفة الافتراضية (للتوظيف)"
+msgstr "الوظيفة الافتراضية (للتوظيف)"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "انتقل الطلب لمرحلة أخرى"
+msgstr "انتقل الطلب لمرحلة أخرى"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__hr_employee_platform_transfer_request__state__waiting_approval
+msgid "بانتظار الموافقة"
+msgstr "بانتظار الموافقة"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_search
+msgid "بحث طلبات التوظيف"
+msgstr "بحث طلبات التوظيف"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid "بلا منصة"
+msgstr "بلا منصة"
+
+#. module: recruitment_workflow
+#: model:recruitment.attachment.type,name:recruitment_workflow.att_bank
+msgid "بيانات الحساب البنكي (IBAN)"
+msgstr "بيانات الحساب البنكي (IBAN)"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form_fleet
+msgid "بيانات المندوب"
+msgstr "بيانات المندوب"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "بيانات الموظف"
+msgstr "بيانات الموظف"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "بيانات الهوية / الإقامة"
+msgstr "بيانات الهوية / الإقامة"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "بيانات الوظيفة"
+msgstr "بيانات الوظيفة"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_return_wizard_form
+msgid "تأكيد الإرجاع"
+msgstr "تأكيد الإرجاع"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_transfer_reset_wizard_form
+msgid "تأكيد الإعادة لمسودة"
+msgstr "تأكيد الإعادة لمسودة"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_bulk_assign_wizard_form
+msgid "تأكيد الربط"
+msgstr "تأكيد الربط"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_reject_wizard_form
+msgid "تأكيد الرفض"
+msgstr "تأكيد الرفض"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_branch_bulk_transfer_wizard_form
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_branch_transfer_wizard_form
+msgid "تأكيد النقل"
+msgstr "تأكيد النقل"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_history__date_start
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_history__date_start
+msgid "تاريخ البداية"
+msgstr "تاريخ البداية"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle__branch_history_ids
+msgid "تاريخ الفروع"
+msgstr "تاريخ الفروع"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/fleet_vehicle.py:0
+msgid "تاريخ الفروع - %s"
+msgstr "تاريخ الفروع - %s"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee__platform_history_ids
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_history_list
+msgid "تاريخ المنصات"
+msgstr "تاريخ المنصات"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee.py:0
+msgid "تاريخ المنصات - %s"
+msgstr "تاريخ المنصات - %s"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__transfer_date
+msgid "تاريخ النقل"
+msgstr "تاريخ النقل"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_history__date_end
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_history__date_end
+msgid "تاريخ النهاية"
+msgstr "تاريخ النهاية"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__id_expiry_date
+msgid "تاريخ انتهاء الهوية / الإقامة (ميلادي)"
+msgstr "تاريخ انتهاء الهوية / الإقامة (ميلادي)"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__id_expiry_date_hijri
+msgid "تاريخ انتهاء الهوية / الإقامة (هجري)"
+msgstr "تاريخ انتهاء الهوية / الإقامة (هجري)"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__contract_start_date
+msgid "تاريخ بدء العقد"
+msgstr "تاريخ بدء العقد"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard_line__date_start
+msgid "تاريخ بداية العمل على المنصة"
+msgstr "تاريخ بداية العمل على المنصة"
+
+#. module: recruitment_workflow
+#: model:ir.actions.act_window,name:recruitment_workflow.action_fleet_vehicle_branch_history
+#: model:ir.ui.menu,name:recruitment_workflow.menu_fleet_vehicle_branch_history
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_branch_history_list
+msgid "تاريخ فروع السيارات"
+msgstr "تاريخ فروع السيارات"
+
+#. module: recruitment_workflow
+#: model:ir.actions.act_window,name:recruitment_workflow.action_hr_employee_platform_history
+#: model:ir.ui.menu,name:recruitment_workflow.menu_hr_employee_platform_history
+msgid "تاريخ منصات المناديب"
+msgstr "تاريخ منصات المناديب"
+
+#. module: recruitment_workflow
+#: model_terms:ir.actions.act_window,help:recruitment_workflow.action_recruitment_request
+msgid ""
+"تتبّع طلب التوظيف عبر مراحله المعتمدة من الطلب الجديد حتى مباشرة العمل "
+"وإنشاء العقد."
+msgstr ""
+"تتبّع طلب التوظيف عبر مراحله المعتمدة من الطلب الجديد حتى مباشرة العمل "
+"وإنشاء العقد."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__require_project
+msgid "تتطلب اختيار مشروع/منصة"
+msgstr "تتطلب اختيار مشروع/منصة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__require_attachments
+msgid "تتطلب اكتمال المرفقات"
+msgstr "تتطلب اكتمال المرفقات"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__require_car
+msgid "تتطلب تخصيص سيارة"
+msgstr "تتطلب تخصيص سيارة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__require_validation
+msgid "تتطلب موافقة"
+msgstr "تتطلب موافقة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_fleet_vehicle__recruitment_state
+msgid "تحدد ما إذا كانت السيارة متاحة لتخصيصها في طلبات التوظيف."
+msgstr "تحدد ما إذا كانت السيارة متاحة لتخصيصها في طلبات التوظيف."
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "تسجيل الرسوم الحكومية"
+msgstr "تسجيل الرسوم الحكومية"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_stage__is_closing_stage
+msgid "تشير إلى أن الطلب اكتمل (تم مباشرة العمل)."
+msgstr "تشير إلى أن الطلب اكتمل (تم مباشرة العمل)."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_stage__require_validation
+msgid "تظهر أزرار الموافقة / الرفض في هذه المرحلة."
+msgstr "تظهر أزرار الموافقة / الرفض في هذه المرحلة."
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_form_inherit_recruitment
+msgid "تعيين كغير متاحة"
+msgstr "تعيين كغير متاحة"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_form_inherit_recruitment
+msgid "تعيين كمتاحة للتوظيف"
+msgstr "تعيين كمتاحة للتوظيف"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid "تغيّرت حالة طلب النقل"
+msgstr "تغيّرت حالة طلب النقل"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form_fleet
+msgid "تفويض السيارة (اعتماد نهائي)"
+msgstr "تفويض السيارة (اعتماد نهائي)"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"تم إرجاع الطلب من مرحلة \"%(from)s\" إلى مرحلة \"%(to)s\" للتصحيح.\n"
+"السبب: %(reason)s"
+msgstr ""
+"تم إرجاع الطلب من مرحلة \"%(from)s\" إلى مرحلة \"%(to)s\" للتصحيح.\n"
+"السبب: %(reason)s"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "تم إرسال الطلب لقسم الأسطول رغم ذلك، وسيتابعونه فور توفر سيارة مناسبة."
+msgstr ""
+"تم إرسال الطلب لقسم الأسطول رغم ذلك، وسيتابعونه فور توفر سيارة مناسبة."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__recruitment_request__car_request_state__requested
+msgid "تم إرسال الطلب للأسطول"
+msgstr "تم إرسال الطلب للأسطول"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "تم إرسال طلب سيارة إلى قسم الأسطول."
+msgstr "تم إرسال طلب سيارة إلى قسم الأسطول."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "تم إصدار فاتورة الرسوم لهذا الطلب من قبل."
+msgstr "تم إصدار فاتورة الرسوم لهذا الطلب من قبل."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"تم إصدار فاتورة رسوم %(move)s (مسودة) لفريق المحاسبة لمراجعتها واعتمادها "
+"وسدادها من تطبيق المحاسبة مباشرة."
+msgstr ""
+"تم إصدار فاتورة رسوم %(move)s (مسودة) لفريق المحاسبة لمراجعتها واعتمادها "
+"وسدادها من تطبيق المحاسبة مباشرة."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"تم إنشاء الموظف لكن تعذّر ربط الحساب البنكي تلقائياً. يُرجى إضافة الآيبان "
+"يدوياً في سجل الموظف."
+msgstr ""
+"تم إنشاء الموظف لكن تعذّر ربط الحساب البنكي تلقائياً. يُرجى إضافة الآيبان "
+"يدوياً في سجل الموظف."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"تم إنشاء سجل الموظف %s. لم يُعثر على نموذج عقد (Payroll) على هذا النظام، لذا"
+" لم يُنشأ عقد تلقائي. يمكن تثبيت وحدة العقود/الرواتب لتفعيل الإنشاء التلقائي"
+" للعقود."
+msgstr ""
+"تم إنشاء سجل الموظف %s. لم يُعثر على نموذج عقد (Payroll) على هذا النظام، لذا"
+" لم يُنشأ عقد تلقائي. يمكن تثبيت وحدة العقود/الرواتب لتفعيل الإنشاء التلقائي"
+" للعقود."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"تم إنشاء سجل الموظف يدوياً (%s) - الطلب تجاوز مرحلة \"تم نقل الكفالة\" دون "
+"إنشائه تلقائياً."
+msgstr ""
+"تم إنشاء سجل الموظف يدوياً (%s) - الطلب تجاوز مرحلة \"تم نقل الكفالة\" دون "
+"إنشائه تلقائياً."
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid ""
+"تم إنشاء سجل الموظف. لإنشاء عقد تلقائي يلزم تثبيت وحدة العقود (Payroll)."
+msgstr ""
+"تم إنشاء سجل الموظف. لإنشاء عقد تلقائي يلزم تثبيت وحدة العقود (Payroll)."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "تم إنشاء/تحديث العقد %s أوتوماتيكياً وربطه بالموظف %s."
+msgstr "تم إنشاء/تحديث العقد %s أوتوماتيكياً وربطه بالموظف %s."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__recruitment_request__car_request_state__received
+msgid "تم استلام الطلب من الأسطول"
+msgstr "تم استلام الطلب من الأسطول"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "تم استلام طلب السيارة من قسم الأسطول."
+msgstr "تم استلام طلب السيارة من قسم الأسطول."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__recruitment_request__car_request_state__authorized
+msgid "تم التفويض"
+msgstr "تم التفويض"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request_attachment__is_uploaded
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.report_recruitment_request
+msgid "تم الرفع"
+msgstr "تم الرفع"
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,name:recruitment_workflow.stage_paid
+msgid "تم السداد"
+msgstr "تم السداد"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__hr_employee_platform_transfer_request__state__done
+msgid "تم النقل"
+msgstr "تم النقل"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/project_project.py:0
+msgid ""
+"تم تحديث بيانات المشروع تلقائياً (مسؤول المشروع/الشركة) بعد تعديلها على "
+"المشروع \"%s\"."
+msgstr ""
+"تم تحديث بيانات المشروع تلقائياً (مسؤول المشروع/الشركة) بعد تعديلها على "
+"المشروع \"%s\"."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "تم تسجيل الرسوم الحكومية لهذا الطلب من قبل."
+msgstr "تم تسجيل الرسوم الحكومية لهذا الطلب من قبل."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "تم تفويض السيارة. الطلب الآن لدى مسؤول المشروع للمتابعة."
+msgstr "تم تفويض السيارة. الطلب الآن لدى مسؤول المشروع للمتابعة."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "تم رفض الطلب في مرحلة %(stage)s. السبب: %(reason)s"
+msgstr "تم رفض الطلب في مرحلة %(stage)s. السبب: %(reason)s"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__car_requested
+msgid "تم طلب سيارة"
+msgstr "تم طلب سيارة"
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,name:recruitment_workflow.stage_started
+msgid "تم مباشرة العمل"
+msgstr "تم مباشرة العمل"
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,description:recruitment_workflow.stage_started
+msgid ""
+"تم مباشرة العمل، يُنشأ عقد أوتوماتيك في النظام ويُسجّل في المشروع المختار."
+msgstr ""
+"تم مباشرة العمل، يُنشأ عقد أوتوماتيك في النظام ويُسجّل في المشروع المختار."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/fleet_vehicle.py:0
+msgid "تم نقل السيارة إلى الفرع: %s%s"
+msgstr "تم نقل السيارة إلى الفرع: %s%s"
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,name:recruitment_workflow.stage_sponsorship_done
+msgid "تم نقل الكفالة - الموارد البشرية"
+msgstr "تم نقل الكفالة - الموارد البشرية"
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,description:recruitment_workflow.stage_sponsorship_done
+msgid "تم نقل الكفالة بنجاح، يتولى قسم الموارد البشرية المتابعة."
+msgstr "تم نقل الكفالة بنجاح، يتولى قسم الموارد البشرية المتابعة."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee.py:0
+msgid "تم نقل المندوب إلى المنصة: %s%s"
+msgstr "تم نقل المندوب إلى المنصة: %s%s"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "تمت إعادة الطلب من الأرشيف."
+msgstr "تمت إعادة الطلب من الأرشيف."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "تمت إعادة تفعيل الطلب من الأرشيف وإرجاعه للبداية."
+msgstr "تمت إعادة تفعيل الطلب من الأرشيف وإرجاعه للبداية."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid "تمت إعادة طلب النقل لمسودة للتصحيح.<br/>السبب: %s"
+msgstr "تمت إعادة طلب النقل لمسودة للتصحيح.<br/>السبب: %s"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "تمت الموافقة على المرحلة: %s"
+msgstr "تمت الموافقة على المرحلة: %s"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__gov_fee_settled
+msgid "تمت تسوية الرسوم الحكومية"
+msgstr "تمت تسوية الرسوم الحكومية"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_fleet_vehicle_branch_bulk_transfer_wizard__note
+msgid "تُسجَّل في سجل تاريخ الفروع لكل سيارة منقولة."
+msgstr "تُسجَّل في سجل تاريخ الفروع لكل سيارة منقولة."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard__note
+msgid "تُسجَّل في سجل تاريخ المنصات لكل موظف (مثال: \"ربط رجعي - بيانات قديمة\")."
+msgstr ""
+"تُسجَّل في سجل تاريخ المنصات لكل موظف (مثال: \"ربط رجعي - بيانات قديمة\")."
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,description:recruitment_workflow.stage_sponsorship_transfer
+msgid "جاري إجراءات نقل الكفالة."
+msgstr "جاري إجراءات نقل الكفالة."
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,name:recruitment_workflow.stage_sponsorship_transfer
+msgid "جاري نقل الكفالة"
+msgstr "جاري نقل الكفالة"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "جديد"
+msgstr "جديد"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "جميع المرفقات الإجبارية مكتملة."
+msgstr "جميع المرفقات الإجبارية مكتملة."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__candidate_partner_id
+msgid "جهة اتصال المرشّح"
+msgstr "جهة اتصال المرشّح"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__candidate_partner_id
+msgid ""
+"جهة اتصال خفيفة تمثّل المرشّح قبل إنشاء سجل الموظف الرسمي - تُنشأ عند أول "
+"حاجة إليها (تفويض سيارة، تسجيل رسوم حكومية، إلخ) عبر "
+"_get_or_create_candidate_partner()، وتُعاد نفسها في كل استخدام لاحق بدل "
+"إنشاء جهات اتصال مكررة - ثم تُعاد استخدامها كجهة اتصال العمل الرسمية للموظف "
+"عند إنشائه."
+msgstr ""
+"جهة اتصال خفيفة تمثّل المرشّح قبل إنشاء سجل الموظف الرسمي - تُنشأ عند أول "
+"حاجة إليها (تفويض سيارة، تسجيل رسوم حكومية، إلخ) عبر "
+"_get_or_create_candidate_partner()، وتُعاد نفسها في كل استخدام لاحق بدل "
+"إنشاء جهات اتصال مكررة - ثم تُعاد استخدامها كجهة اتصال العمل الرسمية للموظف "
+"عند إنشائه."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle__recruitment_state
+msgid "حالة التوفر للتوظيف"
+msgstr "حالة التوفر للتوظيف"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__fee_payment_state
+msgid "حالة سداد الرسوم"
+msgstr "حالة سداد الرسوم"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__car_request_state
+msgid "حالة طلب السيارة"
+msgstr "حالة طلب السيارة"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "حدد الجهة المستفيدة (المورّد) قبل إصدار الفاتورة."
+msgstr "حدد الجهة المستفيدة (المورّد) قبل إصدار الفاتورة."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "حدد المبلغ الإجمالي للرسوم الحكومية قبل التسجيل."
+msgstr "حدد المبلغ الإجمالي للرسوم الحكومية قبل التسجيل."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "حدد المشروع/المنصة أولاً."
+msgstr "حدد المشروع/المنصة أولاً."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "حدد مبلغ الرسوم قبل إصدار الفاتورة."
+msgstr "حدد مبلغ الرسوم قبل إصدار الفاتورة."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "حدد نوع الرسوم قبل إصدار الفاتورة."
+msgstr "حدد نوع الرسوم قبل إصدار الفاتورة."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_project_project__is_recruitment_open
+msgid ""
+"حدِّد هذا الخيار فقط للمنصات التي تريد أن تظهر في القائمة المنسدلة بنموذج "
+"التسجيل العام على الموقع الإلكتروني (/careers/register). باقي المشاريع في "
+"النظام (محاسبة، تقنية معلومات...) لن تظهر أبداً للزوار العامين."
+msgstr ""
+"حدِّد هذا الخيار فقط للمنصات التي تريد أن تظهر في القائمة المنسدلة بنموذج "
+"التسجيل العام على الموقع الإلكتروني (/careers/register). باقي المشاريع في "
+"النظام (محاسبة، تقنية معلومات...) لن تظهر أبداً للزوار العامين."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_project_project__recruitment_hidden
+msgid ""
+"حدِّد هذا الخيار لإخفاء هذا المشروع تحديداً من قائمة اختيار المنصة في طلب "
+"التوظيف (مثال: مشاريع إدارية/داخلية غير متعلقة بالتوظيف كـ\"Internal\")، دون"
+" التأثير على استخدامه في تطبيق المشاريع نفسه. لا علاقة له بظهوره على الموقع "
+"الإلكتروني."
+msgstr ""
+"حدِّد هذا الخيار لإخفاء هذا المشروع تحديداً من قائمة اختيار المنصة في طلب "
+"التوظيف (مثال: مشاريع إدارية/داخلية غير متعلقة بالتوظيف كـ\"Internal\")، دون"
+" التأثير على استخدامه في تطبيق المشاريع نفسه. لا علاقة له بظهوره على الموقع "
+"الإلكتروني."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_cost_type__expense_account_id
+msgid "حساب المصروف"
+msgstr "حساب المصروف"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_cost_type__journal_id
+msgid ""
+"دفتر اليومية (من نوع مشتريات) الذي ستُنشأ عليه فاتورة المورد. اترك فارغاً "
+"لاستخدام دفتر المشتريات الافتراضي للشركة."
+msgstr ""
+"دفتر اليومية (من نوع مشتريات) الذي ستُنشأ عليه فاتورة المورد. اترك فارغاً "
+"لاستخدام دفتر المشتريات الافتراضي للشركة."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_cost_type__journal_id
+msgid "دفتر فواتير الموردين"
+msgstr "دفتر فواتير الموردين"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__recruitment_request__gender__male
+msgid "ذكر"
+msgstr "ذكر"
+
+#. module: recruitment_workflow
+#: model:ir.actions.act_window,name:recruitment_workflow.action_hr_employee_platform_bulk_assign
+msgid "ربط بمنصة (دفعة واحدة)"
+msgstr "ربط بمنصة (دفعة واحدة)"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_bulk_assign_wizard_form
+msgid "ربط عدة موظفين بمنصة"
+msgstr "ربط عدة موظفين بمنصة"
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_hr_employee_platform_bulk_assign_wizard
+msgid "ربط عدة موظفين قدامى بمنصة دفعة واحدة"
+msgstr "ربط عدة موظفين قدامى بمنصة دفعة واحدة"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "رسوم %s - %s"
+msgstr "رسوم %s - %s"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "رسوم توظيف - %s"
+msgstr "رسوم توظيف - %s"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "رفض"
+msgstr "رفض"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_reject_wizard_form
+msgid "رفض الطلب"
+msgstr "رفض الطلب"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__iban
+msgid "رقم الآيبان (IBAN)"
+msgstr "رقم الآيبان (IBAN)"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__passport_no
+msgid "رقم الجواز"
+msgstr "رقم الجواز"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__mobile
+msgid "رقم الجوال"
+msgstr "رقم الجوال"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"رقم الجوال غير صالح. يجب أن يكون رقم جوال سعودي صحيح يبدأ بـ 05 أو 9665 أو "
+"+9665 ويتكون من العدد الصحيح من الأرقام."
+msgstr ""
+"رقم الجوال غير صالح. يجب أن يكون رقم جوال سعودي صحيح يبدأ بـ 05 أو 9665 أو "
+"+9665 ويتكون من العدد الصحيح من الأرقام."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__name
+msgid "رقم الطلب"
+msgstr "رقم الطلب"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__identification_id
+msgid "رقم الهوية / الإقامة"
+msgstr "رقم الهوية / الإقامة"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "رقم الهوية يجب أن يبدأ بالرقم 1 (مواطن) أو 2 (مقيم)."
+msgstr "رقم الهوية يجب أن يبدأ بالرقم 1 (مواطن) أو 2 (مقيم)."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "رقم الهوية يجب أن يتكون من 10 أرقام بالضبط (تم إدخال %s رقم)."
+msgstr "رقم الهوية يجب أن يتكون من 10 أرقام بالضبط (تم إدخال %s رقم)."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "رقم الهوية يجب أن يحتوي على أرقام فقط."
+msgstr "رقم الهوية يجب أن يحتوي على أرقام فقط."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__mobile
+msgid "رقم جوال سعودي: 05XXXXXXXX أو 9665XXXXXXXX أو +9665XXXXXXXX."
+msgstr "رقم جوال سعودي: 05XXXXXXXX أو 9665XXXXXXXX أو +9665XXXXXXXX."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__stage_code
+msgid "رمز المرحلة"
+msgstr "رمز المرحلة"
+
+#. module: recruitment_workflow
+#: model:ir.model.constraint,message:recruitment_workflow.constraint_recruitment_stage_code_uniq
+msgid "رمز المرحلة يجب أن يكون فريداً - يوجد مرحلة أخرى بنفس الرمز."
+msgstr "رمز المرحلة يجب أن يكون فريداً - يوجد مرحلة أخرى بنفس الرمز."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__stage_code
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_stage__code
+msgid ""
+"رمز فني فريد يستخدمه النظام للتحكم في المنطق. مثال: new, project_review, "
+"payment ..."
+msgstr ""
+"رمز فني فريد يستخدمه النظام للتحكم في المنطق. مثال: new, project_review, "
+"payment ..."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_reset_wizard__reason
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_return_wizard__reason
+msgid "سبب الإرجاع"
+msgstr "سبب الإرجاع"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_reject_wizard__reason
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__rejection_reason
+msgid "سبب الرفض"
+msgstr "سبب الرفض"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_transfer_request__note
+msgid "سبب/ملاحظة النقل"
+msgstr "سبب/ملاحظة النقل"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_branch_bulk_transfer_wizard_form
+msgid "ستُنقَل"
+msgstr "ستُنقَل"
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_fleet_vehicle_branch_history
+msgid "سجل تاريخ فروع السيارة"
+msgstr "سجل تاريخ فروع السيارة"
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_hr_employee_platform_history
+msgid "سجل تاريخ منصات المندوب"
+msgstr "سجل تاريخ منصات المندوب"
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_hr_employee_platform_bulk_assign_wizard_line
+msgid "سطر ربط موظف بمنصة (معالج الربط الجماعي)"
+msgstr "سطر ربط موظف بمنصة (معالج الربط الجماعي)"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_branch_bulk_transfer_wizard_form
+msgid "سيارة إلى الفرع المختار."
+msgstr "سيارة إلى الفرع المختار."
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_return_wizard_form
+msgid ""
+"سيتم إرجاع الطلب للمرحلة المختارة للتصحيح، مع إشعار المسؤول وتسجيل السبب."
+msgstr ""
+"سيتم إرجاع الطلب للمرحلة المختارة للتصحيح، مع إشعار المسؤول وتسجيل السبب."
+
+#. module: recruitment_workflow
+#: model:ir.module.category,name:recruitment_workflow.module_category_recruitment_workflow
+#: model:ir.ui.menu,name:recruitment_workflow.menu_recruitment_workflow_root
+#: model:res.groups.privilege,name:recruitment_workflow.privilege_recruitment_workflow
+msgid "سير عمل التوظيف"
+msgstr "سير عمل التوظيف"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_bulk_assign_wizard_form
+msgid "سيُربَط"
+msgstr "سيُربَط"
+
+#. module: recruitment_workflow
+#: model:ir.module.category,description:recruitment_workflow.module_category_recruitment_workflow
+msgid "صلاحيات إدارة سير عمل طلبات التوظيف"
+msgstr "صلاحيات إدارة سير عمل طلبات التوظيف"
+
+#. module: recruitment_workflow
+#: model:recruitment.attachment.type,name:recruitment_workflow.att_id_copy
+msgid "صورة الهوية / الإقامة"
+msgstr "صورة الهوية / الإقامة"
+
+#. module: recruitment_workflow
+#: model:recruitment.attachment.type,name:recruitment_workflow.att_photo
+msgid "صورة شخصية"
+msgstr "صورة شخصية"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"صيغة العنوان الوطني المختصر غير صحيحة. يجب أن يتكون من 4 أحرف إنجليزية تليها"
+" 4 أرقام (مثال: RRRD2929)."
+msgstr ""
+"صيغة العنوان الوطني المختصر غير صحيحة. يجب أن يتكون من 4 أحرف إنجليزية تليها"
+" 4 أرقام (مثال: RRRD2929)."
+
+#. module: recruitment_workflow
+#: model:ir.actions.report,name:recruitment_workflow.action_report_recruitment_request
+#: model:ir.model,name:recruitment_workflow.model_recruitment_request
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request_attachment__request_id
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "طلب التوظيف"
+msgstr "طلب التوظيف"
+
+#. module: recruitment_workflow
+#: model:mail.template,subject:recruitment_workflow.mail_template_request_rejected
+msgid "طلب التوظيف {{ object.name }} - تم الرفض"
+msgstr "طلب التوظيف {{ object.name }} - تم الرفض"
+
+#. module: recruitment_workflow
+#: model:mail.template,subject:recruitment_workflow.mail_template_request_approved
+msgid "طلب التوظيف {{ object.name }} - تمت الموافقة"
+msgstr "طلب التوظيف {{ object.name }} - تمت الموافقة"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.report_recruitment_request
+msgid "طلب توظيف"
+msgstr "طلب توظيف"
+
+#. module: recruitment_workflow
+#: model:mail.template,name:recruitment_workflow.mail_template_request_rejected
+msgid "طلب توظيف - تم الرفض"
+msgstr "طلب توظيف - تم الرفض"
+
+#. module: recruitment_workflow
+#: model:mail.template,name:recruitment_workflow.mail_template_request_approved
+msgid "طلب توظيف - تمت الموافقة"
+msgstr "طلب توظيف - تمت الموافقة"
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,name:recruitment_workflow.stage_new
+msgid "طلب جديد"
+msgstr "طلب جديد"
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,description:recruitment_workflow.stage_new
+msgid ""
+"طلب جديد من الموظف، يحدد فيه نظام التشغيل والتطبيق الرئيسي. المرفقات إجبارية"
+" ولا ينتقل للمرحلة الثانية إلا بعد اكتمال كامل المرفقات. مع كنترول على رقم "
+"الهوية ورقم الجوال."
+msgstr ""
+"طلب جديد من الموظف، يحدد فيه نظام التشغيل والتطبيق الرئيسي. المرفقات إجبارية"
+" ولا ينتقل للمرحلة الثانية إلا بعد اكتمال كامل المرفقات. مع كنترول على رقم "
+"الهوية ورقم الجوال."
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "طلب سيارة"
+msgstr "طلب سيارة"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form_fleet
+msgid "طلب سيارة - توظيف"
+msgstr "طلب سيارة - توظيف"
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,name:recruitment_workflow.stage_car_request
+msgid "طلب سيارة - مسؤول المشروع"
+msgstr "طلب سيارة - مسؤول المشروع"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee.py:0
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_form_inherit_recruitment
+msgid "طلب نقل لمنصة أخرى"
+msgstr "طلب نقل لمنصة أخرى"
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_hr_employee_platform_transfer_request
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_transfer_request_form
+msgid "طلب نقل موظف بين المنصات"
+msgstr "طلب نقل موظف بين المنصات"
+
+#. module: recruitment_workflow
+#: model:ir.actions.act_window,name:recruitment_workflow.action_recruitment_request
+#: model:ir.ui.menu,name:recruitment_workflow.menu_recruitment_request
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_list
+msgid "طلبات التوظيف"
+msgstr "طلبات التوظيف"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle__recruitment_request_ids
+msgid "طلبات التوظيف المرتبطة"
+msgstr "طلبات التوظيف المرتبطة"
+
+#. module: recruitment_workflow
+#: model:ir.ui.menu,name:recruitment_workflow.menu_fleet_recruitment_requests
+msgid "طلبات السيارات (توظيف)"
+msgstr "طلبات السيارات (توظيف)"
+
+#. module: recruitment_workflow
+#: model:ir.actions.act_window,name:recruitment_workflow.action_recruitment_request_fleet
+msgid "طلبات السيارات (من التوظيف)"
+msgstr "طلبات السيارات (من التوظيف)"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_list_fleet
+msgid "طلبات السيارات - التوظيف"
+msgstr "طلبات السيارات - التوظيف"
+
+#. module: recruitment_workflow
+#: model:ir.actions.act_window,name:recruitment_workflow.action_hr_employee_platform_transfer_request
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee__transfer_request_ids
+#: model:ir.ui.menu,name:recruitment_workflow.menu_hr_employee_platform_transfer_request
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_transfer_request_list
+msgid "طلبات نقل المنصة"
+msgstr "طلبات نقل المنصة"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee.py:0
+msgid "طلبات نقل المنصة - %s"
+msgstr "طلبات نقل المنصة - %s"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee__pending_transfer_request_count
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_form_inherit_recruitment
+msgid "طلبات نقل معلّقة"
+msgstr "طلبات نقل معلّقة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_bulk_transfer_wizard__vehicle_count
+msgid "عدد السيارات"
+msgstr "عدد السيارات"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle__recruitment_request_count
+msgid "عدد الطلبات"
+msgstr "عدد الطلبات"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard__employee_count
+msgid "عدد الموظفين"
+msgstr "عدد الموظفين"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle__branch_history_count
+msgid "عدد فترات الفروع"
+msgstr "عدد فترات الفروع"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee__platform_history_count
+msgid "عدد فترات المنصات"
+msgstr "عدد فترات المنصات"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "عقد - %s"
+msgstr "عقد - %s"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "عقد عمل"
+msgstr "عقد عمل"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_project_project__is_recruitment_default
+msgid ""
+"عند وجود أكثر من فرع نشط (متاح للتسجيل) بنفس \"الاسم المعروض للمتقدمين\"، "
+"يُختار الفرع المحدَّد هنا كوجهة تلقائية لطلبات الموقع الجديدة. إن لم يُحدَّد"
+" أي فرع كافتراضي، يُختار الأقدم."
+msgstr ""
+"عند وجود أكثر من فرع نشط (متاح للتسجيل) بنفس \"الاسم المعروض للمتقدمين\"، "
+"يُختار الفرع المحدَّد هنا كوجهة تلقائية لطلبات الموقع الجديدة. إن لم يُحدَّد"
+" أي فرع كافتراضي، يُختار الأقدم."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__fleet_vehicle__recruitment_state__unavailable
+msgid "غير متاحة"
+msgstr "غير متاحة"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "غير محدد"
+msgstr "غير محدد"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__fee_move_id
+msgid "فاتورة الرسوم"
+msgstr "فاتورة الرسوم"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "فتح تلقائي عند إنشاء سجل الموظف من طلب التوظيف %s"
+msgstr "فتح تلقائي عند إنشاء سجل الموظف من طلب التوظيف %s"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_form_inherit_recruitment
+msgid "فترات الفروع"
+msgstr "فترات الفروع"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_form_inherit_recruitment
+msgid "فترات المنصات"
+msgstr "فترات المنصات"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_branch_history_form
+msgid "فترة تبعية لفرع"
+msgstr "فترة تبعية لفرع"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_history_form
+msgid "فترة عمل على منصة"
+msgstr "فترة عمل على منصة"
+
+#. module: recruitment_workflow
+#: model:res.groups,name:recruitment_workflow.group_recruitment_workflow_fleet
+msgid "قسم الأسطول"
+msgstr "قسم الأسطول"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__recruitment_request__state__in_progress
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_search
+msgid "قيد التنفيذ"
+msgstr "قيد التنفيذ"
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,name:recruitment_workflow.stage_project_review
+msgid "قيد المراجعة - مسؤول المشروع"
+msgstr "قيد المراجعة - مسؤول المشروع"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "لا توجد سيارات متاحة حالياً"
+msgstr "لا توجد سيارات متاحة حالياً"
+
+#. module: recruitment_workflow
+#: model_terms:ir.actions.act_window,help:recruitment_workflow.action_recruitment_request_fleet
+msgid "لا توجد طلبات سيارات معلّقة من التوظيف حالياً"
+msgstr "لا توجد طلبات سيارات معلّقة من التوظيف حالياً"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"لا يمكن إرجاع الطلب لمرحلة سابقة بهذه الطريقة.\n"
+"استخدم زر \"إرجاع للتصحيح\" لتسجيل سبب الإرجاع."
+msgstr ""
+"لا يمكن إرجاع الطلب لمرحلة سابقة بهذه الطريقة.\n"
+"استخدم زر \"إرجاع للتصحيح\" لتسجيل سبب الإرجاع."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid ""
+"لا يمكن إعادة الطلب لمسودة مباشرة. استخدم زر \"إعادة لمسودة\" لتسجيل سبب "
+"الإرجاع."
+msgstr ""
+"لا يمكن إعادة الطلب لمسودة مباشرة. استخدم زر \"إعادة لمسودة\" لتسجيل سبب "
+"الإرجاع."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid ""
+"لا يمكن إعادة هذا الطلب لمسودة - النقل تم فعلاً. أنشئ طلب نقل جديداً إن "
+"احتجت عكس النقل."
+msgstr ""
+"لا يمكن إعادة هذا الطلب لمسودة - النقل تم فعلاً. أنشئ طلب نقل جديداً إن "
+"احتجت عكس النقل."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid "لا يمكن إلغاء طلب نقل تم تنفيذه بالفعل."
+msgstr "لا يمكن إلغاء طلب نقل تم تنفيذه بالفعل."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "لا يمكن إنشاء سجل الموظف قبل مرحلة \"تم نقل الكفالة\" على الأقل."
+msgstr "لا يمكن إنشاء سجل الموظف قبل مرحلة \"تم نقل الكفالة\" على الأقل."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_stage__require_attachments
+msgid ""
+"لا يمكن الانتقال للمرحلة التالية إلا بعد إرفاق جميع المرفقات الإجبارية."
+msgstr ""
+"لا يمكن الانتقال للمرحلة التالية إلا بعد إرفاق جميع المرفقات الإجبارية."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_stage__require_project
+msgid ""
+"لا يمكن الانتقال للمرحلة التالية إلا بعد تحديد المشروع/المنصة (مثال: كيتا، "
+"هنقرستيشن) التي سيعمل عليها المندوب."
+msgstr ""
+"لا يمكن الانتقال للمرحلة التالية إلا بعد تحديد المشروع/المنصة (مثال: كيتا، "
+"هنقرستيشن) التي سيعمل عليها المندوب."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_stage__require_car
+msgid "لا يمكن الانتقال للمرحلة التالية إلا بعد تخصيص سيارة متاحة من الأسطول."
+msgstr ""
+"لا يمكن الانتقال للمرحلة التالية إلا بعد تخصيص سيارة متاحة من الأسطول."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"لا يمكن الانتقال للمرحلة التالية. المرفقات الإجبارية غير مكتملة.\n"
+"المرفقات الناقصة:\n"
+"- %s"
+msgstr ""
+"لا يمكن الانتقال للمرحلة التالية. المرفقات الإجبارية غير مكتملة.\n"
+"المرفقات الناقصة:\n"
+"- %s"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"لا يمكن الانتقال للمرحلة التالية. طلب السيارة لم يُعتمد بعد.\n"
+"يجب أن يوافق مسؤول الأسطول على الطلب (تفويض السيارة) أولاً."
+msgstr ""
+"لا يمكن الانتقال للمرحلة التالية. طلب السيارة لم يُعتمد بعد.\n"
+"يجب أن يوافق مسؤول الأسطول على الطلب (تفويض السيارة) أولاً."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"لا يمكن الانتقال للمرحلة التالية. يجب تحديد \"مبلغ الرسوم الحكومية "
+"الإجمالي\" أولاً (رسوم نقل الكفالة)."
+msgstr ""
+"لا يمكن الانتقال للمرحلة التالية. يجب تحديد \"مبلغ الرسوم الحكومية "
+"الإجمالي\" أولاً (رسوم نقل الكفالة)."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"لا يمكن الانتقال للمرحلة التالية. يجب تحديد المشروع/المنصة (مثال: كيتا، "
+"هنقرستيشن) التي سيعمل عليها المندوب أولاً."
+msgstr ""
+"لا يمكن الانتقال للمرحلة التالية. يجب تحديد المشروع/المنصة (مثال: كيتا، "
+"هنقرستيشن) التي سيعمل عليها المندوب أولاً."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"لا يمكن الانتقال للمرحلة التالية. يجب تخصيص سيارة متاحة من الأسطول.\n"
+"في حال عدم توفر سيارة لا يمكن متابعة الطلب."
+msgstr ""
+"لا يمكن الانتقال للمرحلة التالية. يجب تخصيص سيارة متاحة من الأسطول.\n"
+"في حال عدم توفر سيارة لا يمكن متابعة الطلب."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"لا يمكن الانتقال للمرحلة التالية. يجب تسجيل الرسوم الحكومية أولاً (زر "
+"\"تسجيل الرسوم الحكومية\")."
+msgstr ""
+"لا يمكن الانتقال للمرحلة التالية. يجب تسجيل الرسوم الحكومية أولاً (زر "
+"\"تسجيل الرسوم الحكومية\")."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid ""
+"لا يمكن القفز عدة مراحل دفعة واحدة (مثلاً بالنقر على فقاعة متقدمة في شريط "
+"الحالة). استخدم الأزرار الصريحة للانتقال خطوة بخطوة."
+msgstr ""
+"لا يمكن القفز عدة مراحل دفعة واحدة (مثلاً بالنقر على فقاعة متقدمة في شريط "
+"الحالة). استخدم الأزرار الصريحة للانتقال خطوة بخطوة."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"لا يمكن القفز عدة مراحل دفعة واحدة.\n"
+"استخدم أزرار الموافقة/الانتقال للمرحلة التالية للتنقل خطوة بخطوة."
+msgstr ""
+"لا يمكن القفز عدة مراحل دفعة واحدة.\n"
+"استخدم أزرار الموافقة/الانتقال للمرحلة التالية للتنقل خطوة بخطوة."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"لا يمكن تعديل \"الشركة\" مباشرة على طلب التوظيف.\n"
+"تُشتق تلقائياً من المشروع/المنصة المختارة - لتصحيحها، عدّل المشروع نفسه أو شركته."
+msgstr ""
+"لا يمكن تعديل \"الشركة\" مباشرة على طلب التوظيف.\n"
+"تُشتق تلقائياً من المشروع/المنصة المختارة - لتصحيحها، عدّل المشروع نفسه أو شركته."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"لا يمكن تعديل \"المشروع/المنصة\" بعد مرحلة \"مراجعة مسؤول المشروع\".\n"
+"إن كانت المنصة خاطئة، استخدم \"إرجاع للتصحيح\" لإرجاع الطلب لمرحلة \"مراجعة مسؤول المشروع\" أولاً."
+msgstr ""
+"لا يمكن تعديل \"المشروع/المنصة\" بعد مرحلة \"مراجعة مسؤول المشروع\".\n"
+"إن كانت المنصة خاطئة، استخدم \"إرجاع للتصحيح\" لإرجاع الطلب لمرحلة \"مراجعة مسؤول المشروع\" أولاً."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee.py:0
+msgid ""
+"لا يمكن تعديل \"المنصة الحالية\" مباشرة.\n"
+"استخدم زر \"طلب نقل لمنصة أخرى\" في سجل الموظف - يمر بخط سير موافقة (مسؤول المنصة الحالية ثم مدير العمليات) بدل التعديل المباشر."
+msgstr ""
+"لا يمكن تعديل \"المنصة الحالية\" مباشرة.\n"
+"استخدم زر \"طلب نقل لمنصة أخرى\" في سجل الموظف - يمر بخط سير موافقة (مسؤول المنصة الحالية ثم مدير العمليات) بدل التعديل المباشر."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"لا يمكن تعديل \"مسؤول المشروع\" مباشرة على طلب التوظيف.\n"
+"يُشتق تلقائياً من مسؤول المشروع/المنصة المختارة - لتصحيحه، عدّل المسؤول على شاشة المشروع نفسه."
+msgstr ""
+"لا يمكن تعديل \"مسؤول المشروع\" مباشرة على طلب التوظيف.\n"
+"يُشتق تلقائياً من مسؤول المشروع/المنصة المختارة - لتصحيحه، عدّل المسؤول على شاشة المشروع نفسه."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid ""
+"لا يمكن تعديل بيانات طلب النقل (الموظف/المنصة الجديدة/التاريخ) بعد \"إرسال "
+"للمراجعة\" - أعد الطلب لمسودة أولاً (زر \"إعادة لمسودة\") إن احتجت تصحيحها."
+msgstr ""
+"لا يمكن تعديل بيانات طلب النقل (الموظف/المنصة الجديدة/التاريخ) بعد \"إرسال "
+"للمراجعة\" - أعد الطلب لمسودة أولاً (زر \"إعادة لمسودة\") إن احتجت تصحيحها."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee.py:0
+msgid ""
+"لا يمكن حذف الموظف \"%(employee)s\" نهائياً - له %(description)s مرتبطة به "
+"يجب الحفاظ على سجلها للتدقيق. استخدم \"أرشفة\" بدلاً من الحذف."
+msgstr ""
+"لا يمكن حذف الموظف \"%(employee)s\" نهائياً - له %(description)s مرتبطة به "
+"يجب الحفاظ على سجلها للتدقيق. استخدم \"أرشفة\" بدلاً من الحذف."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/fleet_vehicle_branch_history.py:0
+msgid ""
+"لا يمكن حذف سجلات تاريخ الفروع نهائياً، للحفاظ على سجل تدقيق ومراجعة كامل. "
+"أنشئ عملية نقل جديدة لتصحيح الفترة الحالية إن احتجت ذلك."
+msgstr ""
+"لا يمكن حذف سجلات تاريخ الفروع نهائياً، للحفاظ على سجل تدقيق ومراجعة كامل. "
+"أنشئ عملية نقل جديدة لتصحيح الفترة الحالية إن احتجت ذلك."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_history.py:0
+msgid ""
+"لا يمكن حذف سجلات تاريخ المنصات نهائياً، للحفاظ على سجل تدقيق ومراجعة كامل. "
+"أنشئ طلب نقل منصة جديداً لتصحيح الفترة الحالية إن احتجت ذلك."
+msgstr ""
+"لا يمكن حذف سجلات تاريخ المنصات نهائياً، للحفاظ على سجل تدقيق ومراجعة كامل. "
+"أنشئ طلب نقل منصة جديداً لتصحيح الفترة الحالية إن احتجت ذلك."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid ""
+"لا يمكن حذف طلب النقل نهائياً بعد مغادرة \"مسودة\" - للحفاظ على سجل تدقيق "
+"ومراجعة كامل. استخدم زر \"إلغاء\" بدلاً من ذلك."
+msgstr ""
+"لا يمكن حذف طلب النقل نهائياً بعد مغادرة \"مسودة\" - للحفاظ على سجل تدقيق "
+"ومراجعة كامل. استخدم زر \"إلغاء\" بدلاً من ذلك."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"لا يمكن حذف طلبات التوظيف نهائياً إلا بعد رفضها أولاً، للحفاظ على سجل تدقيق "
+"ومراجعة كامل. استخدم \"رفض\" لأرشفة الطلب، ثم يمكن حذفه بعد ذلك إن لزم."
+msgstr ""
+"لا يمكن حذف طلبات التوظيف نهائياً إلا بعد رفضها أولاً، للحفاظ على سجل تدقيق "
+"ومراجعة كامل. استخدم \"رفض\" لأرشفة الطلب، ثم يمكن حذفه بعد ذلك إن لزم."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "لا يمكن ربط الطلب بسيارة \"%s\" - تابعة لفرع \"%s\"، بينما الطلب على فرع \"%s\"."
+msgstr "لا يمكن ربط الطلب بسيارة \"%s\" - تابعة لفرع \"%s\"، بينما الطلب على فرع \"%s\"."
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,description:recruitment_workflow.stage_paid
+msgid ""
+"لا ينتقل الطلب للمرحلة التالية إلا بعد تأكيد المحاسب لاستلام/تنفيذ السداد "
+"فعلياً."
+msgstr ""
+"لا ينتقل الطلب للمرحلة التالية إلا بعد تأكيد المحاسب لاستلام/تنفيذ السداد "
+"فعلياً."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__recruitment_request__car_request_state__none
+msgid "لا يوجد طلب"
+msgstr "لا يوجد طلب"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "لا يوجد طلب سيارة بانتظار الاستلام."
+msgstr "لا يوجد طلب سيارة بانتظار الاستلام."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "لا يوجد عقد مرتبط بهذا الطلب."
+msgstr "لا يوجد عقد مرتبط بهذا الطلب."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/wizard/fleet_vehicle_branch_bulk_transfer_wizard.py:0
+msgid "لم يتم تحديد أي سيارة."
+msgstr "لم يتم تحديد أي سيارة."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/wizard/hr_employee_platform_bulk_assign_wizard.py:0
+msgid "لم يتم تحديد أي موظف."
+msgstr "لم يتم تحديد أي موظف."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "ليست لديك الصلاحية للقيام بهذا الإجراء."
+msgstr "ليست لديك الصلاحية للقيام بهذا الإجراء."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"ليست لديك الصلاحية للموافقة على هذه المرحلة (%(stage)s).\n"
+"هذه المرحلة تتطلب موافقة \"%(assignee)s\" تحديداً (مسؤول المشروع المعيّن على هذا الطلب)."
+msgstr ""
+"ليست لديك الصلاحية للموافقة على هذه المرحلة (%(stage)s).\n"
+"هذه المرحلة تتطلب موافقة \"%(assignee)s\" تحديداً (مسؤول المشروع المعيّن على هذا الطلب)."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"ليست لديك الصلاحية للموافقة على هذه المرحلة (%s).\n"
+"هذه المرحلة تتطلب صلاحية المستوى المناسب."
+msgstr ""
+"ليست لديك الصلاحية للموافقة على هذه المرحلة (%s).\n"
+"هذه المرحلة تتطلب صلاحية المستوى المناسب."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__fee_amount
+msgid "مبلغ الرسوم"
+msgstr "مبلغ الرسوم"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__gov_fee_amount
+msgid "مبلغ الرسوم الحكومية الإجمالي"
+msgstr "مبلغ الرسوم الحكومية الإجمالي"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__fleet_vehicle__recruitment_state__available
+msgid "متاحة"
+msgstr "متاحة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_project_project__is_recruitment_open
+msgid "متاحة للتسجيل العام على الموقع"
+msgstr "متاحة للتسجيل العام على الموقع"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__recruitment_request__marital__married
+msgid "متزوج"
+msgstr "متزوج"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_transfer_reset_wizard_form
+msgid "مثال: بيانات خاطئة، تراجع الموظف عن النقل..."
+msgstr "مثال: بيانات خاطئة، تراجع الموظف عن النقل..."
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_bulk_assign_wizard_form
+msgid "مثال: ربط رجعي - بيانات قديمة"
+msgstr "مثال: ربط رجعي - بيانات قديمة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__fleet_vehicle__recruitment_state__reserved
+msgid "محجوزة (طلب توظيف)"
+msgstr "محجوزة (طلب توظيف)"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__fleet_vehicle__recruitment_state__assigned
+msgid "مخصصة"
+msgstr "مخصصة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__hr_employee_cost_type__category__government
+msgid "مدفوعات حكومية"
+msgstr "مدفوعات حكومية"
+
+#. module: recruitment_workflow
+#: model:res.groups,name:recruitment_workflow.group_recruitment_workflow_operations
+msgid "مدير العمليات"
+msgstr "مدير العمليات"
+
+#. module: recruitment_workflow
+#: model:res.groups,name:recruitment_workflow.group_recruitment_workflow_manager
+msgid "مدير سير العمل (كامل الصلاحيات)"
+msgstr "مدير سير العمل (كامل الصلاحيات)"
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,name:recruitment_workflow.stage_operations_review
+msgid "مراجعة مدير العمليات"
+msgstr "مراجعة مدير العمليات"
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,description:recruitment_workflow.stage_operations_review
+msgid "مراجعة مدير العمليات: موافقة / رفض."
+msgstr "مراجعة مدير العمليات: موافقة / رفض."
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,description:recruitment_workflow.stage_project_review
+msgid "مراجعة مسؤول المشروع: موافقة / تعديل."
+msgstr "مراجعة مسؤول المشروع: موافقة / تعديل."
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_recruitment_stage
+msgid "مرحلة طلب التوظيف"
+msgstr "مرحلة طلب التوظيف"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__is_closing_stage
+msgid "مرحلة نهائية"
+msgstr "مرحلة نهائية"
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_recruitment_request_attachment
+msgid "مرفق طلب التوظيف"
+msgstr "مرفق طلب التوظيف"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__recruitment_request__state__rejected
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_search
+msgid "مرفوض"
+msgstr "مرفوض"
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_recruitment_workflow_analytic_mixin
+msgid "مزيج: حساب تحليلي من المشروع/المنصة"
+msgstr "مزيج: حساب تحليلي من المشروع/المنصة"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__project_manager_id
+#: model:res.groups,name:recruitment_workflow.group_recruitment_workflow_project_manager
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_search
+msgid "مسؤول المشروع"
+msgstr "مسؤول المشروع"
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_recruitment_return_wizard
+msgid "مساعد إرجاع طلب التوظيف لمرحلة سابقة"
+msgstr "مساعد إرجاع طلب التوظيف لمرحلة سابقة"
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_recruitment_reject_wizard
+msgid "مساعد رفض طلب التوظيف"
+msgstr "مساعد رفض طلب التوظيف"
+
+#. module: recruitment_workflow
+#: model:res.groups,name:recruitment_workflow.group_recruitment_workflow_user
+msgid "مستخدم - طلبات التوظيف"
+msgstr "مستخدم - طلبات التوظيف"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__hr_employee_platform_transfer_request__state__draft
+msgid "مسودة"
+msgstr "مسودة"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_search
+msgid "مشاريعي"
+msgstr "مشاريعي"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid "مطلوب مراجعتك: طلب نقل موظف بين المنصات (%s)"
+msgstr "مطلوب مراجعتك: طلب نقل موظف بين المنصات (%s)"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__fold
+msgid "مطوي في Kanban"
+msgstr "مطوي في Kanban"
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_hr_employee_platform_transfer_reset_wizard
+msgid "معالج إرجاع طلب نقل المنصة لمسودة"
+msgstr "معالج إرجاع طلب نقل المنصة لمسودة"
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_fleet_vehicle_branch_transfer_wizard
+msgid "معالج نقل سيارة لفرع آخر"
+msgstr "معالج نقل سيارة لفرع آخر"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__contract_id_int
+msgid "معرّف العقد"
+msgstr "معرّف العقد"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__contract_id_int
+msgid "معرّف رقمي للعقد المرتبط (للاستخدام الداخلي)."
+msgstr "معرّف رقمي للعقد المرتبط (للاستخدام الداخلي)."
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "معلومات شخصية"
+msgstr "معلومات شخصية"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard_line__date_start
+msgid ""
+"مقترح تلقائياً من تاريخ تعيين الموظف (تاريخ إنشاء سجله)، ويمكن تعديله لكل "
+"موظف على حدة قبل التأكيد."
+msgstr ""
+"مقترح تلقائياً من تاريخ تعيين الموظف (تاريخ إنشاء سجله)، ويمكن تعديله لكل "
+"موظف على حدة قبل التأكيد."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__recruitment_request__state__done
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_search
+msgid "مكتمل"
+msgstr "مكتمل"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_attachment_type__description
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_compensation_type__description
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_compensation_type_form
+msgid "ملاحظات"
+msgstr "ملاحظات"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_bulk_transfer_wizard__note
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_transfer_wizard__note
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_bulk_assign_wizard__note
+msgid "ملاحظة"
+msgstr "ملاحظة"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_branch_bulk_transfer_wizard_form
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_branch_transfer_wizard_form
+msgid "ملاحظة اختيارية..."
+msgstr "ملاحظة اختيارية..."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_history__note
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_platform_history__note
+msgid "ملاحظة النقل"
+msgstr "ملاحظة النقل"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__hr_employee_platform_transfer_request__state__cancel
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_transfer_request_form
+msgid "ملغى"
+msgstr "ملغى"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "موافقة (مدير العمليات)"
+msgstr "موافقة (مدير العمليات)"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "موافقة (مسؤول المشروع)"
+msgstr "موافقة (مسؤول المشروع)"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_transfer_request_form
+msgid "موافقة مسؤول المنصة الحالية"
+msgstr "موافقة مسؤول المنصة الحالية"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_platform_bulk_assign_wizard_form
+msgid ""
+"موظف بالمنصة المختارة،\n"
+"                    كل واحد بتاريخ بداية خاص به (مقترح تلقائياً من تاريخ تعيينه،\n"
+"                    وقابل للتعديل لكل موظف قبل التأكيد)."
+msgstr ""
+"موظف بالمنصة المختارة،\n"
+"                    كل واحد بتاريخ بداية خاص به (مقترح تلقائياً من تاريخ تعيينه،\n"
+"                    وقابل للتعديل لكل موظف قبل التأكيد)."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__attachment_progress
+msgid "نسبة اكتمال المرفقات"
+msgstr "نسبة اكتمال المرفقات"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_hr_employee_cost_type__active
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_attachment_type__active
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_compensation_type__active
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__active
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_stage__active
+msgid "نشط"
+msgstr "نشط"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__compensation_type_id
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_compensation_type_form
+msgid "نظام العمل"
+msgstr "نظام العمل"
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_recruitment_compensation_type
+msgid "نظام العمل / نظام الأجر للمندوب"
+msgstr "نظام العمل / نظام الأجر للمندوب"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_request_form
+msgid "نظام العمل والتطبيق"
+msgstr "نظام العمل والتطبيق"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__compensation_type_id
+msgid ""
+"نظام العمل/الأجر الذي سيعمل به المندوب (بالطلبات، بالعمولة، راتب ثابت...). "
+"تُفلتَر الخيارات المتاحة هنا تلقائياً حسب المشروع/المنصة المختارة أعلاه."
+msgstr ""
+"نظام العمل/الأجر الذي سيعمل به المندوب (بالطلبات، بالعمولة، راتب ثابت...). "
+"تُفلتَر الخيارات المتاحة هنا تلقائياً حسب المشروع/المنصة المختارة أعلاه."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_bulk_transfer_wizard__company_id
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_transfer_wizard__company_id
+msgid "نقل إلى فرع"
+msgstr "نقل إلى فرع"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__hr_employee_cost_type__category__transfer
+msgid "نقل بين المنصات"
+msgstr "نقل بين المنصات"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_branch_bulk_transfer_wizard_form
+msgid "نقل عدة سيارات لفرع آخر"
+msgstr "نقل عدة سيارات لفرع آخر"
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_fleet_vehicle_branch_bulk_transfer_wizard
+msgid "نقل عدة سيارات لفرع آخر دفعة واحدة"
+msgstr "نقل عدة سيارات لفرع آخر دفعة واحدة"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/fleet_vehicle.py:0
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_branch_transfer_wizard_form
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_fleet_vehicle_form_inherit_recruitment
+msgid "نقل لفرع آخر"
+msgstr "نقل لفرع آخر"
+
+#. module: recruitment_workflow
+#: model:ir.actions.act_window,name:recruitment_workflow.action_fleet_vehicle_branch_bulk_transfer
+msgid "نقل لفرع آخر (دفعة واحدة)"
+msgstr "نقل لفرع آخر (دفعة واحدة)"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__fee_cost_type_id
+msgid "نوع الرسوم"
+msgstr "نوع الرسوم"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__fee_cost_type_id
+msgid ""
+"نوع الرسوم المطلوب سدادها (تأشيرة، رسوم توظيف، إلخ) - يحدد الحساب المحاسبي "
+"ودفتر اليومية المستخدم عند إصدار الفاتورة."
+msgstr ""
+"نوع الرسوم المطلوب سدادها (تأشيرة، رسوم توظيف، إلخ) - يحدد الحساب المحاسبي "
+"ودفتر اليومية المستخدم عند إصدار الفاتورة."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request_attachment__attachment_type_id
+msgid "نوع المرفق"
+msgstr "نوع المرفق"
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_recruitment_attachment_type
+msgid "نوع المرفق المطلوب في طلب التوظيف"
+msgstr "نوع المرفق المطلوب في طلب التوظيف"
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_hr_employee_cost_type_form
+msgid "نوع تكلفة الموظف"
+msgstr "نوع تكلفة الموظف"
+
+#. module: recruitment_workflow
+#: model:ir.model,name:recruitment_workflow.model_hr_employee_cost_type
+msgid "نوع تكلفة الموظف (تجديد إقامة، نقل، أخرى...)"
+msgstr "نوع تكلفة الموظف (تجديد إقامة، نقل، أخرى...)"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_fleet_vehicle_branch_history__moved_by
+msgid "نُقلت بواسطة"
+msgstr "نُقلت بواسطة"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "هذا الطلب في المرحلة الأولى، لا توجد مرحلة سابقة للإرجاع إليها."
+msgstr "هذا الطلب في المرحلة الأولى، لا توجد مرحلة سابقة للإرجاع إليها."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/wizard/hr_employee_platform_bulk_assign_wizard.py:0
+msgid ""
+"هذا المعالج مخصَّص لربط موظفين قدامى ليس لهم منصة أصلاً فقط. الموظف/الموظفون التالون يعملون بالفعل على منصة أخرى - استخدم \"طلب نقل لمنصة أخرى\" من سجل كل واحد منهم بدلاً من ذلك:\n"
+"%s"
+msgstr ""
+"هذا المعالج مخصَّص لربط موظفين قدامى ليس لهم منصة أصلاً فقط. الموظف/الموظفون التالون يعملون بالفعل على منصة أخرى - استخدم \"طلب نقل لمنصة أخرى\" من سجل كل واحد منهم بدلاً من ذلك:\n"
+"%s"
+
+#. module: recruitment_workflow
+#: model_terms:ir.actions.act_window,help:recruitment_workflow.action_recruitment_request_fleet
+msgid ""
+"هذه الطلبات قادمة من موديول التوظيف، وتحتاج استلام وموافقة\n"
+"                مسؤول الأسطول قبل أن يكمل الموظف الجديد إجراءاته."
+msgstr ""
+"هذه الطلبات قادمة من موديول التوظيف، وتحتاج استلام وموافقة\n"
+"                مسؤول الأسطول قبل أن يكمل الموظف الجديد إجراءاته."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid "هذه الموافقة تتطلب مسؤول المنصة الحالية للموظف تحديداً (%s)."
+msgstr "هذه الموافقة تتطلب مسؤول المنصة الحالية للموظف تحديداً (%s)."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "هذه هي المرحلة الأخيرة، لا توجد مرحلة تالية."
+msgstr "هذه هي المرحلة الأخيرة، لا توجد مرحلة تالية."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields.selection,name:recruitment_workflow.selection__hr_employee_platform_transfer_request__state__pm_approved
+msgid "وافق مسؤول المنصة الحالية"
+msgstr "وافق مسؤول المنصة الحالية"
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_return_wizard__reason
+msgid "وضّح البيانات الناقصة أو غير الصحيحة المطلوب تصحيحها."
+msgstr "وضّح البيانات الناقصة أو غير الصحيحة المطلوب تصحيحها."
+
+#. module: recruitment_workflow
+#: model_terms:ir.ui.view,arch_db:recruitment_workflow.view_recruitment_return_wizard_form
+msgid "وضّح البيانات الناقصة أو غير الصحيحة المطلوب تصحيحها..."
+msgstr "وضّح البيانات الناقصة أو غير الصحيحة المطلوب تصحيحها..."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_transfer_reset_wizard__reason
+msgid ""
+"وضّح سبب إعادة الطلب لمسودة (مثال: بيانات خاطئة، تراجع الموظف عن النقل)."
+msgstr ""
+"وضّح سبب إعادة الطلب لمسودة (مثال: بيانات خاطئة، تراجع الموظف عن النقل)."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_fleet_vehicle_branch_history__date_end
+msgid "يبقى فارغاً طالما السيارة لا تزال تابعة لهذا الفرع حالياً."
+msgstr "يبقى فارغاً طالما السيارة لا تزال تابعة لهذا الفرع حالياً."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_history__date_end
+msgid "يبقى فارغاً طالما المندوب لا يزال يعمل على هذه المنصة حالياً."
+msgstr "يبقى فارغاً طالما المندوب لا يزال يعمل على هذه المنصة حالياً."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_stage__fold
+msgid "يتم طي العمود في عرض كانبان افتراضياً."
+msgstr "يتم طي العمود في عرض كانبان افتراضياً."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__identification_id
+msgid "يجب أن يتكون من 10 أرقام ويبدأ بالرقم 1 أو 2."
+msgstr "يجب أن يتكون من 10 أرقام ويبدأ بالرقم 1 أو 2."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/wizard/recruitment_return_wizard.py:0
+msgid "يجب إدخال سبب الإرجاع."
+msgstr "يجب إدخال سبب الإرجاع."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/wizard/recruitment_reject_wizard.py:0
+msgid "يجب إدخال سبب الرفض."
+msgstr "يجب إدخال سبب الرفض."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/wizard/fleet_vehicle_branch_bulk_transfer_wizard.py:0
+#: code:addons/recruitment_workflow/wizard/fleet_vehicle_branch_transfer_wizard.py:0
+msgid "يجب اختيار الفرع المراد النقل إليه."
+msgstr "يجب اختيار الفرع المراد النقل إليه."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/wizard/recruitment_return_wizard.py:0
+msgid "يجب اختيار المرحلة المراد الإرجاع إليها."
+msgstr "يجب اختيار المرحلة المراد الإرجاع إليها."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "يجب اختيار سيارة متاحة قبل التفويض."
+msgstr "يجب اختيار سيارة متاحة قبل التفويض."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/wizard/recruitment_return_wizard.py:0
+msgid "يجب اختيار مرحلة سابقة للمرحلة الحالية."
+msgstr "يجب اختيار مرحلة سابقة للمرحلة الحالية."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "يجب استلام الطلب أولاً قبل التفويض."
+msgstr "يجب استلام الطلب أولاً قبل التفويض."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/wizard/fleet_vehicle_branch_transfer_wizard.py:0
+msgid "يجب تحديد السيارة."
+msgstr "يجب تحديد السيارة."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid "يجب توضيح سبب إعادة الطلب لمسودة."
+msgstr "يجب توضيح سبب إعادة الطلب لمسودة."
+
+#. module: recruitment_workflow
+#: model:recruitment.stage,description:recruitment_workflow.stage_car_request
+msgid ""
+"يربط مع أسطول السيارات المتاحة. في حال وجود سيارات متاحة يُرسل الطلب لقسم "
+"الأسطول لاستلامه والتفويض، ثم يعود لمسؤول المشروع. في حال عدم وجود سيارة لا "
+"يقبل الانتقال للخطوة التالية."
+msgstr ""
+"يربط مع أسطول السيارات المتاحة. في حال وجود سيارات متاحة يُرسل الطلب لقسم "
+"الأسطول لاستلامه والتفويض، ثم يعود لمسؤول المشروع. في حال عدم وجود سيارة لا "
+"يقبل الانتقال للخطوة التالية."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid "يمكن إرسال طلبات النقل في حالة \"مسودة\" فقط للمراجعة."
+msgstr "يمكن إرسال طلبات النقل في حالة \"مسودة\" فقط للمراجعة."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid "يمكن اعتماد مدير العمليات بعد موافقة مسؤول المنصة الحالية فقط."
+msgstr "يمكن اعتماد مدير العمليات بعد موافقة مسؤول المنصة الحالية فقط."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/hr_employee_platform_transfer_request.py:0
+msgid "يمكن موافقة مسؤول المنصة الحالية في حالة \"بانتظار الموافقة\" فقط."
+msgstr "يمكن موافقة مسؤول المنصة الحالية في حالة \"بانتظار الموافقة\" فقط."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid "يوجد سجل موظف مرتبط بهذا الطلب أصلاً."
+msgstr "يوجد سجل موظف مرتبط بهذا الطلب أصلاً."
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/wizard/hr_employee_platform_bulk_assign_wizard.py:0
+msgid "يوجد سطر بدون موظف محدد - احذفه قبل التأكيد."
+msgstr "يوجد سطر بدون موظف محدد - احذفه قبل التأكيد."
+
+#. module: recruitment_workflow
+#: model:ir.model.constraint,message:recruitment_workflow.constraint_recruitment_request_identification_uniq
+msgid ""
+"يوجد طلب توظيف آخر بنفس رقم الهوية! رقم الهوية يمثّل شخصاً حقيقياً واحداً "
+"ولا يمكن أن يتكرر عبر أي شركة/منصة."
+msgstr ""
+"يوجد طلب توظيف آخر بنفس رقم الهوية! رقم الهوية يمثّل شخصاً حقيقياً واحداً "
+"ولا يمكن أن يتكرر عبر أي شركة/منصة."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__has_contract
+msgid "يوجد عقد"
+msgstr "يوجد عقد"
+
+#. module: recruitment_workflow
+#. odoo-python
+#: code:addons/recruitment_workflow/models/recruitment_request.py:0
+msgid ""
+"يوجد موظف مسجّل بالفعل بنفس رقم الهوية (%(id)s): %(emp)s.\n"
+"لا يمكن متابعة الطلب لتفادي التكرار."
+msgstr ""
+"يوجد موظف مسجّل بالفعل بنفس رقم الهوية (%(id)s): %(emp)s.\n"
+"لا يمكن متابعة الطلب لتفادي التكرار."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__id_expiry_date_hijri
+msgid "يُحسب تلقائياً من التاريخ الميلادي."
+msgstr "يُحسب تلقائياً من التاريخ الميلادي."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee__analytic_account_id
+#: model:ir.model.fields,help:recruitment_workflow.field_hr_employee_platform_history__analytic_account_id
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__analytic_account_id
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_workflow_analytic_mixin__analytic_account_id
+msgid "يُسحب تلقائياً من الحساب التحليلي المرتبط بالمشروع/المنصة المختارة."
+msgstr "يُسحب تلقائياً من الحساب التحليلي المرتبط بالمشروع/المنصة المختارة."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,help:recruitment_workflow.field_recruitment_request__gov_fee_settled
+msgid ""
+"يُضبط تلقائياً بعد تسجيل الرسوم الحكومية - يمنع تكرار العملية لهذا الطلب."
+msgstr ""
+"يُضبط تلقائياً بعد تسجيل الرسوم الحكومية - يمنع تكرار العملية لهذا الطلب."
+
+#. module: recruitment_workflow
+#: model:ir.model.fields,field_description:recruitment_workflow.field_recruitment_request__is_import_request
+msgid "طلب استقدام"
+msgstr "طلب استقدام"
