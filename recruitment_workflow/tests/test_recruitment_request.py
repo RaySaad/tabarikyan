@@ -107,26 +107,26 @@ class TestRecruitmentRequest(TransactionCase):
             stage.unlink()
 
     def test_request_cannot_be_deleted_even_by_manager(self):
-        """طلبات التوظيف سجل تدقيق دائم - يُمنع حذفها نهائياً ما دامت غير
-        مرفوضة، حتى لمن يملك صلاحية الحذف على مستوى ir.model.access (مدير
-        سير العمل كامل الصلاحيات)؛ الأرشفة (الرفض) هي البديل الوحيد."""
+        """طلبات التوظيف سجل تدقيق دائم - يُمنع حذفها نهائياً بلا أي
+        استثناء (حتى المرفوضة - استثناء سابق أُلغي بطلب صريح)، حتى لمن
+        يملك صلاحية الحذف على مستوى ir.model.access (مدير سير العمل كامل
+        الصلاحيات)؛ الأرشفة (الرفض) هي البديل الوحيد."""
         self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(identification_id='1123456785', email='y@example.com')
 
         with self.assertRaises(UserError):
             request.unlink()
 
-    def test_rejected_request_can_be_deleted_by_manager(self):
-        """طلب استُثني صراحة: يُسمح بالحذف النهائي للطلبات المرفوضة تحديداً
-        (بعد الأرشفة عبر action_reject)، بخلاف أي حالة أخرى."""
+    def test_rejected_request_cannot_be_deleted_either(self):
+        """لا استثناء للطلبات المرفوضة تحديداً - سجل تدقيق دائم مثل أي
+        حالة أخرى (كان هناك استثناء سابق، أُلغي بطلب صريح)."""
         self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(identification_id='1123456786', email='y2@example.com')
         request.action_reject(reason='بيانات غير صحيحة')
         self.assertEqual(request.state, 'rejected')
 
-        request.unlink()
-
-        self.assertFalse(request.exists())
+        with self.assertRaises(UserError):
+            request.unlink()
 
     def test_duplicate_check_matches_archived_employee(self):
         """_check_duplicate_employee يجب أن يكتشف التكرار حتى لو كان

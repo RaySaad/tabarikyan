@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+import calendar
+from datetime import timedelta
+
+from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 
@@ -138,6 +141,41 @@ class BankSettlementMixin(models.AbstractModel):
              'نفس منطق الفروع المستخدم في كل شاشات المحاسبة القياسية '
              'بـ Odoo، لا تقتصر على دفاتر فرعكم فقط.',
     )
+    # -- الدفعة المقدمة (استهلاك دوري مع تتبع تحليلي حسب منصة المندوب) ---
+    # طلب صريح: مصاريف تُدفع مقدماً لكن تخص المندوب على مدى فترة زمنية
+    # بالأيام (كرت العمل: 90/180/270 يوماً، الفندق: بالأشهر...) - يجب أن
+    # يتوزع مصروفها تحليلياً حسب المنصة الفعلية للمندوب في كل فترة، لا
+    # منصته وقت السداد فقط (قد يتحوّل بين المنصات أثناء الفترة). بدل قيد
+    # فوري واحد (_create_settlement_move)، يُنشأ "أصل" في om_account_asset
+    # (المثبَّت أصلاً) بجدول استهلاك شهري - انظر _create_prepaid_asset
+    # وbank_settlement/models/account_asset.py لتفاصيل الآلية الكاملة.
+    is_prepaid = fields.Boolean(
+        string='دفعة مقدمة', tracking=True,
+        help='فعّلها إن كان هذا المبلغ يغطي فترة زمنية للمندوب (كرت عمل، '
+             'إقامة فندقية...) بدل مصروف فوري - يُوزَّع تحليلياً تلقائياً '
+             'حسب منصة المندوب الفعلية خلال الفترة، ويُسوَّى تلقائياً عند '
+             'أي نقل منصة أثناء سريانها.',
+    )
+    prepaid_days = fields.Integer(
+        string='عدد أيام التغطية', tracking=True,
+        help='الفترة التي يغطيها هذا المبلغ بالأيام بالضبط (مثال: 90، '
+             '180، 270) - وليس بالأشهر، حتى لو غير مطابقة لحدود الأشهر '
+             'التقويمية.',
+    )
+    prepaid_category_id = fields.Many2one(
+        'account.asset.category', string='فئة الدفعة المقدمة', tracking=True,
+        help='فئة الأصل (om_account_asset) المستخدَمة لجدولة الاستهلاك - '
+             'تحدد حساب "المصروفات المدفوعة مقدماً" (مثال: 114001) وحساب '
+             'المصروف الفعلي ودفتر اليومية. تُعَدّ مرة واحدة من إعدادات '
+             'المحاسبة (فئات الأصول).',
+    )
+    asset_id = fields.Many2one(
+        'account.asset.asset', string='جدول الاستهلاك', readonly=True,
+        copy=False,
+        help='سجل "الأصل" الناتج في om_account_asset - يحمل جدول القيود '
+             'الشهرية التلقائية لهذه الدفعة المقدمة.',
+    )
+
     move_id = fields.Many2one(
         'account.move', string='القيد المحاسبي', readonly=True, copy=False,
     )
@@ -470,8 +508,10 @@ class BankSettlementMixin(models.AbstractModel):
         self.write({'state': 'confirmed', 'returned_for_correction': False})
 
     def action_done(self):
-        """إتمام السداد/التحويل — ينشئ القيد المحاسبي إن لم يكن موجوداً.
-        متاح للمحاسب فما فوق (بعد اعتماد المدير العام مسبقاً)."""
+        """إتمام السداد/التحويل — ينشئ القيد المحاسبي إن لم يكن موجوداً
+        (أو جدول استهلاك "دفعة مقدمة" كامل إن كان is_prepaid مفعَّلاً -
+        انظر _create_prepaid_asset). متاح للمحاسب فما فوق (بعد اعتماد
+        المدير العام مسبقاً)."""
         for rec in self:
             if rec.state != 'confirmed':
                 raise UserError('يجب تأكيد السجل أولاً قبل إتمامه.')
@@ -479,9 +519,90 @@ class BankSettlementMixin(models.AbstractModel):
                 'bank_settlement.group_bank_settlement_reviewer',
                 'bank_settlement.group_bank_settlement_manager',
             )
-            if not rec.move_id:
+            if rec.is_prepaid:
+                if not rec.asset_id:
+                    rec.asset_id = rec._create_prepaid_asset()
+            elif not rec.move_id:
                 rec.move_id = rec._create_settlement_move()
         self.write({'state': 'done'})
+
+    def _compute_prepaid_schedule_lines(self, start_date, end_date, total_amount):
+        """يبني جدول استهلاك دقيق بالأيام (وليس بتقريب شهري) - لكل شهر
+        تقويمي يتقاطع مع [start_date, end_date]، يُحسَب مبلغه بنسبة عدد
+        أيام التداخل الفعلي مع إجمالي أيام الفترة كاملة، مهما كان عدد
+        الأيام (90، 180، 270، أو أي رقم آخر) ومهما كان يوم البداية.
+        السطر الأخير يمتص فرق التقريب (Rounding) ليبقى المجموع مطابقاً
+        تماماً للمبلغ الإجمالي دائماً. يُعيد قائمة
+        (period_start, period_end, amount)."""
+        total_days = (end_date - start_date).days + 1
+        if total_days <= 0:
+            raise UserError(_('فترة تغطية الدفعة المقدمة غير صحيحة.'))
+        currency_decimals = self.currency_id.decimal_places
+        lines = []
+        cur = start_date
+        remaining_amount = total_amount
+        while cur <= end_date:
+            month_last_day = calendar.monthrange(cur.year, cur.month)[1]
+            month_end = cur.replace(day=month_last_day)
+            period_end = min(month_end, end_date)
+            days_in_period = (period_end - cur).days + 1
+            if period_end >= end_date:
+                amount = remaining_amount  # السطر الأخير: يمتص فرق التقريب
+            else:
+                amount = round(total_amount * days_in_period / total_days, currency_decimals)
+            remaining_amount -= amount
+            lines.append((cur, period_end, amount))
+            cur = period_end + timedelta(days=1)
+        return lines
+
+    def _create_prepaid_asset(self):
+        """ينشئ سجل "أصل" (om_account_asset) بجدول استهلاك شهري دقيق
+        بالأيام بدل القيد الفوري المعتاد - انظر _compute_prepaid_
+        schedule_lines للحساب، وaccount_asset.py._prepare_move للتوزيع
+        التحليلي الديناميكي حسب منصة المندوب عند كل قيد دوري."""
+        self.ensure_one()
+        if not self.prepaid_category_id:
+            raise UserError(_('يجب تحديد "فئة الدفعة المقدمة" أولاً.'))
+        if self.prepaid_days <= 0:
+            raise UserError(_('يجب تحديد "عدد أيام التغطية" أولاً (أكبر من صفر).'))
+        if not self.employee_id:
+            raise UserError(_('يجب تحديد الموظف/المندوب أولاً.'))
+        start_date = self.transfer_date or fields.Date.context_today(self)
+        end_date = start_date + timedelta(days=self.prepaid_days - 1)
+        schedule = self._compute_prepaid_schedule_lines(start_date, end_date, self.total_amount)
+
+        Asset = self.env['account.asset.asset'].sudo()
+        asset = Asset.create({
+            'name': self.name,
+            'value': self.total_amount,
+            'currency_id': self.currency_id.id,
+            'company_id': self.company_id.id,
+            'category_id': self.prepaid_category_id.id,
+            'date': start_date,
+            'employee_id': self.employee_id.id,
+            'method_number': len(schedule),
+            'partner_id': self._get_settlement_partner_id(),
+        })
+        depreciated_so_far = 0.0
+        # account.asset.asset.create() يُنشئ جدولاً افتراضياً تلقائياً
+        # (compute_depreciation_board القياسي بأشهر متساوية) - نُفرغه هنا
+        # قبل كتابة جدولنا الدقيق بالأيام بدلاً منه، وإلا بقيت سطور
+        # زائدة خاطئة فوق سطورنا (اكتُشف بالاختبار الفعلي).
+        line_commands = [(5, 0, 0)]
+        for index, (period_start, period_end, amount) in enumerate(schedule):
+            depreciated_so_far += amount
+            line_commands.append((0, 0, {
+                'sequence': index + 1,
+                'name': '%s/%s' % (asset.name, index + 1),
+                'amount': amount,
+                'period_start_date': period_start,
+                'depreciation_date': period_end,
+                'remaining_value': asset.value - depreciated_so_far,
+                'depreciated_value': depreciated_so_far,
+            }))
+        asset.write({'depreciation_line_ids': line_commands})
+        asset.validate()
+        return asset
 
     def _get_returnable_stages(self):
         """قائمة مرتبة (من الأقرب للحالة الحالية إلى الأبعد) بأزواج

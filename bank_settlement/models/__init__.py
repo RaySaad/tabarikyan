@@ -13,3 +13,4 @@ from . import medical_insurance
 from . import representative_settlement
 from . import recruitment_request
 from . import recruitment_import_request
+from . import account_asset

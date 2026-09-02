@@ -138,6 +138,18 @@
                                 <field name="operating_system"/>
                             </group>
                         </group>
+                        <group string="الدفعة المقدمة">
+                            <group>
+                                <field name="is_prepaid" readonly="state != 'draft'"/>
+                                <field name="prepaid_days" invisible="not is_prepaid"
+                                       readonly="state != 'draft'"/>
+                                <field name="prepaid_category_id" invisible="not is_prepaid"
+                                       readonly="state != 'draft'"/>
+                            </group>
+                            <group invisible="not is_prepaid">
+                                <field name="asset_id" readonly="1"/>
+                            </group>
+                        </group>
                     </sheet>
                     <chatter/>
                 </form>

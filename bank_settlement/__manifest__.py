@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'السداد البنكي - Bank Settlement',
-    'version': '19.0.1.13.8',
+    'version': '19.0.1.14.0',
     'category': 'Accounting/Accounting',
     'summary': 'إدارة السلف، الرسوم الحكومية، تحويلات المركبات، التأمين الطبي، وتصفيات المناديب',
     'description': """
@@ -36,6 +36,11 @@ recruitment_workflow لبيانات المناديب (hr.employee) والمنص�
         'project',
         'analytic',
         'recruitment_workflow',
+        # اعتماد صريح - نمدّد account.asset.asset/account.asset.depreciation.
+        # line (انظر account_asset.py) لآلية "الدفعة المقدمة" الموزَّعة
+        # تحليلياً حسب منصة المندوب - يضمن تحميله دائماً قبل bank_settlement
+        # (نفس مبرر الاعتماد الصريح على hr_work_entry سابقاً).
+        'om_account_asset',
     ],
     'data': [
         'security/security.xml',
