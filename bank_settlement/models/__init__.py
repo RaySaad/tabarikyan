@@ -1,6 +1,8 @@
 from . import account_move
 from . import hr_employee
 from . import ir_cron
+from . import prepaid_category
+from . import prepaid_schedule
 from . import bank_settlement_mixin
 from . import advance_reason
 from . import advance
@@ -13,4 +15,3 @@ from . import medical_insurance
 from . import representative_settlement
 from . import recruitment_request
 from . import recruitment_import_request
-from . import account_asset

@@ -89,5 +89,9 @@
                   parent="menu_bank_settlement_config"
                   action="action_bank_settlement_advance_reason" sequence="50"/>
 
+        <menuitem id="menu_bank_settlement_config_prepaid_category" name="فئات الدفعة المقدمة"
+                  parent="menu_bank_settlement_config"
+                  action="action_bank_settlement_prepaid_category" sequence="60"/>
+
     </data>
 </odoo>

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============ فئة الدفعة المقدمة (إعدادات) ============ -->
+        <record id="view_bank_settlement_prepaid_category_list" model="ir.ui.view">
+            <field name="name">bank.settlement.prepaid.category.list</field>
+            <field name="model">bank.settlement.prepaid.category</field>
+            <field name="arch" type="xml">
+                <list string="فئات الدفعة المقدمة" editable="bottom">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="prepaid_account_id"/>
+                    <field name="expense_account_id"/>
+                    <field name="journal_id"/>
+                    <field name="active" column_invisible="True"/>
+                </list>
+            </field>
+        </record>
+        <record id="action_bank_settlement_prepaid_category" model="ir.actions.act_window">
+            <field name="name">فئات الدفعة المقدمة</field>
+            <field name="res_model">bank.settlement.prepaid.category</field>
+            <field name="view_mode">list</field>
+        </record>
+
+        <!-- ============ سطر استحقاق الدفعة المقدمة (عرض/تدقيق) ============ -->
+        <record id="view_bank_settlement_prepaid_line_list" model="ir.ui.view">
+            <field name="name">bank.settlement.prepaid.line.list</field>
+            <field name="model">bank.settlement.prepaid.line</field>
+            <field name="arch" type="xml">
+                <list string="جدول استحقاق الدفعة المقدمة" create="0">
+                    <field name="sequence"/>
+                    <field name="name"/>
+                    <field name="employee_id"/>
+                    <field name="period_start_date"/>
+                    <field name="period_end_date"/>
+                    <field name="amount" sum="الإجمالي"/>
+                    <field name="state" widget="badge"
+                           decoration-success="state == 'posted'"
+                           decoration-muted="state == 'draft'"/>
+                </list>
+            </field>
+        </record>
+        <record id="view_bank_settlement_prepaid_line_form" model="ir.ui.view">
+            <field name="name">bank.settlement.prepaid.line.form</field>
+            <field name="model">bank.settlement.prepaid.line</field>
+            <field name="arch" type="xml">
+                <form string="سطر استحقاق دفعة مقدمة" create="0" edit="0">
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_source" type="object"
+                                    class="oe_stat_button" icon="fa-file-text-o">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">سجل السداد المصدر</span>
+                                </div>
+                            </button>
+                            <button name="action_view_move" type="object"
+                                    class="oe_stat_button" icon="fa-book"
+                                    invisible="not move_id">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">قيد الاستحقاق</span>
+                                </div>
+                            </button>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="employee_id"/>
+                                <field name="category_id"/>
+                                <field name="state" widget="badge"/>
+                            </group>
+                            <group>
+                                <field name="period_start_date"/>
+                                <field name="period_end_date"/>
+                                <field name="amount"/>
+                                <field name="currency_id" invisible="1"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+    </data>
+</odoo>

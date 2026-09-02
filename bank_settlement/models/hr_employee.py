@@ -39,27 +39,27 @@ class HrEmployee(models.Model):
 
     def _settle_prepaid_lines_on_transfer(self, transfer_date):
         """عند نقل منصة فعلي، تُسوَّى فوراً (بلا مراجعة بشرية - طلب
-        صريح) أي فترة استهلاك "دفعة مقدمة" لم تُرحَّل بعد وتغطي تاريخ
+        صريح) أي فترة استحقاق "دفعة مقدمة" لم تُرحَّل بعد وتغطي تاريخ
         النقل: الجزء المنقضي حتى اليوم السابق للنقل (بنسبة الأيام
-        الفعلية من الفترة) يُنشأ له قيد فوري منفصل ويُرحَّل مباشرة -
-        تلقائياً يأخذ توزيع المنصة *القديمة* لأن تاريخه يقع ضمن فترتها
-        (انظر account_asset.py._prepare_move: يبحث بتاريخ القيد نفسه).
-        الجزء المتبقي يبقى كسطر واحد بنفس السطر الأصلي (فقط مبلغه
-        يُخفَّض)، يتبع المنصة الجديدة تلقائياً بنفس الآلية عند استحقاقه
-        لاحقاً - دون أي حاجة لإنشاء سطر جديد له أو التدخل يدوياً."""
+        الفعلية من الفترة) يُنشأ له سطر منفصل ويُرحَّل فوراً - تلقائياً
+        يأخذ توزيع المنصة *القديمة* لأن تاريخه يقع ضمن فترتها (انظر
+        prepaid_schedule.py._post_entry: يبحث بتاريخ نهاية فترة السطر
+        نفسه). الجزء المتبقي يبقى كسطر واحد بنفس السطر الأصلي (فقط
+        مبلغه وبداية فترته يُعدَّلان)، يتبع المنصة الجديدة تلقائياً بنفس
+        الآلية عند استحقاقه لاحقاً - دون أي حاجة لإنشاء سطر جديد له أو
+        التدخل يدوياً."""
         self.ensure_one()
-        Line = self.env['account.asset.depreciation.line'].sudo()
+        Line = self.env['bank.settlement.prepaid.line'].sudo()
         open_lines = Line.search([
-            ('asset_id.employee_id', '=', self.id),
-            ('asset_id.state', '=', 'open'),
-            ('move_id', '=', False),
+            ('employee_id', '=', self.id),
+            ('state', '=', 'draft'),
             ('period_start_date', '<=', transfer_date),
-            ('depreciation_date', '>=', transfer_date),
+            ('period_end_date', '>=', transfer_date),
         ])
         currency_decimals = self.env.company.currency_id.decimal_places
         for line in open_lines:
             period_start = line.period_start_date
-            period_end = line.depreciation_date
+            period_end = line.period_end_date
             total_days = (period_end - period_start).days + 1
             elapsed_days = (transfer_date - period_start).days
             if elapsed_days <= 0 or total_days <= 0:
@@ -70,11 +70,11 @@ class HrEmployee(models.Model):
                 continue
             settle_line = line.copy({
                 'amount': elapsed_amount,
-                'depreciation_date': transfer_date - timedelta(days=1),
+                'period_end_date': transfer_date - timedelta(days=1),
                 'period_start_date': period_start,
                 'name': _('%s - تسوية نقل منصة') % line.name,
             })
-            settle_line.create_move()
+            settle_line._post_entry()
             line.write({
                 'amount': remaining_amount,
                 'period_start_date': transfer_date,

@@ -146,9 +146,10 @@ class BankSettlementMixin(models.AbstractModel):
     # بالأيام (كرت العمل: 90/180/270 يوماً، الفندق: بالأشهر...) - يجب أن
     # يتوزع مصروفها تحليلياً حسب المنصة الفعلية للمندوب في كل فترة، لا
     # منصته وقت السداد فقط (قد يتحوّل بين المنصات أثناء الفترة). بدل قيد
-    # فوري واحد (_create_settlement_move)، يُنشأ "أصل" في om_account_asset
-    # (المثبَّت أصلاً) بجدول استهلاك شهري - انظر _create_prepaid_asset
-    # وbank_settlement/models/account_asset.py لتفاصيل الآلية الكاملة.
+    # فوري واحد (_create_settlement_move)، يُنشأ جدول استحقاق دوري
+    # (bank.settlement.prepaid.line - نموذج مملوك بالكامل لهذا الموديول،
+    # بلا أي اعتماد على تطبيق "أصول" خارجي) - انظر _create_prepaid_schedule
+    # وbank_settlement/models/prepaid_schedule.py لتفاصيل الآلية الكاملة.
     is_prepaid = fields.Boolean(
         string='دفعة مقدمة', tracking=True,
         help='فعّلها إن كان هذا المبلغ يغطي فترة زمنية للمندوب (كرت عمل، '
@@ -163,17 +164,14 @@ class BankSettlementMixin(models.AbstractModel):
              'التقويمية.',
     )
     prepaid_category_id = fields.Many2one(
-        'account.asset.category', string='فئة الدفعة المقدمة', tracking=True,
-        help='فئة الأصل (om_account_asset) المستخدَمة لجدولة الاستهلاك - '
-             'تحدد حساب "المصروفات المدفوعة مقدماً" (مثال: 114001) وحساب '
-             'المصروف الفعلي ودفتر اليومية. تُعَدّ مرة واحدة من إعدادات '
-             'المحاسبة (فئات الأصول).',
+        'bank.settlement.prepaid.category', string='فئة الدفعة المقدمة',
+        tracking=True,
+        help='تحدد حساب "المصروفات المدفوعة مقدماً" (مثال: 114001) وحساب '
+             'المصروف الفعلي ودفتر اليومية المستخدَمة لجدولة الاستحقاق. '
+             'تُعَدّ مرة واحدة من إعدادات السداد البنكي.',
     )
-    asset_id = fields.Many2one(
-        'account.asset.asset', string='جدول الاستهلاك', readonly=True,
-        copy=False,
-        help='سجل "الأصل" الناتج في om_account_asset - يحمل جدول القيود '
-             'الشهرية التلقائية لهذه الدفعة المقدمة.',
+    prepaid_line_count = fields.Integer(
+        string='عدد أسطر جدول الاستحقاق', compute='_compute_prepaid_line_count',
     )
 
     move_id = fields.Many2one(
@@ -255,6 +253,24 @@ class BankSettlementMixin(models.AbstractModel):
             rec.attachment_count = self.env['ir.attachment'].search_count([
                 ('res_model', '=', rec._name), ('res_id', '=', rec.id),
             ])
+
+    def _compute_prepaid_line_count(self):
+        for rec in self:
+            rec.prepaid_line_count = self.env['bank.settlement.prepaid.line'].search_count([
+                ('res_model', '=', rec._name), ('res_id', '=', rec.id),
+            ])
+
+    def action_view_prepaid_lines(self):
+        """يفتح جدول استحقاق "الدفعة المقدمة" الخاص بهذا السجل - انظر
+        prepaid_schedule.py."""
+        self.ensure_one()
+        return {
+            'name': 'جدول استحقاق الدفعة المقدمة',
+            'type': 'ir.actions.act_window',
+            'res_model': 'bank.settlement.prepaid.line',
+            'view_mode': 'list,form',
+            'domain': [('res_model', '=', self._name), ('res_id', '=', self.id)],
+        }
 
     def _fill_employee_derived_vals(self, vals):
         """يشتق المشروع/الشركة من الموظف المحدَّد في vals['employee_id']
@@ -509,9 +525,9 @@ class BankSettlementMixin(models.AbstractModel):
 
     def action_done(self):
         """إتمام السداد/التحويل — ينشئ القيد المحاسبي إن لم يكن موجوداً
-        (أو جدول استهلاك "دفعة مقدمة" كامل إن كان is_prepaid مفعَّلاً -
-        انظر _create_prepaid_asset). متاح للمحاسب فما فوق (بعد اعتماد
-        المدير العام مسبقاً)."""
+        (أو القيد الأولي + جدول استحقاق "دفعة مقدمة" كامل إن كان
+        is_prepaid مفعَّلاً - انظر _create_prepaid_schedule). متاح
+        للمحاسب فما فوق (بعد اعتماد المدير العام مسبقاً)."""
         for rec in self:
             if rec.state != 'confirmed':
                 raise UserError('يجب تأكيد السجل أولاً قبل إتمامه.')
@@ -520,8 +536,8 @@ class BankSettlementMixin(models.AbstractModel):
                 'bank_settlement.group_bank_settlement_manager',
             )
             if rec.is_prepaid:
-                if not rec.asset_id:
-                    rec.asset_id = rec._create_prepaid_asset()
+                if not rec.move_id:
+                    rec.move_id = rec._create_prepaid_schedule()
             elif not rec.move_id:
                 rec.move_id = rec._create_settlement_move()
         self.write({'state': 'done'})
@@ -555,11 +571,15 @@ class BankSettlementMixin(models.AbstractModel):
             cur = period_end + timedelta(days=1)
         return lines
 
-    def _create_prepaid_asset(self):
-        """ينشئ سجل "أصل" (om_account_asset) بجدول استهلاك شهري دقيق
-        بالأيام بدل القيد الفوري المعتاد - انظر _compute_prepaid_
-        schedule_lines للحساب، وaccount_asset.py._prepare_move للتوزيع
-        التحليلي الديناميكي حسب منصة المندوب عند كل قيد دوري."""
+    def _create_prepaid_schedule(self):
+        """يسجّل السداد الفعلي فوراً (مديناً حساب "المصروفات المدفوعة
+        مقدماً"، دائناً دفتر اليومية البنكي المحدَّد كالمعتاد) بكامل
+        المبلغ، ثم يبني جدول استحقاق دوري دقيق بالأيام
+        (bank.settlement.prepaid.line - انظر _compute_prepaid_schedule_
+        lines للحساب، وprepaid_schedule.py._post_entry للتوزيع التحليلي
+        الديناميكي حسب منصة المندوب عند ترحيل كل سطر). يعيد قيد السداد
+        الأولي (id) ليُخزَّن في move_id، بنفس دور _create_settlement_move
+        للسجلات غير المدفوعة مقدماً."""
         self.ensure_one()
         if not self.prepaid_category_id:
             raise UserError(_('يجب تحديد "فئة الدفعة المقدمة" أولاً.'))
@@ -567,42 +587,70 @@ class BankSettlementMixin(models.AbstractModel):
             raise UserError(_('يجب تحديد "عدد أيام التغطية" أولاً (أكبر من صفر).'))
         if not self.employee_id:
             raise UserError(_('يجب تحديد الموظف/المندوب أولاً.'))
+        if not self.journal_id:
+            raise UserError(
+                'لا يمكن إنشاء القيد المحاسبي بدون تحديد "دفتر اليومية البنكي".'
+            )
         start_date = self.transfer_date or fields.Date.context_today(self)
         end_date = start_date + timedelta(days=self.prepaid_days - 1)
         schedule = self._compute_prepaid_schedule_lines(start_date, end_date, self.total_amount)
+        category = self.prepaid_category_id
 
-        Asset = self.env['account.asset.asset'].sudo()
-        asset = Asset.create({
-            'name': self.name,
-            'value': self.total_amount,
-            'currency_id': self.currency_id.id,
+        # القيد الأولي: يسجّل الخروج الفعلي للنقد الآن بكامله (مديناً
+        # حساب المصروفات المدفوعة مقدماً، دائناً دفتر اليومية البنكي) -
+        # نفس بنية _create_settlement_move العادية، لكن الطرف المدين هنا
+        # هو حساب "المصروفات المدفوعة مقدماً" بدل حساب المصروف الفعلي
+        # مباشرة (يُستنفَد تدريجياً بكل قيد استحقاق دوري لاحق).
+        # analytic_distribution: False صراحة على كلا السطرين - هذا قيد
+        # نقدي بحت بين حسابين في الميزانية (لا مصروف بعد)، فلا معنى
+        # لتوزيعه تحليلياً بحسب منصة. صراحة (بدل تركه بلا قيمة) لمنع
+        # نموذج account.analytic.distribution.model العام (يُحدِّثه
+        # recruitment_workflow.hr_employee._sync_partner_analytic_
+        # distribution لكل شريك عند أي نقل منصة، لأغراض أخرى) من ملء هذا
+        # القيد تلقائياً بتوزيع غير مقصود - انظر نفس الثغرة المشروحة في
+        # prepaid_schedule.py._post_entry.
+        move_vals = {
+            'journal_id': self.journal_id.id,
             'company_id': self.company_id.id,
-            'category_id': self.prepaid_category_id.id,
+            'is_bank_settlement_move': True,
             'date': start_date,
-            'employee_id': self.employee_id.id,
-            'method_number': len(schedule),
-            'partner_id': self._get_settlement_partner_id(),
-        })
-        depreciated_so_far = 0.0
-        # account.asset.asset.create() يُنشئ جدولاً افتراضياً تلقائياً
-        # (compute_depreciation_board القياسي بأشهر متساوية) - نُفرغه هنا
-        # قبل كتابة جدولنا الدقيق بالأيام بدلاً منه، وإلا بقيت سطور
-        # زائدة خاطئة فوق سطورنا (اكتُشف بالاختبار الفعلي).
-        line_commands = [(5, 0, 0)]
+            'ref': self.name,
+            'line_ids': [
+                (0, 0, {
+                    'name': self.name,
+                    'account_id': category.prepaid_account_id.id,
+                    'partner_id': self._get_settlement_partner_id(),
+                    'debit': self.total_amount,
+                    'credit': 0.0,
+                    'analytic_distribution': False,
+                }),
+                (0, 0, {
+                    'name': self.name,
+                    'account_id': self.journal_id.default_account_id.id,
+                    'debit': 0.0,
+                    'credit': self.total_amount,
+                    'analytic_distribution': False,
+                }),
+            ],
+        }
+        move = self.env['account.move'].sudo().create(move_vals)
+
+        Line = self.env['bank.settlement.prepaid.line'].sudo()
         for index, (period_start, period_end, amount) in enumerate(schedule):
-            depreciated_so_far += amount
-            line_commands.append((0, 0, {
+            Line.create({
+                'res_model': self._name,
+                'res_id': self.id,
                 'sequence': index + 1,
-                'name': '%s/%s' % (asset.name, index + 1),
-                'amount': amount,
+                'name': '%s/%s' % (self.name, index + 1),
+                'employee_id': self.employee_id.id,
+                'category_id': category.id,
+                'company_id': self.company_id.id,
+                'currency_id': self.currency_id.id,
                 'period_start_date': period_start,
-                'depreciation_date': period_end,
-                'remaining_value': asset.value - depreciated_so_far,
-                'depreciated_value': depreciated_so_far,
-            }))
-        asset.write({'depreciation_line_ids': line_commands})
-        asset.validate()
-        return asset
+                'period_end_date': period_end,
+                'amount': amount,
+            })
+        return move.id
 
     def _get_returnable_stages(self):
         """قائمة مرتبة (من الأقرب للحالة الحالية إلى الأبعد) بأزواج

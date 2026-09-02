@@ -133,7 +133,11 @@
                                        readonly="state != 'draft'"/>
                             </group>
                             <group invisible="not is_prepaid">
-                                <field name="asset_id" readonly="1"/>
+                                <field name="prepaid_line_count" invisible="1"/>
+                                <button name="action_view_prepaid_lines" type="object"
+                                        class="oe_link" invisible="not prepaid_line_count">
+                                    عرض جدول الاستحقاق
+                                </button>
                             </group>
                         </group>
                     </sheet>
