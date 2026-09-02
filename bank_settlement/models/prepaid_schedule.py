@@ -140,12 +140,14 @@ class BankSettlementPrepaidLine(models.Model):
     @api.model
     def _cron_generate_due_entries(self):
         """تعمل يومياً (انظر data/prepaid_cron_data.xml) - ترحّل تلقائياً
-        كل سطر حان تاريخ استحقاقه (بداية فترته وصلت أو مضت) ولم يُرحَّل
-        بعد، بلا أي مراجعة بشرية (طلب صريح)."""
+        كل سطر انتهت فترته فعلياً (period_end_date، وليس period_start_date
+        - ثغرة حقيقية اكتُشفت من الاستخدام الفعلي: كانت تُرحِّل السطر بمجرد
+        *بداية* فترته لا نهايتها، فينتج قيد بتاريخ مستقبلي لم يأتِ بعد)
+        ولم يُرحَّل بعد، بلا أي مراجعة بشرية (طلب صريح)."""
         today = fields.Date.context_today(self)
         due_lines = self.sudo().search([
             ('state', '=', 'draft'),
-            ('period_start_date', '<=', today),
+            ('period_end_date', '<=', today),
         ])
         for line in due_lines:
             try:
