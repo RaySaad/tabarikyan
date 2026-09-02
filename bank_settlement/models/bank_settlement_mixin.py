@@ -633,7 +633,15 @@ class BankSettlementMixin(models.AbstractModel):
                 }),
             ],
         }
+        # يُرحَّل فوراً (بخلاف _create_settlement_move العادية التي تُبقي
+        # قيدها مسودة لمراجعة محاسب لاحقة) - المبلغ هنا خرج فعلياً وبالكامل
+        # فور "تم" (نفس مبدأ "بلا مراجعة بشرية" الذي طُلب صراحة لكامل آلية
+        # الدفعة المقدمة، ولضمان ظهوره فوراً في رصيد حساب "المصروفات
+        # المدفوعة مقدماً" - كان يبقى مسودة سابقاً فلا ينعكس في الرصيد
+        # الفعلي إلا بعد ترحيل يدوي، ثغرة حقيقية اكتُشفت من الاستخدام
+        # الفعلي).
         move = self.env['account.move'].sudo().create(move_vals)
+        move.action_post()
 
         Line = self.env['bank.settlement.prepaid.line'].sudo()
         for index, (period_start, period_end, amount) in enumerate(schedule):
