@@ -70,10 +70,14 @@
                                 type="object" class="btn-primary"
                                 groups="recruitment_workflow.group_recruitment_workflow_operations"
                                 invisible="state != 'waiting_ops'"/>
-                        <button name="action_manager_confirm" string="اعتماد مدير الحركة وتنفيذ التغيير"
+                        <button name="action_manager_confirm" string="اعتماد مدير الحركة"
                                 type="object" class="btn-primary"
                                 groups="recruitment_workflow.group_recruitment_workflow_fleet_manager"
                                 invisible="state != 'waiting_manager'"/>
+                        <button name="action_confirm_receipt" string="تأكيد استلام المركبة وتنفيذ التغيير"
+                                type="object" class="btn-primary"
+                                groups="recruitment_workflow.group_recruitment_workflow_fleet_supervisor,recruitment_workflow.group_recruitment_workflow_fleet_manager"
+                                invisible="state != 'waiting_receipt'"/>
                         <button name="action_open_reset_wizard" string="إعادة لمسودة"
                                 type="object"
                                 groups="recruitment_workflow.group_recruitment_workflow_fleet_manager,recruitment_workflow.group_recruitment_workflow_operations"
@@ -86,10 +90,10 @@
                              مدير الصيانة أصلاً (تُتخطى في _get_state_sequence)،
                              فعرضها في شريط حالتها يوهم بمرحلة لن تأتي. -->
                         <field name="state" widget="statusbar"
-                               statusbar_visible="draft,waiting_supervisor,waiting_maintenance,waiting_ops,waiting_manager,done"
+                               statusbar_visible="draft,waiting_supervisor,waiting_maintenance,waiting_ops,waiting_manager,waiting_receipt,done"
                                invisible="request_type == 'plate'"/>
                         <field name="state" widget="statusbar"
-                               statusbar_visible="draft,waiting_supervisor,waiting_ops,waiting_manager,done"
+                               statusbar_visible="draft,waiting_supervisor,waiting_ops,waiting_manager,waiting_receipt,done"
                                invisible="request_type != 'plate'"/>
                     </header>
                     <sheet>
@@ -168,7 +172,28 @@
                             لم تُحدَّد مركبة بديلة - سيُكتفى بسحب المركبة الحالية من المندوب
                             عند الاعتماد النهائي، ويبقى بلا مركبة.
                         </div>
+                        <div class="alert alert-warning" role="alert" invisible="state != 'waiting_receipt'">
+                            الطلب معتمَد - لم يُنفَّذ التغيير بعد. يُنفَّذ فعلياً (سحب المركبة من
+                            المندوب وتغيير حالتها) لحظة تأكيد الاستلام المادي أدناه.
+                        </div>
                         <notebook>
+                            <page string="الاستلام والتسليم" name="receipt"
+                                  invisible="state in ('draft', 'waiting_supervisor', 'waiting_maintenance', 'waiting_ops')">
+                                <group>
+                                    <group string="استلام المركبة القديمة">
+                                        <field name="receipt_odometer" readonly="state != 'waiting_receipt'"/>
+                                        <field name="receipt_date"/>
+                                        <field name="receipt_user_id"/>
+                                    </group>
+                                    <group string="تسليم المركبة الجديدة" invisible="not new_vehicle_id">
+                                        <field name="delivery_odometer" readonly="state != 'waiting_receipt'"/>
+                                        <field name="authorization_date"/>
+                                    </group>
+                                </group>
+                                <group string="ملاحظات حالة المركبة عند الاستلام">
+                                    <field name="receipt_note" nolabel="1" readonly="state != 'waiting_receipt'"/>
+                                </group>
+                            </page>
                             <page string="المرفقات المطلوبة" name="attachments">
                                 <field name="attachment_line_ids" readonly="state not in ('draft', 'waiting_supervisor')">
                                     <list editable="bottom" create="0" delete="0">
@@ -186,7 +211,6 @@
                                     <group>
                                         <field name="request_date"/>
                                         <field name="approval_date"/>
-                                        <field name="authorization_date"/>
                                     </group>
                                     <group>
                                         <field name="maintenance_log_id" invisible="not maintenance_log_id"/>

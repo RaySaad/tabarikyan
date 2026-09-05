@@ -24,18 +24,6 @@
               action="action_hr_employee_platform_history"
               sequence="20"/>
 
-    <menuitem id="menu_fleet_vehicle_change_request"
-              name="طلبات تغيير المركبات"
-              parent="menu_recruitment_workflow_root"
-              action="action_fleet_vehicle_change_request"
-              sequence="25"/>
-
-    <menuitem id="menu_fleet_accident_report"
-              name="بلاغات الحوادث"
-              parent="menu_recruitment_workflow_root"
-              action="action_fleet_accident_report"
-              sequence="30"/>
-
     <menuitem id="menu_recruitment_config"
               name="الإعدادات"
               parent="menu_recruitment_workflow_root"
@@ -60,17 +48,6 @@
               action="action_recruitment_compensation_type"
               sequence="25"/>
 
-    <menuitem id="menu_fleet_vehicle_change_reason"
-              name="أسباب تبديل المركبات"
-              parent="menu_recruitment_config"
-              action="action_fleet_vehicle_change_reason"
-              sequence="30"/>
-
-    <menuitem id="menu_fleet_vehicle_change_attachment_type"
-              name="أنواع مرفقات تغيير المركبة"
-              parent="menu_recruitment_config"
-              action="action_fleet_vehicle_change_attachment_type"
-              sequence="35"/>
 
     <!-- إعداد لآلية "رسوم التوظيف" في recruitment_request.py
          (fee_cost_type_id) - وليس لنموذج تكاليف مستقل (حُذف، انظر
@@ -98,5 +75,37 @@
               action="action_fleet_vehicle_branch_history"
               groups="recruitment_workflow.group_recruitment_workflow_fleet"
               sequence="30"/>
+
+    <!-- طلبات تغيير المركبات وبلاغات الحوادث تعيش في تطبيق "الأسطول"
+         وليس في سير عمل التوظيف - المركبات مسؤولية قسم الأسطول/الحركة،
+         وهناك يجدها من يعمل عليها يومياً (طلب صريح). المجموعات الثلاث
+         (مشرف الحركة/مدير الصيانة/مدير الحركة) تمنح صلاحية الأسطول
+         القياسية تلقائياً - انظر security - وإلا لما ظهر لهم التطبيق
+         الأصلي أساساً فلا يرون هذه القوائم مهما مُنحوا صلاحيتها. -->
+    <menuitem id="menu_fleet_vehicle_change_request"
+              name="طلبات تغيير المركبات"
+              parent="fleet.menu_root"
+              action="action_fleet_vehicle_change_request"
+              sequence="35"/>
+
+    <menuitem id="menu_fleet_accident_report"
+              name="بلاغات الحوادث"
+              parent="fleet.menu_root"
+              action="action_fleet_accident_report"
+              sequence="40"/>
+
+    <menuitem id="menu_fleet_vehicle_change_reason"
+              name="أسباب تبديل المركبات"
+              parent="fleet.fleet_configuration"
+              action="action_fleet_vehicle_change_reason"
+              groups="recruitment_workflow.group_recruitment_workflow_fleet_manager"
+              sequence="40"/>
+
+    <menuitem id="menu_fleet_vehicle_change_attachment_type"
+              name="أنواع مرفقات تغيير المركبة"
+              parent="fleet.fleet_configuration"
+              action="action_fleet_vehicle_change_attachment_type"
+              groups="recruitment_workflow.group_recruitment_workflow_fleet_manager"
+              sequence="45"/>
 
 </odoo>

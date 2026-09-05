@@ -84,7 +84,15 @@
             <field name="name">مشرف الحركة</field>
             <field name="sequence">51</field>
             <field name="privilege_id" ref="privilege_recruitment_workflow"/>
-            <field name="implied_ids" eval="[(4, ref('group_recruitment_workflow_user'))]"/>
+            <!-- fleet.fleet_group_user ضرورية وليست تفضيلاً: شاشات طلبات
+                 تغيير المركبات وبلاغات الحوادث تعيش داخل تطبيق "الأسطول"
+                 القياسي، وقائمته الجذرية نفسها محمية بهذه المجموعة - فبلا
+                 منحها لا يرى صاحب الدور التطبيق أصلاً مهما مُنح صلاحية
+                 نماذجنا. -->
+            <field name="implied_ids" eval="[
+                (4, ref('group_recruitment_workflow_user')),
+                (4, ref('fleet.fleet_group_user')),
+            ]"/>
         </record>
 
         <!-- مدير الصيانة: موافقة مشروطة تظهر فقط في طلبات "حادث"/"عطل"
@@ -93,7 +101,10 @@
             <field name="name">مدير الصيانة</field>
             <field name="sequence">52</field>
             <field name="privilege_id" ref="privilege_recruitment_workflow"/>
-            <field name="implied_ids" eval="[(4, ref('group_recruitment_workflow_user'))]"/>
+            <field name="implied_ids" eval="[
+                (4, ref('group_recruitment_workflow_user')),
+                (4, ref('fleet.fleet_group_user')),
+            ]"/>
         </record>
 
         <!-- مدير الحركة: الاعتماد النهائي، وهو الوحيد الذي ينفّذ التغيير
@@ -103,9 +114,14 @@
             <field name="name">مدير الحركة</field>
             <field name="sequence">53</field>
             <field name="privilege_id" ref="privilege_recruitment_workflow"/>
+            <!-- fleet.fleet_group_manager (وليست user فقط): مدير الحركة
+                 هو من يضبط أسباب التبديل وأنواع المرفقات، وقائمة
+                 "الإعدادات" في تطبيق الأسطول محمية بمجموعة مدير الأسطول
+                 القياسية. -->
             <field name="implied_ids" eval="[
                 (4, ref('group_recruitment_workflow_fleet_supervisor')),
                 (4, ref('group_recruitment_workflow_fleet')),
+                (4, ref('fleet.fleet_group_manager')),
             ]"/>
         </record>
 

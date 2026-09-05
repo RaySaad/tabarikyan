@@ -185,12 +185,41 @@ class FleetVehicleChangeRequest(models.Model):
             ('waiting_maintenance', 'بانتظار مدير الصيانة'),
             ('waiting_ops', 'بانتظار مدير العمليات'),
             ('waiting_manager', 'بانتظار اعتماد مدير الحركة'),
+            ('waiting_receipt', 'بانتظار استلام المركبة'),
             ('done', 'تم التنفيذ'),
             ('cancel', 'ملغى'),
         ],
         string='الحالة', default='draft', required=True, tracking=True, copy=False,
     )
     rejection_reason = fields.Text(string='سبب الإرجاع/الإلغاء', copy=False)
+
+    # -- الاستلام الفعلي للمركبة ------------------------------------------
+    # الاعتماد قرار إداري، أما التسليم/الاستلام فحدث مادي قد يتأخر أياماً -
+    # ففصلهما يمنع أن تظهر المركبة "تحت الإصلاح" وهي ما زالت مع المندوب.
+    # التنفيذ الفعلي (سحب السائق وتغيير الحالات وإنشاء سجل الصيانة/البلاغ)
+    # يقع هنا تحديداً وليس عند الاعتماد (طلب صريح).
+    receipt_date = fields.Date(
+        string='تاريخ الاستلام الفعلي', readonly=True, copy=False, tracking=True,
+    )
+    receipt_user_id = fields.Many2one(
+        'res.users', string='المستلِم', readonly=True, copy=False,
+        ondelete='restrict',
+    )
+    receipt_odometer = fields.Float(
+        string='عداد المركبة المستلَمة',
+        help='قراءة عداد المركبة القديمة لحظة استلامها - تُسجَّل أيضاً في '
+             'سجل العدادات القياسي بأودو فيتحدّث كيلومتر المركبة تلقائياً.',
+    )
+    delivery_odometer = fields.Float(
+        string='عداد المركبة المسلَّمة',
+        help='قراءة عداد المركبة الجديدة لحظة تسليمها للمندوب (إن وُجدت '
+             'مركبة بديلة) - تُسجَّل كذلك في سجل العدادات القياسي.',
+    )
+    receipt_note = fields.Text(
+        string='ملاحظات حالة المركبة عند الاستلام',
+        help='حالة المركبة المستلَمة (أضرار، نواقص، نظافة...) - مرجع عند '
+             'أي مطالبة لاحقة على المندوب.',
+    )
 
     # ------------------------------------------------------------------
     # تسلسل المراحل (مع تخطي مرحلة الصيانة في طلبات "لوحة")
@@ -203,7 +232,7 @@ class FleetVehicleChangeRequest(models.Model):
         states = ['draft', 'waiting_supervisor']
         if self.request_type in ('accident', 'breakdown'):
             states.append('waiting_maintenance')
-        states += ['waiting_ops', 'waiting_manager', 'done']
+        states += ['waiting_ops', 'waiting_manager', 'waiting_receipt', 'done']
         return states
 
     def _next_state(self):
@@ -429,6 +458,7 @@ class FleetVehicleChangeRequest(models.Model):
             'waiting_maintenance': 'recruitment_workflow.group_recruitment_workflow_maintenance_manager',
             'waiting_ops': 'recruitment_workflow.group_recruitment_workflow_operations',
             'waiting_manager': 'recruitment_workflow.group_recruitment_workflow_fleet_manager',
+            'waiting_receipt': 'recruitment_workflow.group_recruitment_workflow_fleet_supervisor',
         }
         group_xmlid = group_by_state.get(self.state)
         if not group_xmlid:
@@ -521,16 +551,58 @@ class FleetVehicleChangeRequest(models.Model):
         self._advance('waiting_ops')
 
     def action_manager_confirm(self):
-        """الاعتماد النهائي من مدير الحركة - وينفّذ التغيير الفعلي مباشرة
-        عند نفس الضغطة (بنفس مبدأ action_confirm_transfer في طلب نقل
-        المنصة: لا حاجة لخطوة تنفيذ منفصلة بعد الاعتماد النهائي)."""
+        """الاعتماد النهائي من مدير الحركة - قرار إداري فقط، لا ينفّذ
+        التغيير على المركبات. التنفيذ يقع لاحقاً لحظة الاستلام المادي
+        الفعلي (action_confirm_receipt) - طلب صريح، ولسبب وجيه: الاعتماد
+        قد يسبق التسليم بأيام، فتنفيذه فوراً كان يُظهر المركبة "تحت
+        الإصلاح" وهي ما زالت مع المندوب يعمل بها."""
+        self._advance(
+            'waiting_manager',
+            'recruitment_workflow.group_recruitment_workflow_fleet_manager',
+        )
+
+    def action_confirm_receipt(self):
+        """تأكيد استلام المركبة فعلياً - وهنا ينفَّذ التغيير كاملاً
+        (سحب السائق، تغيير حالات المركبات، سجل الصيانة، بلاغ الحادث)،
+        مع تسجيل قراءات العدادات في سجل العدادات القياسي بأودو."""
         for rec in self:
-            if rec.state != 'waiting_manager':
-                raise UserError(_('هذا الإجراء متاح في حالة "بانتظار اعتماد مدير الحركة" فقط.'))
-            rec._check_group('recruitment_workflow.group_recruitment_workflow_fleet_manager')
+            if rec.state != 'waiting_receipt':
+                raise UserError(_('هذا الإجراء متاح في حالة "بانتظار استلام المركبة" فقط.'))
+            rec._check_group(
+                'recruitment_workflow.group_recruitment_workflow_fleet_supervisor',
+                'recruitment_workflow.group_recruitment_workflow_fleet_manager',
+            )
+            if rec.receipt_odometer < 0 or rec.delivery_odometer < 0:
+                raise UserError(_('قراءة العداد لا يمكن أن تكون سالبة.'))
         for rec in self:
+            rec.write({
+                'receipt_date': fields.Date.context_today(rec),
+                'receipt_user_id': rec.env.user.id,
+            })
             rec._execute_vehicle_change()
-        self._advance('waiting_manager')
+            rec._log_odometers()
+        self._advance('waiting_receipt')
+
+    def _log_odometers(self):
+        """يسجّل قراءات العدادات في fleet.vehicle.odometer القياسي - فيظهر
+        الكيلومتر المحدَّث في بطاقة المركبة وتقاريرها المعتادة، بدل بقائه
+        حبيس هذا الطلب وحده. sudo(): نفس سبب بقية كتابات المركبات هنا
+        (قاعدة الشركات القياسية على الأسطول)."""
+        self.ensure_one()
+        Odometer = self.env['fleet.vehicle.odometer'].sudo()
+        log_date = self.receipt_date or fields.Date.context_today(self)
+        if self.receipt_odometer and self.current_vehicle_id:
+            Odometer.create({
+                'vehicle_id': self.current_vehicle_id.id,
+                'value': self.receipt_odometer,
+                'date': log_date,
+            })
+        if self.delivery_odometer and self.new_vehicle_id:
+            Odometer.create({
+                'vehicle_id': self.new_vehicle_id.id,
+                'value': self.delivery_odometer,
+                'date': log_date,
+            })
 
     def action_open_reset_wizard(self):
         self.ensure_one()

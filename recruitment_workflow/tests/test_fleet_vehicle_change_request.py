@@ -77,6 +77,14 @@ class TestFleetVehicleChangeRequest(TransactionCase):
             request.with_user(self.approver).action_maintenance_approve()
         request.with_user(self.approver).action_ops_approve()
 
+    def _approve_and_receive(self, request, receipt_odometer=1000.0):
+        """المسار الكامل حتى التنفيذ الفعلي - الذي صار يقع لحظة تأكيد
+        الاستلام المادي وليس عند اعتماد مدير الحركة."""
+        self._approve_until_manager(request)
+        request.with_user(self.approver).action_manager_confirm()
+        request.write({'receipt_odometer': receipt_odometer})
+        request.with_user(self.approver).action_confirm_receipt()
+
     # ------------------------------------------------------------------
     def test_breakdown_full_flow_executes_change(self):
         request = self._create_request()
@@ -86,9 +94,18 @@ class TestFleetVehicleChangeRequest(TransactionCase):
         self.assertEqual(request.state, 'waiting_manager')
         self.assertTrue(request.approval_date)
 
+        # الاعتماد وحده لا ينفّذ شيئاً على المركبات
         request.with_user(self.approver).action_manager_confirm()
+        self.assertEqual(request.state, 'waiting_receipt')
+        self.assertEqual(self.vehicle_old.driver_id, self.partner)
+        self.assertEqual(self.vehicle_old.recruitment_state, 'assigned')
+
+        request.write({'receipt_odometer': 12345.0, 'delivery_odometer': 500.0})
+        request.with_user(self.approver).action_confirm_receipt()
 
         self.assertEqual(request.state, 'done')
+        self.assertTrue(request.receipt_date)
+        self.assertEqual(request.receipt_user_id, self.approver)
         self.assertFalse(self.vehicle_old.driver_id)
         self.assertEqual(self.vehicle_old.recruitment_state, 'under_repair')
         self.assertEqual(self.vehicle_new.driver_id, self.partner)
@@ -110,8 +127,7 @@ class TestFleetVehicleChangeRequest(TransactionCase):
         request = self._create_request(request_type='accident', new_vehicle_id=False)
         self.assertIn('waiting_maintenance', request._get_state_sequence())
         self._upload_required_attachments(request)
-        self._approve_until_manager(request)
-        request.with_user(self.approver).action_manager_confirm()
+        self._approve_and_receive(request)
 
         self.assertEqual(request.state, 'done')
         self.assertTrue(request.accident_report_id)
@@ -122,8 +138,7 @@ class TestFleetVehicleChangeRequest(TransactionCase):
     def test_withdraw_vehicle_without_replacement(self):
         """المركبة الجديدة اختيارية - سحب بلا بديل يترك المندوب بلا مركبة."""
         request = self._create_request(request_type='plate', new_vehicle_id=False)
-        self._approve_until_manager(request)
-        request.with_user(self.approver).action_manager_confirm()
+        self._approve_and_receive(request)
 
         self.assertEqual(request.state, 'done')
         self.assertFalse(self.vehicle_old.driver_id)
@@ -172,18 +187,20 @@ class TestFleetVehicleChangeRequest(TransactionCase):
         request = self._create_request()
         self._upload_required_attachments(request)
         self._approve_until_manager(request)
+        request.with_user(self.approver).action_manager_confirm()
         self.vehicle_new.write({'recruitment_state': 'unavailable'})
         with self.assertRaises(UserError):
-            request.with_user(self.approver).action_manager_confirm()
+            request.with_user(self.approver).action_confirm_receipt()
 
     def test_execution_blocked_when_current_driver_changed(self):
         request = self._create_request()
         self._upload_required_attachments(request)
         self._approve_until_manager(request)
+        request.with_user(self.approver).action_manager_confirm()
         other_partner = self.env['res.partner'].create({'name': 'سائق آخر'})
         self.vehicle_old.write({'driver_id': other_partner.id})
         with self.assertRaises(UserError):
-            request.with_user(self.approver).action_manager_confirm()
+            request.with_user(self.approver).action_confirm_receipt()
 
     def test_reset_to_draft_requires_reason(self):
         request = self._create_request()
@@ -198,8 +215,7 @@ class TestFleetVehicleChangeRequest(TransactionCase):
     def test_done_request_cannot_be_reset_or_cancelled(self):
         request = self._create_request()
         self._upload_required_attachments(request)
-        self._approve_until_manager(request)
-        request.with_user(self.approver).action_manager_confirm()
+        self._approve_and_receive(request)
         with self.assertRaises(UserError):
             request.with_user(self.approver).action_reset_draft(reason='محاولة')
         with self.assertRaises(UserError):
@@ -227,3 +243,26 @@ class TestFleetVehicleChangeRequest(TransactionCase):
         accident_types = request.attachment_line_ids.mapped('attachment_type_id')
         self.assertTrue(accident_types)
         self.assertFalse(accident_types & breakdown_types)
+
+    def test_receipt_records_odometer_in_standard_log(self):
+        """قراءة العداد عند الاستلام تُسجَّل في سجل العدادات القياسي بأودو،
+        فيتحدّث كيلومتر المركبة في بطاقتها وتقاريرها المعتادة."""
+        request = self._create_request()
+        self._upload_required_attachments(request)
+        self._approve_until_manager(request)
+        request.with_user(self.approver).action_manager_confirm()
+        request.write({'receipt_odometer': 55555.0})
+        request.with_user(self.approver).action_confirm_receipt()
+
+        logs = self.env['fleet.vehicle.odometer'].sudo().search([
+            ('vehicle_id', '=', self.vehicle_old.id), ('value', '=', 55555.0),
+        ])
+        self.assertTrue(logs, 'لم تُسجَّل قراءة العداد في السجل القياسي')
+
+    def test_receipt_requires_group(self):
+        request = self._create_request()
+        self._upload_required_attachments(request)
+        self._approve_until_manager(request)
+        request.with_user(self.approver).action_manager_confirm()
+        with self.assertRaises(UserError):
+            request.with_user(self.plain_user).action_confirm_receipt()
