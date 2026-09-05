@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'السداد البنكي - Bank Settlement',
-    'version': '19.0.1.15.2',
+    'version': '19.0.1.15.3',
     'category': 'Accounting/Accounting',
     'summary': 'إدارة السلف، الرسوم الحكومية، تحويلات المركبات، التأمين الطبي، وتصفيات المناديب',
     'description': """

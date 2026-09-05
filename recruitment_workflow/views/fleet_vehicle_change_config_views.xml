@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============ أسباب تبديل المركبات ============ -->
+        <record id="view_fleet_vehicle_change_reason_list" model="ir.ui.view">
+            <field name="name">fleet.vehicle.change.reason.list</field>
+            <field name="model">fleet.vehicle.change.reason</field>
+            <field name="arch" type="xml">
+                <list string="أسباب تبديل المركبات" editable="bottom">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="request_type"/>
+                    <field name="active" column_invisible="True"/>
+                </list>
+            </field>
+        </record>
+        <record id="action_fleet_vehicle_change_reason" model="ir.actions.act_window">
+            <field name="name">أسباب تبديل المركبات</field>
+            <field name="res_model">fleet.vehicle.change.reason</field>
+            <field name="view_mode">list</field>
+        </record>
+
+        <!-- ============ أنواع مرفقات طلب تغيير المركبة ============ -->
+        <record id="view_fleet_vehicle_change_attachment_type_list" model="ir.ui.view">
+            <field name="name">fleet.vehicle.change.attachment.type.list</field>
+            <field name="model">fleet.vehicle.change.attachment.type</field>
+            <field name="arch" type="xml">
+                <list string="أنواع مرفقات تغيير المركبة" editable="bottom">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="request_type"/>
+                    <field name="required"/>
+                    <field name="description" optional="hide"/>
+                    <field name="active" column_invisible="True"/>
+                </list>
+            </field>
+        </record>
+        <record id="action_fleet_vehicle_change_attachment_type" model="ir.actions.act_window">
+            <field name="name">أنواع مرفقات تغيير المركبة</field>
+            <field name="res_model">fleet.vehicle.change.attachment.type</field>
+            <field name="view_mode">list</field>
+        </record>
+
+    </data>
+</odoo>

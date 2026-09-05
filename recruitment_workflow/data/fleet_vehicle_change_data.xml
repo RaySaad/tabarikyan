@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ============ التسلسلات ============ -->
+        <record id="seq_fleet_vehicle_change_request" model="ir.sequence">
+            <field name="name">طلب تغيير مركبة</field>
+            <field name="code">fleet.vehicle.change.request</field>
+            <field name="prefix">VCR/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_fleet_accident_report" model="ir.sequence">
+            <field name="name">بلاغ حادث مركبة</field>
+            <field name="code">fleet.accident.report</field>
+            <field name="prefix">ACC/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- ============ نوع خدمة الصيانة (للعطل) ============ -->
+        <!-- يُستخدَم على سجل الصيانة القياسي بأودو المُنشأ تلقائياً عند
+             تنفيذ طلب تغيير مركبة نوعه "عطل" (انظر
+             fleet_vehicle_change_request._create_maintenance_log). -->
+        <record id="fleet_service_type_breakdown" model="fleet.service.type">
+            <field name="name">عطل - طلب تغيير مركبة</field>
+            <field name="category">service</field>
+        </record>
+
+        <!-- ============ أسباب التبديل الافتراضية ============ -->
+        <record id="vehicle_change_reason_accident_total" model="fleet.vehicle.change.reason">
+            <field name="name">حادث - المركبة غير صالحة للاستخدام</field>
+            <field name="request_type">accident</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="vehicle_change_reason_accident_repair" model="fleet.vehicle.change.reason">
+            <field name="name">حادث - المركبة تحتاج إصلاحاً يستغرق وقتاً</field>
+            <field name="request_type">accident</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="vehicle_change_reason_breakdown_mechanical" model="fleet.vehicle.change.reason">
+            <field name="name">عطل ميكانيكي</field>
+            <field name="request_type">breakdown</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="vehicle_change_reason_breakdown_electrical" model="fleet.vehicle.change.reason">
+            <field name="name">عطل كهربائي</field>
+            <field name="request_type">breakdown</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="vehicle_change_reason_plate_expired" model="fleet.vehicle.change.reason">
+            <field name="name">انتهاء/تجديد اللوحة أو الاستمارة</field>
+            <field name="request_type">plate</field>
+            <field name="sequence">50</field>
+        </record>
+        <record id="vehicle_change_reason_plate_damaged" model="fleet.vehicle.change.reason">
+            <field name="name">تلف/فقدان اللوحة</field>
+            <field name="request_type">plate</field>
+            <field name="sequence">60</field>
+        </record>
+        <record id="vehicle_change_reason_other" model="fleet.vehicle.change.reason">
+            <field name="name">أخرى (توضَّح في الملاحظات)</field>
+            <field name="request_type">all</field>
+            <field name="sequence">90</field>
+        </record>
+
+        <!-- ============ أنواع المرفقات الافتراضية ============ -->
+        <!-- الحادث: تقرير تحديد المسؤولية + التقديرات + الصور (طلب صريح) -->
+        <record id="vehicle_change_attachment_accident_responsibility" model="fleet.vehicle.change.attachment.type">
+            <field name="name">تقرير تحديد المسؤولية</field>
+            <field name="request_type">accident</field>
+            <field name="required" eval="True"/>
+            <field name="sequence">10</field>
+        </record>
+        <record id="vehicle_change_attachment_accident_estimate" model="fleet.vehicle.change.attachment.type">
+            <field name="name">تقديرات الأضرار</field>
+            <field name="request_type">accident</field>
+            <field name="required" eval="True"/>
+            <field name="sequence">20</field>
+        </record>
+        <record id="vehicle_change_attachment_accident_photos" model="fleet.vehicle.change.attachment.type">
+            <field name="name">صور الحادث</field>
+            <field name="request_type">accident</field>
+            <field name="required" eval="True"/>
+            <field name="sequence">30</field>
+        </record>
+        <!-- العطل: فيديو يوضح العطل + تقرير الحركة (طلب صريح) -->
+        <record id="vehicle_change_attachment_breakdown_video" model="fleet.vehicle.change.attachment.type">
+            <field name="name">فيديو يوضح العطل والمتسبب</field>
+            <field name="request_type">breakdown</field>
+            <field name="required" eval="True"/>
+            <field name="sequence">10</field>
+        </record>
+        <record id="vehicle_change_attachment_breakdown_report" model="fleet.vehicle.change.attachment.type">
+            <field name="name">تقرير الحركة حول العطل</field>
+            <field name="request_type">breakdown</field>
+            <field name="required" eval="True"/>
+            <field name="sequence">20</field>
+        </record>
+        <!-- اللوحة: مرفق داعم غير إجباري (لا إلزام في النموذج المعتمد) -->
+        <record id="vehicle_change_attachment_plate_document" model="fleet.vehicle.change.attachment.type">
+            <field name="name">صورة اللوحة/الاستمارة</field>
+            <field name="request_type">plate</field>
+            <field name="required" eval="False"/>
+            <field name="sequence">10</field>
+        </record>
+
+    </data>
+</odoo>

@@ -29,18 +29,20 @@ class BankSettlementPrepaidCategory(models.Model):
     sequence = fields.Integer(string='الترتيب', default=10)
     prepaid_account_id = fields.Many2one(
         'account.account', string='حساب المصروفات المدفوعة مقدماً',
-        required=True,
+        required=True, ondelete='restrict',
         help='يُقيَّد عليه كامل مبلغ الدفعة مديناً فور السداد الفعلي '
              '(مقابل دفتر اليومية البنكي)، ثم يُخفَّض تدريجياً دائناً '
              'بكل قيد استحقاق دوري لاحق.',
     )
     expense_account_id = fields.Many2one(
         'account.account', string='حساب المصروف الفعلي', required=True,
+        ondelete='restrict',
         help='يُقيَّد عليه مبلغ كل قيد استحقاق دوري مديناً (مقابل حساب '
              'المصروفات المدفوعة مقدماً أعلاه).',
     )
     journal_id = fields.Many2one(
         'account.journal', string='دفتر يومية الاستحقاق', required=True,
+        ondelete='restrict',
         help='الدفتر الذي تُسجَّل فيه قيود الاستحقاق الدورية تحديداً - '
              'غالباً دفتر "قيود عامة"/"استحقاقات" مخصَّص، وليس دفتر '
              'السداد البنكي الفعلي.',

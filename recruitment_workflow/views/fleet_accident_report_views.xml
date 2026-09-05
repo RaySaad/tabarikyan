@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_fleet_accident_report_list" model="ir.ui.view">
+            <field name="name">fleet.accident.report.list</field>
+            <field name="model">fleet.accident.report</field>
+            <field name="arch" type="xml">
+                <list string="بلاغات الحوادث"
+                      decoration-success="state == 'closed'"
+                      decoration-info="state == 'confirmed'"
+                      decoration-muted="state == 'draft'">
+                    <field name="name"/>
+                    <field name="accident_date"/>
+                    <field name="accident_number"/>
+                    <field name="vehicle_id"/>
+                    <field name="employee_id"/>
+                    <field name="responsibility"/>
+                    <field name="estimated_cost" sum="إجمالي التقديرات"/>
+                    <field name="currency_id" column_invisible="True"/>
+                    <field name="state" widget="badge"
+                           decoration-success="state == 'closed'"
+                           decoration-info="state == 'confirmed'"
+                           decoration-muted="state == 'draft'"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_fleet_accident_report_search" model="ir.ui.view">
+            <field name="name">fleet.accident.report.search</field>
+            <field name="model">fleet.accident.report</field>
+            <field name="arch" type="xml">
+                <search string="بلاغات الحوادث">
+                    <field name="name"/>
+                    <field name="accident_number"/>
+                    <field name="vehicle_id"/>
+                    <field name="employee_id"/>
+                    <filter name="undetermined" string="المسؤولية غير محددة"
+                            domain="[('responsibility', '=', 'undetermined')]"/>
+                    <filter name="employee_fault" string="بمسؤولية المندوب"
+                            domain="[('responsibility', '=', 'employee')]"/>
+                    <separator/>
+                    <filter name="open_reports" string="غير مغلقة"
+                            domain="[('state', '!=', 'closed')]"/>
+                    <group>
+                        <filter name="group_by_state" string="الحالة" context="{'group_by': 'state'}"/>
+                        <filter name="group_by_responsibility" string="المسؤولية" context="{'group_by': 'responsibility'}"/>
+                        <filter name="group_by_vehicle" string="المركبة" context="{'group_by': 'vehicle_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_fleet_accident_report_form" model="ir.ui.view">
+            <field name="name">fleet.accident.report.form</field>
+            <field name="model">fleet.accident.report</field>
+            <field name="arch" type="xml">
+                <form string="بلاغ حادث">
+                    <header>
+                        <button name="action_confirm" string="تأكيد البلاغ"
+                                type="object" class="btn-primary"
+                                groups="recruitment_workflow.group_recruitment_workflow_fleet_supervisor,recruitment_workflow.group_recruitment_workflow_fleet_manager"
+                                invisible="state != 'draft'"/>
+                        <button name="action_close" string="إغلاق البلاغ"
+                                type="object" class="btn-primary"
+                                groups="recruitment_workflow.group_recruitment_workflow_fleet_manager"
+                                invisible="state != 'confirmed'"/>
+                        <button name="action_reset_draft" string="إعادة لمسودة"
+                                type="object"
+                                groups="recruitment_workflow.group_recruitment_workflow_fleet_manager"
+                                invisible="state == 'draft'"/>
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="draft,confirmed,closed"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_change_requests" type="object"
+                                    class="oe_stat_button" icon="fa-exchange"
+                                    invisible="not change_request_count">
+                                <field name="change_request_count" widget="statinfo"
+                                       string="طلبات تغيير المركبة"/>
+                            </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1><field name="name" readonly="1"/></h1>
+                        </div>
+                        <group>
+                            <group string="بيانات الحادث">
+                                <field name="accident_date" readonly="state == 'closed'"/>
+                                <field name="accident_number" readonly="state == 'closed'"/>
+                                <field name="vehicle_id" readonly="state != 'draft'"
+                                       options="{'no_create': True}"/>
+                                <field name="employee_id" readonly="state != 'draft'"
+                                       options="{'no_create': True}"/>
+                                <field name="location" readonly="state == 'closed'"/>
+                            </group>
+                            <group string="المسؤولية والتقدير">
+                                <field name="responsibility" readonly="state == 'closed'"/>
+                                <field name="estimated_cost" readonly="state == 'closed'"/>
+                                <field name="currency_id" invisible="1"/>
+                                <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                            </group>
+                        </group>
+                        <group string="وصف الحادث">
+                            <field name="description" nolabel="1" readonly="state == 'closed'"/>
+                        </group>
+                        <div class="alert alert-info" role="alert">
+                            أرفق تقرير تحديد المسؤولية والتقديرات وصور الحادث في الدردشة أدناه.
+                            إن ترتّبت مطالبة مالية على المندوب، تُسجَّل كسجل "تحويل مركبة"
+                            في السداد البنكي فتظهر في كشف حسابه.
+                        </div>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_fleet_accident_report" model="ir.actions.act_window">
+            <field name="name">بلاغات الحوادث</field>
+            <field name="res_model">fleet.accident.report</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+    </data>
+</odoo>

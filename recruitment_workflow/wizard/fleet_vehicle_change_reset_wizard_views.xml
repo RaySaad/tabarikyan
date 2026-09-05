@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_fleet_vehicle_change_reset_wizard_form" model="ir.ui.view">
+        <field name="name">fleet.vehicle.change.reset.wizard.form</field>
+        <field name="model">fleet.vehicle.change.reset.wizard</field>
+        <field name="arch" type="xml">
+            <form string="إعادة طلب تغيير المركبة لمسودة">
+                <group>
+                    <field name="request_id" readonly="1"/>
+                    <field name="reason"
+                           placeholder="مثال: مرفقات ناقصة، المركبة البديلة غير مناسبة..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm_reset" type="object"
+                            string="تأكيد الإعادة لمسودة" class="btn-primary"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

@@ -19,6 +19,12 @@
                     <field name="pending_transfer_request_count" widget="statinfo"
                            string="طلبات نقل معلّقة"/>
                 </button>
+                <button name="action_view_vehicle_change_requests" type="object"
+                        class="oe_stat_button" icon="fa-car"
+                        invisible="vehicle_change_request_count == 0">
+                    <field name="vehicle_change_request_count" widget="statinfo"
+                           string="طلبات تغيير المركبة"/>
+                </button>
             </xpath>
             <xpath expr="//field[@name='job_id']" position="after">
                 <field name="project_id" string="المنصة الحالية" readonly="1"
@@ -27,6 +33,7 @@
                         string="طلب نقل لمنصة أخرى" class="btn-link"
                         icon="fa-exchange" invisible="not project_id"/>
                 <field name="analytic_account_id" readonly="1" invisible="not analytic_account_id"/>
+                <field name="absher_mobile"/>
             </xpath>
         </field>
     </record>

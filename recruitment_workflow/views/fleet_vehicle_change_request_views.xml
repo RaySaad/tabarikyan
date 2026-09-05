@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_fleet_vehicle_change_request_list" model="ir.ui.view">
+            <field name="name">fleet.vehicle.change.request.list</field>
+            <field name="model">fleet.vehicle.change.request</field>
+            <field name="arch" type="xml">
+                <list string="طلبات تغيير المركبات"
+                      decoration-success="state == 'done'"
+                      decoration-info="state not in ('draft', 'done', 'cancel')"
+                      decoration-muted="state in ('draft', 'cancel')">
+                    <field name="name"/>
+                    <field name="employee_id"/>
+                    <field name="request_type"/>
+                    <field name="current_vehicle_id"/>
+                    <field name="new_vehicle_id"/>
+                    <field name="request_date"/>
+                    <field name="state" widget="badge"
+                           decoration-success="state == 'done'"
+                           decoration-info="state not in ('draft', 'done', 'cancel')"
+                           decoration-muted="state in ('draft', 'cancel')"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_fleet_vehicle_change_request_search" model="ir.ui.view">
+            <field name="name">fleet.vehicle.change.request.search</field>
+            <field name="model">fleet.vehicle.change.request</field>
+            <field name="arch" type="xml">
+                <search string="طلبات تغيير المركبات">
+                    <field name="name"/>
+                    <field name="employee_id"/>
+                    <field name="current_vehicle_id"/>
+                    <field name="new_vehicle_id"/>
+                    <field name="accident_report_id"/>
+                    <filter name="my_requests" string="طلباتي"
+                            domain="[('create_uid', '=', uid)]"/>
+                    <separator/>
+                    <filter name="pending" string="قيد المعالجة"
+                            domain="[('state', 'not in', ('draft', 'done', 'cancel'))]"/>
+                    <filter name="done" string="منفَّذة" domain="[('state', '=', 'done')]"/>
+                    <group>
+                        <filter name="group_by_state" string="الحالة" context="{'group_by': 'state'}"/>
+                        <filter name="group_by_type" string="نوع الطلب" context="{'group_by': 'request_type'}"/>
+                        <filter name="group_by_employee" string="المندوب" context="{'group_by': 'employee_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_fleet_vehicle_change_request_form" model="ir.ui.view">
+            <field name="name">fleet.vehicle.change.request.form</field>
+            <field name="model">fleet.vehicle.change.request</field>
+            <field name="arch" type="xml">
+                <form string="طلب تغيير مركبة">
+                    <header>
+                        <button name="action_submit_review" string="إرسال للمراجعة"
+                                type="object" class="btn-primary"
+                                invisible="state != 'draft'"/>
+                        <button name="action_supervisor_approve" string="موافقة مشرف الحركة"
+                                type="object" class="btn-primary"
+                                groups="recruitment_workflow.group_recruitment_workflow_fleet_supervisor,recruitment_workflow.group_recruitment_workflow_fleet_manager"
+                                invisible="state != 'waiting_supervisor'"/>
+                        <button name="action_maintenance_approve" string="موافقة مدير الصيانة"
+                                type="object" class="btn-primary"
+                                groups="recruitment_workflow.group_recruitment_workflow_maintenance_manager"
+                                invisible="state != 'waiting_maintenance'"/>
+                        <button name="action_ops_approve" string="موافقة مدير العمليات"
+                                type="object" class="btn-primary"
+                                groups="recruitment_workflow.group_recruitment_workflow_operations"
+                                invisible="state != 'waiting_ops'"/>
+                        <button name="action_manager_confirm" string="اعتماد مدير الحركة وتنفيذ التغيير"
+                                type="object" class="btn-primary"
+                                groups="recruitment_workflow.group_recruitment_workflow_fleet_manager"
+                                invisible="state != 'waiting_manager'"/>
+                        <button name="action_open_reset_wizard" string="إعادة لمسودة"
+                                type="object"
+                                groups="recruitment_workflow.group_recruitment_workflow_fleet_manager,recruitment_workflow.group_recruitment_workflow_operations"
+                                invisible="state in ('draft', 'done', 'cancel')"/>
+                        <button name="action_cancel" string="إلغاء"
+                                type="object"
+                                groups="recruitment_workflow.group_recruitment_workflow_fleet_manager,recruitment_workflow.group_recruitment_workflow_operations"
+                                invisible="state in ('done', 'cancel')"/>
+                        <!-- شريطا حالة منفصلان: طلبات "لوحة" لا تمر بمرحلة
+                             مدير الصيانة أصلاً (تُتخطى في _get_state_sequence)،
+                             فعرضها في شريط حالتها يوهم بمرحلة لن تأتي. -->
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="draft,waiting_supervisor,waiting_maintenance,waiting_ops,waiting_manager,done"
+                               invisible="request_type == 'plate'"/>
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="draft,waiting_supervisor,waiting_ops,waiting_manager,done"
+                               invisible="request_type != 'plate'"/>
+                    </header>
+                    <sheet>
+                        <widget name="web_ribbon" title="ملغى" bg_color="text-bg-danger"
+                                invisible="state != 'cancel'"/>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_accident_report" type="object"
+                                    class="oe_stat_button" icon="fa-car"
+                                    invisible="not accident_report_id">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">بلاغ الحادث</span>
+                                </div>
+                            </button>
+                            <button name="action_view_maintenance_log" type="object"
+                                    class="oe_stat_button" icon="fa-wrench"
+                                    invisible="not maintenance_log_id">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">سجل الصيانة</span>
+                                </div>
+                            </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1><field name="name" readonly="1"/></h1>
+                        </div>
+                        <div class="alert alert-warning" role="alert"
+                             invisible="not rejection_reason or state != 'draft'">
+                            أُعيد هذا الطلب لمسودة للتصحيح.
+                            السبب: <field name="rejection_reason" readonly="1" nolabel="1"/>
+                        </div>
+                        <group>
+                            <group string="بيانات المندوب">
+                                <field name="employee_id" readonly="state != 'draft'"
+                                       options="{'no_create': True}"/>
+                                <field name="residency_number"/>
+                                <field name="birthday"/>
+                                <field name="absher_mobile"/>
+                                <field name="project_id"/>
+                            </group>
+                            <group string="تفاصيل الطلب">
+                                <field name="request_type" readonly="state != 'draft'"/>
+                                <field name="reason_id"
+                                       domain="[('request_type', 'in', ['all', request_type])]"
+                                       options="{'no_create': True}"/>
+                                <field name="accident_report_id"
+                                       invisible="request_type != 'accident'"
+                                       readonly="state != 'draft'"
+                                       domain="[('vehicle_id', '=', current_vehicle_id)]"/>
+                                <field name="accident_number"
+                                       invisible="request_type != 'accident' or not accident_report_id"/>
+                                <field name="old_vehicle_target_state"
+                                       readonly="state in ('done', 'cancel')"/>
+                                <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group string="المركبة الحالية">
+                                <field name="current_vehicle_id" readonly="state != 'draft'"
+                                       options="{'no_create': True}"/>
+                                <field name="current_plate"/>
+                                <field name="current_vin"/>
+                                <field name="current_model_id"/>
+                                <field name="current_vehicle_company_id" groups="base.group_multi_company"/>
+                            </group>
+                            <group string="المركبة الجديدة (اختيارية)">
+                                <field name="new_vehicle_id" readonly="state != 'draft'"
+                                       options="{'no_create': True}"
+                                       domain="[('recruitment_state', '=', 'available')]"/>
+                                <field name="new_plate" invisible="not new_vehicle_id"/>
+                                <field name="new_vin" invisible="not new_vehicle_id"/>
+                                <field name="new_model_id" invisible="not new_vehicle_id"/>
+                                <field name="new_vehicle_company_id" groups="base.group_multi_company"
+                                       invisible="not new_vehicle_id"/>
+                            </group>
+                        </group>
+                        <div class="alert alert-info" role="alert" invisible="new_vehicle_id">
+                            لم تُحدَّد مركبة بديلة - سيُكتفى بسحب المركبة الحالية من المندوب
+                            عند الاعتماد النهائي، ويبقى بلا مركبة.
+                        </div>
+                        <notebook>
+                            <page string="المرفقات المطلوبة" name="attachments">
+                                <field name="attachment_line_ids" readonly="state not in ('draft', 'waiting_supervisor')">
+                                    <list editable="bottom" create="0" delete="0">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="attachment_type_id" readonly="1"/>
+                                        <field name="required" readonly="1"/>
+                                        <field name="file" filename="file_name" widget="binary"/>
+                                        <field name="file_name" column_invisible="True"/>
+                                        <field name="is_uploaded" widget="boolean_toggle" readonly="1"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="التواريخ والملاحظات" name="dates">
+                                <group>
+                                    <group>
+                                        <field name="request_date"/>
+                                        <field name="approval_date"/>
+                                        <field name="authorization_date"/>
+                                    </group>
+                                    <group>
+                                        <field name="maintenance_log_id" invisible="not maintenance_log_id"/>
+                                    </group>
+                                </group>
+                                <group string="ملاحظات">
+                                    <field name="note" nolabel="1"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_fleet_vehicle_change_request" model="ir.actions.act_window">
+            <field name="name">طلبات تغيير المركبات</field>
+            <field name="res_model">fleet.vehicle.change.request</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+    </data>
+</odoo>

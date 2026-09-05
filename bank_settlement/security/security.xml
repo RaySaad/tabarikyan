@@ -121,5 +121,22 @@
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
         </record>
 
+        <!-- ثغرتان اكتُشفتا بفحص شامل لتغطية قواعد عزل الفروع: النموذجان
+             يحملان company_id بلا أي قاعدة عزل - فكان مستخدم فرع يرى
+             جداول استحقاق الدفعات المقدمة وطلبات الاستقدام لفروع أخرى. -->
+        <record id="bank_settlement_prepaid_line_company_rule" model="ir.rule">
+            <field name="name">أسطر استحقاق الدفعات المقدمة: حسب الشركة</field>
+            <field name="model_id" ref="model_bank_settlement_prepaid_line"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="recruitment_import_request_company_rule" model="ir.rule">
+            <field name="name">طلبات الاستقدام: حسب الشركة</field>
+            <field name="model_id" ref="model_recruitment_import_request"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
     </data>
 </odoo>

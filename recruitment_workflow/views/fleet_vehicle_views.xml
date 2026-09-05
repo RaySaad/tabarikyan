@@ -24,6 +24,11 @@
                         invisible="branch_history_count == 0">
                     <field name="branch_history_count" widget="statinfo" string="فترات الفروع"/>
                 </button>
+                <button name="action_view_change_requests" type="object"
+                        class="oe_stat_button" icon="fa-exchange"
+                        invisible="change_request_count == 0">
+                    <field name="change_request_count" widget="statinfo" string="طلبات التغيير"/>
+                </button>
             </xpath>
             <xpath expr="//sheet" position="inside">
                 <group string="التوظيف / الأسطول" name="recruitment_platform">

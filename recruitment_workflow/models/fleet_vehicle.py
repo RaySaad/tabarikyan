@@ -20,17 +20,35 @@ class FleetVehicle(models.Model):
         string='عدد فترات الفروع',
         compute='_compute_branch_history_count',
     )
+    # under_repair/out_of_service أُضيفتا مع "طلب تغيير المركبة" (حادث/
+    # عطل) - وليس مجرد وصف: كل فلاتر التوفر في طلبات التوظيف تشترط
+    # 'available' تحديداً (انظر domain حقل vehicle_id و_check_vehicle_
+    # availability في recruitment_request.py)، فأي مركبة تحت الإصلاح أو
+    # خارج الخدمة تختفي تلقائياً من المركبات القابلة للتخصيص لمندوب جديد
+    # بلا أي كود إضافي.
     recruitment_state = fields.Selection(
         selection=[
             ('available', 'متاحة'),
             ('reserved', 'محجوزة (طلب توظيف)'),
             ('assigned', 'مخصصة'),
+            ('under_repair', 'تحت الإصلاح'),
+            ('out_of_service', 'خارج الخدمة'),
             ('unavailable', 'غير متاحة'),
         ],
         string='حالة التوفر للتوظيف',
         default='available',
         tracking=True,
         help='تحدد ما إذا كانت السيارة متاحة لتخصيصها في طلبات التوظيف.',
+    )
+    change_request_ids = fields.One2many(
+        'fleet.vehicle.change.request',
+        'current_vehicle_id',
+        string='طلبات تغيير المركبة',
+        help='الطلبات التي كانت هذه المركبة هي "المركبة الحالية" فيها.',
+    )
+    change_request_count = fields.Integer(
+        string='عدد طلبات التغيير',
+        compute='_compute_change_request_count',
     )
     recruitment_request_ids = fields.One2many(
         'recruitment.request',
@@ -51,6 +69,40 @@ class FleetVehicle(models.Model):
     def _compute_branch_history_count(self):
         for rec in self:
             rec.branch_history_count = len(rec.branch_history_ids)
+
+    @api.depends('change_request_ids')
+    def _compute_change_request_count(self):
+        for rec in self:
+            rec.change_request_count = len(rec.change_request_ids)
+
+    def _get_current_driver_employee(self):
+        """سجل الموظف المطابق لسائق المركبة الحالي (driver_id شريك وليس
+        موظفاً في أودو القياسية) - بنفس ترتيب الاحتياطات المستخدَم في
+        recruitment_request._get_employee_partner لكن بالاتجاه المعاكس.
+
+        sudo(): work_contact_id حقل "خاص" من منظور hr.employee.public -
+        بدونه يفشل أي مستخدم أسطول/حركة بلا hr.group_hr_user بمجرد فتح
+        شاشة بلاغ حادث أو طلب تغيير مركبة (نفس صنف الثغرة المكتشفة
+        سابقاً في السداد البنكي)."""
+        self.ensure_one()
+        if not self.driver_id:
+            return self.env['hr.employee']
+        Employee = self.env['hr.employee'].sudo()
+        employee = Employee.search([('work_contact_id', '=', self.driver_id.id)], limit=1)
+        if not employee:
+            employee = Employee.search([('user_id.partner_id', '=', self.driver_id.id)], limit=1)
+        return employee
+
+    def action_view_change_requests(self):
+        self.ensure_one()
+        return {
+            'name': _('طلبات تغيير المركبة - %s') % self.display_name,
+            'type': 'ir.actions.act_window',
+            'res_model': 'fleet.vehicle.change.request',
+            'view_mode': 'list,form',
+            'domain': [('current_vehicle_id', '=', self.id)],
+            'context': {'default_current_vehicle_id': self.id},
+        }
 
     def action_set_available(self):
         self.write({'recruitment_state': 'available'})

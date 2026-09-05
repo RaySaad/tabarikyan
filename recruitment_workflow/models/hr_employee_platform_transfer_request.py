@@ -38,6 +38,7 @@ class HrEmployeePlatformTransferRequest(models.Model):
     )
     employee_id = fields.Many2one(
         'hr.employee', string='الموظف', required=True, tracking=True,
+        ondelete='restrict',
     )
     # لقطة من المنصة الحالية للموظف وقت إنشاء الطلب - وليست حقلاً مرتبطاً
     # حياً (related) بالمنصة الفعلية، حتى لا تتغير قيمتها ضمنياً لو نُقل

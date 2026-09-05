@@ -37,6 +37,24 @@ class HrEmployee(models.Model):
         string='طلبات نقل معلّقة',
         compute='_compute_pending_transfer_request_count',
     )
+    # رقم جوال أبشر: يختلف عملياً عن جوال العمل/الجوال الشخصي المعياريين -
+    # هو الرقم المسجَّل لدى أبشر باسم المندوب، والمستخدَم في تفويض
+    # المركبات ونقل الملكية إلكترونياً، وقد يكون رقماً ثالثاً مختلفاً عن
+    # الاثنين. groups='' غير مطلوب هنا (حقل من إنشائنا، غير موروث من
+    # حقول hr المقيّدة).
+    absher_mobile = fields.Char(
+        string='رقم جوال أبشر', tracking=True,
+        help='الرقم المسجَّل في أبشر باسم المندوب - يُستخدَم في تفويض '
+             'المركبات إلكترونياً، وقد يختلف عن جوال العمل/الجوال الشخصي.',
+    )
+    vehicle_change_request_ids = fields.One2many(
+        'fleet.vehicle.change.request', 'employee_id',
+        string='طلبات تغيير المركبة',
+    )
+    vehicle_change_request_count = fields.Integer(
+        string='عدد طلبات تغيير المركبة',
+        compute='_compute_vehicle_change_request_count',
+    )
     @api.depends('platform_history_ids')
     def _compute_platform_history_count(self):
         for rec in self:
@@ -48,6 +66,37 @@ class HrEmployee(models.Model):
             rec.pending_transfer_request_count = len(rec.transfer_request_ids.filtered(
                 lambda r: r.state not in ('done', 'cancel')
             ))
+
+    @api.depends('vehicle_change_request_ids')
+    def _compute_vehicle_change_request_count(self):
+        for rec in self:
+            rec.vehicle_change_request_count = len(rec.vehicle_change_request_ids)
+
+    def _get_current_vehicle(self):
+        """المركبة المخصَّصة حالياً لهذا المندوب - عبر شريكه الشخصي، لأن
+        أودو القياسية تربط السائق بالمركبة كشريك (driver_id) وليس كموظف.
+
+        sudo(): البحث يمر عبر شريك الموظف الشخصي (حقل "خاص") وعلى
+        fleet.vehicle المقيَّدة بقاعدة الشركات - وهذه قراءة تقنية داخلية
+        بحتة (اشتقاق حقل) لا تعرض بيانات إضافية للمستخدم."""
+        self.ensure_one()
+        partner = self._get_personal_partner()
+        if not partner:
+            return self.env['fleet.vehicle']
+        return self.env['fleet.vehicle'].sudo().search(
+            [('driver_id', '=', partner.id)], limit=1,
+        )
+
+    def action_view_vehicle_change_requests(self):
+        self.ensure_one()
+        return {
+            'name': _('طلبات تغيير المركبة - %s') % self.display_name,
+            'type': 'ir.actions.act_window',
+            'res_model': 'fleet.vehicle.change.request',
+            'view_mode': 'list,form',
+            'domain': [('employee_id', '=', self.id)],
+            'context': {'default_employee_id': self.id},
+        }
 
     def write(self, vals):
         # المنصة الحالية لا يجوز تعديلها إلا عبر _open_platform_history -
@@ -84,6 +133,8 @@ class HrEmployee(models.Model):
             ('recruitment.request', 'employee_id', 'طلب/طلبات توظيف'),
             ('hr.employee.platform.history', 'employee_id', 'سجل/سجلات تاريخ منصات'),
             ('hr.employee.platform.transfer.request', 'employee_id', 'طلب/طلبات نقل منصة'),
+            ('fleet.vehicle.change.request', 'employee_id', 'طلب/طلبات تغيير مركبة'),
+            ('fleet.accident.report', 'employee_id', 'بلاغ/بلاغات حوادث'),
         ]
         for employee in self:
             for model_name, field_name, description in linked_models:

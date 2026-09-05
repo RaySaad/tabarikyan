@@ -165,7 +165,7 @@ class BankSettlementMixin(models.AbstractModel):
     )
     prepaid_category_id = fields.Many2one(
         'bank.settlement.prepaid.category', string='فئة الدفعة المقدمة',
-        tracking=True,
+        tracking=True, ondelete='restrict',
         help='تحدد حساب "المصروفات المدفوعة مقدماً" (مثال: 114001) وحساب '
              'المصروف الفعلي ودفتر اليومية المستخدَمة لجدولة الاستحقاق. '
              'تُعَدّ مرة واحدة من إعدادات السداد البنكي.',

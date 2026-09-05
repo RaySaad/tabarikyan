@@ -24,8 +24,11 @@ class HrEmployeePlatformHistory(models.Model):
         ondelete='restrict',
         index=True,
     )
+    # ondelete='restrict': حذف منصة كان يُفرغ ربطها من السجل التاريخي
+    # بصمت - فينهار كل ما يُبنى على هذا التاريخ لاحقاً (أهمها التوزيع
+    # التحليلي لقيود "الدفعة المقدمة" الذي يبحث في هذا السجل بالتاريخ).
     project_id = fields.Many2one(
-        'project.project',
+        'project.project', ondelete='restrict',
         string='المشروع / المنصة',
         required=True,
         index=True,

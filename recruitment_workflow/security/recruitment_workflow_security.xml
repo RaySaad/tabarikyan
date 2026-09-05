@@ -76,6 +76,39 @@
             <field name="implied_ids" eval="[(4, ref('group_recruitment_workflow_user'))]"/>
         </record>
 
+        <!-- مشرف الحركة: أول موافقة على طلب تغيير المركبة (يراجع صحة
+             الطلب ميدانياً قبل رفعه لمدير الصيانة/العمليات). مفصولة عن
+             "قسم الأسطول" عمداً - الأخيرة تخص تخصيص المركبات في التوظيف،
+             وهذه تخص تشغيل الحركة اليومي، وقد يكونان شخصين مختلفين. -->
+        <record id="group_recruitment_workflow_fleet_supervisor" model="res.groups">
+            <field name="name">مشرف الحركة</field>
+            <field name="sequence">51</field>
+            <field name="privilege_id" ref="privilege_recruitment_workflow"/>
+            <field name="implied_ids" eval="[(4, ref('group_recruitment_workflow_user'))]"/>
+        </record>
+
+        <!-- مدير الصيانة: موافقة مشروطة تظهر فقط في طلبات "حادث"/"عطل"
+             (لا علاقة له بطلبات تغيير اللوحة). -->
+        <record id="group_recruitment_workflow_maintenance_manager" model="res.groups">
+            <field name="name">مدير الصيانة</field>
+            <field name="sequence">52</field>
+            <field name="privilege_id" ref="privilege_recruitment_workflow"/>
+            <field name="implied_ids" eval="[(4, ref('group_recruitment_workflow_user'))]"/>
+        </record>
+
+        <!-- مدير الحركة: الاعتماد النهائي، وهو الوحيد الذي ينفّذ التغيير
+             فعلياً على المركبات. يشمل تلقائياً صلاحيات مشرف الحركة وقسم
+             الأسطول. -->
+        <record id="group_recruitment_workflow_fleet_manager" model="res.groups">
+            <field name="name">مدير الحركة</field>
+            <field name="sequence">53</field>
+            <field name="privilege_id" ref="privilege_recruitment_workflow"/>
+            <field name="implied_ids" eval="[
+                (4, ref('group_recruitment_workflow_fleet_supervisor')),
+                (4, ref('group_recruitment_workflow_fleet')),
+            ]"/>
+        </record>
+
         <!-- مدير النظام (كامل الصلاحيات) -->
         <record id="group_recruitment_workflow_manager" model="res.groups">
             <field name="name">مدير سير العمل (كامل الصلاحيات)</field>
@@ -86,6 +119,8 @@
                 (4, ref('group_recruitment_workflow_fleet')),
                 (4, ref('group_recruitment_workflow_accountant')),
                 (4, ref('group_recruitment_workflow_hr')),
+                (4, ref('group_recruitment_workflow_fleet_manager')),
+                (4, ref('group_recruitment_workflow_maintenance_manager')),
             ]"/>
             <field name="user_ids" eval="[(4, ref('base.user_admin'))]"/>
         </record>
@@ -122,6 +157,34 @@
         <record id="fleet_vehicle_branch_history_company_rule" model="ir.rule">
             <field name="name">تاريخ فروع السيارات: حسب الشركة</field>
             <field name="model_id" ref="model_fleet_vehicle_branch_history"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="fleet_vehicle_change_request_company_rule" model="ir.rule">
+            <field name="name">طلبات تغيير المركبات: حسب الشركة</field>
+            <field name="model_id" ref="model_fleet_vehicle_change_request"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="fleet_vehicle_change_attachment_company_rule" model="ir.rule">
+            <field name="name">مرفقات طلبات تغيير المركبات: حسب الشركة</field>
+            <field name="model_id" ref="model_fleet_vehicle_change_attachment"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('request_id.company_id', '=', False), ('request_id.company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="hr_employee_cost_type_company_rule" model="ir.rule">
+            <field name="name">أنواع تكاليف الموظفين: حسب الشركة</field>
+            <field name="model_id" ref="model_hr_employee_cost_type"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="fleet_accident_report_company_rule" model="ir.rule">
+            <field name="name">بلاغات الحوادث: حسب الشركة</field>
+            <field name="model_id" ref="model_fleet_accident_report"/>
             <field name="global" eval="True"/>
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
         </record>

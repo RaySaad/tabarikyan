@@ -28,15 +28,22 @@ class BankSettlementPrepaidLine(models.Model):
 
     name = fields.Char(string='الوصف')
     sequence = fields.Integer(string='الترتيب', default=10)
+    # ondelete='restrict' على الحقلين: بدونها (والافتراضي 'set null') كان
+    # حذف الموظف أو حذف فئة الدفعة المقدمة من الإعدادات يُفرغ الحقل بصمت
+    # على أسطر استحقاق لم تُرحَّل بعد - فتفشل المهمة المجدولة لاحقاً بلا
+    # أي أثر ظاهر للمستخدم (لا موظف = لا توزيع تحليلي، ولا فئة = لا
+    # حسابات ولا دفتر يومية). نفس صنف الثغرة الحقيقية التي سبّبت فقدان
+    # بيانات فعلياً في employee_id بـbank_settlement_mixin.
     employee_id = fields.Many2one(
         'hr.employee', string='المندوب', required=True, index=True,
+        ondelete='restrict',
         help='يُستخدَم لاشتقاق منصته الفعلية (كيتا/هنقرستيشن/جاهز) في '
              'تاريخ استحقاق هذا السطر تحديداً - انظر '
              'hr.employee._get_platform_analytic_distribution.',
     )
     category_id = fields.Many2one(
         'bank.settlement.prepaid.category', string='فئة الدفعة المقدمة',
-        required=True,
+        required=True, ondelete='restrict',
         help='تحدد الحسابات المحاسبية (المصروف الفعلي، المصروفات '
              'المدفوعة مقدماً، دفتر اليومية) المستخدَمة عند ترحيل هذا '
              'السطر - انظر prepaid_category.py.',

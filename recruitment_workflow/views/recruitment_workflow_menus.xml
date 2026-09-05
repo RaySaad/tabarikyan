@@ -24,6 +24,18 @@
               action="action_hr_employee_platform_history"
               sequence="20"/>
 
+    <menuitem id="menu_fleet_vehicle_change_request"
+              name="طلبات تغيير المركبات"
+              parent="menu_recruitment_workflow_root"
+              action="action_fleet_vehicle_change_request"
+              sequence="25"/>
+
+    <menuitem id="menu_fleet_accident_report"
+              name="بلاغات الحوادث"
+              parent="menu_recruitment_workflow_root"
+              action="action_fleet_accident_report"
+              sequence="30"/>
+
     <menuitem id="menu_recruitment_config"
               name="الإعدادات"
               parent="menu_recruitment_workflow_root"
@@ -47,6 +59,18 @@
               parent="menu_recruitment_config"
               action="action_recruitment_compensation_type"
               sequence="25"/>
+
+    <menuitem id="menu_fleet_vehicle_change_reason"
+              name="أسباب تبديل المركبات"
+              parent="menu_recruitment_config"
+              action="action_fleet_vehicle_change_reason"
+              sequence="30"/>
+
+    <menuitem id="menu_fleet_vehicle_change_attachment_type"
+              name="أنواع مرفقات تغيير المركبة"
+              parent="menu_recruitment_config"
+              action="action_fleet_vehicle_change_attachment_type"
+              sequence="35"/>
 
     <!-- إعداد لآلية "رسوم التوظيف" في recruitment_request.py
          (fee_cost_type_id) - وليس لنموذج تكاليف مستقل (حُذف، انظر
