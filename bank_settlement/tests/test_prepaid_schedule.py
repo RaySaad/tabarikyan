@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from datetime import date, timedelta
+from unittest.mock import patch
 
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
@@ -226,3 +227,48 @@ class TestPrepaidSchedule(TransactionCase):
         self._complete(self._create_prepaid_fee(date(2026, 3, 16)))
         with self.assertRaises(UserError):
             self.employee.sudo().unlink()
+
+    def test_manual_posting_and_error_visibility(self):
+        """ترحيل يدوي بلا اعتماد على المهمة المجدولة (بيئة Staging
+        تُعطّلها)، ورفض ترحيل فترة لم تنتهِ، وظهور سبب الفشل على السطر
+        بدل بقائه "لم يستحق بعد" بلا تفسير."""
+        today = date.today()
+        record = self._complete(self._create_prepaid_fee(today - timedelta(days=40)))
+        lines = self._lines(record)
+        due = lines.filtered(lambda l: l.period_end_date <= today)
+        future = lines.filtered(lambda l: l.period_end_date > today)
+        self.assertTrue(due and future)
+
+        # فترة لم تنتهِ: يُرفض ترحيلها يدوياً برسالة واضحة
+        with self.assertRaises(UserError):
+            future[0].action_post_now()
+
+        record.with_user(self.approver).action_post_due_prepaid_lines()
+        self.assertTrue(all(l.state == 'posted' for l in due))
+        self.assertTrue(all(l.state == 'draft' for l in future))
+
+        # لا فترات مستحقة متبقية -> رسالة واضحة بدل صمت
+        with self.assertRaises(UserError):
+            record.with_user(self.approver).action_post_due_prepaid_lines()
+
+    def test_failed_posting_records_reason_on_line(self):
+        """فشل الترحيل يُسجَّل على السطر نفسه (سبب + وقت المحاولة) بدل
+        دفنه في سجلات الخادم وحدها، ولا يترك أي أثر جزئي (نقطة الحفظ)."""
+        today = date.today()
+        record = self._complete(self._create_prepaid_fee(today - timedelta(days=40)))
+        line = self._lines(record).filtered(lambda l: l.period_end_date <= today)[0]
+
+        Line = type(self.env['bank.settlement.prepaid.line'])
+        with patch.object(Line, '_post_entry', side_effect=ValueError('فشل مُصطنع للاختبار')):
+            self.env['bank.settlement.prepaid.line'].sudo()._cron_generate_due_entries()
+
+        line.invalidate_recordset()
+        self.assertEqual(line.state, 'draft')
+        self.assertFalse(line.move_id)
+        self.assertTrue(line.last_attempt_date)
+        self.assertIn('فشل مُصطنع للاختبار', line.last_error)
+
+        # ونجاح لاحق يمسح أثر الفشل
+        line.action_post_now()
+        self.assertEqual(line.state, 'posted')
+        self.assertFalse(line.last_error)

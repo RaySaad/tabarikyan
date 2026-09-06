@@ -152,6 +152,12 @@
                                         class="oe_link" invisible="not prepaid_line_count">
                                     عرض جدول الاستحقاق
                                 </button>
+                                <button name="action_post_due_prepaid_lines" type="object"
+                                        class="oe_link"
+                                        groups="bank_settlement.group_bank_settlement_reviewer,bank_settlement.group_bank_settlement_manager"
+                                        invisible="not prepaid_line_count or state != 'done'">
+                                    ترحيل الفترات المستحقة الآن
+                                </button>
                                 <button name="action_cancel_prepaid_schedule" type="object"
                                         class="oe_link text-danger"
                                         groups="bank_settlement.group_bank_settlement_manager"

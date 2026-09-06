@@ -260,6 +260,30 @@ class BankSettlementMixin(models.AbstractModel):
                 ('res_model', '=', rec._name), ('res_id', '=', rec.id),
             ])
 
+    def action_post_due_prepaid_lines(self):
+        """ترحيل كل أسطر الاستحقاق المستحقة الآن يدوياً - بديل مباشر
+        للمهمة المجدولة (المعطَّلة تلقائياً في بيئات Odoo.sh غير
+        الإنتاجية)، وأي خطأ يظهر فوراً بدل بقاء السطر "لم يستحق بعد"
+        بلا تفسير."""
+        self.ensure_one()
+        self._check_group(
+            'bank_settlement.group_bank_settlement_reviewer',
+            'bank_settlement.group_bank_settlement_manager',
+        )
+        today = fields.Date.context_today(self)
+        due = self.env['bank.settlement.prepaid.line'].sudo().search([
+            ('res_model', '=', self._name), ('res_id', '=', self.id),
+            ('state', '=', 'draft'), ('period_end_date', '<=', today),
+        ])
+        if not due:
+            raise UserError(_(
+                'لا توجد فترات مستحقة الآن - كل الفترات المتبقية لم تنتهِ بعد.'
+            ))
+        due._post_entry()
+        self.message_post(body=_(
+            'رُحّلت %s فترة مستحقة يدوياً.'
+        ) % len(due))
+
     def action_cancel_prepaid_schedule(self):
         """إيقاف ما تبقّى من جدول استحقاق "الدفعة المقدمة" - يُلغي كل
         الأسطر التي لم تُرحَّل بعد فلا تُرحَّل مستقبلاً (مندوب غادر، رسوم

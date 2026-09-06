@@ -39,6 +39,10 @@
                            decoration-success="state == 'posted'"
                            decoration-danger="state == 'cancel'"
                            decoration-muted="state == 'draft'"/>
+                    <field name="last_error" string="تعذّر الترحيل" optional="show"/>
+                    <button name="action_post_now" type="object" icon="fa-check"
+                            title="ترحيل الآن"
+                            invisible="state != 'draft'"/>
                 </list>
             </field>
         </record>
@@ -48,6 +52,10 @@
             <field name="arch" type="xml">
                 <form string="سطر استحقاق دفعة مقدمة" create="0">
                     <header>
+                        <button name="action_post_now" type="object"
+                                string="ترحيل الآن" class="btn-primary"
+                                groups="bank_settlement.group_bank_settlement_reviewer,bank_settlement.group_bank_settlement_manager"
+                                invisible="state != 'draft'"/>
                         <button name="action_cancel_line" type="object"
                                 string="إيقاف هذا السطر"
                                 groups="bank_settlement.group_bank_settlement_manager"
@@ -87,8 +95,13 @@
                                 <field name="period_end_date"/>
                                 <field name="amount"/>
                                 <field name="currency_id" invisible="1"/>
+                                <field name="last_attempt_date" invisible="not last_attempt_date"/>
                             </group>
                         </group>
+                        <div class="alert alert-danger" role="alert" invisible="not last_error">
+                            تعذّر ترحيل هذا السطر في آخر محاولة:
+                            <field name="last_error" readonly="1" nolabel="1"/>
+                        </div>
                     </sheet>
                 </form>
             </field>

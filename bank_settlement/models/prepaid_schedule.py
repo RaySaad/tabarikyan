@@ -66,6 +66,20 @@ class BankSettlementPrepaidLine(models.Model):
     move_id = fields.Many2one(
         'account.move', string='قيد الاستحقاق', readonly=True, copy=False,
     )
+    # ثغرة حقيقية كشفها سؤال المستخدم: سطر يبقى "لم يستحق بعد" بلا أي
+    # سبب ظاهر - سواء لأن المهمة المجدولة لم تعمل أصلاً (بيئة Staging
+    # في Odoo.sh تُعطّل المهام المجدولة)، أو لأنها عملت وفشلت (قفل فترة
+    # محاسبية، حساب غير صالح...) فسُجّل الخطأ في سجلات الخادم وحدها ولم
+    # يره المستخدم إطلاقاً. الآن يُعرَض السبب على السطر نفسه.
+    last_attempt_date = fields.Datetime(
+        string='آخر محاولة ترحيل', readonly=True, copy=False,
+    )
+    last_error = fields.Text(
+        string='سبب تعذّر الترحيل', readonly=True, copy=False,
+        help='يُملأ تلقائياً عند فشل محاولة الترحيل - فراغه مع بقاء '
+             'الحالة "لم يستحق بعد" رغم انتهاء الفترة يعني أن المهمة '
+             'المجدولة لم تعمل أصلاً بعد.',
+    )
 
     def action_view_source(self):
         """يفتح سجل السداد البنكي المصدر لهذا السطر."""
@@ -152,7 +166,29 @@ class BankSettlementPrepaidLine(models.Model):
             }
             move = self.env['account.move'].sudo().create(move_vals)
             move.action_post()
-            line.write({'move_id': move.id, 'state': 'posted'})
+            line.write({
+                'move_id': move.id, 'state': 'posted',
+                'last_attempt_date': fields.Datetime.now(), 'last_error': False,
+            })
+
+    def action_post_now(self):
+        """ترحيل فوري يدوي - لا يعتمد على المهمة المجدولة إطلاقاً (مفيد
+        خصوصاً في بيئة Staging التي تُعطّل Odoo.sh مهامها المجدولة، أو
+        لمعالجة سطر تعثّر ترحيله سابقاً). أي خطأ يظهر للمستخدم مباشرة
+        بدل أن يُدفَن في سجلات الخادم."""
+        for line in self:
+            if line.state == 'posted':
+                raise UserError(_('السطر "%s" مُرحَّل بالفعل.') % line.name)
+            if line.state == 'cancel':
+                raise UserError(_(
+                    'السطر "%s" ملغى - أعِد تفعيله أولاً إن أردت ترحيله.'
+                ) % line.name)
+            if line.period_end_date > fields.Date.context_today(line):
+                raise UserError(_(
+                    'فترة السطر "%(name)s" لم تنتهِ بعد (تنتهي في '
+                    '%(end)s) - لا يصح ترحيل مصروف فترة لم تكتمل.'
+                ) % {'name': line.name, 'end': line.period_end_date})
+        self._post_entry()
 
     def action_cancel_line(self):
         """إلغاء سطر استحقاق لم يُرحَّل بعد - يوقف ترحيله تلقائياً في
@@ -201,8 +237,15 @@ class BankSettlementPrepaidLine(models.Model):
             try:
                 with self.env.cr.savepoint():
                     line._post_entry()
-            except Exception:
+            except Exception as exc:
                 _logger.exception(
                     'bank_settlement: تعذّر ترحيل سطر استحقاق الدفعة '
                     'المقدمة #%s تلقائياً', line.id,
                 )
+                # يُكتب *بعد* التراجع عن نقطة الحفظ - فيبقى محفوظاً حتى
+                # مع إلغاء كل ما فعله الترحيل الفاشل، ليراه المستخدم على
+                # السطر بدل بقائه "لم يستحق بعد" بلا تفسير.
+                line.sudo().write({
+                    'last_attempt_date': fields.Datetime.now(),
+                    'last_error': str(exc)[:2000],
+                })
