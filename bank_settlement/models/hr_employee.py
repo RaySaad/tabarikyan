@@ -15,7 +15,7 @@ class HrEmployee(models.Model):
         توزيعاً تحليلياً 100% على حساب تلك المنصة - أو False إن لم توجد
         فترة تغطي هذا التاريخ (موظف لم يُسنَد بعد لأي منصة، أو تاريخ
         خارج أي فترة مسجَّلة) فيبقى القيد بلا تصنيف تحليلي بدل إيقاف
-        الإنشاء بالكامل. تُستخدَم من account_asset.py._prepare_move."""
+        الإنشاء بالكامل. تُستخدَم من prepaid_schedule.py._post_entry."""
         self.ensure_one()
         history = self.sudo().platform_history_ids.filtered(
             lambda h: h.date_start <= on_date and (not h.date_end or h.date_end >= on_date)
@@ -67,6 +67,11 @@ class HrEmployee(models.Model):
             elapsed_amount = round(line.amount * elapsed_days / total_days, currency_decimals)
             remaining_amount = line.amount - elapsed_amount
             if not remaining_amount:
+                # النقل وقع في آخر يوم من الفترة تقريباً: الفترة كلها تخص
+                # المنصة القديمة فعلياً - تُرحَّل الآن كما هي بتوزيعها
+                # الصحيح. سابقاً كانت تُترك للمهمة المجدولة فتُرحَّل لاحقاً
+                # بتوزيع المنصة *الجديدة* خطأً (تاريخ نهايتها بعد النقل).
+                line._post_entry()
                 continue
             settle_line = line.copy({
                 'amount': elapsed_amount,

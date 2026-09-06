@@ -37,6 +37,7 @@
                     <field name="amount" sum="الإجمالي"/>
                     <field name="state" widget="badge"
                            decoration-success="state == 'posted'"
+                           decoration-danger="state == 'cancel'"
                            decoration-muted="state == 'draft'"/>
                 </list>
             </field>
@@ -45,7 +46,20 @@
             <field name="name">bank.settlement.prepaid.line.form</field>
             <field name="model">bank.settlement.prepaid.line</field>
             <field name="arch" type="xml">
-                <form string="سطر استحقاق دفعة مقدمة" create="0" edit="0">
+                <form string="سطر استحقاق دفعة مقدمة" create="0">
+                    <header>
+                        <button name="action_cancel_line" type="object"
+                                string="إيقاف هذا السطر"
+                                groups="bank_settlement.group_bank_settlement_manager"
+                                confirm="لن يُرحَّل هذا السطر تلقائياً بعد الآن. هل تريد المتابعة؟"
+                                invisible="state != 'draft'"/>
+                        <button name="action_reset_to_draft" type="object"
+                                string="إعادة تفعيل السطر"
+                                groups="bank_settlement.group_bank_settlement_manager"
+                                invisible="state != 'cancel'"/>
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="draft,posted"/>
+                    </header>
                     <sheet>
                         <div class="oe_button_box" name="button_box">
                             <button name="action_view_source" type="object"
@@ -67,7 +81,6 @@
                                 <field name="name"/>
                                 <field name="employee_id"/>
                                 <field name="category_id"/>
-                                <field name="state" widget="badge"/>
                             </group>
                             <group>
                                 <field name="period_start_date"/>

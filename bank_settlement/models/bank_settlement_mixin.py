@@ -260,6 +260,31 @@ class BankSettlementMixin(models.AbstractModel):
                 ('res_model', '=', rec._name), ('res_id', '=', rec.id),
             ])
 
+    def action_cancel_prepaid_schedule(self):
+        """إيقاف ما تبقّى من جدول استحقاق "الدفعة المقدمة" - يُلغي كل
+        الأسطر التي لم تُرحَّل بعد فلا تُرحَّل مستقبلاً (مندوب غادر، رسوم
+        عُكست، جدول بُني بالخطأ). القيود المُرحَّلة فعلاً لا تُمَس.
+
+        تنبيه محاسبي: الرصيد المتبقي في حساب "المصروفات المدفوعة مقدماً"
+        لا يُعالَج تلقائياً - يحتاج قيد تسوية/إقفال يدوياً من المحاسب،
+        لأن وجهته تختلف حسب الحالة (مصروف فوري، مطالبة على المندوب،
+        استرداد من الجهة)."""
+        self.ensure_one()
+        self._check_group('bank_settlement.group_bank_settlement_manager')
+        remaining = self.env['bank.settlement.prepaid.line'].sudo().search([
+            ('res_model', '=', self._name), ('res_id', '=', self.id),
+            ('state', '=', 'draft'),
+        ])
+        if not remaining:
+            raise UserError(_('لا توجد أسطر استحقاق قابلة للإيقاف.'))
+        total = sum(remaining.mapped('amount'))
+        remaining.action_cancel_line()
+        self.message_post(body=_(
+            'أُوقف ما تبقّى من جدول استحقاق الدفعة المقدمة: %(count)s سطراً '
+            'بإجمالي %(total)s. الرصيد المتبقي في حساب المصروفات المدفوعة '
+            'مقدماً يحتاج قيد تسوية يدوياً.'
+        ) % {'count': len(remaining), 'total': total})
+
     def action_view_prepaid_lines(self):
         """يفتح جدول استحقاق "الدفعة المقدمة" الخاص بهذا السجل - انظر
         prepaid_schedule.py."""
@@ -327,9 +352,15 @@ class BankSettlementMixin(models.AbstractModel):
         # الشركة المحاسبية لسجل مُعتمَد فعلاً بلا أي مانع. يُشتق تلقائياً
         # من فرع الموظف فقط (انظر _fill_employee_derived_vals)، ولا يُشترط
         # تعديله يدوياً منفصلاً عنه أصلاً.
+        # is_prepaid/prepaid_days/prepaid_category_id: ثغرة حقيقية - كانت
+        # مفتوحة للتعديل حتى بعد التنفيذ، رغم أن جدول الاستحقاق كامل
+        # يكون قد بُني منها فعلاً (عدد الأيام والحسابات ودفتر اليومية).
+        # تعديلها بعدها لا يغيّر الجدول المبني إطلاقاً، فيصبح رأس السجل
+        # يقول شيئاً وجدوله يقول شيئاً آخر - أسوأ من منع التعديل.
         return [
             'employee_id', 'employee_category', 'project_id', 'amount',
             'tax_amount', 'company_id',
+            'is_prepaid', 'prepaid_days', 'prepaid_category_id',
         ]
 
     def _get_editable_states(self):
@@ -591,6 +622,20 @@ class BankSettlementMixin(models.AbstractModel):
             raise UserError(
                 'لا يمكن إنشاء القيد المحاسبي بدون تحديد "دفتر اليومية البنكي".'
             )
+        # قيود الاستحقاق تُبنى بحقلي مدين/دائن مباشرة، وهما بعملة الشركة
+        # دائماً - فلو كانت عملة السجل مختلفة لسُجّلت المبالغ بقيمتها
+        # الرقمية كما هي بعملة الشركة (خطأ صامت في قيمة القيد). يُمنع
+        # صراحة بدل التسجيل الخاطئ.
+        company_currency = self.company_id.currency_id or self.env.company.currency_id
+        if self.currency_id and company_currency and self.currency_id != company_currency:
+            raise UserError(_(
+                'الدفعة المقدمة مدعومة بعملة الشركة (%(company)s) فقط - '
+                'هذا السجل بعملة %(record)s. سجّله بعملة الشركة، أو '
+                'أنشئه كمصروف فوري عادي بدل الدفعة المقدمة.'
+            ) % {
+                'company': company_currency.name,
+                'record': self.currency_id.name,
+            })
         start_date = self.transfer_date or fields.Date.context_today(self)
         end_date = start_date + timedelta(days=self.prepaid_days - 1)
         schedule = self._compute_prepaid_schedule_lines(start_date, end_date, self.total_amount)
@@ -645,6 +690,10 @@ class BankSettlementMixin(models.AbstractModel):
 
         Line = self.env['bank.settlement.prepaid.line'].sudo()
         for index, (period_start, period_end, amount) in enumerate(schedule):
+            # فترة يتلاشى مبلغها بالتقريب (حالة حدّية) - لا تُنشأ أصلاً
+            # بدل أن تنتظر المهمة المجدولة لتلغيها لاحقاً.
+            if not amount:
+                continue
             Line.create({
                 'res_model': self._name,
                 'res_id': self.id,

@@ -129,6 +129,13 @@
                                         class="oe_link" invisible="not prepaid_line_count">
                                     عرض جدول الاستحقاق
                                 </button>
+                                <button name="action_cancel_prepaid_schedule" type="object"
+                                        class="oe_link text-danger"
+                                        groups="bank_settlement.group_bank_settlement_manager"
+                                        confirm="سيتم إيقاف كل أسطر الاستحقاق التي لم تُرحَّل بعد فلا تُرحَّل مستقبلاً. القيود المُرحَّلة فعلاً لن تتأثر، والرصيد المتبقي في حساب المصروفات المدفوعة مقدماً يحتاج قيد تسوية يدوياً. هل تريد المتابعة؟"
+                                        invisible="not prepaid_line_count or state != 'done'">
+                                    إيقاف ما تبقّى من الجدول
+                                </button>
                             </group>
                         </group>
                     </sheet>

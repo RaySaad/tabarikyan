@@ -56,7 +56,11 @@ class BankSettlementPrepaidLine(models.Model):
     amount = fields.Monetary(string='المبلغ', required=True)
 
     state = fields.Selection(
-        selection=[('draft', 'لم يستحق بعد'), ('posted', 'مرحّل')],
+        selection=[
+            ('draft', 'لم يستحق بعد'),
+            ('posted', 'مرحّل'),
+            ('cancel', 'ملغى'),
+        ],
         string='الحالة', default='draft', required=True, copy=False,
     )
     move_id = fields.Many2one(
@@ -109,7 +113,13 @@ class BankSettlementPrepaidLine(models.Model):
         المنصة القديمة، لكن السطر المقابل كان يظهر بتوزيع المنصة الجديدة
         خطأً)."""
         for line in self:
-            if line.state == 'posted':
+            if line.state in ('posted', 'cancel'):
+                continue
+            # سطر بمبلغ صفر (حالة حدّية: فترة يوم واحد بمبلغ ضئيل جداً
+            # يتلاشى بالتقريب) كان سيُنتج قيداً محاسبياً فارغاً بلا أي
+            # معنى - يُلغى بدل ترحيله.
+            if not line.amount:
+                line.write({'state': 'cancel'})
                 continue
             category = line.category_id
             distribution = line.employee_id._get_platform_analytic_distribution(
@@ -144,6 +154,31 @@ class BankSettlementPrepaidLine(models.Model):
             move.action_post()
             line.write({'move_id': move.id, 'state': 'posted'})
 
+    def action_cancel_line(self):
+        """إلغاء سطر استحقاق لم يُرحَّل بعد - يوقف ترحيله تلقائياً في
+        المستقبل. لم تكن هناك أي وسيلة لإيقاف جدول استحقاق بُني بالخطأ أو
+        لم يعد ذا معنى (مندوب غادر، رسوم عُكست): الحذف ممنوع عمداً
+        (سجل تدقيق) والمهمة المجدولة كانت ستستمر بالترحيل إلى ما لا
+        نهاية - ثغرة تشغيلية حقيقية.
+
+        القيود المُرحَّلة فعلاً لا تُمَس (تُعكَس محاسبياً عند اللزوم)، كما
+        أن رصيد "المصروفات المدفوعة مقدماً" المتبقي يبقى كما هو ويحتاج
+        معالجة محاسبية يدوية - انظر التنبيه في الواجهة."""
+        for line in self:
+            if line.state == 'posted':
+                raise UserError(_(
+                    'لا يمكن إلغاء سطر مُرحَّل بالفعل (%s) - اعكس قيده '
+                    'المحاسبي بدلاً من ذلك إن لزم.'
+                ) % line.name)
+        self.write({'state': 'cancel'})
+
+    def action_reset_to_draft(self):
+        """إعادة سطر ملغى لحالة "لم يستحق بعد" - للتراجع عن إلغاء خاطئ."""
+        for line in self:
+            if line.state != 'cancel':
+                raise UserError(_('الإعادة متاحة للأسطر الملغاة فقط.'))
+        self.write({'state': 'draft'})
+
     @api.model
     def _cron_generate_due_entries(self):
         """تعمل يومياً (انظر data/prepaid_cron_data.xml) - ترحّل تلقائياً
@@ -157,8 +192,15 @@ class BankSettlementPrepaidLine(models.Model):
             ('period_end_date', '<=', today),
         ])
         for line in due_lines:
+            # نقطة حفظ لكل سطر على حدة: بدونها كان أي فشل *بعد* إنشاء
+            # القيد وقبل ربطه بالسطر (مثال: قفل فترة محاسبية، حساب غير
+            # صالح) يترك القيد المُنشأ قائماً كمسودة معلَّقة، ويبقى السطر
+            # "لم يستحق بعد" - فتُنشئ المهمة قيداً جديداً في اليوم التالي
+            # وهكذا: قيود مكرَّرة تتراكم بلا حد. الآن يُتراجَع عن أي أثر
+            # جزئي بالكامل، ويُعاد المحاولة نظيفاً في اليوم التالي.
             try:
-                line._post_entry()
+                with self.env.cr.savepoint():
+                    line._post_entry()
             except Exception:
                 _logger.exception(
                     'bank_settlement: تعذّر ترحيل سطر استحقاق الدفعة '
