@@ -68,7 +68,11 @@
                         <table class="table table-sm mt-2" t-if="data['lines']">
                             <tr style="font-weight:bold; font-size: 1.2em; border-top: 2px solid #000;">
                                 <td>
-                                    الصافي الإجمالي (له/عليه)
+                                    الصافي الإجمالي
+                                    <span style="font-weight:normal; font-size: 0.75em;">
+                                        (موجب = على الموظف للشركة &#160;|&#160;
+                                        سالب = للموظف على الشركة)
+                                    </span>
                                 </td>
                                 <td t-out="'%.2f' % data['net_total']"/>
                             </tr>

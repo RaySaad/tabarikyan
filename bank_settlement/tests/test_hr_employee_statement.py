@@ -139,3 +139,45 @@ class TestHrEmployeeStatement(TransactionCase):
             any(line['credit'] == 800.0 for line in data['lines']),
             'بلا فترة محدَّدة، كل الحركة التاريخية يجب أن تظهر',
         )
+
+    # ------------------------------------------------------------------
+    # اصطلاح إشارة الصافي (طلب صريح): من منظور الشركة لا الموظف.
+    # هذه الاختبارات تتعمّد الاعتماد على السلف/التصفيات وحدها (لا تحتاج
+    # دفتر يومية ولا حسابات) حتى تبقى صالحة في أي قاعدة اختبار.
+    # ------------------------------------------------------------------
+    def _advance(self, amount):
+        """سلفة = مدين (على الموظف - تُخصم من راتبه لاحقاً)."""
+        reason = self.env['bank.settlement.advance.reason'].search([], limit=1)             or self.env['bank.settlement.advance.reason'].create({'name': 'سبب اختبار'})
+        return self.env['bank.settlement.advance'].create({
+            'employee_id': self.employee.id,
+            'advance_reason_id': reason.id,
+            'amount': amount,
+        })
+
+    def _settlement(self, amount):
+        """تصفية مندوب = دائن (للموظف)."""
+        return self.env['bank.settlement.representative'].create({
+            'employee_id': self.employee.id,
+            'date': date(2026, 1, 1),
+            'settlement_amount': amount,
+        })
+
+    def test_net_total_is_positive_when_employee_owes_company(self):
+        self._advance(1000.0)
+        self._settlement(300.0)
+        data = self.employee._get_employee_statement_data()
+        self.assertAlmostEqual(data['total_debit'], 1000.0, places=2)
+        self.assertAlmostEqual(data['total_credit'], 300.0, places=2)
+        self.assertAlmostEqual(data['net_total'], 700.0, places=2)
+
+    def test_net_total_is_negative_when_company_owes_employee(self):
+        self._advance(300.0)
+        self._settlement(1000.0)
+        data = self.employee._get_employee_statement_data()
+        self.assertAlmostEqual(data['net_total'], -700.0, places=2)
+
+    def test_net_total_is_zero_when_balanced(self):
+        self._advance(500.0)
+        self._settlement(500.0)
+        data = self.employee._get_employee_statement_data()
+        self.assertAlmostEqual(data['net_total'], 0.0, places=2)

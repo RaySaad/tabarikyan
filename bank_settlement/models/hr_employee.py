@@ -266,10 +266,16 @@ class HrEmployee(models.Model):
         lines.sort(key=lambda l: l['date'] or date.min)
         total_debit = sum(l['debit'] for l in lines)
         total_credit = sum(l['credit'] for l in lines)
+        # اصطلاح الإشارة (طلب صريح): الصافي = مدين - دائن، أي من منظور
+        # *الشركة* لا من منظور الموظف:
+        #   موجب  => على الموظف مبلغ للشركة (سلف، مخالفات، رسوم رخصة...)
+        #   سالب  => للموظف مبلغ على الشركة (تصفيات، مستحقات غير مصروفة)
+        # كان معكوساً سابقاً (دائن - مدين)، فيظهر من عليه سلفة برصيد
+        # موجب ومن له مستحقات برصيد سالب - عكس ما يفهمه قارئ الكشف.
         return {
             'lines': lines,
             'total_debit': total_debit,
             'total_credit': total_credit,
-            'net_total': total_credit - total_debit,
+            'net_total': total_debit - total_credit,
         }
 
