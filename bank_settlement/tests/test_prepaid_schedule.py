@@ -70,6 +70,9 @@ class TestPrepaidSchedule(TransactionCase):
             'group_ids': [(6, 0, [
                 cls.env.ref('base.group_user').id,
                 manager_group.id, reviewer_group.id,
+                # لازمة لاختبار التكامل مع إنهاء الخدمة (اعتماد الخروج
+                # محكوم بمجموعات سير عمل التوظيف لا السداد البنكي).
+                cls.env.ref('recruitment_workflow.group_recruitment_workflow_operations').id,
             ])],
         })
 
@@ -272,3 +275,30 @@ class TestPrepaidSchedule(TransactionCase):
         line.action_post_now()
         self.assertEqual(line.state, 'posted')
         self.assertFalse(line.last_error)
+
+    def test_employee_exit_stops_remaining_prepaid_schedule(self):
+        """إنهاء خدمة الموظف يوقف ما تبقّى من جداول الاستحقاق - وإلا
+        استمرت المهمة المجدولة بترحيل مصروف شهري على منصة موظف غادر
+        (وقد أُغلقت فترة منصته، فيُرحَّل بلا أي توزيع تحليلي)."""
+        record = self._complete(self._create_prepaid_fee(date.today() - timedelta(days=10)))
+        self.assertTrue(self._lines(record).filtered(lambda l: l.state == 'draft'))
+
+        exit_request = self.env['hr.employee.exit.request'].create({
+            'employee_id': self.employee.id,
+            'exit_type': 'resignation',
+            'last_working_date': date.today(),
+        })
+        # المعلقات المالية تُعرَض قبل الاعتماد
+        self.assertIn('دفعات مقدمة', exit_request.pending_items or '')
+
+        exit_request.action_submit_review()
+        exit_request.with_user(self.approver).action_pm_approve()
+        exit_request.with_user(self.approver).action_confirm_exit()
+
+        self.assertTrue(all(
+            line.state == 'cancel' for line in self._lines(record).filtered(
+                lambda l: l.state != 'posted')
+        ))
+        # المهمة المجدولة لم تعد تلمسها
+        self.env['bank.settlement.prepaid.line'].sudo()._cron_generate_due_entries()
+        self.assertFalse(self._lines(record).filtered(lambda l: l.state == 'draft'))

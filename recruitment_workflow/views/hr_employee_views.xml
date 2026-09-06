@@ -25,6 +25,12 @@
                     <field name="vehicle_change_request_count" widget="statinfo"
                            string="طلبات تغيير المركبة"/>
                 </button>
+                <button name="action_view_warnings" type="object"
+                        class="oe_stat_button" icon="fa-exclamation-triangle"
+                        invisible="active_warning_count == 0">
+                    <field name="active_warning_count" widget="statinfo"
+                           string="إنذارات سارية"/>
+                </button>
             </xpath>
             <xpath expr="//field[@name='job_id']" position="after">
                 <field name="project_id" string="المنصة الحالية" readonly="1"

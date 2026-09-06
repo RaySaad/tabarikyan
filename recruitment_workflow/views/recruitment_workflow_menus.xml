@@ -24,6 +24,18 @@
               action="action_hr_employee_platform_history"
               sequence="20"/>
 
+    <menuitem id="menu_hr_employee_warning"
+              name="الإنذارات"
+              parent="menu_recruitment_workflow_root"
+              action="action_hr_employee_warning"
+              sequence="25"/>
+
+    <menuitem id="menu_hr_employee_exit_request"
+              name="طلبات إنهاء الخدمة"
+              parent="menu_recruitment_workflow_root"
+              action="action_hr_employee_exit_request"
+              sequence="30"/>
+
     <menuitem id="menu_recruitment_config"
               name="الإعدادات"
               parent="menu_recruitment_workflow_root"
@@ -47,6 +59,12 @@
               parent="menu_recruitment_config"
               action="action_recruitment_compensation_type"
               sequence="25"/>
+
+    <menuitem id="menu_hr_employee_warning_type"
+              name="أنواع المخالفات"
+              parent="menu_recruitment_config"
+              action="action_hr_employee_warning_type"
+              sequence="28"/>
 
 
     <!-- إعداد لآلية "رسوم التوظيف" في recruitment_request.py

@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============ أنواع المخالفات (إعدادات) ============ -->
+        <record id="view_hr_employee_warning_type_list" model="ir.ui.view">
+            <field name="name">hr.employee.warning.type.list</field>
+            <field name="model">hr.employee.warning.type</field>
+            <field name="arch" type="xml">
+                <list string="أنواع المخالفات" editable="bottom">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="description" optional="hide"/>
+                    <field name="active" column_invisible="True"/>
+                </list>
+            </field>
+        </record>
+        <record id="action_hr_employee_warning_type" model="ir.actions.act_window">
+            <field name="name">أنواع المخالفات</field>
+            <field name="res_model">hr.employee.warning.type</field>
+            <field name="view_mode">list</field>
+        </record>
+
+        <!-- ============ الإنذارات ============ -->
+        <record id="view_hr_employee_warning_list" model="ir.ui.view">
+            <field name="name">hr.employee.warning.list</field>
+            <field name="model">hr.employee.warning</field>
+            <field name="arch" type="xml">
+                <list string="الإنذارات"
+                      decoration-danger="is_final and state != 'cancel'"
+                      decoration-muted="state == 'cancel' or is_expired">
+                    <field name="name"/>
+                    <field name="employee_id"/>
+                    <field name="warning_type_id"/>
+                    <field name="date"/>
+                    <field name="level_label" string="المستوى"/>
+                    <field name="expiry_date"/>
+                    <field name="is_expired" string="سقط" widget="boolean_toggle" readonly="1"/>
+                    <field name="is_final" column_invisible="True"/>
+                    <field name="state" widget="badge"
+                           decoration-success="state == 'notified'"
+                           decoration-info="state == 'confirmed'"
+                           decoration-muted="state in ('draft', 'cancel')"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_hr_employee_warning_search" model="ir.ui.view">
+            <field name="name">hr.employee.warning.search</field>
+            <field name="model">hr.employee.warning</field>
+            <field name="arch" type="xml">
+                <search string="الإنذارات">
+                    <field name="name"/>
+                    <field name="employee_id"/>
+                    <field name="warning_type_id"/>
+                    <filter name="active_warnings" string="سارية"
+                            domain="[('state', 'in', ('confirmed', 'notified')),
+                                     '|', ('expiry_date', '=', False),
+                                     ('expiry_date', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                    <filter name="final_warnings" string="إنذارات نهائية"
+                            domain="[('is_final', '=', True)]"/>
+                    <separator/>
+                    <filter name="to_confirm" string="بانتظار الاعتماد"
+                            domain="[('state', '=', 'draft')]"/>
+                    <group>
+                        <filter name="group_by_employee" string="الموظف" context="{'group_by': 'employee_id'}"/>
+                        <filter name="group_by_type" string="المخالفة" context="{'group_by': 'warning_type_id'}"/>
+                        <filter name="group_by_state" string="الحالة" context="{'group_by': 'state'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_hr_employee_warning_form" model="ir.ui.view">
+            <field name="name">hr.employee.warning.form</field>
+            <field name="model">hr.employee.warning</field>
+            <field name="arch" type="xml">
+                <form string="إنذار موظف">
+                    <header>
+                        <button name="action_confirm" string="اعتماد الإنذار"
+                                type="object" class="btn-primary"
+                                groups="recruitment_workflow.group_recruitment_workflow_hr,recruitment_workflow.group_recruitment_workflow_operations"
+                                invisible="state != 'draft'"/>
+                        <button name="action_notified" string="تم إبلاغ الموظف"
+                                type="object" class="btn-primary"
+                                invisible="state != 'confirmed'"/>
+                        <button name="action_reset_draft" string="إعادة لمسودة"
+                                type="object"
+                                groups="recruitment_workflow.group_recruitment_workflow_operations"
+                                invisible="state in ('draft', 'cancel')"/>
+                        <button name="action_cancel" string="إلغاء"
+                                type="object"
+                                groups="recruitment_workflow.group_recruitment_workflow_hr,recruitment_workflow.group_recruitment_workflow_operations"
+                                invisible="state == 'cancel'"/>
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="draft,confirmed,notified"/>
+                    </header>
+                    <sheet>
+                        <widget name="web_ribbon" title="ملغى" bg_color="text-bg-danger"
+                                invisible="state != 'cancel'"/>
+                        <widget name="web_ribbon" title="سقط بالتقادم" bg_color="text-bg-secondary"
+                                invisible="not is_expired or state == 'cancel'"/>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_exit_request" type="object"
+                                    class="oe_stat_button" icon="fa-sign-out"
+                                    invisible="not exit_request_id">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">طلب إنهاء الخدمة</span>
+                                </div>
+                            </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1><field name="name" readonly="1"/></h1>
+                            <h3 invisible="not level_number">
+                                <field name="level_label" readonly="1"/>
+                            </h3>
+                        </div>
+                        <div class="alert alert-danger" role="alert"
+                             invisible="not is_final or state == 'cancel'">
+                            هذا <b>إنذار نهائي</b> - أُنشئ معه طلب إنهاء خدمة كمسودة
+                            يحتاج مراجعة واعتماداً قبل التنفيذ. الفصل لا يقع تلقائياً.
+                        </div>
+                        <group>
+                            <group>
+                                <field name="employee_id" readonly="state != 'draft'"
+                                       options="{'no_create': True}"/>
+                                <field name="project_id"/>
+                                <field name="warning_type_id" readonly="state != 'draft'"
+                                       options="{'no_create': True}"/>
+                                <field name="date" readonly="state != 'draft'"/>
+                            </group>
+                            <group>
+                                <field name="level_number" invisible="not level_number"/>
+                                <field name="expiry_date" invisible="not expiry_date"/>
+                                <field name="is_expired" invisible="1"/>
+                                <field name="is_final" invisible="1"/>
+                                <field name="acknowledgment_file"
+                                       filename="acknowledgment_filename" widget="binary"/>
+                                <field name="acknowledgment_filename" invisible="1"/>
+                                <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                            </group>
+                        </group>
+                        <group string="تفاصيل المخالفة">
+                            <field name="description" nolabel="1"
+                                   readonly="state not in ('draft', 'confirmed')"/>
+                        </group>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_hr_employee_warning" model="ir.actions.act_window">
+            <field name="name">الإنذارات</field>
+            <field name="res_model">hr.employee.warning</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <!-- ============ طلبات إنهاء الخدمة ============ -->
+        <record id="view_hr_employee_exit_request_list" model="ir.ui.view">
+            <field name="name">hr.employee.exit.request.list</field>
+            <field name="model">hr.employee.exit.request</field>
+            <field name="arch" type="xml">
+                <list string="طلبات إنهاء الخدمة"
+                      decoration-success="state == 'done'"
+                      decoration-info="state in ('waiting_pm', 'waiting_hr')"
+                      decoration-muted="state in ('draft', 'cancel')">
+                    <field name="name"/>
+                    <field name="employee_id"/>
+                    <field name="exit_type"/>
+                    <field name="last_working_date"/>
+                    <field name="warning_id" optional="show"/>
+                    <field name="state" widget="badge"
+                           decoration-success="state == 'done'"
+                           decoration-info="state in ('waiting_pm', 'waiting_hr')"
+                           decoration-muted="state in ('draft', 'cancel')"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_hr_employee_exit_request_search" model="ir.ui.view">
+            <field name="name">hr.employee.exit.request.search</field>
+            <field name="model">hr.employee.exit.request</field>
+            <field name="arch" type="xml">
+                <search string="طلبات إنهاء الخدمة">
+                    <field name="name"/>
+                    <field name="employee_id"/>
+                    <filter name="pending" string="قيد المعالجة"
+                            domain="[('state', 'not in', ('done', 'cancel'))]"/>
+                    <filter name="done" string="منفَّذة" domain="[('state', '=', 'done')]"/>
+                    <group>
+                        <filter name="group_by_type" string="نوع الخروج" context="{'group_by': 'exit_type'}"/>
+                        <filter name="group_by_state" string="الحالة" context="{'group_by': 'state'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_hr_employee_exit_request_form" model="ir.ui.view">
+            <field name="name">hr.employee.exit.request.form</field>
+            <field name="model">hr.employee.exit.request</field>
+            <field name="arch" type="xml">
+                <form string="طلب إنهاء خدمة">
+                    <header>
+                        <button name="action_submit_review" string="إرسال للمراجعة"
+                                type="object" class="btn-primary"
+                                invisible="state != 'draft'"/>
+                        <button name="action_pm_approve" string="موافقة مسؤول المنصة"
+                                type="object" class="btn-primary"
+                                groups="recruitment_workflow.group_recruitment_workflow_project_manager,recruitment_workflow.group_recruitment_workflow_operations"
+                                invisible="state != 'waiting_pm'"/>
+                        <button name="action_confirm_exit" string="اعتماد وتنفيذ الخروج"
+                                type="object" class="btn-primary"
+                                groups="recruitment_workflow.group_recruitment_workflow_hr,recruitment_workflow.group_recruitment_workflow_operations"
+                                confirm="سيُنفَّذ الخروج فوراً: يُنشأ طلب سحب المركبة، وتُغلق فترة المنصة، وتُوقَف جداول الدفعات المقدمة، ويُؤرشَف الموظف. هل تريد المتابعة؟"
+                                invisible="state != 'waiting_hr'"/>
+                        <button name="action_reset_draft" string="إعادة لمسودة"
+                                type="object"
+                                groups="recruitment_workflow.group_recruitment_workflow_operations"
+                                invisible="state in ('draft', 'done', 'cancel')"/>
+                        <button name="action_cancel" string="إلغاء"
+                                type="object"
+                                groups="recruitment_workflow.group_recruitment_workflow_hr,recruitment_workflow.group_recruitment_workflow_operations"
+                                invisible="state in ('done', 'cancel')"/>
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="draft,waiting_pm,waiting_hr,done"/>
+                    </header>
+                    <sheet>
+                        <widget name="web_ribbon" title="ملغى" bg_color="text-bg-danger"
+                                invisible="state != 'cancel'"/>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_vehicle_request" type="object"
+                                    class="oe_stat_button" icon="fa-car"
+                                    invisible="not vehicle_change_request_id">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">طلب سحب المركبة</span>
+                                </div>
+                            </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1><field name="name" readonly="1"/></h1>
+                        </div>
+                        <div class="alert alert-warning" role="alert"
+                             invisible="not pending_items or state == 'done'">
+                            <b>معلقات على الموظف قبل خروجه</b> (للعلم فقط - لا تمنع الاعتماد،
+                            وتُعالَج من التصفية النهائية):
+                            <field name="pending_items" readonly="1" nolabel="1"/>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="employee_id" readonly="state != 'draft'"
+                                       options="{'no_create': True}"/>
+                                <field name="project_id"/>
+                                <field name="current_vehicle_id"/>
+                                <field name="exit_type" readonly="state != 'draft'"/>
+                                <field name="departure_reason_id" options="{'no_create': True}"/>
+                            </group>
+                            <group>
+                                <field name="request_date"/>
+                                <field name="last_working_date" readonly="state != 'draft'"/>
+                                <field name="warning_id" readonly="1"
+                                       invisible="not warning_id"/>
+                                <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                            </group>
+                        </group>
+                        <group string="السبب / الملاحظات">
+                            <field name="reason" nolabel="1"
+                                   readonly="state in ('done', 'cancel')"/>
+                        </group>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_hr_employee_exit_request" model="ir.actions.act_window">
+            <field name="name">طلبات إنهاء الخدمة</field>
+            <field name="res_model">hr.employee.exit.request</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <!-- ============ إعدادات سياسة الإنذارات ============ -->
+        <record id="view_res_config_settings_recruitment_warnings" model="ir.ui.view">
+            <field name="name">res.config.settings.recruitment.warnings</field>
+            <field name="model">res.config.settings</field>
+            <field name="inherit_id" ref="hr.res_config_settings_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//block[@name='employees_setting_container']" position="inside">
+                    <setting id="recruitment_warning_policy" string="سياسة الإنذارات"
+                             help="تصعيد إنذارات المناديب وسقوطها بالتقادم">
+                        <div class="content-group">
+                            <div class="mt16">
+                                <label for="recruitment_warning_count" class="o_light_label"/>
+                                <field name="recruitment_warning_count" class="oe_inline"/>
+                            </div>
+                            <div class="mt8">
+                                <label for="recruitment_warning_validity_months" class="o_light_label"/>
+                                <field name="recruitment_warning_validity_months" class="oe_inline"/>
+                            </div>
+                        </div>
+                    </setting>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

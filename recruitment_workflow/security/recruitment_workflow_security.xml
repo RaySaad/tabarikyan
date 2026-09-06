@@ -177,6 +177,20 @@
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
         </record>
 
+        <record id="hr_employee_warning_company_rule" model="ir.rule">
+            <field name="name">إنذارات الموظفين: حسب الشركة</field>
+            <field name="model_id" ref="model_hr_employee_warning"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="hr_employee_exit_request_company_rule" model="ir.rule">
+            <field name="name">طلبات إنهاء الخدمة: حسب الشركة</field>
+            <field name="model_id" ref="model_hr_employee_exit_request"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
         <record id="fleet_vehicle_change_request_company_rule" model="ir.rule">
             <field name="name">طلبات تغيير المركبات: حسب الشركة</field>
             <field name="model_id" ref="model_fleet_vehicle_change_request"/>

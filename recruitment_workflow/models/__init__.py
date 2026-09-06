@@ -15,3 +15,6 @@ from . import hr_employee_platform_transfer_request
 from . import fleet_vehicle_change_config
 from . import fleet_accident_report
 from . import fleet_vehicle_change_request
+from . import hr_employee_warning
+from . import hr_employee_exit_request
+from . import res_config_settings

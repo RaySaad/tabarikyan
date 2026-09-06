@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="seq_hr_employee_warning" model="ir.sequence">
+            <field name="name">إنذار موظف</field>
+            <field name="code">hr.employee.warning</field>
+            <field name="prefix">WRN/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_hr_employee_exit_request" model="ir.sequence">
+            <field name="name">طلب إنهاء خدمة</field>
+            <field name="code">hr.employee.exit.request</field>
+            <field name="prefix">EXIT/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- سياسة الإنذارات الافتراضية - قابلة للتعديل من
+             الإعدادات ← الموظفون (انظر res_config_settings.py). -->
+        <record id="warning_count_param" model="ir.config_parameter">
+            <field name="key">recruitment_workflow.warning_count</field>
+            <field name="value">3</field>
+        </record>
+        <record id="warning_validity_months_param" model="ir.config_parameter">
+            <field name="key">recruitment_workflow.warning_validity_months</field>
+            <field name="value">12</field>
+        </record>
+
+        <!-- أنواع المخالفات الافتراضية - قائمة قابلة للتعديل والإضافة -->
+        <record id="warning_type_absence" model="hr.employee.warning.type">
+            <field name="name">غياب بدون إذن</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="warning_type_late" model="hr.employee.warning.type">
+            <field name="name">تأخر متكرر عن الدوام</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="warning_type_customer" model="hr.employee.warning.type">
+            <field name="name">سوء تعامل مع عميل</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="warning_type_orders" model="hr.employee.warning.type">
+            <field name="name">رفض/إلغاء طلبات بلا مبرر</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="warning_type_vehicle" model="hr.employee.warning.type">
+            <field name="name">إهمال في المركبة أو مخالفات مرورية متكررة</field>
+            <field name="sequence">50</field>
+        </record>
+        <record id="warning_type_other" model="hr.employee.warning.type">
+            <field name="name">أخرى (توضَّح في التفاصيل)</field>
+            <field name="sequence">90</field>
+        </record>
+
+    </data>
+</odoo>

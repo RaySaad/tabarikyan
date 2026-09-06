@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Recruitment Workflow - سير عمل طلبات التوظيف',
-    'version': '19.0.1.11.0',
+    'version': '19.0.1.12.0',
     'category': 'Human Resources/Recruitment',
     'summary': 'نظام إدارة مراحل طلبات التوظيف ونقل الكفالة وطلب السيارات وإنشاء العقود',
     'description': """
@@ -63,6 +63,7 @@
         'data/account_journal_data.xml',
         'data/mail_templates.xml',
         'data/fleet_vehicle_change_data.xml',
+        'data/hr_employee_discipline_data.xml',
         'wizard/recruitment_reject_wizard_views.xml',
         'wizard/recruitment_return_wizard_views.xml',
         'wizard/hr_employee_platform_bulk_assign_wizard_views.xml',
@@ -80,6 +81,7 @@
         'views/fleet_vehicle_change_config_views.xml',
         'views/fleet_accident_report_views.xml',
         'views/fleet_vehicle_change_request_views.xml',
+        'views/hr_employee_discipline_views.xml',
         'views/recruitment_workflow_menus.xml',
         'reports/recruitment_request_report.xml',
     ],

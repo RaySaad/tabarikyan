@@ -51,6 +51,17 @@ class HrEmployee(models.Model):
         'fleet.vehicle.change.request', 'employee_id',
         string='طلبات تغيير المركبة',
     )
+    warning_ids = fields.One2many(
+        'hr.employee.warning', 'employee_id', string='الإنذارات',
+    )
+    active_warning_count = fields.Integer(
+        string='الإنذارات السارية', compute='_compute_active_warning_count',
+        help='الإنذارات المعتمدة التي لم تسقط بالتقادم - وهي وحدها '
+             'المحتسبة في تصعيد أي إنذار جديد.',
+    )
+    exit_request_ids = fields.One2many(
+        'hr.employee.exit.request', 'employee_id', string='طلبات إنهاء الخدمة',
+    )
     vehicle_change_request_count = fields.Integer(
         string='عدد طلبات تغيير المركبة',
         compute='_compute_vehicle_change_request_count',
@@ -71,6 +82,55 @@ class HrEmployee(models.Model):
     def _compute_vehicle_change_request_count(self):
         for rec in self:
             rec.vehicle_change_request_count = len(rec.vehicle_change_request_ids)
+
+    @api.depends('warning_ids.state', 'warning_ids.expiry_date')
+    def _compute_active_warning_count(self):
+        today = fields.Date.context_today(self)
+        for rec in self:
+            rec.active_warning_count = len(rec.warning_ids.filtered(
+                lambda w: w.state in ('confirmed', 'notified')
+                and (not w.expiry_date or w.expiry_date >= today)
+            ))
+
+    def _close_platform_history(self, date_end):
+        """يغلق فترة المنصة المفتوحة حالياً بلا فتح فترة جديدة - تُستخدَم
+        عند إنهاء خدمة الموظف. بدونها تبقى الفترة مفتوحة للأبد فتُحمَّل
+        على المنصة تكاليف موظف غادر (وتلتقطها آليات التوزيع التحليلي
+        لاحقاً على أنها منصته "الحالية").
+
+        sudo(): سجل تاريخ المنصات وحقل project_id حقلان داخليان محميان -
+        من يعتمد إنهاء الخدمة (موارد بشرية/عمليات) لا يملك بالضرورة
+        صلاحية الكتابة المباشرة عليهما."""
+        self.ensure_one()
+        employee = self.sudo()
+        open_lines = employee.platform_history_ids.filtered(lambda h: not h.date_end)
+        if open_lines:
+            open_lines.write({'date_end': date_end})
+        if employee.project_id:
+            employee.with_context(platform_history_internal_write=True).project_id = False
+        return True
+
+    def action_view_warnings(self):
+        self.ensure_one()
+        return {
+            'name': _('إنذارات - %s') % self.display_name,
+            'type': 'ir.actions.act_window',
+            'res_model': 'hr.employee.warning',
+            'view_mode': 'list,form',
+            'domain': [('employee_id', '=', self.id)],
+            'context': {'default_employee_id': self.id},
+        }
+
+    def action_view_exit_requests(self):
+        self.ensure_one()
+        return {
+            'name': _('طلبات إنهاء الخدمة - %s') % self.display_name,
+            'type': 'ir.actions.act_window',
+            'res_model': 'hr.employee.exit.request',
+            'view_mode': 'list,form',
+            'domain': [('employee_id', '=', self.id)],
+            'context': {'default_employee_id': self.id},
+        }
 
     def _get_current_vehicle(self):
         """المركبة المخصَّصة حالياً لهذا المندوب - عبر شريكه الشخصي، لأن
@@ -135,6 +195,8 @@ class HrEmployee(models.Model):
             ('hr.employee.platform.transfer.request', 'employee_id', 'طلب/طلبات نقل منصة'),
             ('fleet.vehicle.change.request', 'employee_id', 'طلب/طلبات تغيير مركبة'),
             ('fleet.accident.report', 'employee_id', 'بلاغ/بلاغات حوادث'),
+            ('hr.employee.warning', 'employee_id', 'إنذار/إنذارات'),
+            ('hr.employee.exit.request', 'employee_id', 'طلب/طلبات إنهاء خدمة'),
         ]
         for employee in self:
             for model_name, field_name, description in linked_models:
