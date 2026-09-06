@@ -102,7 +102,9 @@ class HrEmployeeExitRequest(models.Model):
     _DEPARTURE_REASON_BY_TYPE = {
         'resignation': 'hr.departure_resigned',
         'termination': 'hr.departure_fired',
-        'contract_end': 'hr.departure_fired',
+        # سبب مستقل - ربطه بـ"فصل" كان يشوّه تقارير الموارد البشرية
+        # القياسية (انتهاء عقد ليس فصلاً).
+        'contract_end': 'recruitment_workflow.departure_contract_end',
     }
 
     # ------------------------------------------------------------------
@@ -329,9 +331,13 @@ class HrEmployeeExitRequest(models.Model):
             'note': _('سحب المركبة بموجب إنهاء خدمة %s') % self.name,
         })
         self.vehicle_change_request_id = request.id
+        # يُرسَل للمراجعة فوراً بدل تركه مسودة صامتة: لولا ذلك لما وصل
+        # قسم الحركة أي إشعار (الإشعارات مبنية على تغيّر الحالة)، فتبقى
+        # المركبة "مخصَّصة" لموظف غادر إلى أن يكتشفها أحد بالصدفة.
+        request.sudo().action_submit_review()
         self.message_post(body=_(
-            'أُنشئ طلب سحب المركبة (%(request)s) - المركبة "%(vehicle)s" '
-            'لن تعود متاحة إلا بعد استلامها فعلياً من قسم الحركة.'
+            'أُنشئ طلب سحب المركبة (%(request)s) وأُرسل لمشرف الحركة - '
+            'المركبة "%(vehicle)s" لن تعود متاحة إلا بعد استلامها فعلياً.'
         ) % {'request': request.name, 'vehicle': vehicle.display_name})
         return request
 

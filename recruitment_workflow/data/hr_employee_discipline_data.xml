@@ -29,6 +29,14 @@
             <field name="value">12</field>
         </record>
 
+        <!-- سبب مغادرة مستقل لانتهاء العقد - أودو توفر "فصل/استقالة/
+             تقاعد" فقط، وربط انتهاء العقد بـ"فصل" يشوّه تقارير الموارد
+             البشرية القياسية. -->
+        <record id="departure_contract_end" model="hr.departure.reason">
+            <field name="name">انتهاء عقد</field>
+            <field name="sequence">40</field>
+        </record>
+
         <!-- أنواع المخالفات الافتراضية - قائمة قابلة للتعديل والإضافة -->
         <record id="warning_type_absence" model="hr.employee.warning.type">
             <field name="name">غياب بدون إذن</field>

@@ -169,6 +169,18 @@ class HrEmployeeWarning(models.Model):
         ])
 
     # ------------------------------------------------------------------
+    @api.constrains('date')
+    def _check_date_not_in_future(self):
+        """إنذار بتاريخ مستقبلي يكسر التصعيد نفسه: يُحتسب لاحقاً ضمن
+        "الإنذارات السابقة" لإنذار أُصدر قبله فعلياً، فيقفز مستوى موظف
+        بمخالفة لم تقع بعد."""
+        today = fields.Date.context_today(self)
+        for rec in self:
+            if rec.date and rec.date > today:
+                raise UserError(_(
+                    'لا يمكن تسجيل إنذار بتاريخ مستقبلي (%s).'
+                ) % rec.date)
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -176,6 +188,13 @@ class HrEmployeeWarning(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'hr.employee.warning'
                 ) or _('جديد')
+            # الشركة من فرع الموظف لا من الفرع النشط في جلسة المُصدِر -
+            # وإلا أنشأ مستخدم الفرع الرئيسي إنذاراً "يختفي" عن مسؤولي
+            # فرع الموظف نفسه بسبب قاعدة عزل الفروع.
+            if vals.get('employee_id') and not vals.get('company_id'):
+                employee = self.env['hr.employee'].sudo().browse(vals['employee_id'])
+                if employee.company_id:
+                    vals['company_id'] = employee.company_id.id
         return super().create(vals_list)
 
     def unlink(self):
@@ -220,6 +239,12 @@ class HrEmployeeWarning(models.Model):
         for rec in self:
             if rec.state != 'confirmed':
                 raise UserError(_('يجب اعتماد الإنذار أولاً قبل تسجيل إبلاغ الموظف.'))
+            rec._check_group(
+                'recruitment_workflow.group_recruitment_workflow_project_manager',
+                'recruitment_workflow.group_recruitment_workflow_hr',
+                'recruitment_workflow.group_recruitment_workflow_operations',
+                'recruitment_workflow.group_recruitment_workflow_fleet_supervisor',
+            )
         self.write({'state': 'notified'})
 
     def action_cancel(self):

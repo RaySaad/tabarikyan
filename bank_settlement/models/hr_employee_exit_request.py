@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import models, _
+from odoo import models, fields, _
+from odoo.exceptions import UserError
 
 
 class HrEmployeeExitRequest(models.Model):
@@ -56,10 +57,55 @@ class HrEmployeeExitRequest(models.Model):
             ) % {'count': len(open_lines), 'total': sum(open_lines.mapped('amount'))})
         return items
 
+    representative_settlement_id = fields.Many2one(
+        'bank.settlement.representative', string='التصفية النهائية',
+        readonly=True, copy=False, ondelete='restrict',
+        help='تصفية مستحقات المندوب النهائية في السداد البنكي - تُنشأ '
+             'بزر من هذا الطلب بعد تنفيذ الخروج.',
+    )
+
     def _execute_exit(self):
         res = super()._execute_exit()
         self._stop_prepaid_schedules()
         return res
+
+    def action_create_final_settlement(self):
+        """ينشئ "تصفية مندوب" في السداد البنكي كمسودة بمستحقاته النهائية.
+
+        لا تُنشأ تلقائياً ضمن التنفيذ عمداً: مبلغ التصفية قرار محاسبي
+        يحتاج حساب (مستحقات ناقص سلف قائمة ناقص أي مطالبات)، وإنشاؤها
+        بمبلغ صفر تلقائياً كان سيملأ الشاشة بسجلات فارغة تُنسى."""
+        self.ensure_one()
+        if self.representative_settlement_id:
+            return self.action_view_final_settlement()
+        if self.state != 'done':
+            raise UserError(_(
+                'أنشئ التصفية النهائية بعد تنفيذ الخروج - قبل ذلك قد '
+                'تتغيّر مستحقاته.'
+            ))
+        settlement = self.env['bank.settlement.representative'].create({
+            'employee_id': self.employee_id.id,
+            'date': self.last_working_date,
+            'company_id': self.company_id.id,
+        })
+        self.representative_settlement_id = settlement.id
+        self.message_post(body=_(
+            'أُنشئت التصفية النهائية (%s) كمسودة - أكمل مبلغها وبياناتها '
+            'البنكية من السداد البنكي.'
+        ) % settlement.name)
+        return self.action_view_final_settlement()
+
+    def action_view_final_settlement(self):
+        self.ensure_one()
+        if not self.representative_settlement_id:
+            raise UserError(_('لا توجد تصفية نهائية مرتبطة بعد.'))
+        return {
+            'name': _('التصفية النهائية'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'bank.settlement.representative',
+            'res_id': self.representative_settlement_id.id,
+            'view_mode': 'form',
+        }
 
     def _stop_prepaid_schedules(self):
         """يوقف كل أسطر الاستحقاق التي لم تُرحَّل بعد للموظف الخارج.

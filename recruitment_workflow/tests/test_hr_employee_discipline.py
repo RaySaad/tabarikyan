@@ -179,8 +179,8 @@ class TestEmployeeDiscipline(TransactionCase):
         request.with_user(self.approver).action_pm_approve()
         request.with_user(self.approver).action_confirm_exit()
         vehicle_request = request.vehicle_change_request_id
-
-        vehicle_request.action_submit_review()
+        # يُرسَل تلقائياً عند إنشائه (لا يبقى مسودة صامتة)
+        self.assertEqual(vehicle_request.state, 'waiting_supervisor')
         vehicle_request.with_user(self.approver).action_supervisor_approve()
         # نوع "خروج مندوب" يتخطى مرحلة الصيانة
         self.assertEqual(vehicle_request.state, 'waiting_ops')
@@ -218,3 +218,37 @@ class TestEmployeeDiscipline(TransactionCase):
         self._warn()
         with self.assertRaises(UserError):
             self.employee.sudo().unlink()
+
+    def test_future_dated_warning_rejected(self):
+        """إنذار بتاريخ مستقبلي يكسر التصعيد - يُمنع."""
+        with self.assertRaises(UserError):
+            self.Warning.create({
+                'employee_id': self.employee.id,
+                'warning_type_id': self.warning_type.id,
+                'date': date.today() + timedelta(days=3),
+            })
+
+    def test_warning_company_follows_employee_branch(self):
+        warning = self._warn(confirm=False)
+        self.assertEqual(warning.company_id, self.employee.company_id)
+
+    def test_withdrawal_request_is_submitted_not_left_draft(self):
+        """طلب سحب المركبة يُرسَل لمشرف الحركة فوراً - لولا ذلك لما وصل
+        أي إشعار (الإشعارات مبنية على تغيّر الحالة) فتبقى المركبة
+        مخصَّصة لموظف غادر حتى يكتشفها أحد بالصدفة."""
+        request = self._exit_request()
+        request.action_submit_review()
+        request.with_user(self.approver).action_pm_approve()
+        request.with_user(self.approver).action_confirm_exit()
+        self.assertEqual(request.vehicle_change_request_id.state, 'waiting_supervisor')
+
+    def test_contract_end_uses_its_own_departure_reason(self):
+        """انتهاء العقد ليس فصلاً - له سبب مغادرة مستقل حتى لا تتشوّه
+        تقارير الموارد البشرية القياسية."""
+        request = self._exit_request(exit_type='contract_end')
+        self.assertEqual(
+            request.departure_reason_id,
+            self.env.ref('recruitment_workflow.departure_contract_end'),
+        )
+        fired = self.env.ref('hr.departure_fired')
+        self.assertNotEqual(request.departure_reason_id, fired)
