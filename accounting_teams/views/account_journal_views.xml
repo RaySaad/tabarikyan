@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- حقل الفرق المسموح لها بجانب الشركة في نموذج الدفتر - نفس
+             موضعه في الوحدة المرجعية. يُستهدف country_code (حقل مخفي
+             ثابت داخل مجموعة الشركة) بدل company_id نفسه: الأخير مكرر
+             أربع مرات في العرض بمواضع مختلفة، فاستهدافه بلا تخصيص هشّ. -->
+        <record id="view_account_journal_form_teams" model="ir.ui.view">
+            <field name="name">account.journal.form.teams</field>
+            <field name="model">account.journal</field>
+            <field name="inherit_id" ref="account.view_account_journal_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='country_code']" position="after">
+                    <field name="team_ids" widget="many2many_tags"
+                           options="{'no_create': True}"
+                           groups="account.group_account_manager"/>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_account_journal_tree_teams" model="ir.ui.view">
+            <field name="name">account.journal.list.teams</field>
+            <field name="model">account.journal</field>
+            <field name="inherit_id" ref="account.view_account_journal_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='journal_group_ids']" position="after">
+                    <field name="team_ids" widget="many2many_tags"
+                           string="الفرق المحاسبية" optional="show"
+                           groups="account.group_account_manager"/>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>
