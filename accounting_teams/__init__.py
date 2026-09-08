@@ -34,9 +34,15 @@ def _set_rules_domain(env, domain):
             rule.sudo().domain_force = domain
 
 
-def post_init_hook(env):
-    """يجعل قواعد أودو المفتوحة مدرِكة للفريق المحاسبي."""
+def _apply_team_rules(env):
+    """يجعل قواعد أودو المفتوحة مدرِكة للفريق المحاسبي - تُستدعى من
+    post_init_hook (عند التثبيت) ومن account.team.init() (عند كل
+    تحديث)، فلا يبقى الموديول مثبَّتاً بلا أثر فعلي أبداً."""
     _set_rules_domain(env, _TEAM_DOMAIN)
+
+
+def post_init_hook(env):
+    _apply_team_rules(env)
 
 
 def uninstall_hook(env):

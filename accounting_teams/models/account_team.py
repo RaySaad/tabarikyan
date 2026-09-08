@@ -21,6 +21,22 @@ class AccountTeam(models.Model):
     _description = 'الفريق المحاسبي'
     _order = 'name'
 
+    def init(self):
+        """يُعيد تطبيق تعديل قواعد أودو المفتوحة في *كل* تحديث للموديول،
+        لا عند التثبيت وحده.
+
+        ضروري وليس احتياطاً: post_init_hook لا يعمل إلا مرة واحدة عند
+        التثبيت. وأي شيء يُعيد تلك القواعد لأصلها لاحقاً (تحديث نسخة
+        أودو نفسها، أو تعديل يدوي من الإعدادات التقنية، أو إلغاء تثبيت
+        الموديول ثم إعادة تثبيته بترتيب مختلف) كان سيترك الموديول
+        "مثبَّتاً" وشاشاته ظاهرة بينما التقييد لا يعمل إطلاقاً - أخطر
+        أنواع الأعطال: صلاحية يظنها المستخدم مفعّلة وهي ليست كذلك.
+
+        init() يستدعيها أودو بعد تجهيز جداول النموذج في كل تثبيت
+        وتحديث، والدالة نفسها idempotent (تكتب نفس القيمة)."""
+        from odoo.addons.accounting_teams import _apply_team_rules
+        _apply_team_rules(self.env)
+
     name = fields.Char(string='الفريق المحاسبي', required=True, translate=True)
     user_id = fields.Many2one(
         'res.users', string='قائد الفريق', ondelete='restrict',
