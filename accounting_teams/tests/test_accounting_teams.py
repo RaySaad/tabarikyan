@@ -33,6 +33,7 @@ class TestAccountingTeams(TransactionCase):
 
         group_invoice = cls.env.ref('account.group_account_invoice')
         group_manager = cls.env.ref('account.group_account_manager')
+        group_user = cls.env.ref('account.group_account_user')
         base_user = cls.env.ref('base.group_user')
 
         def _user(login, name, groups, teams):
@@ -53,6 +54,11 @@ class TestAccountingTeams(TransactionCase):
                                     [base_user.id, group_invoice.id], None)
         cls.manager = _user('test_team_manager', 'مدير المحاسبة',
                             [base_user.id, group_invoice.id, group_manager.id], None)
+        # مستوى "محاسب": كل مزايا المحاسبة (بما فيها شاشة القيود
+        # وترحيلها) بلا صلاحية "مدير" - وهو المقصود من هذا المستوى:
+        # يعتمد القيود لكنه يبقى محصوراً بدفاتر فريقه.
+        cls.accountant_full = _user('test_team_full', 'محاسب كامل - فريق مدينة',
+                                    [base_user.id, group_user.id], cls.team_ar)
 
         cls.move_sale = cls._create_move(cls, cls.journal_sale)
         cls.move_purchase = cls._create_move(cls, cls.journal_purchase)
@@ -149,6 +155,59 @@ class TestAccountingTeams(TransactionCase):
     # النظر عن الدفتر - وهي السبب الفعلي في بقاء مستخدم يرى فواتير خارج
     # فرقه رغم تقييد كل الدفاتر. هذه الاختبارات تثبت إغلاق تلك الثغرة.
     # ------------------------------------------------------------------
+    # ================= مستوى "محاسب" (اعتماد بلا صلاحية مدير) =========
+    def test_accountant_level_is_selectable_in_user_form(self):
+        """بدون privilege_id لا يظهر المستوى في خانة المحاسبة إطلاقاً،
+        فيُضطر من يحتاج ترحيل القيود لاختيار "مدير" - وهو معفى من
+        الفرق. هذا الاختبار يحرس سبب وجود التعديل كله."""
+        group = self.env.ref('account.group_account_user')
+        self.assertEqual(group.privilege_id,
+                         self.env.ref('account.res_groups_privilege_accounting'))
+        self.assertGreater(group.sequence,
+                           self.env.ref('account.group_account_invoice').sequence)
+        self.assertLess(group.sequence,
+                        self.env.ref('account.group_account_manager').sequence)
+
+    def test_accountant_level_reaches_the_journal_entries_menu(self):
+        """قائمة "القيود اليومية" تتطلب group_account_readonly - والمستوى
+        يشتقّها، وإلا كانت الشاشة محجوبة عنه ولا فائدة من المستوى."""
+        self.assertIn(self.env.ref('account.group_account_readonly'),
+                      self.accountant_full.all_group_ids)
+        menu = self.env.ref('account.menu_finance_entries')
+        self.assertTrue(menu.with_user(self.accountant_full)._filter_visible_menus())
+
+    def test_accountant_level_is_still_restricted_to_his_teams(self):
+        """جوهر الحل: صلاحية الاعتماد لا تفتح له دفاتر الفرق الأخرى."""
+        visible = self._moves_visible_to(self.accountant_full)
+        self.assertIn(self.move_sale, visible)
+        self.assertIn(self.move_open, visible)
+        self.assertNotIn(self.move_purchase, visible)
+        self.assertNotIn(self.journal_purchase,
+                         self._journals_visible_to(self.accountant_full))
+
+    def test_accountant_level_can_create_and_post_in_his_own_journal(self):
+        """وأنه يرحّل فعلاً - لا يكتفي بالرؤية."""
+        accounts = self.env['account.account'].search(
+            [('company_ids', 'in', self.company.id)], limit=2)
+        if len(accounts) < 2:
+            self.skipTest('لا يوجد دليل حسابات في قاعدة الاختبار')
+        move = self.env['account.move'].with_user(self.accountant_full).create({
+            'journal_id': self.journal_open.id,
+            'move_type': 'entry',
+            'company_id': self.company.id,
+            'line_ids': [
+                (0, 0, {'account_id': accounts[0].id, 'balance': 100.0}),
+                (0, 0, {'account_id': accounts[1].id, 'balance': -100.0}),
+            ],
+        })
+        move.action_post()
+        self.assertEqual(move.state, 'posted')
+
+    def test_accountant_level_cannot_post_outside_his_teams(self):
+        """والحد الآخر: لا يستطيع لمس قيد دفتر خارج فريقه."""
+        with self.assertRaises(AccessError):
+            self.move_purchase.with_user(self.accountant_full).action_post()
+
     def _sales_user(self, login, teams=None):
         groups = [self.env.ref('base.group_user').id,
                   self.env.ref('account.group_account_invoice').id]
