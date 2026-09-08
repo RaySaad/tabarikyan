@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'الفرق المحاسبية وصلاحيات الوصول - Accounting Teams',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.2.0',
     'category': 'Accounting/Accounting',
     'summary': 'فصل صلاحيات المحاسبين على مستوى دفاتر اليومية عبر فرق محاسبية',
     'description': """

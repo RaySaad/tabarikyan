@@ -208,3 +208,83 @@ class TestAccountingTeams(TransactionCase):
         # ملاحظة: العدّ على 'journal_id.team_ids' تحديداً - لأن
         # 'accounting_team_ids' يحتوي 'team_ids' كسلسلة فرعية أيضاً.
         self.assertEqual(rule.domain_force.count('journal_id.team_ids'), 2)
+
+    # ------------------------------------------------------------------
+    # قاعدة السداد البنكي كانت تُظهر كل قيود السداد (رسوم حكومية، سلف،
+    # تأمين، استحقاقات دفعات مقدمة) في أي دفتر لمن يملك صلاحية السداد -
+    # حتى لو كان فريقه لا يضم ذلك الدفتر إطلاقاً.
+    # ------------------------------------------------------------------
+    def _settlement_move(self, journal):
+        move = self.env['account.move'].create({
+            'journal_id': journal.id, 'move_type': 'entry',
+            'company_id': journal.company_id.id,
+        })
+        if 'is_bank_settlement_move' in move._fields:
+            move.is_bank_settlement_move = True
+        return move
+
+    def test_bank_settlement_moves_follow_journal_teams(self):
+        bs_group = self.env.ref('bank_settlement.group_bank_settlement_user',
+                                raise_if_not_found=False)
+        if not bs_group:
+            self.skipTest('موديول السداد البنكي غير مثبَّت')
+
+        settlement_in_ap = self._settlement_move(self.journal_purchase)
+        settlement_in_ar = self._settlement_move(self.journal_sale)
+
+        user = self.env['res.users'].create({
+            'name': 'موظف سداد بنكي', 'login': 'test_bs_user',
+            'company_id': self.company.id, 'company_ids': [(6, 0, self.company.ids)],
+            'group_ids': [(6, 0, [self.env.ref('base.group_user').id, bs_group.id])],
+        })
+        self.team_ar.write({'member_ids': [(4, user.id)]})
+
+        visible = self.env['account.move'].with_user(user).search([
+            ('id', 'in', (settlement_in_ap + settlement_in_ar).ids)])
+        self.assertIn(settlement_in_ar, visible, 'قيد سداد في دفتر فريقه: يجب أن يراه')
+        self.assertNotIn(
+            settlement_in_ap, visible,
+            'قيد سداد في دفتر خارج فريقه: كان يظهر رغم التقييد - هذه هي الثغرة')
+
+    def test_bank_settlement_user_without_team_sees_nothing_outside_open_journals(self):
+        bs_group = self.env.ref('bank_settlement.group_bank_settlement_user',
+                                raise_if_not_found=False)
+        if not bs_group:
+            self.skipTest('موديول السداد البنكي غير مثبَّت')
+        settlement = self._settlement_move(self.journal_purchase)
+        user = self.env['res.users'].create({
+            'name': 'موظف سداد بلا فريق', 'login': 'test_bs_no_team',
+            'company_id': self.company.id, 'company_ids': [(6, 0, self.company.ids)],
+            'group_ids': [(6, 0, [self.env.ref('base.group_user').id, bs_group.id])],
+        })
+        visible = self.env['account.move'].with_user(user).search([('id', '=', settlement.id)])
+        self.assertFalse(visible)
+
+    def test_team_membership_change_takes_effect_immediately(self):
+        """أودو تُخزّن مجال القاعدة مؤقتاً لكل مستخدم بعد تعويض فرقه فيه -
+        فبلا تفريغ تلك الذاكرة كانت إضافة موظف لفريق بلا أي أثر حتى
+        إعادة تشغيل الخادم (المدير يضيف العضو ولا يتغيّر شيء)."""
+        newcomer = self.env['res.users'].create({
+            'name': 'محاسب جديد', 'login': 'test_team_newcomer',
+            'company_id': self.company.id, 'company_ids': [(6, 0, self.company.ids)],
+            'group_ids': [(6, 0, [
+                self.env.ref('base.group_user').id,
+                self.env.ref('account.group_account_invoice').id,
+            ])],
+        })
+        # قبل الانضمام: لا يرى قيد دفتر المبيعات
+        before = self.env['account.move'].with_user(newcomer).search([
+            ('id', '=', self.move_sale.id)])
+        self.assertFalse(before)
+
+        # بعد الانضمام مباشرة (بلا إعادة تشغيل): يراه
+        self.team_ar.write({'member_ids': [(4, newcomer.id)]})
+        after = self.env['account.move'].with_user(newcomer).search([
+            ('id', '=', self.move_sale.id)])
+        self.assertEqual(after, self.move_sale)
+
+        # وبإخراجه من الفريق يختفي فوراً كذلك
+        self.team_ar.write({'member_ids': [(3, newcomer.id)]})
+        removed = self.env['account.move'].with_user(newcomer).search([
+            ('id', '=', self.move_sale.id)])
+        self.assertFalse(removed)

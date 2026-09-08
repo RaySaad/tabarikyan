@@ -14,3 +14,12 @@ class ResUsers(models.Model):
         help='الفرق التي ينتمي إليها المستخدم - تحدد الدفاتر التي يراها '
              'وقيودها. لا أثر لها على مدير المحاسبة (معفى).',
     )
+
+    def write(self, vals):
+        """تفريغ الذاكرة المؤقتة لمجالات قواعد السجلات عند تغيير فرق
+        المستخدم - انظر الشرح الكامل في account_team.py: بدونه لا يسري
+        التغيير إلا بعد إعادة تشغيل الخادم."""
+        res = super().write(vals)
+        if 'accounting_team_ids' in vals:
+            self.env.registry.clear_cache()
+        return res
