@@ -1,44 +1,77 @@
 # -*- coding: utf-8 -*-
+import json
+
 from . import models
 
-# قواعد أودو المفتوحة [(1,'=',1)] على مجموعات المحاسبة. لا يكفي إضافة
-# قاعدة مقيِّدة بجانبها: قواعد المجموعات تُدمَج بـOR فتُبطلها هذه تماماً
-# (تحقّقنا عملياً: قواعد الدفاتر عملت لأن لا قاعدة مفتوحة عليها، بينما
-# لم تعمل قواعد القيود والبنود إطلاقاً).
+# ---------------------------------------------------------------------
+# كل القواعد التي تمنح رؤية القيود/الفواتير في أودو، والتي يجعلها هذا
+# الموديول خاضعة للفريق المحاسبي.
 #
-# ولا يكفي تعديلها من XML أيضاً: سجلاتها الأصلية داخل كتلة
-# <data noupdate="1"> في موديول account، فأي <record> يستهدفها يُتجاهَل
-# بصمت تام (لا خطأ ولا تحذير) - وهذا بالضبط ما حدث في أول محاولة.
-# الحل الوحيد الموثوق: تعديلها برمجياً عند التثبيت، وإعادتها عند
-# الإلغاء (وإلا بقيت تشير لحقل team_ids المحذوف فتتعطل المحاسبة كلياً).
-_PATCHED_RULES = (
+# لماذا التعديل بدل الإضافة: قواعد السجلات المرتبطة بمجموعات تُدمَج
+# بينها بـOR لا AND - فأي قاعدة مقيِّدة تُضاف بجانب قاعدة مفتوحة تُبطَل
+# تماماً. ولماذا برمجياً لا من XML: هذه السجلات داخل كتل
+# <data noupdate="1"> فيُتجاهَل أي <record> يستهدفها بصمت تام.
+#
+# المجموعة الأولى (account): قواعد مفتوحة [(1,'=',1)] لكل من يملك أي
+# صلاحية محاسبية.
+# المجموعة الثانية (sale/purchase): تمنح الرؤية حسب *نوع* الفاتورة -
+# فواتير العملاء لمن يملك صلاحية مبيعات، وفواتير الموردين لمن يملك
+# صلاحية مشتريات - بغض النظر عن الدفتر. وهي السبب الفعلي في بقاء
+# مستخدم يرى فواتير خارج فرقه رغم تقييد كل الدفاتر بفرق.
+# ---------------------------------------------------------------------
+_RULES = (
     'account.account_move_see_all',
     'account.account_move_rule_group_invoice',
     'account.account_move_rule_group_readonly',
     'account.account_move_line_see_all',
     'account.account_move_line_rule_group_invoice',
     'account.account_move_line_rule_group_readonly',
+    'sale.account_invoice_rule_see_all',
+    'sale.account_invoice_rule_see_personal',
+    'sale.account_invoice_line_rule_see_all',
+    'sale.account_invoice_line_rule_see_personal',
+    'purchase.purchase_user_account_move_rule',
+    'purchase.purchase_user_account_move_line_rule',
 )
 
+# مستثناة عمداً (وليست سهواً):
+# - account.account_invoice_rule_portal (والبنود): تخص العملاء على
+#   البوابة الإلكترونية - كل عميل يرى فواتيره هو، ولا علاقة للفرق
+#   المحاسبية بذلك؛ تقييدها يمنع العميل من رؤية فاتورته.
+# - bank_settlement.account_move_bank_settlement_rule: مسار وصول مستقل
+#   لمستخدمي السداد البنكي، وهم ليسوا محاسبين ولا ينتمون لأي فريق -
+#   تقييده كان سيمنعهم من فتح قيود سداداتهم من شاشاتهم نفسها.
+
+# شرط الفريق: الدفتر بلا فريق مرئي للجميع، أو أن يكون أحد فرق الدفتر
+# ضمن فرق المستخدم. يُدمَج مع مجال القاعدة الأصلي بجمع القائمتين، فينتج
+# AND ضمني بين الشرطين: ما كانت القاعدة تسمح به *وأيضاً* ضمن فرق
+# المستخدم.
 _TEAM_DOMAIN = (
     "['|', ('journal_id.team_ids', '=', False),"
     " ('journal_id.team_ids', 'in', user.accounting_team_ids.ids)]"
 )
-_OPEN_DOMAIN = "[(1, '=', 1)]"
 
-
-def _set_rules_domain(env, domain):
-    for xmlid in _PATCHED_RULES:
-        rule = env.ref(xmlid, raise_if_not_found=False)
-        if rule:
-            rule.sudo().domain_force = domain
+# نسخة احتياطية من المجالات الأصلية - تُؤخذ مرة واحدة عند أول تعديل،
+# فتُستعاد حرفياً عند إلغاء التثبيت بدل تخمين ما كانت عليه (وهو يختلف
+# بين إصدارات أودو وحسب الموديولات المثبَّتة).
+_BACKUP_PARAM = 'accounting_teams.original_rule_domains'
 
 
 def _apply_team_rules(env):
-    """يجعل قواعد أودو المفتوحة مدرِكة للفريق المحاسبي - تُستدعى من
-    post_init_hook (عند التثبيت) ومن account.team.init() (عند كل
-    تحديث)، فلا يبقى الموديول مثبَّتاً بلا أثر فعلي أبداً."""
-    _set_rules_domain(env, _TEAM_DOMAIN)
+    """يجعل كل قواعد رؤية القيود خاضعة للفريق المحاسبي.
+
+    idempotent: تُبنى كل مرة من المجال الأصلي المحفوظ لا من الحالي،
+    فتكرار الاستدعاء (تثبيت ثم تحديثات متتالية) لا يراكم الشرط."""
+    params = env['ir.config_parameter'].sudo()
+    backup = json.loads(params.get_param(_BACKUP_PARAM) or '{}')
+    for xmlid in _RULES:
+        rule = env.ref(xmlid, raise_if_not_found=False)
+        if not rule:
+            continue  # الموديول المصدر غير مثبَّت (مبيعات/مشتريات مثلاً)
+        if xmlid not in backup:
+            backup[xmlid] = rule.domain_force
+        rule.sudo().domain_force = '%s + %s' % (backup[xmlid], _TEAM_DOMAIN)
+    params.set_param(_BACKUP_PARAM, json.dumps(backup))
 
 
 def post_init_hook(env):
@@ -46,5 +79,12 @@ def post_init_hook(env):
 
 
 def uninstall_hook(env):
-    """يعيد قواعد أودو إلى مجالها الأصلي المفتوح."""
-    _set_rules_domain(env, _OPEN_DOMAIN)
+    """يعيد كل قاعدة لمجالها الأصلي المحفوظ حرفياً - وإلا بقيت بعد
+    الإلغاء تشير لحقل team_ids المحذوف فتتعطل المحاسبة بالكامل."""
+    params = env['ir.config_parameter'].sudo()
+    backup = json.loads(params.get_param(_BACKUP_PARAM) or '{}')
+    for xmlid, original in backup.items():
+        rule = env.ref(xmlid, raise_if_not_found=False)
+        if rule:
+            rule.sudo().domain_force = original
+    params.set_param(_BACKUP_PARAM, '{}')

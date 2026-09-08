@@ -143,3 +143,68 @@ class TestAccountingTeams(TransactionCase):
     def test_journal_and_team_are_two_sides_of_one_relation(self):
         self.assertIn(self.journal_sale, self.team_ar.journal_ids)
         self.assertNotIn(self.journal_purchase, self.team_ar.journal_ids)
+
+    # ------------------------------------------------------------------
+    # قواعد المبيعات/المشتريات كانت تمنح الرؤية حسب *نوع* الفاتورة بغض
+    # النظر عن الدفتر - وهي السبب الفعلي في بقاء مستخدم يرى فواتير خارج
+    # فرقه رغم تقييد كل الدفاتر. هذه الاختبارات تثبت إغلاق تلك الثغرة.
+    # ------------------------------------------------------------------
+    def _sales_user(self, login, teams=None):
+        groups = [self.env.ref('base.group_user').id,
+                  self.env.ref('account.group_account_invoice').id]
+        sale_group = self.env.ref('sales_team.group_sale_salesman_all_leads',
+                                  raise_if_not_found=False)
+        if sale_group:
+            groups.append(sale_group.id)
+        user = self.env['res.users'].create({
+            'name': login, 'login': login,
+            'company_id': self.company.id, 'company_ids': [(6, 0, self.company.ids)],
+            'group_ids': [(6, 0, groups)],
+        })
+        if teams:
+            teams.write({'member_ids': [(4, user.id)]})
+        return user
+
+    def _customer_invoice(self, journal):
+        return self.env['account.move'].create({
+            'move_type': 'out_invoice',
+            'journal_id': journal.id,
+            'company_id': journal.company_id.id,
+            'partner_id': self.env['res.partner'].create({'name': 'عميل اختبار'}).id,
+        })
+
+    def test_sales_user_cannot_see_invoices_outside_his_teams(self):
+        if not self.env.ref('sales_team.group_sale_salesman_all_leads',
+                            raise_if_not_found=False):
+            self.skipTest('موديول المبيعات غير مثبَّت')
+        invoice = self._customer_invoice(self.journal_sale)
+        # مستخدم مبيعات في فريق الذمم الدائنة (لا يملك دفتر المبيعات)
+        outsider = self._sales_user('test_sales_outsider', self.team_ap)
+        visible = self.env['account.move'].with_user(outsider).search([
+            ('id', '=', invoice.id)])
+        self.assertFalse(
+            visible,
+            'قاعدة المبيعات كانت تُظهر كل فواتير العملاء بغض النظر عن الفريق')
+
+    def test_sales_user_sees_invoices_of_his_team(self):
+        if not self.env.ref('sales_team.group_sale_salesman_all_leads',
+                            raise_if_not_found=False):
+            self.skipTest('موديول المبيعات غير مثبَّت')
+        invoice = self._customer_invoice(self.journal_sale)
+        insider = self._sales_user('test_sales_insider', self.team_ar)
+        visible = self.env['account.move'].with_user(insider).search([
+            ('id', '=', invoice.id)])
+        self.assertEqual(visible, invoice)
+
+    def test_patch_is_idempotent_across_updates(self):
+        """تكرار التطبيق يجب ألا يراكم الشرط في المجال."""
+        from odoo.addons.accounting_teams import _apply_team_rules
+        rule = self.env.ref('account.account_move_see_all')
+        _apply_team_rules(self.env)
+        first = rule.domain_force
+        _apply_team_rules(self.env)
+        self.assertEqual(rule.domain_force, first)
+        # شرط الفريق يظهر مرتين (طرفا الشرط) ولا يتراكم مع التكرار.
+        # ملاحظة: العدّ على 'journal_id.team_ids' تحديداً - لأن
+        # 'accounting_team_ids' يحتوي 'team_ids' كسلسلة فرعية أيضاً.
+        self.assertEqual(rule.domain_force.count('journal_id.team_ids'), 2)
