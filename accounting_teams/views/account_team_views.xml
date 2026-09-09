@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_account_team_list" model="ir.ui.view">
+            <field name="name">account.team.list</field>
+            <field name="model">account.team</field>
+            <field name="arch" type="xml">
+                <list string="الفرق المحاسبية">
+                    <field name="name"/>
+                    <field name="user_id"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="active" column_invisible="True"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_account_team_form" model="ir.ui.view">
+            <field name="name">account.team.form</field>
+            <field name="model">account.team</field>
+            <field name="arch" type="xml">
+                <form string="فريق محاسبي">
+                    <sheet>
+                        <widget name="web_ribbon" title="مؤرشف" bg_color="text-bg-danger"
+                                invisible="active"/>
+                        <field name="active" invisible="1"/>
+                        <div class="oe_title">
+                            <label for="name" string="الفريق المحاسبي"/>
+                            <h1><field name="name" placeholder="مثال: فريق الذمم الدائنة"/></h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="user_id" options="{'no_create': True}"/>
+                            </group>
+                            <group>
+                                <field name="company_id" options="{'no_create': True}"
+                                       groups="base.group_multi_company"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="أعضاء الفريق" name="members">
+                                <field name="member_ids" widget="many2many_avatar_user"
+                                       options="{'no_create': True}"/>
+                            </page>
+                            <page string="الدفاتر المسموح بها" name="journals">
+                                <div class="alert alert-info" role="alert">
+                                    تُضبط من شاشة دفتر اليومية نفسه (حقل "الفرق المحاسبية
+                                    المسموح لها") - تُعرض هنا للمراجعة فقط.
+                                </div>
+                                <field name="journal_ids" readonly="1">
+                                    <list>
+                                        <field name="name"/>
+                                        <field name="type"/>
+                                        <field name="code"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_account_team_search" model="ir.ui.view">
+            <field name="name">account.team.search</field>
+            <field name="model">account.team</field>
+            <field name="arch" type="xml">
+                <search string="الفرق المحاسبية">
+                    <field name="name"/>
+                    <field name="member_ids"/>
+                    <field name="user_id"/>
+                    <filter name="my_teams" string="فرقي"
+                            domain="[('member_ids', 'in', uid)]"/>
+                    <filter name="inactive" string="مؤرشف" domain="[('active', '=', False)]"/>
+                    <group>
+                        <filter name="group_by_company" string="الشركة"
+                                context="{'group_by': 'company_id'}"
+                                groups="base.group_multi_company"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_account_team" model="ir.actions.act_window">
+            <field name="name">الفرق المحاسبية</field>
+            <field name="res_model">account.team</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">أنشئ فريقاً محاسبياً</p>
+                <p>
+                    الفريق المحاسبي يفصل صلاحيات المحاسبين: تُربَط الدفاتر بالفرق،
+                    فيرى كل محاسب دفاتر فريقه وقيودها وفواتيرها فقط.
+                    مدير المحاسبة معفى ويرى كل شيء.
+                </p>
+            </field>
+        </record>
+
+        <menuitem id="menu_account_team"
+                  name="الفرق المحاسبية"
+                  parent="account.account_account_menu"
+                  action="action_account_team"
+                  groups="account.group_account_manager"
+                  sequence="20"/>
+
+    </data>
+</odoo>
