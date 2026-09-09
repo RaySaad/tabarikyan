@@ -83,6 +83,73 @@
             <field name="domain_force">[(1, '=', 1)]</field>
         </record>
 
+        <!-- ============================================================
+             نماذج مجاورة تحمل نفس البيانات المالية ولا تمرّ بقواعد
+             account.move إطلاقاً - كشفها فحص الثغرات على قاعدة حقيقية:
+
+             • account.payment: في أودو 19 لم يعد يرث account.move (صار
+               نموذجاً مستقلاً بحقل journal_id خاص به)، ولا تشحن أودو
+               عليه أي قاعدة مجموعات - فقاعدة الشركة العامة وحدها كانت
+               تحكمه، والمحاسب المقيَّد يرى كل دفعات الشركة بمبالغها
+               وموردّيها من شاشة "المدفوعات".
+             • account.bank.statement: كذلك بلا قاعدة مجموعات - فكان
+               يرى كشوف البنوك التي ليست من فرقه بأرصدتها الافتتاحية
+               والختامية، رغم أن الدفتر البنكي نفسه محجوب عنه.
+
+             (account.bank.statement.line لا يحتاج قاعدة: يرث
+             account.move عبر _inherits فتسري عليه قواعدها تلقائياً -
+             تحقّقنا من ذلك عملياً.)
+
+             هنا نضيف قواعد جديدة (لا توجد قاعدة مفتوحة تُبطلها)، ومعها
+             قاعدة مفتوحة لمدير المحاسبة تعيد له الرؤية الكاملة عبر
+             منطق الـOR نفسه المشروح أعلاه.
+             ============================================================ -->
+        <record id="account_payment_team_rule" model="ir.rule">
+            <field name="name">المدفوعات: حسب الفريق المحاسبي</field>
+            <field name="model_id" ref="account.model_account_payment"/>
+            <field name="groups" eval="[(4, ref('account.group_account_invoice')),
+                                        (4, ref('account.group_account_readonly'))]"/>
+            <field name="domain_force">['|', ('journal_id.team_ids', '=', False), ('journal_id.team_ids', 'in', user.accounting_team_ids.ids)]</field>
+        </record>
+
+        <record id="account_payment_manager_rule" model="ir.rule">
+            <field name="name">المدفوعات: مدير المحاسبة يرى الكل</field>
+            <field name="model_id" ref="account.model_account_payment"/>
+            <field name="groups" eval="[(4, ref('account.group_account_manager'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <!-- journal_id على الكشف محسوب من بنوده ولا يُكتَب مباشرةً،
+             فكشف بلا بنود دفتره فارغ. بلا الفرع الأول كان يختفي عمّن
+             أنشأه لحظة إنشائه (قبل إضافة أي بند) - ولا يحمل حينها أي
+             معلومة تخص فريقاً أصلاً؛ ومتى أُضيف أول بند التحق بفرق
+             دفتره تلقائياً. (بخلاف المدفوعات: journal_id فيها required
+             فلا وجود لدفعة بلا دفتر.) -->
+        <record id="account_bank_statement_team_rule" model="ir.rule">
+            <field name="name">الكشوف البنكية: حسب الفريق المحاسبي</field>
+            <field name="model_id" ref="account.model_account_bank_statement"/>
+            <field name="groups" eval="[(4, ref('account.group_account_invoice')),
+                                        (4, ref('account.group_account_readonly'))]"/>
+            <field name="domain_force">['|', ('journal_id', '=', False), '|', ('journal_id.team_ids', '=', False), ('journal_id.team_ids', 'in', user.accounting_team_ids.ids)]</field>
+        </record>
+
+        <record id="account_bank_statement_manager_rule" model="ir.rule">
+            <field name="name">الكشوف البنكية: مدير المحاسبة يرى الكل</field>
+            <field name="model_id" ref="account.model_account_bank_statement"/>
+            <field name="groups" eval="[(4, ref('account.group_account_manager'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <!-- السطور التحليلية: قاعدتا أودو المفتوحتان عليها مُعدَّلتان
+             برمجياً (انظر _ANALYTIC_TEAM_DOMAIN في __init__.py) - وهذه
+             تعيد للمدير رؤيته الكاملة. -->
+        <record id="account_analytic_line_manager_rule" model="ir.rule">
+            <field name="name">السطور التحليلية: مدير المحاسبة يرى الكل</field>
+            <field name="model_id" ref="analytic.model_account_analytic_line"/>
+            <field name="groups" eval="[(4, ref('account.group_account_manager'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
         <!-- ========= بنود القيود ========= -->
         <record id="account_move_line_manager_rule" model="ir.rule">
             <field name="name">بنود القيود: مدير المحاسبة يرى الكل</field>

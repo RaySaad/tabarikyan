@@ -18,8 +18,39 @@ from . import models
 # فواتير العملاء لمن يملك صلاحية مبيعات، وفواتير الموردين لمن يملك
 # صلاحية مشتريات - بغض النظر عن الدفتر. وهي السبب الفعلي في بقاء
 # مستخدم يرى فواتير خارج فرقه رغم تقييد كل الدفاتر بفرق.
+# المجموعة الثالثة (السطور التحليلية): قاعدتان مفتوحتان كانتا تكشفان
+# التوزيع التحليلي لقيود دفاتر أخرى - أي تكلفة كل منصة.
+#
+# ونماذج لا تمرّ بقواعد account.move إطلاقاً (account.payment و
+# account.bank.statement) تُغطّى بقواعد جديدة في
+# security/account_team_security.xml لا بالتعديل هنا، إذ لا توجد قاعدة
+# مفتوحة تُبطلها.
 # ---------------------------------------------------------------------
-_RULES = (
+# شرط الفريق: الدفتر بلا فريق مرئي للجميع، أو أن يكون أحد فرق الدفتر
+# ضمن فرق المستخدم. يُدمَج مع مجال القاعدة الأصلي بجمع القائمتين، فينتج
+# AND ضمني بين الشرطين: ما كانت القاعدة تسمح به *وأيضاً* ضمن فرق
+# المستخدم.
+_TEAM_DOMAIN = (
+    "['|', ('journal_id.team_ids', '=', False),"
+    " ('journal_id.team_ids', 'in', user.accounting_team_ids.ids)]"
+)
+
+# السطر التحليلي وحده قد لا يرتبط بقيد محاسبي إطلاقاً (سطور الحضور
+# والمشاريع مثلاً، وحقل journal_id فيه related عن move_line_id ويكون
+# فارغاً حينها). فبلا الفرع الأول كانت القاعدة تُخفي تلك السطور عن
+# المحاسبين كافة - تقييد لم نطلبه ويكسر شاشات خارج المحاسبة.
+_ANALYTIC_TEAM_DOMAIN = (
+    "['|', ('journal_id', '=', False),"
+    " '|', ('journal_id.team_ids', '=', False),"
+    " ('journal_id.team_ids', 'in', user.accounting_team_ids.ids)]"
+)
+
+
+_RULES = {}
+
+# قواعد يرتبط سجلها بالدفتر مباشرةً عبر journal_id (وهو حقل مطلوب فيها
+# كلها، فلا وجود لسجل بلا دفتر).
+for _xmlid in (
     'account.account_move_see_all',
     'account.account_move_rule_group_invoice',
     'account.account_move_rule_group_readonly',
@@ -38,7 +69,18 @@ _RULES = (
     # للفريق بقرار صريح: الدفتر هو المرجع الوحيد، ومن ليس ضمن فريق
     # الدفتر لا يرى قيوده مهما كانت صلاحياته الأخرى.
     'bank_settlement.account_move_bank_settlement_rule',
-)
+):
+    _RULES[_xmlid] = _TEAM_DOMAIN
+
+# السطور التحليلية: أودو تشحن عليها قاعدتين مفتوحتين [(1,'=',1)] فكان
+# المحاسب المقيَّد يرى التوزيع التحليلي لقيود دفاتر ليست من فرقه - وهي
+# أخطر تسريب في هذا النظام تحديداً، إذ تحمل تكلفة كل منصة على حدة.
+for _xmlid in (
+    'account.account_analytic_line_rule_billing_user',
+    'account.account_analytic_line_rule_readonly_user',
+):
+    _RULES[_xmlid] = _ANALYTIC_TEAM_DOMAIN
+
 
 # مستثناة عمداً (وليست سهواً):
 # - account.account_invoice_rule_portal (والبنود): تخص العملاء على
@@ -50,15 +92,6 @@ _RULES = (
 # (الراجحي/المدفوعات الحكومية) ليتمكنوا من فتح زر "القيد المحاسبي" من
 # شاشاتهم - وسجلات السداد نفسها تبقى مرئية لهم كاملة بلا أي تأثر،
 # فالتقييد على القيود المحاسبية وحدها.
-
-# شرط الفريق: الدفتر بلا فريق مرئي للجميع، أو أن يكون أحد فرق الدفتر
-# ضمن فرق المستخدم. يُدمَج مع مجال القاعدة الأصلي بجمع القائمتين، فينتج
-# AND ضمني بين الشرطين: ما كانت القاعدة تسمح به *وأيضاً* ضمن فرق
-# المستخدم.
-_TEAM_DOMAIN = (
-    "['|', ('journal_id.team_ids', '=', False),"
-    " ('journal_id.team_ids', 'in', user.accounting_team_ids.ids)]"
-)
 
 # نسخة احتياطية من المجالات الأصلية - تُؤخذ مرة واحدة عند أول تعديل،
 # فتُستعاد حرفياً عند إلغاء التثبيت بدل تخمين ما كانت عليه (وهو يختلف
@@ -78,7 +111,7 @@ def _apply_team_rules(env):
     params = env['ir.config_parameter'].sudo()
     backup = json.loads(params.get_param(_BACKUP_PARAM) or '{}')
     changed = False
-    for xmlid in _RULES:
+    for xmlid, team_domain in _RULES.items():
         rule = env.ref(xmlid, raise_if_not_found=False)
         if not rule:
             continue  # الموديول المصدر غير مثبَّت (مبيعات/مشتريات مثلاً)
@@ -87,7 +120,7 @@ def _apply_team_rules(env):
             continue  # مضبوطة بالفعل
         # المجال الحالي هو الأصل (لم يُعدَّل بعد، أو أعاده تحديث موديوله)
         backup[xmlid] = current
-        rule.sudo().domain_force = '%s + %s' % (current, _TEAM_DOMAIN)
+        rule.sudo().domain_force = '%s + %s' % (current, team_domain)
         changed = True
     if changed:
         params.set_param(_BACKUP_PARAM, json.dumps(backup))

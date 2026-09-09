@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from odoo import fields
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
@@ -207,6 +208,111 @@ class TestAccountingTeams(TransactionCase):
         """والحد الآخر: لا يستطيع لمس قيد دفتر خارج فريقه."""
         with self.assertRaises(AccessError):
             self.move_purchase.with_user(self.accountant_full).action_post()
+
+    # ========= نماذج مجاورة تحمل نفس البيانات (ثغرات مغلقة) =========
+    # كشفها فحص على قاعدة حقيقية: هذه النماذج لا تمرّ بقواعد
+    # account.move، فكانت مفتوحة بالكامل رغم تقييد الدفاتر والقيود.
+
+    def _bank_journal(self, team):
+        journal = self.env['account.journal'].create({
+            'name': 'بنك اختبار %s' % team.name, 'code': 'TBK%d' % team.id,
+            'type': 'bank', 'company_id': self.company.id,
+            'team_ids': [(6, 0, team.ids)],
+        })
+        if not journal.suspense_account_id:
+            journal.suspense_account_id = self.env['account.account'].create({
+                'name': 'حساب معلق اختبار %d' % team.id, 'code': 'TSU%d' % team.id,
+                'account_type': 'asset_current',
+                'company_ids': [(6, 0, self.company.ids)],
+            }).id
+        return journal
+
+    def test_payments_follow_journal_teams(self):
+        """account.payment نموذج مستقل في أودو 19 (لم يعد يرث
+        account.move) ولا تشحن أودو عليه أي قاعدة مجموعات."""
+        bank = self._bank_journal(self.team_ap)
+        payment = self.env['account.payment'].create({
+            'journal_id': bank.id, 'company_id': self.company.id,
+            'amount': 777.0, 'payment_type': 'outbound', 'partner_type': 'supplier',
+        })
+        Payment = self.env['account.payment']
+        self.assertFalse(Payment.with_user(self.accountant_ar).search([('id', '=', payment.id)]),
+                         'محاسب خارج الفريق يرى الدفعة')
+        self.assertTrue(Payment.with_user(self.manager).search([('id', '=', payment.id)]),
+                        'المدير فقد رؤية الدفعة')
+        self.accountant_ar.write({'accounting_team_ids': [(4, self.team_ap.id)]})
+        self.assertTrue(Payment.with_user(self.accountant_ar).search([('id', '=', payment.id)]),
+                        'العضو لا يرى دفعة فريقه')
+
+    def test_bank_statements_follow_journal_teams(self):
+        """الكشف البنكي يحمل الرصيد الافتتاحي والختامي - وكان مرئياً
+        رغم أن الدفتر البنكي نفسه محجوب. ولأن journal_id عليه محسوب من
+        بنوده، يجب أن يحمل الكشف بنداً واحداً على الأقل ليُنسَب لدفتره."""
+        bank = self._bank_journal(self.team_ap)
+        statement = self.env['account.bank.statement'].create({
+            'name': 'كشف اختبار', 'balance_end_real': 12345.0,
+            'line_ids': [(0, 0, {
+                'journal_id': bank.id, 'company_id': self.company.id,
+                'payment_ref': 'حركة اختبار', 'amount': 500.0,
+                'date': fields.Date.today(),
+            })],
+        })
+        self.assertEqual(statement.journal_id, bank, 'الكشف لم يُنسَب لدفتره')
+        Statement = self.env['account.bank.statement']
+        self.assertFalse(Statement.with_user(self.accountant_ar).search([('id', '=', statement.id)]),
+                         'محاسب خارج الفريق يرى الكشف البنكي')
+        self.assertTrue(Statement.with_user(self.manager).search([('id', '=', statement.id)]),
+                        'المدير فقد رؤية الكشف البنكي')
+        self.accountant_ar.write({'accounting_team_ids': [(4, self.team_ap.id)]})
+        self.assertTrue(Statement.with_user(self.accountant_ar).search([('id', '=', statement.id)]),
+                        'العضو لا يرى كشف فريقه')
+
+    def test_bank_statement_without_lines_stays_visible(self):
+        """كشف بلا بنود دفتره فارغ (journal_id محسوب من البنود) فلا
+        يحمل أي معلومة تخص فريقاً - وإخفاؤه يعني اختفاءه عمّن أنشأه
+        لحظة الإنشاء. يلتحق بفرق دفتره متى أُضيف أول بند."""
+        statement = self.env['account.bank.statement'].create({
+            'name': 'كشف بلا بنود', 'balance_end_real': 0.0,
+        })
+        self.assertFalse(statement.journal_id)
+        self.assertTrue(
+            self.env['account.bank.statement'].with_user(self.accountant_ar)
+                .search([('id', '=', statement.id)]),
+            'كشف بلا دفتر اختفى عن المحاسبين')
+
+    def test_analytic_lines_follow_journal_teams(self):
+        """السطر التحليلي يحمل تكلفة كل منصة على حدة - أخطر تسريب."""
+        line = self.env['account.move.line'].search([('move_id', '=', self.move_purchase.id)], limit=1)
+        if not line:
+            self.skipTest('القيد بلا بنود')
+        plan = self.env['account.analytic.plan'].search([], limit=1)             or self.env['account.analytic.plan'].create({'name': 'خطة اختبار'})
+        analytic_account = self.env['account.analytic.account'].create({
+            'name': 'حساب تحليلي اختبار', 'plan_id': plan.id, 'company_id': self.company.id})
+        analytic_line = self.env['account.analytic.line'].create({
+            'name': 'سطر تحليلي اختبار', 'account_id': analytic_account.id,
+            'amount': -555.0, 'company_id': self.company.id, 'move_line_id': line.id,
+        })
+        Analytic = self.env['account.analytic.line']
+        self.assertFalse(Analytic.with_user(self.accountant_ar).search([('id', '=', analytic_line.id)]),
+                         'محاسب خارج الفريق يرى السطر التحليلي')
+        self.assertTrue(Analytic.with_user(self.manager).search([('id', '=', analytic_line.id)]),
+                        'المدير فقد رؤية السطر التحليلي')
+
+    def test_analytic_lines_without_journal_stay_visible(self):
+        """سطور الحضور والمشاريع لا ترتبط بقيد (journal_id فارغ) - يجب
+        ألا يُخفيها التقييد، وإلا كسرنا شاشات خارج المحاسبة."""
+        plan = self.env['account.analytic.plan'].search([], limit=1)             or self.env['account.analytic.plan'].create({'name': 'خطة اختبار'})
+        analytic_account = self.env['account.analytic.account'].create({
+            'name': 'حساب تحليلي بلا قيد', 'plan_id': plan.id, 'company_id': self.company.id})
+        free_line = self.env['account.analytic.line'].create({
+            'name': 'سطر بلا قيد محاسبي', 'account_id': analytic_account.id,
+            'amount': -10.0, 'company_id': self.company.id,
+        })
+        self.assertFalse(free_line.journal_id)
+        self.assertTrue(
+            self.env['account.analytic.line'].with_user(self.accountant_ar)
+                .search([('id', '=', free_line.id)]),
+            'التقييد أخفى سطراً تحليلياً لا علاقة له بالمحاسبة')
 
     def _sales_user(self, login, teams=None):
         groups = [self.env.ref('base.group_user').id,
