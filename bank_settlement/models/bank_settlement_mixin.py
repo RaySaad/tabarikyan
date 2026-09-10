@@ -387,6 +387,12 @@ class BankSettlementMixin(models.AbstractModel):
             'is_prepaid', 'prepaid_days', 'prepaid_category_id',
         ]
 
+    def _get_done_state(self):
+        """اسم حالة "منفّذ" في هذا النموذج - السلفة تسمّيها "paid" (تم
+        الصرف)، فتُجاوزها. كل منطق ما-بعد-التنفيذ (الإرجاع للتصحيح،
+        إلغاء التنفيذ) يمرّ من هنا بدل مقارنة نصية بـ'done'."""
+        return 'done'
+
     def _get_editable_states(self):
         """الحالات التي يُسمح فيها بتعديل الحقول الحساسة أعلاه - "مسودة"
         فقط، أي أن القفل يبدأ فور "إرسال للمراجعة" مباشرة، قبل أي اعتماد
@@ -593,8 +599,8 @@ class BankSettlementMixin(models.AbstractModel):
             if rec.is_prepaid:
                 if not rec.move_id:
                     rec.move_id = rec._create_prepaid_schedule()
-            elif not rec.move_id:
-                rec.move_id = rec._create_settlement_move()
+            else:
+                rec._ensure_settlement_move_posted()
         self.write({'state': 'done'})
 
     def _compute_prepaid_schedule_lines(self, start_date, end_date, total_amount):
@@ -751,7 +757,11 @@ class BankSettlementMixin(models.AbstractModel):
         مختلفة (5 حالات، وموافقتان منفصلتان) فيُجاوز هذه الدالة بخيارين."""
         self.ensure_one()
         selection = dict(self._fields['state'].selection)
-        if self.state == 'confirmed':
+        # من "منفّذ": يعود لما *قبل* اعتماد المدير العام - طلب صريح، حتى
+        # يُراجَع السجل من جديد كاملاً لا أن يُصحَّح المبلغ وحده. ويُعاد
+        # قيده لمسودة ليقبل التعديل ثم يُرحَّل من جديد عند الإتمام
+        # (انظر _unpost_settlement_move و_refresh_and_post_settlement_move).
+        if self.state in (self._get_done_state(), 'confirmed'):
             return [('under_review', selection.get('under_review'))]
         return []
 
@@ -809,6 +819,11 @@ class BankSettlementMixin(models.AbstractModel):
                      'أي موافقة أسبق للمرحلة المختارة).<br/>السبب: %s'
                      % (old_state_label, new_state_label, reason)
             )
+            # الإرجاع من "منفّذ" تحديداً يُعيد قيد السداد لمسودة ليقبل
+            # القيم الجديدة، ثم يُرحَّل من جديد عند الإتمام - بدل بقائه
+            # مرحَّلاً بقيم قديمة بينما السجل عاد للمراجعة.
+            if rec.state == rec._get_done_state():
+                rec._unpost_settlement_move()
             rec.write({'state': chosen, 'returned_for_correction': True})
 
     def action_open_reject_wizard(self):
@@ -853,6 +868,71 @@ class BankSettlementMixin(models.AbstractModel):
             rec.message_post(body='تم رفض السجل.<br/>السبب: %s' % reason)
         self.write({'state': 'rejected', 'rejection_reason': reason, 'active': False})
 
+    def _unpost_settlement_move(self):
+        """يعيد قيد السداد المرحَّل إلى مسودة ليقبل التصحيح.
+
+        هذا هو المسار الذي طلبته الإدارة صراحةً: تصحيح القيد نفسه بدل
+        تركه مرحَّلاً وإضافة قيد عكسي بجانبه - فتبقى الدفاتر نظيفة بقيد
+        واحد صحيح لكل عملية صرف.
+
+        يتعذّر في حالتين حقيقيتين لا حيلة فيهما (فترة محاسبية مقفلة، أو
+        دفتر يومية مُؤمَّن بالتجزئة/hash): أودو نفسها تمنع إلغاء ترحيل
+        القيد حينها - ولهذا يبقى مسار "إلغاء التنفيذ وتصحيح" (قيد عكسي)
+        قائماً كبديل، فهو يعمل في الحالتين."""
+        self.ensure_one()
+        # الدفعة المقدمة: جدول استحقاق كامل بُني من المبلغ والأيام، وقد
+        # رُحّلت منه فترات فعلاً - إعادة القيد الأولي وحده لمسودة تترك
+        # الجدول معلّقاً على قيد لم يعد مرحَّلاً. لها مسارها الخاص.
+        if self.is_prepaid:
+            raise UserError(_(
+                'هذا السجل "دفعة مقدمة" وله جدول استحقاق كامل مبني على '
+                'مبلغه وأيامه - لا يصح إرجاعه للتصحيح بهذه الطريقة. '
+                'استخدم "إلغاء التنفيذ وتصحيح" فهو يعكس القيد الأولي '
+                'ويوقف الجدول ويعكس ما رُحّل منه معاً.'
+            ))
+        move = self.move_id.sudo()
+        if not move or move.state != 'posted':
+            return
+        move.with_context(bank_settlement_internal_move_write=True).button_draft()
+
+    def _refresh_and_post_settlement_move(self):
+        """يحدّث قيد السداد المسودة بالقيم الحالية للسجل ثم يرحّله -
+        وإلا رُحّل القيد بقيمه القديمة بعد تصحيح السجل، فلا معنى
+        للتصحيح أصلاً."""
+        self.ensure_one()
+        move = self.move_id.sudo()
+        vals = self._get_settlement_move_vals()
+        # أودو تمنع تغيير دفتر يومية قيد سبق ترحيله ما لم يُمسَح رقمه
+        # (فجوة في التسلسل). فنمسحه عند الضرورة فقط - أي حين تغيّر
+        # الدفتر أو انتقل التاريخ لفترة أخرى؛ وتصحيح المبلغ وحده (وهو
+        # الغالب) يُبقي الرقم كما هو بلا أي فجوة.
+        new_date = vals.get('date')
+        period_changed = bool(
+            move.date and new_date
+            and (move.date.year, move.date.month) != (new_date.year, new_date.month)
+        )
+        if move.journal_id.id != vals.get('journal_id') or period_changed:
+            move.name = '/'
+        move.write({
+            'journal_id': vals['journal_id'],
+            'date': new_date,
+            'ref': vals.get('ref'),
+            # (5,) تمسح البنود القديمة قبل كتابة الجديدة - وإلا تراكمت
+            # بنود المبلغ القديم مع الجديد في نفس القيد.
+            'line_ids': [(5, 0, 0)] + vals['line_ids'],
+        })
+        move.action_post()
+
+    def _ensure_settlement_move_posted(self):
+        """ينشئ قيد السداد ويرحّله، أو - إن كان موجوداً كمسودة بعد
+        "إرجاع للتصحيح" - يحدّثه بالقيم الجديدة ويرحّله."""
+        self.ensure_one()
+        if not self.move_id:
+            self.move_id = self._create_settlement_move()
+            return
+        if self.move_id.sudo().state == 'draft':
+            self._refresh_and_post_settlement_move()
+
     # -- إلغاء التنفيذ وتصحيحه -------------------------------------------
     # لم يكن هناك أي مسار تصحيح بعد "منفّذ" إطلاقاً: القيد لا يُحذف ولا
     # يُرجَع لمسودة (عمداً - سجل تدقيق)، والسجل نفسه لا يُحذف ولا يُرفض
@@ -871,7 +951,7 @@ class BankSettlementMixin(models.AbstractModel):
         """يفتح معالج "إلغاء التنفيذ وتصحيح" (يفرض تسجيل السبب) - بنفس
         نمط معالجَي الإرجاع والرفض."""
         self.ensure_one()
-        if self.state != 'done':
+        if self.state != self._get_done_state():
             raise UserError(_(
                 'هذا الإجراء خاص بالسجلات المنفَّذة فعلاً - استخدم "إرجاع '
                 'للتصحيح" أو "رفض" قبل التنفيذ.'
@@ -932,7 +1012,7 @@ class BankSettlementMixin(models.AbstractModel):
         if not reason:
             raise UserError(_('يجب توضيح سبب إلغاء التنفيذ.'))
         for rec in self:
-            if rec.state != 'done':
+            if rec.state != rec._get_done_state():
                 raise UserError(_('هذا الإجراء خاص بالسجلات المنفَّذة فعلاً.'))
             rec._check_group('bank_settlement.group_bank_settlement_manager')
         for rec in self:
@@ -987,7 +1067,33 @@ class BankSettlementMixin(models.AbstractModel):
                 'لا يمكن إنشاء القيد المحاسبي بدون تحديد "دفتر اليومية البنكي".'
             )
 
-        move_vals = {
+        move_vals = self._get_settlement_move_vals()
+        # sudo(): إنشاء القيد نفسه لا يجب أن يشترط عضوية "مستخدم/محاسب
+        # السداد البنكي" في إحدى مجموعات المحاسبة الأصلية بـ Odoo (فوترة،
+        # محاسب Odoo نفسه...) - الصلاحية الفعلية لهذا الإجراء محكومة بالفعل عبر
+        # _check_group في action_done قبل الوصول هنا. اشتراط عضوية
+        # محاسبية حقيقية كان يفتح لهم أيضاً رؤية بقية تطبيق المحاسبة
+        # (عملاء/موردين/فواتير) رغم أنهم لا يحتاجونها.
+        move = self.env['account.move'].sudo().create(move_vals)
+        # الترحيل الفوري - طلب صريح: "الرسوم للدفعات العادية ترحّل مباشرة
+        # مثل الدفعات المقدمة". كان القيد يبقى مسودة إلى أجل غير مسمى،
+        # فلا ينعكس في أي رصيد ولا تقرير محاسبي رغم أن المبلغ صُرف فعلاً
+        # وأن السجل يقول "منفّذ" - وهي نفس المشكلة التي ظهرت في الدفعة
+        # المقدمة وعولجت هناك بالترحيل الفوري.
+        #
+        # نتركه يفشل بخطأ أودو الأصلي عند تعذّر الترحيل (تاريخ ضمن فترة
+        # مقفلة مثلاً) بدل ابتلاعه: الأمر كله في معاملة واحدة، فيتراجع
+        # السجل عن "منفّذ" ويرى المحاسب السبب الحقيقي بنصه.
+        move.action_post()
+        return move.id
+
+
+    def _get_settlement_move_vals(self):
+        """قيم قيد السداد مشتقةً من قيم السجل *الحالية* - فُصلت عن
+        الإنشاء لأنها تُستخدَم أيضاً لتحديث قيد مسودة عاد من "إرجاع
+        للتصحيح" بالقيم الجديدة (انظر _refresh_and_post_settlement_move)."""
+        self.ensure_one()
+        return {
             'journal_id': self.journal_id.id,
             # نضبط الشركة صراحة من شركة السجل نفسها (المُشتقة من المشروع/
             # الحساب التحليلي) بدل تركها تُحسب تلقائياً من الشركة النشطة
@@ -1020,24 +1126,6 @@ class BankSettlementMixin(models.AbstractModel):
                 }),
             ],
         }
-        # sudo(): إنشاء القيد نفسه لا يجب أن يشترط عضوية "مستخدم/محاسب
-        # السداد البنكي" في إحدى مجموعات المحاسبة الأصلية بـ Odoo (فوترة،
-        # محاسب Odoo نفسه...) - الصلاحية الفعلية لهذا الإجراء محكومة بالفعل عبر
-        # _check_group في action_done قبل الوصول هنا. اشتراط عضوية
-        # محاسبية حقيقية كان يفتح لهم أيضاً رؤية بقية تطبيق المحاسبة
-        # (عملاء/موردين/فواتير) رغم أنهم لا يحتاجونها.
-        move = self.env['account.move'].sudo().create(move_vals)
-        # الترحيل الفوري - طلب صريح: "الرسوم للدفعات العادية ترحّل مباشرة
-        # مثل الدفعات المقدمة". كان القيد يبقى مسودة إلى أجل غير مسمى،
-        # فلا ينعكس في أي رصيد ولا تقرير محاسبي رغم أن المبلغ صُرف فعلاً
-        # وأن السجل يقول "منفّذ" - وهي نفس المشكلة التي ظهرت في الدفعة
-        # المقدمة وعولجت هناك بالترحيل الفوري.
-        #
-        # نتركه يفشل بخطأ أودو الأصلي عند تعذّر الترحيل (تاريخ ضمن فترة
-        # مقفلة مثلاً) بدل ابتلاعه: الأمر كله في معاملة واحدة، فيتراجع
-        # السجل عن "منفّذ" ويرى المحاسب السبب الحقيقي بنصه.
-        move.action_post()
-        return move.id
 
     def action_view_move(self):
         """يفتح القيد/الفاتورة المحاسبية الرئيسية المرتبطة بهذا السداد -

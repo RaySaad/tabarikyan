@@ -828,15 +828,23 @@ class TestBankSettlementMixin(TransactionCase):
 
         self.assertEqual(advance.state, 'waiting_approval')
 
-    def test_return_to_previous_stage_blocked_when_move_exists(self):
-        """لا يمكن الإرجاع للتصحيح بعد إنشاء القيد المحاسبي فعلياً (حالة
-        "منفّذة") - لا توجد مرحلة سابقة معرَّفة من هذه الحالة أصلاً."""
+    def test_return_from_done_targets_pre_approval_stage_only(self):
+        """الإرجاع من "منفّذة" صار متاحاً (طلب صريح: يرجع لما قبل موافقة
+        المدير العام ويعود قيده مسودة) - وكان ممنوعاً تماماً قبل ذلك.
+        لكن الوجهة محصورة بـ"تحت المراجعة": أي مرحلة أخرى تُرفض من جهة
+        الخادم حتى لو مُرِّرت مباشرةً عبر RPC."""
         gov_fee = self._create_gov_fee()
         self._complete_to_done(gov_fee)
         self.assertEqual(gov_fee.state, 'done')
 
         with self.assertRaises(UserError):
-            gov_fee.action_return_to_previous_stage(reason='سبب ما')
+            gov_fee.action_return_to_previous_stage(
+                target_state='confirmed', reason='وجهة غير صالحة')
+
+        # بلا تحديد وجهة: يختار أقرب مرحلة قابلة للإرجاع تلقائياً
+        gov_fee.action_return_to_previous_stage(reason='سبب ما')
+        self.assertEqual(gov_fee.state, 'under_review')
+        self.assertEqual(gov_fee.move_id.state, 'draft')
 
     def test_government_fee_bank_reference_editable_from_draft(self):
         """رقم السداد (bank_reference) في الرسوم الحكومية مفتوح من
@@ -1003,3 +1011,66 @@ class TestSettlementPostingAndCorrection(TransactionCase):
         gov_fee.action_reverse_and_correct(reason='الموظف خاطئ')
         gov_fee.action_reject(reason='الموظف خاطئ')
         self.assertEqual(gov_fee.state, 'rejected')
+
+    # ---- إرجاع للتصحيح من "منفّذ": القيد يعود مسودة ويُرحَّل من جديد ----
+    def test_return_from_done_unposts_the_move(self):
+        """المسار المطلوب: الإرجاع من "منفّذ" يرجّع السجل لما قبل موافقة
+        المدير العام، ويعيد قيده مسودة ليقبل التعديل."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_done(gov_fee)
+        move = gov_fee.move_id
+        self.assertEqual(move.state, 'posted')
+
+        gov_fee.action_return_to_previous_stage(
+            target_state='under_review', reason='المبلغ خاطئ')
+
+        self.assertEqual(gov_fee.state, 'under_review', 'لم يعد لما قبل موافقة المدير')
+        self.assertTrue(gov_fee.returned_for_correction)
+        self.assertEqual(move.state, 'draft', 'القيد لم يعد لمسودة')
+        self.assertEqual(gov_fee.move_id, move, 'القيد فُصل عن السجل - المفترض أن يُصحَّح')
+
+    def test_corrected_amount_updates_the_same_move_and_reposts(self):
+        """جوهر الطلب: التعديل من شاشة السداد ينعكس على نفس القيد،
+        ويُرحَّل من جديد - لا يُرحَّل بقيمه القديمة."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_done(gov_fee)
+        move = gov_fee.move_id
+        original_name = move.name
+        self.assertEqual(sum(move.line_ids.mapped('debit')), 500.0)
+
+        gov_fee.action_return_to_previous_stage(
+            target_state='under_review', reason='المبلغ خاطئ')
+        gov_fee.write({'amount': 1250.0})
+        gov_fee.action_confirm()
+        gov_fee.action_done()
+
+        self.assertEqual(gov_fee.state, 'done')
+        self.assertEqual(gov_fee.move_id, move, 'أُنشئ قيد جديد بدل تصحيح القائم')
+        self.assertEqual(move.state, 'posted')
+        self.assertEqual(sum(move.line_ids.mapped('debit')), 1250.0,
+                         'القيد رُحّل بالمبلغ القديم')
+        self.assertEqual(len(move.line_ids), 2, 'تراكمت بنود قديمة مع الجديدة')
+        self.assertEqual(move.name, original_name,
+                         'تغيّر رقم القيد رغم أن المصحَّح هو المبلغ وحده '
+                         '(فجوة في تسلسل الدفتر بلا داعٍ)')
+
+    def test_return_from_done_is_refused_for_prepaid(self):
+        """الدفعة المقدمة لها جدول استحقاق مبني على مبلغها - لا يصح
+        إرجاع قيدها الأولي وحده لمسودة."""
+        category = self.env['bank.settlement.prepaid.category'].search([], limit=1)
+        if not category:
+            self.skipTest('لا توجد فئة دفعة مقدمة معدّة في قاعدة الاختبار')
+        gov_fee = self._create_gov_fee()
+        gov_fee.write({'is_prepaid': True, 'prepaid_days': 30,
+                       'prepaid_category_id': category.id})
+        self._complete_to_done(gov_fee)
+        with self.assertRaises(UserError):
+            gov_fee.action_return_to_previous_stage(
+                target_state='under_review', reason='خطأ')
+
+    def test_advance_done_state_is_paid(self):
+        """السلفة تسمّي "منفّذ" = "paid" - بدون هذا الخطّاف كان زر إلغاء
+        التنفيذ لا يظهر عليها إطلاقاً والإرجاع لا يعيد قيدها لمسودة."""
+        advance = self.env['bank.settlement.advance']
+        self.assertEqual(advance._get_done_state(), 'paid')
+        self.assertEqual(self.GovFee._get_done_state(), 'done')

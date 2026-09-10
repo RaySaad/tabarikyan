@@ -91,6 +91,12 @@ class BankSettlementAdvance(models.Model):
     # ('draft' فقط) أصبحت مطابقة لما كان خاصاً بالسلف سابقاً (عُمِّم على
     # كل الشاشات لاحقاً - انظر bank_settlement_mixin.py).
 
+    def _get_done_state(self):
+        # حالة "منفّذ" في السلفة اسمها "paid" (تم الصرف) - بدونها كان
+        # زر "إلغاء التنفيذ وتصحيح" لا يظهر على السلف إطلاقاً، وكان
+        # الإرجاع من "تم الصرف" لا يُعيد قيدها لمسودة.
+        return 'paid'
+
     def _get_bank_fields_editable_state(self):
         # حالة اعتماد المدير العام في السلفة اسمها "approved" (تمت
         # الموافقة) بدل "confirmed" المستخدَمة في بقية شاشات السداد
@@ -135,7 +141,10 @@ class BankSettlementAdvance(models.Model):
         موافقة مسؤول المشروع."""
         self.ensure_one()
         selection = dict(self._fields['state'].selection)
-        if self.state == 'approved':
+        # من "تم الصرف" أيضاً: يعود لما قبل اعتماد المدير العام (أو أبعد
+        # لما قبل موافقة مسؤول المشروع)، ويعود قيدها لمسودة ليقبل
+        # التصحيح - انظر _unpost_settlement_move في الـ mixin.
+        if self.state in ('approved', 'paid'):
             return [
                 ('pm_approved', selection.get('pm_approved')),
                 ('waiting_approval', selection.get('waiting_approval')),
@@ -196,8 +205,7 @@ class BankSettlementAdvance(models.Model):
                 'bank_settlement.group_bank_settlement_reviewer',
                 'bank_settlement.group_bank_settlement_manager',
             )
-            if not rec.move_id:
-                rec.move_id = rec._create_settlement_move()
+            rec._ensure_settlement_move_posted()
         self.write({'state': 'paid'})
 
     def action_reject(self, reason=False):
