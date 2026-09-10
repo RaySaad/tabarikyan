@@ -853,6 +853,118 @@ class BankSettlementMixin(models.AbstractModel):
             rec.message_post(body='تم رفض السجل.<br/>السبب: %s' % reason)
         self.write({'state': 'rejected', 'rejection_reason': reason, 'active': False})
 
+    # -- إلغاء التنفيذ وتصحيحه -------------------------------------------
+    # لم يكن هناك أي مسار تصحيح بعد "منفّذ" إطلاقاً: القيد لا يُحذف ولا
+    # يُرجَع لمسودة (عمداً - سجل تدقيق)، والسجل نفسه لا يُحذف ولا يُرفض
+    # (action_reject ترفض "منفّذ") ولا يُرجَع للتصحيح (_get_returnable_
+    # stages ترجع فارغة منها)، ومبلغه مقفول. فخطأ واحد من المحاسب كان
+    # يعني سجلاً مجمَّداً بمبلغ خاطئ في الدفاتر إلى الأبد - أو الالتفاف
+    # عليه بإلغاء القيد يدوياً، وهو ما أُغلق الآن (account_move.py).
+    #
+    # الحل محاسبياً ليس فتح التعديل على قيد مرحَّل - بل عكسه: يبقى الأصل
+    # والعكسي كلاهما في الدفاتر (أثر التدقيق كامل) وصافي أثرهما صفر، ثم
+    # يعود السجل لمرحلة "مؤكدة" قابلة للتصحيح فيصحَّح المبلغ ويُتَمّ من
+    # جديد بقيد صحيح - أو يُرفض إن كان الخطأ في الموظف نفسه (الرفض يصير
+    # متاحاً تلقائياً بمجرد مغادرة "منفّذ").
+
+    def action_open_reverse_wizard(self):
+        """يفتح معالج "إلغاء التنفيذ وتصحيح" (يفرض تسجيل السبب) - بنفس
+        نمط معالجَي الإرجاع والرفض."""
+        self.ensure_one()
+        if self.state != 'done':
+            raise UserError(_(
+                'هذا الإجراء خاص بالسجلات المنفَّذة فعلاً - استخدم "إرجاع '
+                'للتصحيح" أو "رفض" قبل التنفيذ.'
+            ))
+        return {
+            'name': _('إلغاء التنفيذ وتصحيح'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'bank.settlement.reverse.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_res_model': self._name, 'default_res_id': self.id},
+        }
+
+    def _reverse_settlement_move(self, reason):
+        """يعكس قيد السداد المرحَّل ويطابقه مع الأصل (صافي الأثر صفر).
+
+        is_bank_settlement_move على القيد العكسي يُضبط صراحةً: الحقل
+        معرَّف copy=False فينسخه العكس بـFalse، فيختفي القيد العكسي عن
+        موظفي السداد البنكي (قاعدة ir.rule) *ويدخل* قسم "ذمم الموظفين"
+        في كشف حساب الموظف كقيد يدوي غريب لا صلة له بالسجل - بينما
+        الأصل مستثنى منه. أي أن الكشف كان سيعرض العكس وحده بلا أصله."""
+        self.ensure_one()
+        move = self.move_id.sudo()
+        if not move:
+            return self.env['account.move']
+        if move.state == 'draft':
+            # قيد قديم لم يُرحَّل بعد (سجلات ما قبل الترحيل الفوري) - لا
+            # شيء يُعكَس محاسبياً؛ يُلغى ويبقى للتدقيق.
+            move.with_context(bank_settlement_internal_move_write=True).button_cancel()
+            return self.env['account.move']
+        if move.state == 'cancel':
+            return self.env['account.move']
+        reverse = move._reverse_moves([{
+            'date': fields.Date.context_today(self),
+            'ref': _('عكس %(name)s - %(reason)s') % {'name': move.name, 'reason': reason},
+        }], cancel=True)
+        reverse.is_bank_settlement_move = True
+        return reverse
+
+    def _reverse_prepaid_schedule(self, reason):
+        """يوقف ما تبقّى من جدول الاستحقاق ويعكس ما رُحِّل منه فعلاً -
+        وإلا بقيت قيود فترات دفعة مقدمة أُلغي أصلها قائمةً في الدفاتر."""
+        self.ensure_one()
+        Line = self.env['bank.settlement.prepaid.line'].sudo()
+        lines = Line.search([('res_model', '=', self._name), ('res_id', '=', self.id)])
+        draft_lines = lines.filtered(lambda l: l.state == 'draft')
+        posted_lines = lines.filtered(lambda l: l.state == 'posted')
+        if draft_lines:
+            draft_lines.action_cancel_line()
+        for line in posted_lines:
+            line._reverse_posted_entry(reason)
+        return len(draft_lines), len(posted_lines)
+
+    def action_reverse_and_correct(self, reason=False):
+        """إلغاء تنفيذ سجل منفَّذ بقيد عكسي، وإعادته لمرحلة "مؤكدة"
+        قابلة للتصحيح. لا تُستدعى مباشرة من زر بالواجهة - تمر حصراً عبر
+        bank.settlement.reverse.wizard الذي يفرض السبب."""
+        if not reason:
+            raise UserError(_('يجب توضيح سبب إلغاء التنفيذ.'))
+        for rec in self:
+            if rec.state != 'done':
+                raise UserError(_('هذا الإجراء خاص بالسجلات المنفَّذة فعلاً.'))
+            rec._check_group('bank_settlement.group_bank_settlement_manager')
+        for rec in self:
+            original = rec.move_id
+            reverse = rec._reverse_settlement_move(reason)
+            body = _(
+                'أُلغي تنفيذ السجل وأُعيد لمرحلة "مؤكدة" للتصحيح.<br/>'
+                'السبب: %(reason)s'
+            ) % {'reason': reason}
+            if original:
+                body += _('<br/>القيد الأصلي: %s') % original.name
+            if reverse:
+                body += _('<br/>القيد العكسي: %s (مطابَق مع الأصل)') % reverse.name
+            elif original:
+                body += _('<br/>القيد الأصلي كان مسودة فأُلغي (لا حاجة لعكسه).')
+            if rec.is_prepaid:
+                cancelled, reversed_count = rec._reverse_prepaid_schedule(reason)
+                body += _(
+                    '<br/>جدول الدفعة المقدمة: أُوقف %(cancelled)s سطراً لم '
+                    'يُرحَّل، وعُكس %(reversed)s سطراً مُرحَّلاً. رصيد حساب '
+                    'المصروفات المدفوعة مقدماً يحتاج مراجعة يدوية.'
+                ) % {'cancelled': cancelled, 'reversed': reversed_count}
+            rec.message_post(body=body)
+            # فصل القيد الأصلي: الإتمام التالي ينشئ قيداً صحيحاً جديداً
+            # (action_done تتخطى الإنشاء إن كان move_id موجوداً). الأصل
+            # والعكسي يبقيان في الدفاتر ومسجَّلين في المحادثة أعلاه.
+            rec.with_context(bank_settlement_skip_approval_lock=True).write({
+                'move_id': False,
+                'state': 'confirmed',
+                'returned_for_correction': True,
+            })
+
     def _get_settlement_partner_id(self):
         """الشريك المستخدَم على سطر القيد المحاسبي - افتراضياً شريك
         الموظف الشخصي إن كان محدَّداً. النماذج الفرعية قد تتجاوزها إن
@@ -915,6 +1027,16 @@ class BankSettlementMixin(models.AbstractModel):
         # محاسبية حقيقية كان يفتح لهم أيضاً رؤية بقية تطبيق المحاسبة
         # (عملاء/موردين/فواتير) رغم أنهم لا يحتاجونها.
         move = self.env['account.move'].sudo().create(move_vals)
+        # الترحيل الفوري - طلب صريح: "الرسوم للدفعات العادية ترحّل مباشرة
+        # مثل الدفعات المقدمة". كان القيد يبقى مسودة إلى أجل غير مسمى،
+        # فلا ينعكس في أي رصيد ولا تقرير محاسبي رغم أن المبلغ صُرف فعلاً
+        # وأن السجل يقول "منفّذ" - وهي نفس المشكلة التي ظهرت في الدفعة
+        # المقدمة وعولجت هناك بالترحيل الفوري.
+        #
+        # نتركه يفشل بخطأ أودو الأصلي عند تعذّر الترحيل (تاريخ ضمن فترة
+        # مقفلة مثلاً) بدل ابتلاعه: الأمر كله في معاملة واحدة، فيتراجع
+        # السجل عن "منفّذ" ويرى المحاسب السبب الحقيقي بنصه.
+        move.action_post()
         return move.id
 
     def action_view_move(self):

@@ -208,6 +208,30 @@ class BankSettlementPrepaidLine(models.Model):
                 ) % line.name)
         self.write({'state': 'cancel'})
 
+    def _reverse_posted_entry(self, reason):
+        """يعكس قيد سطر استحقاق مُرحَّل، ويضع السطر في "ملغى".
+
+        داخلي فقط: يُستدعى من مسار "إلغاء التنفيذ وتصحيح" في
+        bank.settlement.mixin حين يُلغى تنفيذ سجل دفعة مقدمة بأكمله -
+        وإلا بقيت قيود الفترات المرحَّلة قائمةً في الدفاتر بعد عكس
+        القيد الأصلي الذي أنشأها. لا يوجد زر له بالواجهة عمداً: عكس
+        فترة واحدة منفردة قرار محاسبي مستقل يخص المحاسب، أما هنا فالسجل
+        كله يُلغى دفعةً واحدة.
+
+        is_bank_settlement_move يُضبط صراحةً على العكسي لنفس سبب القيد
+        الرئيسي (الحقل copy=False) - انظر _reverse_settlement_move."""
+        self.ensure_one()
+        move = self.move_id.sudo()
+        if self.state != 'posted' or not move or move.state != 'posted':
+            return self.env['account.move']
+        reverse = move._reverse_moves([{
+            'date': fields.Date.context_today(self),
+            'ref': _('عكس %(name)s - %(reason)s') % {'name': move.name, 'reason': reason},
+        }], cancel=True)
+        reverse.is_bank_settlement_move = True
+        self.sudo().write({'state': 'cancel'})
+        return reverse
+
     def action_reset_to_draft(self):
         """إعادة سطر ملغى لحالة "لم يستحق بعد" - للتراجع عن إلغاء خاطئ."""
         for line in self:

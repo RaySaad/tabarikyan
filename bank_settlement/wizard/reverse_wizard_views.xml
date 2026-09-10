@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_bank_settlement_reverse_wizard_form" model="ir.ui.view">
+        <field name="name">bank.settlement.reverse.wizard.form</field>
+        <field name="model">bank.settlement.reverse.wizard</field>
+        <field name="arch" type="xml">
+            <form string="إلغاء التنفيذ وتصحيح">
+                <field name="res_model" invisible="1"/>
+                <field name="res_id" invisible="1"/>
+                <div class="alert alert-warning" role="alert">
+                    سيُنشأ <b>قيد عكسي</b> للقيد المرحَّل ويُطابَق مع الأصل (صافي الأثر صفر)،
+                    ويعود السجل لحالة "مؤكدة" فينفتح المبلغ وبيانات السداد البنكي للتصحيح،
+                    ثم يُتَمّ من جديد بقيد صحيح. القيد الأصلي والعكسي يبقيان في الدفاتر للتدقيق.
+                    <br/>
+                    إن كان الخطأ في <b>الموظف</b> نفسه فاستخدم "رفض" بعد الإلغاء وأنشئ سجلاً جديداً.
+                </div>
+                <group>
+                    <field name="reason" placeholder="وضّح سبب إلغاء تنفيذ هذا السجل..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm_reverse" type="object"
+                            string="تأكيد إلغاء التنفيذ" class="btn-primary"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

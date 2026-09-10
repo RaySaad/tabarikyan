@@ -279,14 +279,12 @@ class TestBankSettlementMixin(TransactionCase):
     def test_settlement_move_cannot_be_reset_to_draft(self):
         """نفس الثغرة أعلاه لكن عبر المسار الآخر: إرجاع القيد لمسودة أولاً
         (button_draft) هو ما يسمح لاحقاً بحذفه حتى لو مُنع الحذف المباشر
-        من قيد "مرحَّل" بإعدادات الشركة - فيُمنع هذا المسار أيضاً من
-        جذوره. القيد يُنشأ بحالة "مسودة" ولا يُرحَّل تلقائياً (المحاسب
-        يرحّله يدوياً لاحقاً من شاشة القيد نفسها) - فنرحّله هنا صراحة
-        ليطابق الحالة الواقعية وقت اكتشاف الثغرة."""
+        من قيد "مرحَّل" بإعدادات الشركة - فيُمنع هذا المسار أيضاً من جذوره.
+        (القيد صار يُرحَّل تلقائياً عند الإتمام - كان يبقى مسودة
+        ويرحّله المحاسب يدوياً، فكان الاختبار يرحّله صراحةً هنا.)"""
         gov_fee = self._create_gov_fee()
         self._complete_to_done(gov_fee)
         move = gov_fee.move_id
-        move.action_post()
         self.assertEqual(move.state, 'posted')
 
         with self.assertRaises(UserError):
@@ -894,3 +892,114 @@ class TestBankSettlementMixin(TransactionCase):
 
         with self.assertRaises(UserError):
             insurance.write({'vendor_id': vendor2.id})
+
+
+@tagged('post_install', '-at_install')
+class TestSettlementPostingAndCorrection(TransactionCase):
+    """الترحيل الفوري لقيد السداد، ومسار "إلغاء التنفيذ وتصحيح" - وهو
+    المسار الوحيد لتصحيح خطأ بعد التنفيذ (لا حذف ولا تعديل على قيد
+    مرحَّل).
+
+    لا يرث TestBankSettlementMixin عمداً: وراثة صنف اختبار تُعيد تشغيل
+    كل اختبارات الأصل داخل الفرع أيضاً، فتتضاعف المجموعة بلا فائدة."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env = cls.env(user=cls.env.ref('base.user_admin'))
+        cls.GovFee = cls.env['bank.settlement.government.fee']
+
+    def _create_gov_fee(self):
+        return self.GovFee.create({
+            'government_entity_id': self.env.ref('bank_settlement.government_entity_mol_resident').id,
+            'fee_type_id': self.env.ref('bank_settlement.government_fee_type_sponsorship_transfer').id,
+            'amount': 500.0,
+        })
+
+    def _complete_to_confirmed(self, rec):
+        rec.action_submit_review()
+        rec.action_confirm()
+        rec.write({
+            'linked_account_id': self.env['account.account'].search([], limit=1).id,
+            'journal_id': self.env['account.journal'].search(
+                [('company_id', '=', rec.company_id.id)], limit=1).id,
+        })
+
+    def _complete_to_done(self, rec):
+        self._complete_to_confirmed(rec)
+        rec.action_done()
+
+    def test_settlement_move_is_posted_immediately(self):
+        """كان القيد يبقى مسودة إلى أجل غير مسمى فلا ينعكس في أي رصيد،
+        رغم أن المبلغ صُرف فعلاً والسجل يقول "منفّذ"."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_done(gov_fee)
+        self.assertEqual(gov_fee.state, 'done')
+        self.assertTrue(gov_fee.move_id)
+        self.assertEqual(gov_fee.move_id.state, 'posted')
+        self.assertTrue(gov_fee.move_id.is_bank_settlement_move)
+
+    def test_posted_settlement_move_cannot_be_cancelled_directly(self):
+        """ثغرة: unlink و button_draft كانا محروسين بينما button_cancel
+        مفتوح - فيبقى السجل "منفّذ" وقيده ملغى بلا أن يكشف ذلك شيء."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_done(gov_fee)
+        with self.assertRaises(UserError):
+            gov_fee.move_id.button_cancel()
+        with self.assertRaises(UserError):
+            gov_fee.move_id.button_draft()
+        with self.assertRaises(UserError):
+            gov_fee.move_id.unlink()
+
+    def test_reverse_and_correct_creates_reversal_and_reopens_record(self):
+        gov_fee = self._create_gov_fee()
+        self._complete_to_done(gov_fee)
+        original = gov_fee.move_id
+
+        gov_fee.action_reverse_and_correct(reason='المبلغ أُدخل خطأً')
+
+        self.assertEqual(gov_fee.state, 'confirmed')
+        self.assertTrue(gov_fee.returned_for_correction)
+        self.assertFalse(gov_fee.move_id, 'القيد الأصلي لم يُفصل عن السجل')
+        self.assertEqual(original.state, 'posted', 'الأصل يجب أن يبقى مرحّلاً للتدقيق')
+        reversal = self.env['account.move'].search([('reversed_entry_id', '=', original.id)])
+        self.assertTrue(reversal, 'لم يُنشأ قيد عكسي')
+        self.assertEqual(reversal.state, 'posted')
+        self.assertTrue(
+            reversal.is_bank_settlement_move,
+            'القيد العكسي بلا علامة السداد البنكي - يختفي عن موظفي السداد '
+            'ويظهر في كشف حساب الموظف كقيد يدوي غريب (الحقل copy=False)')
+
+    def test_after_correction_amount_is_editable_and_new_move_is_created(self):
+        """جوهر الطلب: المحاسب يصحّح المبلغ ويُتِمّ من جديد بقيد صحيح."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_done(gov_fee)
+        gov_fee.action_reverse_and_correct(reason='المبلغ خاطئ')
+
+        gov_fee.write({'amount': 750.0})
+        gov_fee.action_done()
+
+        self.assertEqual(gov_fee.state, 'done')
+        self.assertTrue(gov_fee.move_id)
+        self.assertEqual(gov_fee.move_id.state, 'posted')
+        self.assertEqual(sum(gov_fee.move_id.line_ids.mapped('debit')), 750.0)
+
+    def test_reverse_requires_reason_and_done_state(self):
+        gov_fee = self._create_gov_fee()
+        self._complete_to_confirmed(gov_fee)
+        with self.assertRaises(UserError):
+            gov_fee.action_reverse_and_correct(reason='سبب')  # ليس منفَّذاً بعد
+        gov_fee.action_done()
+        with self.assertRaises(UserError):
+            gov_fee.action_reverse_and_correct()  # بلا سبب
+
+    def test_reject_becomes_possible_after_reversal(self):
+        """لو كان الخطأ في الموظف نفسه: الرفض كان ممنوعاً من "منفّذ"،
+        ويصير متاحاً تلقائياً بمجرد العودة لـ"مؤكدة"."""
+        gov_fee = self._create_gov_fee()
+        self._complete_to_done(gov_fee)
+        with self.assertRaises(UserError):
+            gov_fee.action_reject(reason='الموظف خاطئ')
+        gov_fee.action_reverse_and_correct(reason='الموظف خاطئ')
+        gov_fee.action_reject(reason='الموظف خاطئ')
+        self.assertEqual(gov_fee.state, 'rejected')

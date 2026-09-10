@@ -38,10 +38,35 @@ class AccountMove(models.Model):
 
     def button_draft(self):
         for move in self:
-            if move.is_bank_settlement_move:
+            if move.is_bank_settlement_move and not self._settlement_bypass():
                 raise UserError(_(
                     'لا يمكن إرجاع القيد المحاسبي "%s" لمسودة - هو قيد '
                     'سداد بنكي مرتبط بسجل معتمد، يجب الحفاظ عليه معتمداً '
-                    'للتدقيق. استخدم قيداً عكسياً أو الإلغاء بدلاً من ذلك.'
+                    'للتدقيق. استخدم "إلغاء التنفيذ وتصحيح" من سجل السداد '
+                    'نفسه - فهو ينشئ قيداً عكسياً ويفتح السجل للتصحيح.'
                 ) % move.name)
         return super().button_draft()
+
+    # ثغرة حقيقية كشفتها مراجعة مسار التصحيح: unlink و button_draft
+    # كانا محروسين بينما button_cancel مفتوح تماماً - فأي محاسب يقدر
+    # يُلغي قيد السداد البنكي مباشرةً، فيبقى سجل السداد يقول "منفّذ/تم
+    # الصرف" بينما قيده الموثِّق ملغى في الدفاتر، بلا أي شيء في النظام
+    # يكشف التناقض. وهي نفس عائلة الخطأ التي أنتجت سابقاً تناقضاً حقيقياً
+    # في كشف حساب موظف (حساب 212003).
+    def button_cancel(self):
+        for move in self:
+            if move.is_bank_settlement_move and not self._settlement_bypass():
+                raise UserError(_(
+                    'لا يمكن إلغاء القيد المحاسبي "%s" مباشرةً - هو قيد '
+                    'سداد بنكي، وإلغاؤه هنا يترك سجل السداد يقول "منفّذ" '
+                    'بينما قيده ملغى. استخدم "إلغاء التنفيذ وتصحيح" من '
+                    'سجل السداد نفسه - فهو ينشئ قيداً عكسياً ويعيد السجل '
+                    'لمرحلة قابلة للتصحيح معاً في خطوة واحدة.'
+                ) % move.name)
+        return super().button_cancel()
+
+    def _settlement_bypass(self):
+        """يُفتح الحارسان أعلاه لعملية نظامية واحدة فقط: مسار "إلغاء
+        التنفيذ وتصحيح" في bank.settlement.mixin، وهو المسار الوحيد الذي
+        يُلغي/يعكس قيد سداد بطريقة متّسقة مع حالة سجله."""
+        return self.env.context.get('bank_settlement_internal_move_write')

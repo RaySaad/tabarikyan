@@ -59,6 +59,9 @@
                                 type="object" class="btn-primary"
                                 groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state != 'confirmed'"/>
+                        <button name="action_open_reverse_wizard" string="إلغاء التنفيذ وتصحيح"
+                                type="object" groups="bank_settlement.group_bank_settlement_manager"
+                                invisible="state != 'done'"/>
                         <button name="action_open_return_wizard" string="إرجاع للتصحيح"
                                 type="object" groups="bank_settlement.group_bank_settlement_manager"
                                 invisible="state != 'confirmed'"/>

@@ -302,3 +302,34 @@ class TestPrepaidSchedule(TransactionCase):
         # المهمة المجدولة لم تعد تلمسها
         self.env['bank.settlement.prepaid.line'].sudo()._cron_generate_due_entries()
         self.assertFalse(self._lines(record).filtered(lambda l: l.state == 'draft'))
+
+    # ------------------------------------------------------------------
+    def test_reverse_and_correct_unwinds_the_whole_schedule(self):
+        """إلغاء تنفيذ سجل دفعة مقدمة: يُعكس القيد الأولي، ويُوقف كل سطر
+        لم يُرحَّل، ويُعكس كل سطر رُحِّل فعلاً - وإلا بقيت قيود فترات
+        لدفعة أُلغي أصلها قائمةً في الدفاتر."""
+        record = self._complete(self._create_prepaid_fee(date(2026, 3, 16)))
+        lines = self._lines(record)
+        self.assertTrue(lines)
+        initial_move = record.move_id
+        self.assertEqual(initial_move.state, 'posted')
+
+        # نُرحّل أول سطر يدوياً لنغطي الحالتين معاً (مُرحَّل + لم يُرحَّل)
+        lines[0].sudo().action_post_now()
+        self.assertEqual(lines[0].state, 'posted')
+        posted_move = lines[0].move_id
+
+        record.with_user(self.approver).action_reverse_and_correct(reason='بُني بالخطأ')
+
+        self.assertEqual(record.state, 'confirmed')
+        self.assertFalse(record.move_id)
+        self.assertTrue(
+            self.env['account.move'].sudo().search([('reversed_entry_id', '=', initial_move.id)]),
+            'القيد الأولي لم يُعكس')
+        self.assertEqual(lines[0].state, 'cancel', 'السطر المُرحَّل لم يُعكس ويُلغَ')
+        self.assertTrue(
+            self.env['account.move'].sudo().search([('reversed_entry_id', '=', posted_move.id)]),
+            'قيد السطر المُرحَّل لم يُعكس')
+        self.assertFalse(
+            self._lines(record).filtered(lambda l: l.state == 'draft'),
+            'بقيت أسطر ستُرحَّل مستقبلاً رغم إلغاء السجل')
