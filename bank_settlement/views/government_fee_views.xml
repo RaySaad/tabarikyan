@@ -157,6 +157,11 @@
                                        readonly="state != 'draft'"/>
                                 <field name="prepaid_category_id" invisible="not is_prepaid"
                                        readonly="state != 'draft'"/>
+                                <!-- يُملأ عند أول إتمام ويُثبَّت - يوضّح
+                                     للمستخدم من أي تاريخ بُني الجدول
+                                     فعلاً (قد يكون انتهاء الإقامة/كرت
+                                     العمل لا تاريخ التحويل). -->
+                                <field name="prepaid_start_date" invisible="not is_prepaid or not prepaid_start_date"/>
                             </group>
                             <group invisible="not is_prepaid">
                                 <field name="prepaid_line_count" invisible="1"/>

@@ -41,6 +41,24 @@ class BankSettlementGovernmentFeeType(models.Model):
     name = fields.Char(string='الاسم', required=True)
     sequence = fields.Integer(string='الترتيب', default=10)
     active = fields.Boolean(default=True)
+    # رسوم التجديد (الإقامة، كرت العمل) لا تغطي من تاريخ سدادها بل من
+    # تاريخ انتهاء الوثيقة: سداد مبكر بشهر كان يحمّل ذلك الشهر على
+    # مصروف فترة لم تبدأ تغطيتها بعد، ويُنهي التغطية قبل موعدها بنفس
+    # المدة. الخيار على النوع لا على كل سجل - "تجديد إقامة" يبدأ دائماً
+    # من انتهاء الإقامة، وليس قراراً يُتخذ في كل مرة.
+    coverage_start_source = fields.Selection(
+        selection=[
+            ('transfer', 'تاريخ التحويل'),
+            ('residency', 'انتهاء الإقامة'),
+            ('work_permit', 'انتهاء كرت العمل'),
+        ],
+        string='بداية تغطية الدفعة المقدمة', default='transfer', required=True,
+        help='من أي تاريخ يبدأ جدول استحقاق "الدفعة المقدمة" لهذا النوع. '
+             '"تاريخ التحويل" هو الافتراضي. "انتهاء الإقامة" يقرأ حقل '
+             'أودو القياسي visa_expire على الموظف، و"انتهاء كرت العمل" '
+             'يقرأ work_permit_expiration_date - وتبدأ التغطية في اليوم '
+             'التالي للانتهاء (فلا يتداخل يوم مع الفترة السابقة).',
+    )
 
     _name_uniq = models.Constraint(
         'unique(name)', 'يوجد نوع رسوم آخر بنفس الاسم بالفعل.',

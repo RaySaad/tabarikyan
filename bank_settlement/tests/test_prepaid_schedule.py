@@ -460,3 +460,129 @@ class TestPrepaidSchedule(TransactionCase):
         self.assertEqual(record.state, 'done')
         self.assertEqual(record.move_id.state, 'posted')
         self.assertTrue(self._lines(record))
+
+    # ------------------------------------------------------------------
+    # رسوم التجديد: التغطية تبدأ من انتهاء الوثيقة لا من تاريخ السداد
+    # ------------------------------------------------------------------
+    def _renewal_fee_type(self, source):
+        # اسم فريد: اسم النوع مقيَّد بـunique، والاختبار الواحد قد ينشئ
+        # نوعين بنفس المصدر.
+        Type = self.env['bank.settlement.government.fee.type'].sudo()
+        return Type.create({
+            'name': 'تجديد اختبار - %s - %s' % (source, Type.search_count([]) + 1),
+            'coverage_start_source': source,
+        })
+
+    def _renewal_fee(self, fee_type, transfer_date, days=365, amount=3650.0):
+        return self.env['bank.settlement.government.fee'].with_user(self.approver).create({
+            'government_entity_id': self.gov_entity.id,
+            'fee_type_id': fee_type.id,
+            'employee_id': self.employee.id,
+            'employee_category': 'full_time_rep',
+            'amount': amount,
+            'is_prepaid': True,
+            'prepaid_days': days,
+            'prepaid_category_id': self.category.id,
+            'journal_id': self.journal.id,
+            'transfer_date': transfer_date,
+        })
+
+    def test_coverage_starts_the_day_after_residency_expiry(self):
+        """سداد مبكر بشهر كان يحمّل ذلك الشهر على فترة لم تبدأ تغطيتها."""
+        self.employee.sudo().visa_expire = date(2026, 11, 15)
+        fee = self._renewal_fee(self._renewal_fee_type('residency'),
+                                transfer_date=date(2026, 10, 20))
+        self._complete(fee)
+
+        lines = self._lines(fee)
+        self.assertEqual(fee.prepaid_start_date, date(2026, 11, 16),
+                         'التغطية لم تبدأ في اليوم التالي لانتهاء الإقامة')
+        self.assertEqual(lines[0].period_start_date, date(2026, 11, 16))
+        self.assertEqual(lines[-1].period_end_date, date(2027, 11, 15),
+                         'نهاية التغطية لا تطابق 365 يوماً من اليوم التالي')
+
+    def test_coverage_starts_from_work_permit_expiry(self):
+        self.employee.sudo().work_permit_expiration_date = date(2026, 5, 31)
+        fee = self._renewal_fee(self._renewal_fee_type('work_permit'),
+                                transfer_date=date(2026, 4, 1), days=30, amount=300.0)
+        self._complete(fee)
+        self.assertEqual(fee.prepaid_start_date, date(2026, 6, 1))
+
+    def test_transfer_date_source_is_unchanged(self):
+        """السلوك الافتراضي كما هو: يبدأ من تاريخ التحويل."""
+        fee = self._renewal_fee(self._renewal_fee_type('transfer'),
+                                transfer_date=date(2026, 3, 16), days=90, amount=9000.0)
+        self._complete(fee)
+        self.assertEqual(fee.prepaid_start_date, date(2026, 3, 16))
+
+    def test_late_renewal_starts_from_the_past_expiry(self):
+        """انتهاء مضى: نبدأ منه رغم ذلك - المصروف يخص فترته، فالفترات
+        الماضية تُرحَّل بأثر رجعي."""
+        self.employee.sudo().visa_expire = date(2026, 1, 10)
+        fee = self._renewal_fee(self._renewal_fee_type('residency'),
+                                transfer_date=date(2026, 4, 1))
+        self._complete(fee)
+        self.assertEqual(fee.prepaid_start_date, date(2026, 1, 11))
+        self.assertLess(self._lines(fee)[0].period_start_date, date(2026, 4, 1))
+
+    def test_missing_expiry_blocks_completion(self):
+        """بلا التاريخ يُبنى الجدول على تاريخ خاطئ بصمت - فيُرفض."""
+        self.employee.sudo().visa_expire = False
+        fee = self._renewal_fee(self._renewal_fee_type('residency'),
+                                transfer_date=date(2026, 10, 20))
+        fee.with_user(self.approver).action_submit_review()
+        fee.with_user(self.approver).action_confirm()
+        with self.assertRaises(UserError):
+            fee.with_user(self.approver).action_done()
+
+    def test_employee_expiry_is_pushed_to_the_new_coverage_end(self):
+        self.employee.sudo().visa_expire = date(2026, 11, 15)
+        fee = self._renewal_fee(self._renewal_fee_type('residency'),
+                                transfer_date=date(2026, 10, 20))
+        self._complete(fee)
+        self.assertEqual(self.employee.sudo().visa_expire, date(2027, 11, 15),
+                         'تاريخ انتهاء الإقامة لم يُحدَّث بعد التجديد')
+
+    def test_employee_expiry_is_never_moved_backwards(self):
+        """التاريخ الفعلي يأتي من أبشر/مقيم وقد يكون أبعد مما تحسبه مدة
+        التغطية. السيناريو الحقيقي: يُتمّ التجديد فيُدفَع التاريخ، ثم
+        يُصحَّح من أبشر لتاريخ أبعد، ثم يُعاد إتمام السجل بعد تصحيح مبلغه
+        - يجب ألا يدهس التجديد التاريخ الأبعد بنهاية تغطيته الأقرب."""
+        self.employee.sudo().visa_expire = date(2026, 11, 15)
+        fee = self._renewal_fee(self._renewal_fee_type('residency'),
+                                transfer_date=date(2026, 10, 20), days=30, amount=300.0)
+        self._complete(fee)
+        self.assertEqual(self.employee.sudo().visa_expire, date(2026, 12, 15))
+
+        # صُحِّح من أبشر لتاريخ أبعد بكثير
+        self.employee.sudo().visa_expire = date(2030, 1, 1)
+
+        fee.with_user(self.approver).action_return_to_previous_stage(
+            target_state='under_review', reason='المبلغ خاطئ')
+        fee.with_user(self.approver).write({'amount': 450.0})
+        fee.with_user(self.approver).action_confirm()
+        fee.with_user(self.approver).action_done()
+
+        self.assertEqual(self.employee.sudo().visa_expire, date(2030, 1, 1),
+                         'التجديد دهس تاريخاً أبعد كان مسجَّلاً')
+
+    def test_start_date_is_pinned_and_does_not_creep_on_correction(self):
+        """أخطر حالة: مصدر التاريخ حقل *نُحدِّثه نحن* بعد الإتمام - فإعادة
+        الحساب عند إتمام ثانٍ بعد تصحيح كانت ستزحف بالتغطية سنة كاملة."""
+        self.employee.sudo().visa_expire = date(2026, 11, 15)
+        fee = self._renewal_fee(self._renewal_fee_type('residency'),
+                                transfer_date=date(2026, 10, 20))
+        self._complete(fee)
+        self.assertEqual(fee.prepaid_start_date, date(2026, 11, 16))
+        self.assertEqual(self.employee.sudo().visa_expire, date(2027, 11, 15))
+
+        fee.with_user(self.approver).action_return_to_previous_stage(
+            target_state='under_review', reason='المبلغ خاطئ')
+        fee.with_user(self.approver).write({'amount': 1825.0})
+        fee.with_user(self.approver).action_confirm()
+        fee.with_user(self.approver).action_done()
+
+        self.assertEqual(fee.prepaid_start_date, date(2026, 11, 16),
+                         'تاريخ البدء زحف بعد التصحيح')
+        self.assertEqual(self._lines(fee)[0].period_start_date, date(2026, 11, 16))
+        self.assertAlmostEqual(sum(self._lines(fee).mapped('amount')), 1825.0, places=2)

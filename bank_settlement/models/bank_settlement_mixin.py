@@ -387,6 +387,34 @@ class BankSettlementMixin(models.AbstractModel):
             'is_prepaid', 'prepaid_days', 'prepaid_category_id',
         ]
 
+    prepaid_start_date = fields.Date(
+        string='بداية تغطية الدفعة المقدمة', readonly=True, copy=False,
+        help='التاريخ الفعلي الذي بُني منه جدول الاستحقاق - يُحسب مرة '
+             'واحدة عند أول إتمام ويُثبَّت، فلا يزحف عند إعادة الإتمام '
+             'بعد تصحيح.',
+    )
+
+    def _get_prepaid_coverage_start(self):
+        """تاريخ بدء تغطية الدفعة المقدمة - تاريخ التحويل افتراضياً.
+        يتجاوزه bank.settlement.government.fee لرسوم التجديد (إقامة/كرت
+        عمل) فيبدأ من اليوم التالي لانتهاء الوثيقة."""
+        self.ensure_one()
+        return self.transfer_date or fields.Date.context_today(self)
+
+    def _resolve_prepaid_start_date(self):
+        """يُثبِّت تاريخ البدء عند أول إتمام ثم يُعيده كما هو دائماً.
+
+        التثبيت ضروري لا تحسيني: مصدر التاريخ قد يكون حقلاً *نُحدِّثه
+        نحن* بعد الإتمام (تاريخ انتهاء الإقامة يُدفَع لنهاية التغطية) -
+        فإعادة الحساب عند إتمام ثانٍ بعد تصحيح كانت ستقرأ التاريخ الجديد
+        فتزحف التغطية سنةً كاملة إلى الأمام في كل تصحيح."""
+        self.ensure_one()
+        if not self.prepaid_start_date:
+            self.with_context(
+                bank_settlement_skip_approval_lock=True,
+            ).prepaid_start_date = self._get_prepaid_coverage_start()
+        return self.prepaid_start_date
+
     def _get_done_state(self):
         """اسم حالة "منفّذ" في هذا النموذج - السلفة تسمّيها "paid" (تم
         الصرف)، فتُجاوزها. كل منطق ما-بعد-التنفيذ (الإرجاع للتصحيح،
@@ -668,7 +696,7 @@ class BankSettlementMixin(models.AbstractModel):
                 'company': company_currency.name,
                 'record': self.currency_id.name,
             })
-        start_date = self.transfer_date or fields.Date.context_today(self)
+        start_date = self._resolve_prepaid_start_date()
         end_date = start_date + timedelta(days=self.prepaid_days - 1)
         schedule = self._compute_prepaid_schedule_lines(start_date, end_date, self.total_amount)
 
@@ -681,6 +709,7 @@ class BankSettlementMixin(models.AbstractModel):
         move.action_post()
 
         self._build_prepaid_lines(schedule)
+        self._push_employee_document_expiry(end_date)
         return move.id
 
     def _build_prepaid_lines(self, schedule):
@@ -977,7 +1006,7 @@ class BankSettlementMixin(models.AbstractModel):
         self.env['bank.settlement.prepaid.line'].sudo().search([
             ('res_model', '=', self._name), ('res_id', '=', self.id),
         ]).unlink()
-        start_date = self.transfer_date or fields.Date.context_today(self)
+        start_date = self._resolve_prepaid_start_date()
         end_date = start_date + timedelta(days=self.prepaid_days - 1)
         schedule = self._compute_prepaid_schedule_lines(
             start_date, end_date, self.total_amount)
@@ -989,6 +1018,17 @@ class BankSettlementMixin(models.AbstractModel):
             self._refresh_and_post_settlement_move(
                 vals=self._get_prepaid_initial_doc_vals(start_date))
         self._build_prepaid_lines(schedule)
+        self._push_employee_document_expiry(end_date)
+
+    def _push_employee_document_expiry(self, coverage_end):
+        """يدفع تاريخ انتهاء الوثيقة على ملف الموظف لنهاية التغطية
+        الجديدة بعد تجديدها.
+
+        يُقدِّم فقط ولا يُرجِع أبداً: التاريخ الفعلي يأتي من أبشر/مقيم وقد
+        يكون أبعد مما تحسبه مدة التغطية المدخلة، فلا يجوز أن يدهسه تجديد
+        لاحق بتاريخ أقرب. الخطّاف فارغ هنا ويتجاوزه النموذج الذي يعرف
+        أي وثيقة يجدّد (الرسوم الحكومية)."""
+        return
 
     def _ensure_settlement_move_posted(self):
         """ينشئ مستند السداد ويرحّله، أو - إن كان موجوداً كمسودة بعد

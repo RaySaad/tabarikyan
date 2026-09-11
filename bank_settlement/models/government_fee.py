@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datetime import timedelta
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
@@ -84,6 +86,55 @@ class BankSettlementGovernmentFee(models.Model):
         إن كانت الجهة الجديدة بلا مورد افتراضي."""
         if self.government_entity_id.partner_id:
             self.vendor_id = self.government_entity_id.partner_id
+
+    # ربط بداية تغطية الدفعة المقدمة بتاريخ انتهاء الوثيقة المجدَّدة.
+    # المصدر -> (حقل التاريخ على الموظف، اسمه المعروض للرسائل)
+    _COVERAGE_SOURCE_FIELDS = {
+        # حقلان قياسيان في أودو - لا حاجة لحقول مخصصة على الموظف.
+        'residency': ('visa_expire', 'انتهاء الإقامة'),
+        'work_permit': ('work_permit_expiration_date', 'انتهاء كرت العمل'),
+    }
+
+    def _get_prepaid_coverage_start(self):
+        """رسوم التجديد تغطي ما *بعد* انتهاء الوثيقة لا ما بعد سدادها:
+        سداد مبكر بشهر كان يحمّل ذلك الشهر على فترة لم تبدأ تغطيتها.
+
+        تبدأ التغطية في اليوم التالي للانتهاء فلا يتداخل يوم مع الفترة
+        السابقة. وإن كان الانتهاء قد مضى (سداد متأخر) نبدأ منه رغم ذلك -
+        المصروف يخص فترته، فتُرحَّل الفترات الماضية فوراً بأثر رجعي."""
+        self.ensure_one()
+        source = self.fee_type_id.coverage_start_source
+        if source not in self._COVERAGE_SOURCE_FIELDS:
+            return super()._get_prepaid_coverage_start()
+        field_name, label = self._COVERAGE_SOURCE_FIELDS[source]
+        expiry = self.employee_id.sudo()[field_name] if self.employee_id else False
+        if not expiry:
+            raise UserError(
+                'نوع الرسوم "%s" يبني جدول الدفعة المقدمة من تاريخ "%s"، '
+                'وهو غير مسجَّل على ملف الموظف "%s". سجّله أولاً ثم أتمّ '
+                'السداد - وإلا بُني الجدول على تاريخ خاطئ بصمت.'
+                % (self.fee_type_id.display_name, label,
+                   self.employee_id.display_name or '—')
+            )
+        return expiry + timedelta(days=1)
+
+    def _push_employee_document_expiry(self, coverage_end):
+        """يدفع تاريخ انتهاء الوثيقة لنهاية التغطية الجديدة بعد تجديدها -
+        يُقدِّم فقط ولا يُرجِع (انظر الشرح في الـmixin)."""
+        self.ensure_one()
+        source = self.fee_type_id.coverage_start_source
+        if source not in self._COVERAGE_SOURCE_FIELDS or not self.employee_id:
+            return
+        field_name, label = self._COVERAGE_SOURCE_FIELDS[source]
+        employee = self.employee_id.sudo()
+        current = employee[field_name]
+        if current and current >= coverage_end:
+            return
+        employee[field_name] = coverage_end
+        employee.message_post(body=(
+            'حُدِّث تاريخ "%s" إلى %s بعد تجديده عبر سجل الرسوم %s.'
+            % (label, coverage_end, self.name)
+        ))
 
     def _uses_vendor_bill(self):
         return self.settlement_mode == 'bill'
