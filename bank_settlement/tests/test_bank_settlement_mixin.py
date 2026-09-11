@@ -1094,9 +1094,10 @@ class TestSettlementPostingAndCorrection(TransactionCase):
                          'تغيّر رقم القيد رغم أن المصحَّح هو المبلغ وحده '
                          '(فجوة في تسلسل الدفتر بلا داعٍ)')
 
-    def test_return_from_done_is_refused_for_prepaid(self):
-        """الدفعة المقدمة لها جدول استحقاق مبني على مبلغها - لا يصح
-        إرجاع قيدها الأولي وحده لمسودة."""
+    def test_return_from_done_allowed_for_prepaid_with_nothing_due(self):
+        """الدفعة المقدمة التي لم تُستحق منها فترة بعد: لا أثر في
+        الدفاتر سوى المستند الأولي، فتُعامَل معاملة أي سجل عادي.
+        (التغطية التفصيلية للقاعدة في test_prepaid_schedule.py.)"""
         category = self.env['bank.settlement.prepaid.category'].search([], limit=1)
         if not category:
             self.skipTest('لا توجد فئة دفعة مقدمة معدّة في قاعدة الاختبار')
@@ -1104,9 +1105,12 @@ class TestSettlementPostingAndCorrection(TransactionCase):
         gov_fee.write({'is_prepaid': True, 'prepaid_days': 30,
                        'prepaid_category_id': category.id})
         self._complete_to_done(gov_fee)
-        with self.assertRaises(UserError):
-            gov_fee.action_return_to_previous_stage(
-                target_state='under_review', reason='خطأ')
+
+        gov_fee.action_return_to_previous_stage(
+            target_state='under_review', reason='خطأ')
+
+        self.assertEqual(gov_fee.state, 'under_review')
+        self.assertEqual(gov_fee.move_id.state, 'draft')
 
     def test_advance_done_state_is_paid(self):
         """السلفة تسمّي "منفّذ" = "paid" - بدون هذا الخطّاف كان زر إلغاء
@@ -1207,22 +1211,6 @@ class TestVendorBillSettlement(TransactionCase):
         fee.write({'linked_account_id': False})
         with self.assertRaises(UserError):
             fee.action_done()
-
-    def test_bill_cannot_be_combined_with_prepaid(self):
-        category = self.env['bank.settlement.prepaid.category'].search([], limit=1)
-        if not category:
-            self.skipTest('لا توجد فئة دفعة مقدمة')
-        fee = self.env['bank.settlement.government.fee'].create({
-            'government_entity_id': self.env.ref(
-                'bank_settlement.government_entity_mol_resident').id,
-            'fee_type_id': self.env.ref(
-                'bank_settlement.government_fee_type_sponsorship_transfer').id,
-            'amount': 100.0,
-        })
-        with self.assertRaises(ValidationError):
-            fee.write({'settlement_mode': 'bill', 'vendor_id': self.vendor.id,
-                       'is_prepaid': True, 'prepaid_days': 30,
-                       'prepaid_category_id': category.id})
 
     def test_entity_default_vendor_is_suggested(self):
         entity = self.env.ref('bank_settlement.government_entity_mol_resident')

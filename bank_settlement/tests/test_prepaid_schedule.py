@@ -333,3 +333,130 @@ class TestPrepaidSchedule(TransactionCase):
         self.assertFalse(
             self._lines(record).filtered(lambda l: l.state == 'draft'),
             'بقيت أسطر ستُرحَّل مستقبلاً رغم إلغاء السجل')
+
+    # ------------------------------------------------------------------
+    # الدفعة المقدمة بفاتورة مورد، وقاعدة التصحيح حسب ما استُحقّ
+    # ------------------------------------------------------------------
+    def _vendor_setup(self):
+        payable = self.env['account.account'].sudo().create({
+            'code': 'TST201001', 'name': 'ذمم دائنة - اختبار',
+            'account_type': 'liability_payable', 'reconcile': True,
+        })
+        vendor = self.env['res.partner'].sudo().create({
+            'name': 'مورد الدفعة المقدمة', 'supplier_rank': 1,
+            'property_account_payable_id': payable.id,
+        })
+        journal = self.env['account.journal'].sudo().search(
+            [('company_id', '=', self.company.id), ('type', '=', 'purchase')], limit=1)
+        if not journal:
+            journal = self.env['account.journal'].sudo().create({
+                'name': 'مشتريات اختبار', 'code': 'TPJP', 'type': 'purchase',
+                'company_id': self.company.id})
+        return vendor, payable, journal
+
+    def _create_prepaid_bill(self, start_date, days=90, amount=9000.0):
+        vendor, payable, journal = self._vendor_setup()
+        fee = self.env['bank.settlement.government.fee'].with_user(self.approver).create({
+            'government_entity_id': self.gov_entity.id,
+            'fee_type_id': self.fee_type.id,
+            'employee_id': self.employee.id,
+            'employee_category': 'full_time_rep',
+            'amount': amount,
+            'is_prepaid': True,
+            'prepaid_days': days,
+            'prepaid_category_id': self.category.id,
+            'settlement_mode': 'bill',
+            'vendor_id': vendor.id,
+            'journal_id': journal.id,
+            'transfer_date': start_date,
+        })
+        return fee, payable
+
+    def test_prepaid_can_be_paid_through_a_vendor_bill(self):
+        """الحالة القياسية لمصروف مدفوع مقدماً يُصدر به المورد فاتورة:
+        مدين المصروفات المدفوعة مقدماً / دائن ذمم المورد - ثم يُستهلك
+        شهرياً. كانت ممنوعة بقيد، والمنع كان بلا مبرر محاسبي."""
+        fee, payable = self._create_prepaid_bill(date(2026, 3, 16))
+        self._complete(fee)
+
+        doc = fee.move_id
+        self.assertEqual(doc.move_type, 'in_invoice', 'المستند الأولي ليس فاتورة مورد')
+        self.assertEqual(doc.state, 'posted')
+        prepaid_lines = doc.line_ids.filtered(
+            lambda l: l.account_id == self.prepaid_account)
+        self.assertEqual(sum(prepaid_lines.mapped('debit')), 9000.0,
+                         'الطرف المدين ليس حساب المصروفات المدفوعة مقدماً')
+        self.assertEqual(
+            sum(doc.line_ids.filtered(lambda l: l.account_id == payable).mapped('credit')),
+            9000.0, 'الطرف الدائن ليس ذمم المورد')
+        self.assertFalse(prepaid_lines.analytic_distribution,
+                         'حركة بين حسابَي ميزانية - لا يصح توزيعها تحليلياً')
+        # الجدول يُبنى كالمعتاد تماماً
+        lines = self._lines(fee)
+        self.assertTrue(lines)
+        self.assertAlmostEqual(sum(lines.mapped('amount')), 9000.0, places=2)
+
+    def test_prepaid_bill_periods_post_to_the_expense_account(self):
+        """قيود الاستهلاك لا تتأثر بطريقة إنشاء المستند الأولي."""
+        fee, _payable = self._create_prepaid_bill(date(2026, 3, 16))
+        self._complete(fee)
+        line = self._lines(fee)[0]
+        line.sudo().action_post_now()
+        self.assertEqual(line.state, 'posted')
+        self.assertEqual(line.move_id.move_type, 'entry')
+        self.assertTrue(line.move_id.line_ids.filtered(
+            lambda l: l.account_id == self.expense_account and l.debit))
+        self.assertTrue(line.move_id.line_ids.filtered(
+            lambda l: l.account_id == self.prepaid_account and l.credit))
+
+    def test_return_for_correction_allowed_while_nothing_is_due_yet(self):
+        """قاعدة صريحة: ما لم تُستحق أي فترة فلا أثر في الدفاتر سوى
+        المستند الأولي - فيُعامَل السجل معاملة عادية: يُلغى ترحيله
+        ويُهدَم الجدول، ويُعاد بناؤهما بالمبلغ المصحَّح."""
+        record = self._complete(self._create_prepaid_fee(date(2026, 3, 16)))
+        doc = record.move_id
+        self.assertTrue(self._lines(record))
+
+        record.with_user(self.approver).action_return_to_previous_stage(
+            target_state='under_review', reason='المبلغ خاطئ')
+
+        self.assertEqual(record.state, 'under_review')
+        self.assertEqual(doc.state, 'draft', 'المستند الأولي لم يعد مسودة')
+        self.assertFalse(self._lines(record), 'الجدول لم يُهدَم')
+
+    def test_schedule_is_rebuilt_from_the_corrected_amount(self):
+        record = self._complete(self._create_prepaid_fee(date(2026, 3, 16)))
+        doc = record.move_id
+        record.with_user(self.approver).action_return_to_previous_stage(
+            target_state='under_review', reason='المبلغ خاطئ')
+
+        record.with_user(self.approver).write({'amount': 3000.0})
+        record.with_user(self.approver).action_confirm()
+        record.with_user(self.approver).action_done()
+
+        self.assertEqual(record.state, 'done')
+        self.assertEqual(record.move_id, doc, 'أُنشئ مستند جديد بدل تصحيح القائم')
+        self.assertEqual(doc.state, 'posted')
+        self.assertEqual(
+            sum(doc.line_ids.filtered(
+                lambda l: l.account_id == self.prepaid_account).mapped('debit')),
+            3000.0, 'المستند رُحّل بالمبلغ القديم')
+        lines = self._lines(record)
+        self.assertTrue(lines, 'الجدول لم يُعَد بناؤه')
+        self.assertAlmostEqual(sum(lines.mapped('amount')), 3000.0, places=2)
+
+    def test_return_for_correction_refused_once_a_period_is_posted(self):
+        """وإن استُحقّت فترة ورُحّل قيدها: صارت في الدفاتر قيود قائمة
+        بذاتها لا تُمحى بإلغاء ترحيل - فالتصحيح بالعكس لا بالهدم."""
+        record = self._complete(self._create_prepaid_fee(date(2026, 3, 16)))
+        lines = self._lines(record)
+        lines[0].sudo().action_post_now()
+
+        with self.assertRaises(UserError):
+            record.with_user(self.approver).action_return_to_previous_stage(
+                target_state='under_review', reason='المبلغ خاطئ')
+
+        # ولا شيء تهدّم في المحاولة الفاشلة
+        self.assertEqual(record.state, 'done')
+        self.assertEqual(record.move_id.state, 'posted')
+        self.assertTrue(self._lines(record))

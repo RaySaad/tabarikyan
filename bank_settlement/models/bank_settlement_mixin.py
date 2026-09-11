@@ -597,8 +597,7 @@ class BankSettlementMixin(models.AbstractModel):
                 'bank_settlement.group_bank_settlement_manager',
             )
             if rec.is_prepaid:
-                if not rec.move_id:
-                    rec.move_id = rec._create_prepaid_schedule()
+                rec._ensure_prepaid_schedule_posted()
             else:
                 rec._ensure_settlement_move_posted()
         self.write({'state': 'done'})
@@ -648,7 +647,10 @@ class BankSettlementMixin(models.AbstractModel):
             raise UserError(_('يجب تحديد "عدد أيام التغطية" أولاً (أكبر من صفر).'))
         if not self.employee_id:
             raise UserError(_('يجب تحديد الموظف/المندوب أولاً.'))
-        if not self.journal_id:
+        # الدفتر مطلوب للقيد المباشر وحده - مسار الفاتورة يتحقق من نوعه
+        # (مشتريات) في _get_settlement_bill_vals، ويقبل تركه فارغاً
+        # ليُستخدَم دفتر المشتريات الافتراضي.
+        if not self._uses_vendor_bill() and not self.journal_id:
             raise UserError(
                 'لا يمكن إنشاء القيد المحاسبي بدون تحديد "دفتر اليومية البنكي".'
             )
@@ -669,22 +671,65 @@ class BankSettlementMixin(models.AbstractModel):
         start_date = self.transfer_date or fields.Date.context_today(self)
         end_date = start_date + timedelta(days=self.prepaid_days - 1)
         schedule = self._compute_prepaid_schedule_lines(start_date, end_date, self.total_amount)
-        category = self.prepaid_category_id
 
-        # القيد الأولي: يسجّل الخروج الفعلي للنقد الآن بكامله (مديناً
-        # حساب المصروفات المدفوعة مقدماً، دائناً دفتر اليومية البنكي) -
-        # نفس بنية _create_settlement_move العادية، لكن الطرف المدين هنا
-        # هو حساب "المصروفات المدفوعة مقدماً" بدل حساب المصروف الفعلي
-        # مباشرة (يُستنفَد تدريجياً بكل قيد استحقاق دوري لاحق).
-        # analytic_distribution: False صراحة على كلا السطرين - هذا قيد
-        # نقدي بحت بين حسابين في الميزانية (لا مصروف بعد)، فلا معنى
-        # لتوزيعه تحليلياً بحسب منصة. صراحة (بدل تركه بلا قيمة) لمنع
-        # نموذج account.analytic.distribution.model العام (يُحدِّثه
-        # recruitment_workflow.hr_employee._sync_partner_analytic_
-        # distribution لكل شريك عند أي نقل منصة، لأغراض أخرى) من ملء هذا
-        # القيد تلقائياً بتوزيع غير مقصود - انظر نفس الثغرة المشروحة في
-        # prepaid_schedule.py._post_entry.
-        move_vals = {
+        # المستند الأولي (قيد مباشر أو فاتورة مورد) يُرحَّل فوراً: المبلغ
+        # التزم به فعلاً بمجرد "تم"، ويجب أن يظهر في رصيد "المصروفات
+        # المدفوعة مقدماً" بلا انتظار ترحيل يدوي - ثغرة حقيقية اكتُشفت
+        # من الاستخدام الفعلي. انظر _get_prepaid_initial_doc_vals لبنيته.
+        move = self.env['account.move'].sudo().create(
+            self._get_prepaid_initial_doc_vals(start_date))
+        move.action_post()
+
+        self._build_prepaid_lines(schedule)
+        return move.id
+
+    def _build_prepaid_lines(self, schedule):
+        """ينشئ أسطر جدول الاستحقاق من الجدول المحسوب - فُصلت عن
+        _create_prepaid_schedule لأنها تُستدعى أيضاً عند إعادة بناء
+        الجدول بعد تصحيح المبلغ."""
+        self.ensure_one()
+        Line = self.env['bank.settlement.prepaid.line'].sudo()
+        for index, (period_start, period_end, amount) in enumerate(schedule):
+            # فترة يتلاشى مبلغها بالتقريب (حالة حدّية) - لا تُنشأ أصلاً
+            # بدل أن تنتظر المهمة المجدولة لتلغيها لاحقاً.
+            if not amount:
+                continue
+            Line.create({
+                'res_model': self._name,
+                'res_id': self.id,
+                'sequence': index + 1,
+                'name': '%s/%s' % (self.name, index + 1),
+                'employee_id': self.employee_id.id,
+                'category_id': self.prepaid_category_id.id,
+                'company_id': self.company_id.id,
+                'currency_id': self.currency_id.id,
+                'period_start_date': period_start,
+                'period_end_date': period_end,
+                'amount': amount,
+            })
+
+    def _get_prepaid_initial_doc_vals(self, start_date):
+        """المستند الأولي للدفعة المقدمة - قيد مباشر أو فاتورة مورد.
+
+        في الحالتين الطرف المدين هو حساب "المصروفات المدفوعة مقدماً" من
+        الفئة (لا حساب المصروف الفعلي)، ويُستنفَد تدريجياً بقيود
+        الاستحقاق الشهرية. الفرق في الطرف الدائن فقط: البنك (خرج النقد
+        فوراً) أو ذمم المورد (استحقاق يُسدَّد لاحقاً) - وهي الحالة
+        القياسية لمصروف مدفوع مقدماً يُصدر به المورد فاتورة.
+
+        analytic_distribution: False صراحة على الطرفين - حركة بين
+        حسابَي ميزانية لا مصروف بعد، فلا معنى لتوزيعها تحليلياً؛
+        والتصريح (بدل تركه فارغاً) يمنع نموذج
+        account.analytic.distribution.model العام (يُحدِّثه
+        recruitment_workflow.hr_employee._sync_partner_analytic_
+        distribution عند كل نقل منصة) من ملئه تلقائياً بتوزيع غير
+        مقصود - انظر نفس الثغرة في prepaid_schedule.py._post_entry."""
+        self.ensure_one()
+        category = self.prepaid_category_id
+        if self._uses_vendor_bill():
+            return self._get_settlement_bill_vals(
+                expense_account=category.prepaid_account_id, date=start_date)
+        return {
             'journal_id': self.journal_id.id,
             'company_id': self.company_id.id,
             'is_bank_settlement_move': True,
@@ -708,36 +753,7 @@ class BankSettlementMixin(models.AbstractModel):
                 }),
             ],
         }
-        # يُرحَّل فوراً (بخلاف _create_settlement_move العادية التي تُبقي
-        # قيدها مسودة لمراجعة محاسب لاحقة) - المبلغ هنا خرج فعلياً وبالكامل
-        # فور "تم" (نفس مبدأ "بلا مراجعة بشرية" الذي طُلب صراحة لكامل آلية
-        # الدفعة المقدمة، ولضمان ظهوره فوراً في رصيد حساب "المصروفات
-        # المدفوعة مقدماً" - كان يبقى مسودة سابقاً فلا ينعكس في الرصيد
-        # الفعلي إلا بعد ترحيل يدوي، ثغرة حقيقية اكتُشفت من الاستخدام
-        # الفعلي).
-        move = self.env['account.move'].sudo().create(move_vals)
-        move.action_post()
 
-        Line = self.env['bank.settlement.prepaid.line'].sudo()
-        for index, (period_start, period_end, amount) in enumerate(schedule):
-            # فترة يتلاشى مبلغها بالتقريب (حالة حدّية) - لا تُنشأ أصلاً
-            # بدل أن تنتظر المهمة المجدولة لتلغيها لاحقاً.
-            if not amount:
-                continue
-            Line.create({
-                'res_model': self._name,
-                'res_id': self.id,
-                'sequence': index + 1,
-                'name': '%s/%s' % (self.name, index + 1),
-                'employee_id': self.employee_id.id,
-                'category_id': category.id,
-                'company_id': self.company_id.id,
-                'currency_id': self.currency_id.id,
-                'period_start_date': period_start,
-                'period_end_date': period_end,
-                'amount': amount,
-            })
-        return move.id
 
     def _get_returnable_stages(self):
         """قائمة مرتبة (من الأقرب للحالة الحالية إلى الأبعد) بأزواج
@@ -880,28 +896,47 @@ class BankSettlementMixin(models.AbstractModel):
         القيد حينها - ولهذا يبقى مسار "إلغاء التنفيذ وتصحيح" (قيد عكسي)
         قائماً كبديل، فهو يعمل في الحالتين."""
         self.ensure_one()
-        # الدفعة المقدمة: جدول استحقاق كامل بُني من المبلغ والأيام، وقد
-        # رُحّلت منه فترات فعلاً - إعادة القيد الأولي وحده لمسودة تترك
-        # الجدول معلّقاً على قيد لم يعد مرحَّلاً. لها مسارها الخاص.
+        # الدفعة المقدمة: الفيصل هو هل استُحقّت فترة فعلاً أم لا.
+        # - لم يُرحَّل أي سطر بعد: لا أثر في الدفاتر سوى المستند الأولي،
+        #   فيُعامَل معاملة أي سجل عادي - يُلغى ترحيله ويُهدَم الجدول،
+        #   ويُعاد بناؤهما معاً بالمبلغ المصحَّح عند الإتمام.
+        # - رُحّل سطر أو أكثر: صارت في الدفاتر قيود استهلاك قائمة بذاتها
+        #   لا يصح محوها بإلغاء ترحيل، فالتصحيح حينها بالعكس لا بالهدم.
         if self.is_prepaid:
-            raise UserError(_(
-                'هذا السجل "دفعة مقدمة" وله جدول استحقاق كامل مبني على '
-                'مبلغه وأيامه - لا يصح إرجاعه للتصحيح بهذه الطريقة. '
-                'استخدم "إلغاء التنفيذ وتصحيح" فهو يعكس القيد الأولي '
-                'ويوقف الجدول ويعكس ما رُحّل منه معاً.'
-            ))
+            Line = self.env['bank.settlement.prepaid.line'].sudo()
+            posted = Line.search_count([
+                ('res_model', '=', self._name), ('res_id', '=', self.id),
+                ('state', '=', 'posted'),
+            ])
+            if posted:
+                raise UserError(_(
+                    'استُحقّت %(count)s فترة من جدول هذه الدفعة المقدمة '
+                    'ورُحّلت قيودها فعلاً - لا يصح إلغاء ترحيل المستند '
+                    'الأولي وتركها قائمة. استخدم "إلغاء التنفيذ وتصحيح": '
+                    'يعكس المستند الأولي ويعكس الفترات المرحَّلة ويوقف ما '
+                    'تبقّى، معاً في خطوة واحدة.'
+                ) % {'count': posted})
+            # يُهدَم الجدول كاملاً: أسطره مشتقّة من المبلغ والأيام، وسيُعاد
+            # بناؤها من القيم المصحَّحة عند الإتمام (لا تُعدَّل في مكانها -
+            # عدد الفترات نفسه قد يتغيّر).
+            Line.search([
+                ('res_model', '=', self._name), ('res_id', '=', self.id),
+            ]).unlink()
         move = self.move_id.sudo()
         if not move or move.state != 'posted':
             return
         move.with_context(bank_settlement_internal_move_write=True).button_draft()
 
-    def _refresh_and_post_settlement_move(self):
+    def _refresh_and_post_settlement_move(self, vals=None):
         """يحدّث قيد السداد المسودة بالقيم الحالية للسجل ثم يرحّله -
         وإلا رُحّل القيد بقيمه القديمة بعد تصحيح السجل، فلا معنى
-        للتصحيح أصلاً."""
+        للتصحيح أصلاً.
+
+        vals: تمرّرها الدفعة المقدمة (قيدها الأولي مبني على حساب
+        المصروفات المدفوعة مقدماً لا الحساب المرتبط)."""
         self.ensure_one()
         move = self.move_id.sudo()
-        vals = self._get_settlement_move_vals()
+        vals = vals or self._get_settlement_move_vals()
         # أودو تمنع تغيير دفتر يومية قيد سبق ترحيله ما لم يُمسَح رقمه
         # (فجوة في التسلسل). فنمسحه عند الضرورة فقط - أي حين تغيّر
         # الدفتر أو انتقل التاريخ لفترة أخرى؛ وتصحيح المبلغ وحده (وهو
@@ -922,6 +957,38 @@ class BankSettlementMixin(models.AbstractModel):
             'line_ids': [(5, 0, 0)] + vals['line_ids'],
         })
         move.action_post()
+
+    def _ensure_prepaid_schedule_posted(self):
+        """ينشئ المستند الأولي وجدول الاستحقاق، أو - بعد "إرجاع
+        للتصحيح" - يحدّث المستند المسودة بالقيم الجديدة ويرحّله ويعيد
+        بناء الجدول منها.
+
+        الجدول يُعاد بناؤه لا يُعدَّل: أسطره مشتقّة من المبلغ وعدد الأيام
+        وتاريخ البدء، وعدد الفترات نفسه قد يتغيّر بتغيّرها."""
+        self.ensure_one()
+        if not self.move_id:
+            self.move_id = self._create_prepaid_schedule()
+            return
+        if self.move_id.sudo().state != 'draft':
+            return
+        # المستند عاد مسودة من التصحيح - نهدم أي بقايا جدول (يُهدَم
+        # أصلاً وقت الإرجاع، وهذا احتياط لو وصل السجل هنا بمسار آخر)
+        # ثم نبني كل شيء من القيم الحالية.
+        self.env['bank.settlement.prepaid.line'].sudo().search([
+            ('res_model', '=', self._name), ('res_id', '=', self.id),
+        ]).unlink()
+        start_date = self.transfer_date or fields.Date.context_today(self)
+        end_date = start_date + timedelta(days=self.prepaid_days - 1)
+        schedule = self._compute_prepaid_schedule_lines(
+            start_date, end_date, self.total_amount)
+        if self._uses_vendor_bill():
+            self._refresh_and_post_settlement_bill(
+                expense_account=self.prepaid_category_id.prepaid_account_id,
+                date=start_date)
+        else:
+            self._refresh_and_post_settlement_move(
+                vals=self._get_prepaid_initial_doc_vals(start_date))
+        self._build_prepaid_lines(schedule)
 
     def _ensure_settlement_move_posted(self):
         """ينشئ مستند السداد ويرحّله، أو - إن كان موجوداً كمسودة بعد
@@ -1082,20 +1149,25 @@ class BankSettlementMixin(models.AbstractModel):
         """المورد الذي تُسجَّل عليه الفاتورة - يُعرّفه النموذج الفرعي."""
         return self.env['res.partner']
 
-    def _get_settlement_bill_vals(self):
+    def _get_settlement_bill_vals(self, expense_account=None, date=None):
         """قيم فاتورة المورد - مشتقة من قيم السجل الحالية، بنفس منطق
         _get_settlement_move_vals للقيد المباشر.
 
-        حساب المصروف يُكتَب صراحةً من "الحساب المرتبط" بدل تركه لاشتقاق
-        أودو التلقائي: الاشتقاق يعتمد على إعدادات الشركة/المنتج، وحين لا
-        يجد حساب مصروف صالحاً ينتهي ببند على حساب دائن فترفضه أودو
-        بالكامل ("Any journal item on a payable account must have a due
-        date") - وهو ما كان يحدث فعلياً في التأمين الطبي."""
+        حساب بند الفاتورة يُكتَب صراحةً بدل تركه لاشتقاق أودو التلقائي:
+        الاشتقاق يعتمد على إعدادات الشركة/المنتج، وحين لا يجد حساباً
+        صالحاً ينتهي ببند على حساب دائن فترفضه أودو بالكامل ("Any
+        journal item on a payable account must have a due date") - وهو
+        ما كان يحدث فعلياً في التأمين الطبي.
+
+        expense_account: يتجاوز "الحساب المرتبط" - تمرّره الدفعة المقدمة
+        لتضع حساب "المصروفات المدفوعة مقدماً" من فئتها مكانه، فالفاتورة
+        حينها لا تُسجّل مصروفاً بعد بل أصلاً يُستهلَك شهرياً."""
         self.ensure_one()
         vendor = self._get_settlement_vendor()
         if not vendor:
             raise UserError(_('يجب تحديد المورد أولاً لإنشاء فاتورة المشتريات.'))
-        if not self.linked_account_id:
+        account = expense_account or self.linked_account_id
+        if not account:
             raise UserError(_(
                 'لا يمكن إنشاء فاتورة المشتريات بدون تحديد "الحساب المرتبط" '
                 '(حساب المصروف الذي تُسجَّل عليه).'
@@ -1107,15 +1179,23 @@ class BankSettlementMixin(models.AbstractModel):
             'company_id': self.company_id.id,
             'is_bank_settlement_move': True,
             'ref': self.name,
-            'invoice_date': self.transfer_date or fields.Date.context_today(self),
+            'invoice_date': date or self.transfer_date or fields.Date.context_today(self),
             'invoice_line_ids': [(0, 0, {
                 'name': self.name,
                 'quantity': 1,
                 'price_unit': self.total_amount,
-                'account_id': self.linked_account_id.id,
+                'account_id': account.id,
+                # الدفعة المقدمة: لا توزيع تحليلي على الفاتورة - هي حركة
+                # بين حسابَي ميزانية (أصل مقابل التزام) ولا مصروف بعد؛
+                # التوزيع يأتي على قيود الاستهلاك الشهرية حسب منصة
+                # المندوب وقت كل فترة. والتصريح بـFalse (لا تركه فارغاً)
+                # يمنع نموذج التوزيع التحليلي العام من ملئه تلقائياً -
+                # انظر الشرح في _create_prepaid_schedule.
                 'analytic_distribution': (
-                    {str(self.analytic_account_id.id): 100}
-                    if self.analytic_account_id else False
+                    False if expense_account else (
+                        {str(self.analytic_account_id.id): 100}
+                        if self.analytic_account_id else False
+                    )
                 ),
             })],
         }
@@ -1142,14 +1222,19 @@ class BankSettlementMixin(models.AbstractModel):
         move.action_post()
         return move.id
 
-    def _refresh_and_post_settlement_bill(self):
+    def _refresh_and_post_settlement_bill(self, expense_account=None, date=None):
         """يحدّث فاتورة مسودة عادت من "إرجاع للتصحيح" بالقيم الجديدة ثم
         يرحّلها - نظير _refresh_and_post_settlement_move للقيد المباشر،
         لكن على invoice_line_ids لا line_ids (بنود الفاتورة، وأودو تبني
-        منها سطر الذمم الدائنة تلقائياً)."""
+        منها سطر الذمم الدائنة تلقائياً).
+
+        expense_account/date: تمرّرهما الدفعة المقدمة (حساب المصروفات
+        المدفوعة مقدماً وتاريخ بدء التغطية) - انظر
+        _ensure_prepaid_schedule_posted."""
         self.ensure_one()
         move = self.move_id.sudo()
-        vals = self._get_settlement_bill_vals()
+        vals = self._get_settlement_bill_vals(
+            expense_account=expense_account, date=date)
         new_date = vals.get('invoice_date')
         period_changed = bool(
             move.invoice_date and new_date

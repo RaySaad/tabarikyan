@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import UserError
 
 
 class BankSettlementGovernmentFee(models.Model):
@@ -135,18 +135,6 @@ class BankSettlementGovernmentFee(models.Model):
                     )
         return super().write(vals)
 
-    @api.constrains('settlement_mode', 'is_prepaid')
-    def _check_settlement_mode_not_prepaid(self):
-        """"فاتورة مشتريات" و"دفعة مقدمة" مساران متعارضان: الأولى تُنشئ
-        استحقاقاً على مورد، والثانية تُنشئ قيداً أولياً على حساب
-        المصروفات المدفوعة مقدماً وجدول استهلاك شهرياً منه. الجمع بينهما
-        يُنتج قيدين متنافسين لنفس المبلغ."""
-        for rec in self:
-            if rec.settlement_mode == 'bill' and rec.is_prepaid:
-                raise ValidationError(
-                    'لا يمكن الجمع بين "فاتورة مشتريات" و"دفعة مقدمة" في '
-                    'نفس السجل - اختر أحد المسارين.'
-                )
 
     def action_reject(self, reason=False):
         """عند رفض سجل مرتبط بطلب توظيف - يُعاد فتح مبلغ الرسوم الحكومية
