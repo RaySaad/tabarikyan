@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datetime import timedelta
+
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 
@@ -158,6 +160,92 @@ class HrEmployee(models.Model):
             'context': {'default_employee_id': self.id},
         }
 
+    # ------------------------------------------------------------------
+    # الإقامة: رقمها عندنا هو identification_id (انظر residency_number في
+    # bank_settlement وfleet_vehicle_change_request، وحقل "رقم الهوية /
+    # الإقامة" في طلب التوظيف) - وأودو لا تُقرن به تاريخ انتهاء إطلاقاً:
+    # تواريخ الانتهاء القياسية عندها للتأشيرة (visa_expire) ورخصة العمل
+    # (work_permit_expiration_date) والجواز فقط. فيُضاف هنا.
+    # ------------------------------------------------------------------
+    iqama_expiry_date = fields.Date(
+        string='تاريخ انتهاء الإقامة', tracking=True,
+        help='يُستخدم لبناء جدول "الدفعة المقدمة" لرسوم تجديد الإقامة '
+             '(تبدأ التغطية في اليوم التالي له)، ولتنبيه الموارد البشرية '
+             'قبل انتهائه بالمدة المحددة في الإعدادات.',
+    )
+    # يمنع تكرار التنبيه يومياً طوال نافذة المهلة. يُصفَّر تلقائياً عند
+    # تغيّر التاريخ (تجديد جديد) فيُنبَّه عليه من جديد في موعده.
+    iqama_expiry_activity_done = fields.Boolean(
+        string='نُبّه على انتهاء الإقامة', default=False, copy=False,
+    )
+
+    @api.model
+    def _cron_notify_iqama_expiry(self):
+        """ينبّه الموارد البشرية قبل انتهاء إقامة كل مندوب.
+
+        يستخدم "أقل من أو يساوي" لا "يساوي بالضبط" كما في تنبيه رخصة
+        العمل بأودو: المطابقة التامة تعني أن يوماً واحداً لم تعمل فيه
+        المهمة (تعطّل، أو بيئة لا تُشغّل المهام المجدولة) يُسقط تنبيه ذلك
+        الموظف نهائياً بلا أثر. والراية تمنع التكرار اليومي بدلاً من ذلك.
+        """
+        today = fields.Date.context_today(self)
+        Activity = self.env['mail.activity']
+        todo = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
+        if not todo:
+            return True
+        for company in self.env['res.company'].sudo().search([]):
+            notice = company.iqama_expiration_notice_period
+            if notice <= 0:
+                continue
+            employees = self.sudo().search([
+                ('company_id', '=', company.id),
+                ('iqama_expiry_date', '!=', False),
+                ('iqama_expiry_date', '<=', today + timedelta(days=notice)),
+                ('iqama_expiry_activity_done', '=', False),
+            ])
+            for employee in employees:
+                user = employee._get_iqama_notice_user()
+                if not user:
+                    continue
+                employee.with_context(mail_activity_quick_update=True).activity_schedule(
+                    'mail.mail_activity_data_todo',
+                    employee.iqama_expiry_date,
+                    _('إقامة %(name)s تنتهي في %(date)s - يلزم التجديد.') % {
+                        'name': employee.name, 'date': employee.iqama_expiry_date,
+                    },
+                    user_id=user.id,
+                )
+                employee.iqama_expiry_activity_done = True
+        return True
+
+    def _get_iqama_notice_user(self):
+        """وجهة التنبيه: مسؤول الموارد البشرية للموظف، بشرط أن يكون فعلاً
+        من الموارد البشرية - وإلا فأول مدير موارد بشرية في نفس الشركة.
+
+        شرط الصلاحية ليس تزيّداً: hr_responsible_id حقل مطلوب في أودو 19
+        فتضعه أودو تلقائياً على مُنشئ السجل - وقد يكون موظف إدخال بيانات
+        أو مدير مباشر لا علاقة له بتجديد الإقامات، فيذهب التنبيه لمن لا
+        يملك حتى فتح تبويب البيانات الشخصية. والتنبيه مطلوب للموارد
+        البشرية تحديداً.
+
+        وبعكس أودو التي ترجع لمستخدم المهمة المجدولة (OdooBot) عند غياب
+        المسؤول - فينتهي التنبيه في صندوق لا يقرأه أحد."""
+        self.ensure_one()
+        responsible = self.sudo().hr_responsible_id
+        if responsible and responsible.active and responsible.has_group('hr.group_hr_user'):
+            return responsible
+        for xmlid in ('hr.group_hr_manager', 'hr.group_hr_user'):
+            group = self.env.ref(xmlid, raise_if_not_found=False)
+            if not group:
+                continue
+            user = group.sudo().all_user_ids.filtered(
+                lambda u: u.active and (
+                    not self.company_id or self.company_id in u.company_ids)
+            )[:1]
+            if user:
+                return user
+        return self.env['res.users']
+
     def write(self, vals):
         # المنصة الحالية لا يجوز تعديلها إلا عبر _open_platform_history -
         # البوابة الوحيدة المستخدمة من كل المسارات المخوَّلة (مباشرة العمل
@@ -165,6 +253,9 @@ class HrEmployee(models.Model):
         # طلب نقل المنصة). أي محاولة تعديل مباشرة لهذا الحقل (شاشة الموظف،
         # تعديل جماعي من القائمة، استيراد بيانات، أو RPC مباشر) تعني تجاوز
         # خط سير الموافقة بالكامل رغم إخفاء/تعطيل الزر في الواجهة فقط.
+        # تغيّر تاريخ انتهاء الإقامة (تجديد جديد) يُعيد فتح باب التنبيه.
+        if 'iqama_expiry_date' in vals:
+            vals.setdefault('iqama_expiry_activity_done', False)
         if 'project_id' in vals and not self.env.context.get(
             'platform_history_internal_write'
         ):

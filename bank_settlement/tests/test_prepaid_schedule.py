@@ -489,7 +489,7 @@ class TestPrepaidSchedule(TransactionCase):
 
     def test_coverage_starts_the_day_after_residency_expiry(self):
         """سداد مبكر بشهر كان يحمّل ذلك الشهر على فترة لم تبدأ تغطيتها."""
-        self.employee.sudo().visa_expire = date(2026, 11, 15)
+        self.employee.sudo().iqama_expiry_date = date(2026, 11, 15)
         fee = self._renewal_fee(self._renewal_fee_type('residency'),
                                 transfer_date=date(2026, 10, 20))
         self._complete(fee)
@@ -518,7 +518,7 @@ class TestPrepaidSchedule(TransactionCase):
     def test_late_renewal_starts_from_the_past_expiry(self):
         """انتهاء مضى: نبدأ منه رغم ذلك - المصروف يخص فترته، فالفترات
         الماضية تُرحَّل بأثر رجعي."""
-        self.employee.sudo().visa_expire = date(2026, 1, 10)
+        self.employee.sudo().iqama_expiry_date = date(2026, 1, 10)
         fee = self._renewal_fee(self._renewal_fee_type('residency'),
                                 transfer_date=date(2026, 4, 1))
         self._complete(fee)
@@ -527,7 +527,7 @@ class TestPrepaidSchedule(TransactionCase):
 
     def test_missing_expiry_blocks_completion(self):
         """بلا التاريخ يُبنى الجدول على تاريخ خاطئ بصمت - فيُرفض."""
-        self.employee.sudo().visa_expire = False
+        self.employee.sudo().iqama_expiry_date = False
         fee = self._renewal_fee(self._renewal_fee_type('residency'),
                                 transfer_date=date(2026, 10, 20))
         fee.with_user(self.approver).action_submit_review()
@@ -536,11 +536,11 @@ class TestPrepaidSchedule(TransactionCase):
             fee.with_user(self.approver).action_done()
 
     def test_employee_expiry_is_pushed_to_the_new_coverage_end(self):
-        self.employee.sudo().visa_expire = date(2026, 11, 15)
+        self.employee.sudo().iqama_expiry_date = date(2026, 11, 15)
         fee = self._renewal_fee(self._renewal_fee_type('residency'),
                                 transfer_date=date(2026, 10, 20))
         self._complete(fee)
-        self.assertEqual(self.employee.sudo().visa_expire, date(2027, 11, 15),
+        self.assertEqual(self.employee.sudo().iqama_expiry_date, date(2027, 11, 15),
                          'تاريخ انتهاء الإقامة لم يُحدَّث بعد التجديد')
 
     def test_employee_expiry_is_never_moved_backwards(self):
@@ -548,14 +548,14 @@ class TestPrepaidSchedule(TransactionCase):
         التغطية. السيناريو الحقيقي: يُتمّ التجديد فيُدفَع التاريخ، ثم
         يُصحَّح من أبشر لتاريخ أبعد، ثم يُعاد إتمام السجل بعد تصحيح مبلغه
         - يجب ألا يدهس التجديد التاريخ الأبعد بنهاية تغطيته الأقرب."""
-        self.employee.sudo().visa_expire = date(2026, 11, 15)
+        self.employee.sudo().iqama_expiry_date = date(2026, 11, 15)
         fee = self._renewal_fee(self._renewal_fee_type('residency'),
                                 transfer_date=date(2026, 10, 20), days=30, amount=300.0)
         self._complete(fee)
-        self.assertEqual(self.employee.sudo().visa_expire, date(2026, 12, 15))
+        self.assertEqual(self.employee.sudo().iqama_expiry_date, date(2026, 12, 15))
 
         # صُحِّح من أبشر لتاريخ أبعد بكثير
-        self.employee.sudo().visa_expire = date(2030, 1, 1)
+        self.employee.sudo().iqama_expiry_date = date(2030, 1, 1)
 
         fee.with_user(self.approver).action_return_to_previous_stage(
             target_state='under_review', reason='المبلغ خاطئ')
@@ -563,18 +563,18 @@ class TestPrepaidSchedule(TransactionCase):
         fee.with_user(self.approver).action_confirm()
         fee.with_user(self.approver).action_done()
 
-        self.assertEqual(self.employee.sudo().visa_expire, date(2030, 1, 1),
+        self.assertEqual(self.employee.sudo().iqama_expiry_date, date(2030, 1, 1),
                          'التجديد دهس تاريخاً أبعد كان مسجَّلاً')
 
     def test_start_date_is_pinned_and_does_not_creep_on_correction(self):
         """أخطر حالة: مصدر التاريخ حقل *نُحدِّثه نحن* بعد الإتمام - فإعادة
         الحساب عند إتمام ثانٍ بعد تصحيح كانت ستزحف بالتغطية سنة كاملة."""
-        self.employee.sudo().visa_expire = date(2026, 11, 15)
+        self.employee.sudo().iqama_expiry_date = date(2026, 11, 15)
         fee = self._renewal_fee(self._renewal_fee_type('residency'),
                                 transfer_date=date(2026, 10, 20))
         self._complete(fee)
         self.assertEqual(fee.prepaid_start_date, date(2026, 11, 16))
-        self.assertEqual(self.employee.sudo().visa_expire, date(2027, 11, 15))
+        self.assertEqual(self.employee.sudo().iqama_expiry_date, date(2027, 11, 15))
 
         fee.with_user(self.approver).action_return_to_previous_stage(
             target_state='under_review', reason='المبلغ خاطئ')

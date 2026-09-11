@@ -90,9 +90,14 @@ class BankSettlementGovernmentFee(models.Model):
     # ربط بداية تغطية الدفعة المقدمة بتاريخ انتهاء الوثيقة المجدَّدة.
     # المصدر -> (حقل التاريخ على الموظف، اسمه المعروض للرسائل)
     _COVERAGE_SOURCE_FIELDS = {
-        # حقلان قياسيان في أودو - لا حاجة لحقول مخصصة على الموظف.
-        'residency': ('visa_expire', 'انتهاء الإقامة'),
+        # الإقامة: رقمها عندنا identification_id، وأودو لا تُقرن به تاريخ
+        # انتهاء - فالحقل مضاف في recruitment_workflow.hr_employee.
+        # (كان مربوطاً خطأً بـvisa_expire، وهو انتهاء *التأشيرة* المقترن
+        # بـvisa_no - مستند آخر تماماً.)
+        'residency': ('iqama_expiry_date', 'انتهاء الإقامة'),
+        # رخصة العمل والتأشيرة: حقلان قياسيان في أودو.
         'work_permit': ('work_permit_expiration_date', 'انتهاء كرت العمل'),
+        'visa': ('visa_expire', 'انتهاء التأشيرة'),
     }
 
     def _get_prepaid_coverage_start(self):

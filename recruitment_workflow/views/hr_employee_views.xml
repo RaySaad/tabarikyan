@@ -125,4 +125,19 @@
         <field name="view_mode">list,form</field>
     </record>
 
+    <!-- تاريخ انتهاء الإقامة بجوار رقمها مباشرةً: رقم الإقامة عندنا هو
+         identification_id، وأودو لا تُقرن به تاريخ انتهاء (تواريخها
+         للتأشيرة ورخصة العمل والجواز فقط) - انظر hr_employee.py. -->
+    <record id="view_hr_employee_form_inherit_iqama_expiry" model="ir.ui.view">
+        <field name="name">hr.employee.form.recruitment.iqama.expiry</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='identification_id']" position="after">
+                <field name="iqama_expiry_date"/>
+                <field name="iqama_expiry_activity_done" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>

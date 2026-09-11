@@ -6,3 +6,4 @@ from . import test_project_project
 from . import test_fleet_vehicle_branch_history
 from . import test_fleet_vehicle_change_request
 from . import test_hr_employee_discipline
+from . import test_iqama_expiry_notice

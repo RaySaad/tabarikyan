@@ -16,6 +16,12 @@ class ResConfigSettings(models.TransientModel):
     بمجرد تعديل السياسة لاحقاً."""
     _inherit = 'res.config.settings'
 
+    iqama_expiration_notice_period = fields.Integer(
+        string='مهلة التنبيه قبل انتهاء الإقامة (بالأيام)',
+        related='company_id.iqama_expiration_notice_period', readonly=False,
+        help='قبل هذه المدة من انتهاء إقامة المندوب يُنشأ نشاط لمسؤول '
+             'الموارد البشرية للتنبيه بالتجديد. صفر = بلا تنبيه.',
+    )
     recruitment_warning_count = fields.Integer(
         string='عدد الإنذارات قبل الفصل',
         default=DEFAULT_WARNING_COUNT,

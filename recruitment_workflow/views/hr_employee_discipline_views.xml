@@ -299,6 +299,15 @@
                             </div>
                         </div>
                     </setting>
+                    <setting id="recruitment_iqama_notice" string="تنبيه انتهاء الإقامة"
+                             help="تنبيه مسؤول الموارد البشرية قبل انتهاء إقامة المندوب">
+                        <div class="content-group">
+                            <div class="mt16">
+                                <label for="iqama_expiration_notice_period" class="o_light_label"/>
+                                <field name="iqama_expiration_notice_period" class="oe_inline"/>
+                            </div>
+                        </div>
+                    </setting>
                 </xpath>
             </field>
         </record>
