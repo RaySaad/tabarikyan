@@ -35,6 +35,17 @@ class RecruitmentRequest(models.Model):
         tracking=True,
         help='يجب أن يتكون من 10 أرقام ويبدأ بالرقم 1 أو 2.',
     )
+    # يُلتقط هنا لأنه معروف عند نقل الكفالة (المرشّح يحمل إقامة سارية
+    # بالفعل)، ويُنقل لسجل الموظف عبر _build_employee_vals - نفس مسار
+    # رقم الإقامة والجواز. البديل كان إدخاله يدوياً على ملف الموظف بعد
+    # إنشائه، فيُنسى ثم يتعذّر بناء جدول رسوم التجديد لاحقاً.
+    iqama_expiry_date = fields.Date(
+        string='تاريخ انتهاء الإقامة',
+        tracking=True,
+        help='يُنقل تلقائياً لملف الموظف عند إنشائه - ويُبنى عليه جدول '
+             '"الدفعة المقدمة" لرسوم تجديد الإقامة، ويُنبَّه قبله '
+             'بالمدة المحددة في الإعدادات.',
+    )
     mobile = fields.Char(
         string='رقم الجوال',
         required=True,
@@ -1500,6 +1511,7 @@ class RecruitmentRequest(models.Model):
         set_if('department_id', self.department_id.id)
         set_if('company_id', self.company_id.id)
         set_if('identification_id', self.identification_id)
+        set_if('iqama_expiry_date', self.iqama_expiry_date)
         # كود الموظف السعودي إن وُجد (l10n_sa)
         set_if('l10n_sa_employee_code', self.identification_id)
         # المشروع/المنصة (كيتا، هنقرستيشن...) - يُضبط أيضاً بعد الإنشاء عبر

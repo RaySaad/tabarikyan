@@ -163,6 +163,7 @@
                             <field name="employee_name" readonly="is_import_request"/>
                             <field name="identification_id" placeholder="1XXXXXXXXX أو 2XXXXXXXXX"
                                    readonly="is_import_request"/>
+                            <field name="iqama_expiry_date"/>
                             <field name="mobile" placeholder="05XXXXXXXX"/>
                             <field name="email" widget="email"/>
                             <field name="passport_no"/>

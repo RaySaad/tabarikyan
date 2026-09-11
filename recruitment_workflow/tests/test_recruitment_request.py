@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datetime import date
+
 from psycopg2 import IntegrityError
 
 from odoo.exceptions import UserError, ValidationError
@@ -1221,3 +1223,38 @@ class TestRecruitmentRequest(TransactionCase):
         self.assertFalse(request.gov_fee_settled)
         request.gov_fee_amount = 1500.0
         self.assertEqual(request.gov_fee_amount, 1500.0)
+
+    # ------------------------------------------------------------------
+    # انتقال تاريخ انتهاء الإقامة من طلب التوظيف لملف الموظف
+    # ------------------------------------------------------------------
+    def test_iqama_expiry_transfers_to_the_new_employee(self):
+        """يُلتقط عند نقل الكفالة (المرشّح يحمل إقامة سارية) فينتقل مع
+        رقم الإقامة والجواز - بدل إدخاله يدوياً بعد الإنشاء فيُنسى ثم
+        يتعذّر بناء جدول رسوم التجديد."""
+        request = self._create_request()
+        request.iqama_expiry_date = date(2027, 4, 30)
+
+        employee = request._create_employee()
+
+        self.assertTrue(employee)
+        self.assertEqual(employee.iqama_expiry_date, date(2027, 4, 30),
+                         'التاريخ لم ينتقل لملف الموظف')
+        self.assertEqual(employee.identification_id, request.identification_id)
+
+    def test_employee_vals_map_carries_the_date(self):
+        """الخريطة نفسها تُستخدم لمزامنة طلبات الاستقدام (الموظف يُنشأ
+        هناك مبكراً ببيانات أساسية ثم تُستكمل) - فالتحقق منها يغطي
+        المسارين معاً."""
+        request = self._create_request()
+        request.iqama_expiry_date = date(2027, 4, 30)
+        self.assertEqual(
+            request._build_employee_vals().get('iqama_expiry_date'),
+            date(2027, 4, 30))
+
+    def test_empty_date_does_not_wipe_an_existing_one(self):
+        """set_if لا يكتب إلا القيم غير الفارغة - فطلب بلا تاريخ لا
+        يمحو تاريخاً مسجَّلاً على موظف قائم (مسار الاستقدام يكتب على
+        سجل موجود)."""
+        request = self._create_request()
+        request.iqama_expiry_date = False
+        self.assertNotIn('iqama_expiry_date', request._build_employee_vals())
