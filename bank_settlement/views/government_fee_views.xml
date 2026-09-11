@@ -11,6 +11,7 @@
                     <field name="name"/>
                     <field name="government_entity_id"/>
                     <field name="fee_type_id"/>
+                    <field name="settlement_mode" optional="show"/>
                     <field name="employee_category"/>
                     <field name="employee_id"/>
                     <field name="residency_number"/>
@@ -34,6 +35,7 @@
                     <field name="employee_id"/>
                     <field name="government_entity_id"/>
                     <field name="fee_type_id"/>
+                    <field name="settlement_mode" optional="show"/>
                     <filter name="inactive" string="مؤرشف" domain="[('active', '=', False)]"/>
                     <group>
                         <filter name="group_by_state" string="الحالة" context="{'group_by': 'state'}"/>
@@ -98,6 +100,13 @@
                                        readonly="state != 'draft'"/>
                                 <field name="fee_type_id"
                                        readonly="state != 'draft'"/>
+                                <field name="settlement_mode" widget="radio"
+                                       readonly="state != 'draft'"/>
+                                <field name="vendor_id"
+                                       options="{'no_create': True}"
+                                       required="settlement_mode == 'bill'"
+                                       invisible="settlement_mode != 'bill'"
+                                       readonly="state not in ('draft', 'confirmed') and not returned_for_correction"/>
                                 <!-- رقم السداد مرتبط برقم مرجعي يعرفه من يرفع
                                      الطلب نفسه للجهة الحكومية منذ البداية -
                                      وليس بيانات سداد بنكي فعلي يُدخلها المحاسب

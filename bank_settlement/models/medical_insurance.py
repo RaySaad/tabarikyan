@@ -85,53 +85,34 @@ class BankSettlementMedicalInsurance(models.Model):
                     bank_settlement_skip_approval_lock=True,
                 ).fee_type_id = new_record.id
 
+    def _uses_vendor_bill(self):
+        # التأمين الطبي دائماً فاتورة مورد - مرتبط بمورد حقيقي يُصدر
+        # فاتورة رسمية، لا صرف نقدي مباشر.
+        return True
+
+    def _get_settlement_vendor(self):
+        return self.vendor_id
+
     def action_create_insurance_transfer(self):
-        """ينشئ فاتورة مورد (Vendor Bill) فعلية على المورد المحدَّد، بدل
-        القيد اليدوي العام المستخدم في بقية النماذج - لأن التأمين الطبي
-        مرتبط بمورد حقيقي له فاتورة رسمية. ينهي دورة الحالة أيضاً (كانت
-        سابقاً لا تصل لحالة "تم التحويل" لعدم تحديث state هنا إطلاقاً)."""
+        """ينشئ فاتورة المورد ويرحّلها وينهي دورة الحالة.
+
+        صارت غلافاً رفيعاً حول action_done المشتركة بدل تنفيذ مستقل -
+        وبذلك تسري على التأمين الطبي كل آليات السداد الأخرى بلا تكرار:
+        الترحيل الفوري، و"إرجاع للتصحيح" (يعيد الفاتورة مسودة ثم
+        يحدّثها بالقيم الجديدة ويرحّلها)، و"إلغاء التنفيذ وتصحيح".
+
+        كان التنفيذ المستقل السابق يترك الفاتورة *مسودة* أبداً، ويتجاهل
+        "الحساب المرتبط" و"دفتر اليومية" تماماً، ويخرج مبكراً متى وُجد
+        move_id - فبعد إرجاع السجل للتصحيح كان يعلَق نهائياً: الفاتورة
+        مسودة بقيمها القديمة، والضغط على الزر لا يحدّثها ولا يُعيد
+        الحالة لـ"تم التحويل"."""
         self.ensure_one()
-        # بلا هذا التحقق المبكر (قبل شرط "مؤكدة" أدناه)، نقرة مزدوجة أو
-        # استدعاء مكرر (RPC) كان يفشل بخطأ "يجب تأكيد السجل أولاً" بدل
-        # إرجاع نفس الفاتورة الموجودة فعلاً - لأن هذه الدالة نفسها تُغيّر
-        # الحالة إلى "تم التحويل" فور نجاحها أول مرة، فيفشل شرط "مؤكدة"
-        # عند أي استدعاء تالٍ رغم وجود الفاتورة أصلاً (ثغرة حقيقية
-        # مكتشفة بالاختبار الفعلي - الاختبار الذي يُفترض أن يتحقق من
-        # التكرار الآمن كان هو نفسه يفشل بخطأ مختلف تماماً عن المتوقَّع).
-        if self.move_id:
+        # استدعاء مكرر (نقرة مزدوجة/RPC) على سجل مكتمل فعلاً: يُرجع نفس
+        # الفاتورة بدل الفشل بخطأ "يجب تأكيد السجل أولاً" - لأن الدالة
+        # نفسها تنقل الحالة إلى "تم التحويل" فور نجاحها أول مرة.
+        if self.move_id and self.state == 'done':
             return self.move_id.id
-        if self.state != 'confirmed':
-            raise UserError('يجب تأكيد السجل أولاً قبل إنشاء تحويل التأمين.')
-        self._check_group(
-            'bank_settlement.group_bank_settlement_reviewer',
-            'bank_settlement.group_bank_settlement_manager',
-        )
         if not self.vendor_id:
             raise UserError('يجب تحديد المورد أولاً لإنشاء تحويل التأمين.')
-        # sudo(): نفس منطق _create_settlement_move في المixin - لا يجوز أن
-        # يشترط إنشاء الفاتورة عضوية محاسبية أصلية بـ Odoo؛ الصلاحية الفعلية
-        # محكومة بالفعل عبر _check_group أعلاه.
-        move = self.env['account.move'].sudo().create({
-            'move_type': 'in_invoice',
-            'partner_id': self.vendor_id.id,
-            # الشركة صراحة من شركة السجل نفسها - بدل تركها تُحسب من الشركة
-            # النشطة لمن يضغط الزر (انظر نفس المنطق في _create_settlement_move).
-            'company_id': self.company_id.id,
-            # يُستخدم لحصر رؤية "مستخدم/محاسب" السداد البنكي على قيودهم فقط
-            # عبر ir.rule - دون كشف بقية فواتير الشركة.
-            'is_bank_settlement_move': True,
-            'ref': self.name,
-            'invoice_date': self.transfer_date or fields.Date.context_today(self),
-            'invoice_line_ids': [(0, 0, {
-                'name': self.name,
-                'quantity': 1,
-                'price_unit': self.total_amount,
-                'analytic_distribution': (
-                    {str(self.analytic_account_id.id): 100}
-                    if self.analytic_account_id else False
-                ),
-            })],
-        })
-        self.move_id = move.id
-        self.state = 'done'
+        self.action_done()
         return self.move_id.id

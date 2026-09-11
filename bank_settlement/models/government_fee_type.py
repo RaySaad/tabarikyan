@@ -13,6 +13,16 @@ class BankSettlementGovernmentEntity(models.Model):
     name = fields.Char(string='الاسم', required=True)
     sequence = fields.Integer(string='الترتيب', default=10)
     active = fields.Boolean(default=True)
+    # بعض الجهات تُسدَّد عبر مورد/وسيط يُصدر فاتورة (مكتب تعقيب مثلاً)
+    # بدل الصرف النقدي المباشر - يُملأ هذا الحقل بمورده فيُقترَح تلقائياً
+    # على كل سجل رسوم لهذه الجهة، ويبقى قابلاً للتغيير في السجل نفسه.
+    partner_id = fields.Many2one(
+        'res.partner', string='المورد الافتراضي',
+        domain=[('supplier_rank', '>', 0)], ondelete='restrict',
+        help='المورد الذي تُسجَّل عليه فاتورة المشتريات حين يكون مسار '
+             'السداد "فاتورة مشتريات" - يُقترَح تلقائياً عند اختيار هذه '
+             'الجهة، ويمكن تغييره في سجل الرسوم نفسه.',
+    )
 
     # _sql_constraints (الصيغة القديمة) لم تعد فعّالة إطلاقاً في هذا
     # الإصدار من Odoo - انظر الشرح الكامل في advance_reason.py.

@@ -924,14 +924,26 @@ class BankSettlementMixin(models.AbstractModel):
         move.action_post()
 
     def _ensure_settlement_move_posted(self):
-        """ينشئ قيد السداد ويرحّله، أو - إن كان موجوداً كمسودة بعد
-        "إرجاع للتصحيح" - يحدّثه بالقيم الجديدة ويرحّله."""
+        """ينشئ مستند السداد ويرحّله، أو - إن كان موجوداً كمسودة بعد
+        "إرجاع للتصحيح" - يحدّثه بالقيم الجديدة ويرحّله.
+
+        المستند إما قيد مباشر أو فاتورة مورد حسب طبيعة السجل
+        (_uses_vendor_bill) - والمساران متماثلان تماماً من حيث دورة
+        الحياة: إنشاء وترحيل، ثم إعادة لمسودة وتحديث وترحيل عند
+        التصحيح."""
         self.ensure_one()
+        is_bill = self._uses_vendor_bill()
         if not self.move_id:
-            self.move_id = self._create_settlement_move()
+            self.move_id = (
+                self._create_settlement_bill() if is_bill
+                else self._create_settlement_move()
+            )
             return
         if self.move_id.sudo().state == 'draft':
-            self._refresh_and_post_settlement_move()
+            if is_bill:
+                self._refresh_and_post_settlement_bill()
+            else:
+                self._refresh_and_post_settlement_move()
 
     # -- إلغاء التنفيذ وتصحيحه -------------------------------------------
     # لم يكن هناك أي مسار تصحيح بعد "منفّذ" إطلاقاً: القيد لا يُحذف ولا
@@ -1052,6 +1064,110 @@ class BankSettlementMixin(models.AbstractModel):
         حقل partner_id صريحاً قد يُضبط قبل وجود سجل الموظف الرسمي)."""
         self.ensure_one()
         return self.employee_id._get_personal_partner().id if self.employee_id else False
+
+    # -- مسار فاتورة المشتريات ------------------------------------------
+    # بعض المدفوعات ليست صرفاً نقدياً مباشراً بل *استحقاق* على مورد
+    # حقيقي يُصدر فاتورة (التأمين الطبي، وبعض الجهات الحكومية التي تمر
+    # عبر مكتب/وسيط): مدين مصروف / دائن ذمم دائنة للمورد - ثم تُسدَّد
+    # الفاتورة لاحقاً بدفعة تُقفل الذمة. بخلاف القيد المباشر الذي يعني
+    # أن النقد خرج من البنك فوراً.
+
+    def _uses_vendor_bill(self):
+        """هل يُنفَّذ هذا السجل كفاتورة مورد بدل قيد مباشر؟ خطّاف يتجاوزه
+        كل نموذج حسب طبيعته (التأمين الطبي دائماً، والرسوم الحكومية حسب
+        اختيار المستخدم في كل سجل)."""
+        return False
+
+    def _get_settlement_vendor(self):
+        """المورد الذي تُسجَّل عليه الفاتورة - يُعرّفه النموذج الفرعي."""
+        return self.env['res.partner']
+
+    def _get_settlement_bill_vals(self):
+        """قيم فاتورة المورد - مشتقة من قيم السجل الحالية، بنفس منطق
+        _get_settlement_move_vals للقيد المباشر.
+
+        حساب المصروف يُكتَب صراحةً من "الحساب المرتبط" بدل تركه لاشتقاق
+        أودو التلقائي: الاشتقاق يعتمد على إعدادات الشركة/المنتج، وحين لا
+        يجد حساب مصروف صالحاً ينتهي ببند على حساب دائن فترفضه أودو
+        بالكامل ("Any journal item on a payable account must have a due
+        date") - وهو ما كان يحدث فعلياً في التأمين الطبي."""
+        self.ensure_one()
+        vendor = self._get_settlement_vendor()
+        if not vendor:
+            raise UserError(_('يجب تحديد المورد أولاً لإنشاء فاتورة المشتريات.'))
+        if not self.linked_account_id:
+            raise UserError(_(
+                'لا يمكن إنشاء فاتورة المشتريات بدون تحديد "الحساب المرتبط" '
+                '(حساب المصروف الذي تُسجَّل عليه).'
+            ))
+        vals = {
+            'move_type': 'in_invoice',
+            'partner_id': vendor.id,
+            # الشركة صراحة من شركة السجل - انظر نفس المنطق في القيد المباشر.
+            'company_id': self.company_id.id,
+            'is_bank_settlement_move': True,
+            'ref': self.name,
+            'invoice_date': self.transfer_date or fields.Date.context_today(self),
+            'invoice_line_ids': [(0, 0, {
+                'name': self.name,
+                'quantity': 1,
+                'price_unit': self.total_amount,
+                'account_id': self.linked_account_id.id,
+                'analytic_distribution': (
+                    {str(self.analytic_account_id.id): 100}
+                    if self.analytic_account_id else False
+                ),
+            })],
+        }
+        # فاتورة المورد تحتاج دفتر *مشتريات* - دفتر بنكي يرفضه أودو. إن
+        # لم يُحدَّد دفتر مشتريات صراحةً تختار أودو الافتراضي، وإن حُدِّد
+        # دفتر من نوع آخر نوضّح السبب بدل تركه يفشل برسالة عامة.
+        if self.journal_id:
+            if self.journal_id.type != 'purchase':
+                raise UserError(_(
+                    'دفتر اليومية المحدَّد "%s" من نوع "%s" - وفاتورة '
+                    'المشتريات تحتاج دفتر مشتريات. اختر دفتر مشتريات، أو '
+                    'اتركه فارغاً ليُستخدَم دفتر المشتريات الافتراضي.'
+                ) % (self.journal_id.display_name, self.journal_id.type))
+            vals['journal_id'] = self.journal_id.id
+        return vals
+
+    def _create_settlement_bill(self):
+        """ينشئ فاتورة المورد ويرحّلها - الترحيل الفوري بنفس قرار القيد
+        المباشر: الاستحقاق واقع فعلاً ويجب أن يظهر في الذمم الدائنة."""
+        self.ensure_one()
+        # sudo(): نفس منطق القيد المباشر - الصلاحية محكومة بـ_check_group
+        # قبل الوصول هنا، ولا يجوز اشتراط عضوية محاسبية أصلية بأودو.
+        move = self.env['account.move'].sudo().create(self._get_settlement_bill_vals())
+        move.action_post()
+        return move.id
+
+    def _refresh_and_post_settlement_bill(self):
+        """يحدّث فاتورة مسودة عادت من "إرجاع للتصحيح" بالقيم الجديدة ثم
+        يرحّلها - نظير _refresh_and_post_settlement_move للقيد المباشر،
+        لكن على invoice_line_ids لا line_ids (بنود الفاتورة، وأودو تبني
+        منها سطر الذمم الدائنة تلقائياً)."""
+        self.ensure_one()
+        move = self.move_id.sudo()
+        vals = self._get_settlement_bill_vals()
+        new_date = vals.get('invoice_date')
+        period_changed = bool(
+            move.invoice_date and new_date
+            and (move.invoice_date.year, move.invoice_date.month)
+            != (new_date.year, new_date.month)
+        )
+        if (vals.get('journal_id') and move.journal_id.id != vals['journal_id']) or period_changed:
+            move.name = '/'
+        write_vals = {
+            'partner_id': vals['partner_id'],
+            'invoice_date': new_date,
+            'ref': vals.get('ref'),
+            'invoice_line_ids': [(5, 0, 0)] + vals['invoice_line_ids'],
+        }
+        if vals.get('journal_id'):
+            write_vals['journal_id'] = vals['journal_id']
+        move.write(write_vals)
+        move.action_post()
 
     def _create_settlement_move(self):
         """ينشئ قيد محاسبي (account.move) لتوثيق عملية السداد، بدفتر

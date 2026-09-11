@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 
 class BankSettlementGovernmentFee(models.Model):
@@ -41,6 +41,28 @@ class BankSettlementGovernmentFee(models.Model):
              'أبكر حتى - قبل إدخال بيانات الموظف نفسها.',
     )
 
+    # -- مسار السداد: قيد مباشر أم فاتورة مشتريات --------------------
+    # طلب صريح: بعض المدفوعات الحكومية تمر عبر مورد/وسيط يُصدر فاتورة
+    # (مثل التأمين الطبي)، وبعضها صرف نقدي مباشر - فالقرار لكل سجل لا
+    # لكل جهة، لأن نفس الجهة قد تُسدَّد بالطريقتين.
+    settlement_mode = fields.Selection(
+        selection=[
+            ('entry', 'قيد مباشر (صرف نقدي)'),
+            ('bill', 'فاتورة مشتريات (استحقاق على مورد)'),
+        ],
+        string='مسار السداد', default='entry', required=True, tracking=True,
+        help='"قيد مباشر": مدين الحساب المرتبط / دائن حساب دفتر اليومية '
+             '- أي أن المبلغ خرج من البنك فوراً. '
+             '"فاتورة مشتريات": مدين الحساب المرتبط / دائن ذمم المورد '
+             '- استحقاق يُسدَّد لاحقاً بدفعة تُقفل الذمة، مثل التأمين الطبي.',
+    )
+    vendor_id = fields.Many2one(
+        'res.partner', string='المورد', domain=[('supplier_rank', '>', 0)],
+        tracking=True,
+        help='المورد الذي تُسجَّل عليه فاتورة المشتريات - يُقترَح تلقائياً '
+             'من "المورد الافتراضي" للجهة الحكومية المختارة.',
+    )
+
     state = fields.Selection(
         selection=[
             ('draft', 'مسودة'),
@@ -56,6 +78,19 @@ class BankSettlementGovernmentFee(models.Model):
     def _sequence_code(self):
         return 'bank.settlement.government.fee'
 
+    @api.onchange('government_entity_id')
+    def _onchange_government_entity_vendor(self):
+        """يقترح مورد الجهة تلقائياً - ولا يمسح اختياراً يدوياً سابقاً
+        إن كانت الجهة الجديدة بلا مورد افتراضي."""
+        if self.government_entity_id.partner_id:
+            self.vendor_id = self.government_entity_id.partner_id
+
+    def _uses_vendor_bill(self):
+        return self.settlement_mode == 'bill'
+
+    def _get_settlement_vendor(self):
+        return self.vendor_id
+
     @api.onchange('employee_id')
     def _onchange_employee_id_partner(self):
         if self.employee_id:
@@ -65,8 +100,12 @@ class BankSettlementGovernmentFee(models.Model):
         return self.partner_id.id if self.partner_id else super()._get_settlement_partner_id()
 
     def _get_locked_fields_after_approval(self):
+        # settlement_mode يُقفَل مع بقية حقول الهوية: تغييره بعد
+        # الاعتماد يغيّر طبيعة العملية المحاسبية بالكامل (صرف نقدي مقابل
+        # استحقاق على مورد) - بنفس مبرر قفل is_prepaid في الـmixin.
         return super()._get_locked_fields_after_approval() + [
             'government_entity_id', 'fee_type_id', 'partner_id',
+            'settlement_mode',
         ]
 
     def _get_locked_bank_fields(self):
@@ -85,7 +124,29 @@ class BankSettlementGovernmentFee(models.Model):
                         'لا يمكن تعديل "رقم السداد" بعد اكتمال السجل '
                         '(مسددة/مرفوضة/ملغاة).'
                     )
+        # المورد يبقى مفتوحاً حتى اكتمال السجل (بنفس قاعدة التأمين
+        # الطبي) - فهو وجهة الفاتورة الفعلية وقد تتأخر معرفته.
+        if 'vendor_id' in vals and not self.env.context.get('bank_settlement_skip_approval_lock'):
+            for rec in self:
+                if rec.state in ('done', 'rejected', 'cancel'):
+                    raise UserError(
+                        'لا يمكن تعديل "المورد" بعد اكتمال السجل '
+                        '(مسددة/مرفوضة/ملغاة).'
+                    )
         return super().write(vals)
+
+    @api.constrains('settlement_mode', 'is_prepaid')
+    def _check_settlement_mode_not_prepaid(self):
+        """"فاتورة مشتريات" و"دفعة مقدمة" مساران متعارضان: الأولى تُنشئ
+        استحقاقاً على مورد، والثانية تُنشئ قيداً أولياً على حساب
+        المصروفات المدفوعة مقدماً وجدول استهلاك شهرياً منه. الجمع بينهما
+        يُنتج قيدين متنافسين لنفس المبلغ."""
+        for rec in self:
+            if rec.settlement_mode == 'bill' and rec.is_prepaid:
+                raise ValidationError(
+                    'لا يمكن الجمع بين "فاتورة مشتريات" و"دفعة مقدمة" في '
+                    'نفس السجل - اختر أحد المسارين.'
+                )
 
     def action_reject(self, reason=False):
         """عند رفض سجل مرتبط بطلب توظيف - يُعاد فتح مبلغ الرسوم الحكومية

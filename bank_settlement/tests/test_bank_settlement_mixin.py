@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -381,12 +381,45 @@ class TestBankSettlementMixin(TransactionCase):
 
         self.assertEqual(gov_fee.company_id, branch)
 
+    def _bill_setup(self, vendor):
+        """فاتورة المورد تحتاج حساب مصروف صريح، وحساب ذمم دائنة على
+        المورد، ودفتر مشتريات - تشحنها قوالب دليل الحسابات عادةً،
+        وقاعدة الاختبار بلا دليل فنُنشئها هنا. (كان هذان الاختباران
+        يفشلان بخطأ أودو العام "Any journal item on a payable account
+        must have a due date" لهذا السبب وحده.)"""
+        company = self.env.company
+        payable = self.env['account.account'].search(
+            [('company_ids', 'in', company.id),
+             ('account_type', '=', 'liability_payable')], limit=1)
+        if not payable:
+            payable = self.env['account.account'].create({
+                'name': 'ذمم دائنة اختبار', 'code': 'TPAYX',
+                'account_type': 'liability_payable', 'reconcile': True,
+                'company_ids': [(6, 0, company.ids)]})
+        expense = self.env['account.account'].search(
+            [('company_ids', 'in', company.id),
+             ('account_type', '=', 'expense')], limit=1)
+        if not expense:
+            expense = self.env['account.account'].create({
+                'name': 'مصروف اختبار', 'code': 'TEXPX',
+                'account_type': 'expense', 'company_ids': [(6, 0, company.ids)]})
+        journal = self.env['account.journal'].search(
+            [('company_id', '=', company.id), ('type', '=', 'purchase')], limit=1)
+        if not journal:
+            journal = self.env['account.journal'].create({
+                'name': 'مشتريات اختبار', 'code': 'TPJX', 'type': 'purchase',
+                'company_id': company.id})
+        vendor.property_account_payable_id = payable.id
+        return expense, journal
+
     def test_insurance_transfer_creation_is_idempotent(self):
         """استدعاء action_create_insurance_transfer مرتين (نقرة مزدوجة/
         RPC مكرر) يجب ألا ينشئ فاتورة مورد ثانية - كان بلا أي تحقق
         سابقاً (بعكس action_done المشتركة)، فيُنشئ فاتورتين حقيقيتين
         لنفس السجل."""
-        vendor = self.env['res.partner'].create({'name': 'مورد تأمين تجريبي'})
+        vendor = self.env['res.partner'].create({
+            'name': 'مورد تأمين تجريبي', 'supplier_rank': 1})
+        expense, journal = self._bill_setup(vendor)
         insurance = self.env['bank.settlement.medical.insurance'].create({
             'fee_type_id': self.env.ref('bank_settlement.medical_insurance_type_medical_insurance').id,
             'vendor_id': vendor.id,
@@ -394,6 +427,7 @@ class TestBankSettlementMixin(TransactionCase):
         })
         insurance.action_submit_review()
         insurance.action_confirm()
+        insurance.write({'linked_account_id': expense.id, 'journal_id': journal.id})
 
         first_move = insurance.action_create_insurance_transfer()
         second_move = insurance.action_create_insurance_transfer()
@@ -704,7 +738,13 @@ class TestBankSettlementMixin(TransactionCase):
             [('company_id', '=', gov_fee.company_id.id), ('id', '!=', gov_fee.journal_id.id)],
             limit=1,
         )
-        self.assertTrue(other_journal, 'يلزم دفتر يومية ثانٍ لهذا الاختبار')
+        if not other_journal:
+            # كان الاختبار يفشل هنا لا في ما يفحصه: قاعدة الاختبار قد
+            # تحوي دفتراً واحداً فقط - فنُنشئ الثاني بدل إسقاط الاختبار.
+            other_journal = self.env['account.journal'].create({
+                'name': 'دفتر ثانٍ للاختبار', 'code': 'TSEC',
+                'type': 'general', 'company_id': gov_fee.company_id.id,
+            })
 
         gov_fee.action_return_to_previous_stage(
             target_state='under_review', reason='الحساب البنكي كان خاطئاً',
@@ -892,9 +932,9 @@ class TestBankSettlementMixin(TransactionCase):
         insurance.write({'vendor_id': vendor1.id})
         self.assertEqual(insurance.vendor_id, vendor1)
 
-        insurance.write({
-            'linked_account_id': self.env['account.account'].search([], limit=1).id,
-        })
+        expense, journal = self._bill_setup(vendor1)
+        self._bill_setup(vendor2)
+        insurance.write({'linked_account_id': expense.id, 'journal_id': journal.id})
         insurance.action_create_insurance_transfer()
         self.assertEqual(insurance.state, 'done')
 
@@ -1074,3 +1114,173 @@ class TestSettlementPostingAndCorrection(TransactionCase):
         advance = self.env['bank.settlement.advance']
         self.assertEqual(advance._get_done_state(), 'paid')
         self.assertEqual(self.GovFee._get_done_state(), 'done')
+
+
+@tagged('post_install', '-at_install')
+class TestVendorBillSettlement(TransactionCase):
+    """مسار "فاتورة مشتريات": استحقاق على مورد بدل صرف نقدي مباشر -
+    للتأمين الطبي دائماً، وللرسوم الحكومية حسب اختيار كل سجل."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env = cls.env(user=cls.env.ref('base.user_admin'))
+        cls.company = cls.env.company
+        cls.expense = cls.env['account.account'].create({
+            'name': 'مصروف اختبار', 'code': 'TEXP01',
+            'account_type': 'expense', 'company_ids': [(6, 0, cls.company.ids)]})
+        # فاتورة المورد تحتاج حساب ذمم دائنة على المورد - تشحنه قوالب
+        # دليل الحسابات عادةً، وقاعدة الاختبار هنا بلا دليل فنُنشئه.
+        cls.payable = cls.env['account.account'].create({
+            'name': 'ذمم دائنة اختبار', 'code': 'TPAY01',
+            'account_type': 'liability_payable',
+            'reconcile': True, 'company_ids': [(6, 0, cls.company.ids)]})
+        cls.vendor = cls.env['res.partner'].create({
+            'name': 'مورد اختبار', 'supplier_rank': 1,
+            'property_account_payable_id': cls.payable.id})
+        cls.purchase_journal = cls.env['account.journal'].search(
+            [('company_id', '=', cls.company.id), ('type', '=', 'purchase')], limit=1)
+        if not cls.purchase_journal:
+            cls.purchase_journal = cls.env['account.journal'].create({
+                'name': 'مشتريات اختبار', 'code': 'TPJ', 'type': 'purchase',
+                'company_id': cls.company.id})
+
+    def _gov_bill(self):
+        fee = self.env['bank.settlement.government.fee'].create({
+            'government_entity_id': self.env.ref(
+                'bank_settlement.government_entity_mol_resident').id,
+            'fee_type_id': self.env.ref(
+                'bank_settlement.government_fee_type_sponsorship_transfer').id,
+            'amount': 900.0,
+            'settlement_mode': 'bill',
+            'vendor_id': self.vendor.id,
+        })
+        fee.action_submit_review()
+        fee.action_confirm()
+        fee.write({'linked_account_id': self.expense.id,
+                   'journal_id': self.purchase_journal.id})
+        return fee
+
+    def test_government_fee_bill_creates_posted_vendor_bill(self):
+        fee = self._gov_bill()
+        fee.action_done()
+        bill = fee.move_id
+        self.assertEqual(bill.move_type, 'in_invoice', 'لم تُنشأ فاتورة مورد')
+        self.assertEqual(bill.state, 'posted', 'الفاتورة لم تُرحَّل')
+        self.assertEqual(bill.partner_id, self.vendor)
+        self.assertTrue(bill.is_bank_settlement_move)
+        expense_lines = bill.line_ids.filtered(lambda l: l.account_id == self.expense)
+        self.assertTrue(expense_lines, 'لم يُستخدم "الحساب المرتبط" على بند الفاتورة')
+        self.assertEqual(sum(expense_lines.mapped('debit')), 900.0)
+        payable = bill.line_ids.filtered(
+            lambda l: l.account_id.account_type == 'liability_payable')
+        self.assertTrue(payable, 'لا يوجد سطر ذمم دائنة - ليست فاتورة حقيقية')
+        self.assertEqual(sum(payable.mapped('credit')), 900.0)
+
+    def test_default_mode_is_still_a_direct_entry(self):
+        """السلوك الافتراضي لم يتغيّر: قيد مباشر ما لم يُختَر غير ذلك."""
+        fee = self.env['bank.settlement.government.fee'].create({
+            'government_entity_id': self.env.ref(
+                'bank_settlement.government_entity_mol_resident').id,
+            'fee_type_id': self.env.ref(
+                'bank_settlement.government_fee_type_sponsorship_transfer').id,
+            'amount': 100.0,
+        })
+        self.assertEqual(fee.settlement_mode, 'entry')
+        self.assertFalse(fee._uses_vendor_bill())
+
+    def test_bill_mode_rejects_non_purchase_journal(self):
+        """دفتر بنكي على فاتورة مورد يفشل في أودو برسالة عامة - نوضّحه."""
+        fee = self._gov_bill()
+        bank = self.env['account.journal'].search(
+            [('company_id', '=', self.company.id), ('type', '=', 'bank')], limit=1)
+        if not bank:
+            self.skipTest('لا يوجد دفتر بنكي')
+        fee.write({'journal_id': bank.id})
+        with self.assertRaises(UserError):
+            fee.action_done()
+
+    def test_bill_mode_requires_linked_account(self):
+        """بلا حساب مصروف صريح ينتهي البند على حساب دائن فترفضه أودو -
+        وهو ما كان يحدث فعلياً في التأمين الطبي."""
+        fee = self._gov_bill()
+        fee.write({'linked_account_id': False})
+        with self.assertRaises(UserError):
+            fee.action_done()
+
+    def test_bill_cannot_be_combined_with_prepaid(self):
+        category = self.env['bank.settlement.prepaid.category'].search([], limit=1)
+        if not category:
+            self.skipTest('لا توجد فئة دفعة مقدمة')
+        fee = self.env['bank.settlement.government.fee'].create({
+            'government_entity_id': self.env.ref(
+                'bank_settlement.government_entity_mol_resident').id,
+            'fee_type_id': self.env.ref(
+                'bank_settlement.government_fee_type_sponsorship_transfer').id,
+            'amount': 100.0,
+        })
+        with self.assertRaises(ValidationError):
+            fee.write({'settlement_mode': 'bill', 'vendor_id': self.vendor.id,
+                       'is_prepaid': True, 'prepaid_days': 30,
+                       'prepaid_category_id': category.id})
+
+    def test_entity_default_vendor_is_suggested(self):
+        entity = self.env.ref('bank_settlement.government_entity_mol_resident')
+        entity.partner_id = self.vendor.id
+        fee = self.env['bank.settlement.government.fee'].new({
+            'government_entity_id': entity.id})
+        fee._onchange_government_entity_vendor()
+        self.assertEqual(fee.vendor_id, self.vendor)
+
+    # ---- التأمين الطبي على نفس المسار الموحَّد ----
+    def _insurance(self):
+        med = self.env['bank.settlement.medical.insurance'].create({
+            'fee_type_id': self.env.ref(
+                'bank_settlement.medical_insurance_type_medical_insurance').id,
+            'vendor_id': self.vendor.id,
+            'amount': 700.0,
+        })
+        med.action_submit_review()
+        med.action_confirm()
+        med.write({'linked_account_id': self.expense.id,
+                   'journal_id': self.purchase_journal.id})
+        return med
+
+    def test_insurance_bill_is_posted_and_uses_linked_account(self):
+        """كانت تبقى مسودة أبداً وتتجاهل "الحساب المرتبط" تماماً."""
+        med = self._insurance()
+        med.action_create_insurance_transfer()
+        self.assertEqual(med.state, 'done')
+        self.assertEqual(med.move_id.move_type, 'in_invoice')
+        self.assertEqual(med.move_id.state, 'posted')
+        self.assertTrue(med.move_id.line_ids.filtered(
+            lambda l: l.account_id == self.expense))
+
+    def test_insurance_transfer_is_idempotent(self):
+        med = self._insurance()
+        first = med.action_create_insurance_transfer()
+        self.assertEqual(med.action_create_insurance_transfer(), first)
+
+    def test_insurance_correction_round_trip(self):
+        """الثغرة التي أدخلها زر "إرجاع للتصحيح" على شاشة التأمين: كانت
+        الفاتورة تعود مسودة ثم يعلَق السجل - الزر لا يحدّثها ولا يُعيد
+        الحالة لـ"تم التحويل"."""
+        med = self._insurance()
+        med.action_create_insurance_transfer()
+        bill = med.move_id
+
+        med.action_return_to_previous_stage(
+            target_state='under_review', reason='المبلغ خاطئ')
+        self.assertEqual(med.state, 'under_review')
+        self.assertEqual(bill.state, 'draft')
+
+        med.write({'amount': 450.0})
+        med.action_confirm()
+        med.action_create_insurance_transfer()
+
+        self.assertEqual(med.state, 'done')
+        self.assertEqual(med.move_id, bill, 'أُنشئت فاتورة جديدة بدل تصحيح القائمة')
+        self.assertEqual(bill.state, 'posted')
+        self.assertEqual(
+            sum(bill.line_ids.filtered(
+                lambda l: l.account_id == self.expense).mapped('debit')), 450.0)

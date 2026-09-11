@@ -10,6 +10,7 @@
                 <list string="الجهات الحكومية" editable="bottom">
                     <field name="sequence" widget="handle"/>
                     <field name="name"/>
+                    <field name="partner_id" options="{'no_create': True}"/>
                     <field name="active" column_invisible="True"/>
                 </list>
             </field>
