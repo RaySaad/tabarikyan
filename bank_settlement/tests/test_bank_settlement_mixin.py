@@ -1272,3 +1272,92 @@ class TestVendorBillSettlement(TransactionCase):
         self.assertEqual(
             sum(bill.line_ids.filtered(
                 lambda l: l.account_id == self.expense).mapped('debit')), 450.0)
+
+    # ---- الحساب الافتراضي على النوع ----
+    # كان شاشة التأمين بلا حساب ولا دفتر، وصار الحساب إلزامياً للفاتورة -
+    # فتعطّل "إنشاء تحويل التأمين" لكل مستخدم بالواجهة. الاختبارات السابقة
+    # لم تكتشفه لأنها تكتب الحساب برمجياً فتتجاوز الشاشة؛ هذه لا تكتبه.
+
+    def test_insurance_works_without_manually_setting_an_account(self):
+        """السيناريو الفعلي بالواجهة: المستخدم لا يلمس الحساب إطلاقاً."""
+        ins_type = self.env.ref('bank_settlement.medical_insurance_type_medical_insurance')
+        ins_type.account_id = self.expense.id
+        med = self.env['bank.settlement.medical.insurance'].create({
+            'fee_type_id': ins_type.id,
+            'vendor_id': self.vendor.id,
+            'amount': 600.0,
+        })
+        med.action_submit_review()
+        med.action_confirm()
+        self.assertEqual(med.linked_account_id, self.expense,
+                         'الحساب لم يُملأ من النوع لحظة الاعتماد')
+
+        med.action_create_insurance_transfer()   # بلا أي write للحساب أو الدفتر
+
+        self.assertEqual(med.state, 'done')
+        self.assertEqual(med.move_id.state, 'posted')
+        self.assertTrue(med.move_id.line_ids.filtered(
+            lambda l: l.account_id == self.expense))
+        self.assertEqual(med.move_id.journal_id.type, 'purchase',
+                         'بلا دفتر محدَّد يجب أن يُستخدم دفتر المشتريات الافتراضي')
+
+    def test_manual_account_is_not_overwritten_by_the_type_default(self):
+        """لا تُدهَس قيمة اختارها المحاسب يدوياً."""
+        other = self.env['account.account'].create({
+            'name': 'مصروف آخر', 'code': 'TEXP02', 'account_type': 'expense',
+            'company_ids': [(6, 0, self.company.ids)]})
+        ins_type = self.env.ref('bank_settlement.medical_insurance_type_medical_insurance')
+        ins_type.account_id = self.expense.id
+        med = self.env['bank.settlement.medical.insurance'].create({
+            'fee_type_id': ins_type.id, 'vendor_id': self.vendor.id, 'amount': 100.0,
+        })
+        med.action_submit_review()
+        med.action_confirm()
+        med.linked_account_id = other.id
+        med.action_create_insurance_transfer()
+        self.assertTrue(med.move_id.line_ids.filtered(lambda l: l.account_id == other))
+        self.assertFalse(med.move_id.line_ids.filtered(lambda l: l.account_id == self.expense))
+
+    def test_government_fee_type_default_account_applies_too(self):
+        fee_type = self.env.ref('bank_settlement.government_fee_type_sponsorship_transfer')
+        fee_type.account_id = self.expense.id
+        fee = self.env['bank.settlement.government.fee'].create({
+            'government_entity_id': self.env.ref(
+                'bank_settlement.government_entity_mol_resident').id,
+            'fee_type_id': fee_type.id,
+            'amount': 250.0,
+            'settlement_mode': 'bill',
+            'vendor_id': self.vendor.id,
+        })
+        fee.action_submit_review()
+        fee.action_confirm()
+        self.assertEqual(fee.linked_account_id, self.expense)
+        fee.action_done()
+        self.assertEqual(fee.move_id.state, 'posted')
+
+    def test_record_confirmed_before_the_default_still_uses_it(self):
+        """سجل اعتُمد قبل ضبط الحساب على النوع: الاحتياط وقت الإتمام."""
+        ins_type = self.env.ref('bank_settlement.medical_insurance_type_medical_checkup')
+        ins_type.account_id = False
+        med = self.env['bank.settlement.medical.insurance'].create({
+            'fee_type_id': ins_type.id, 'vendor_id': self.vendor.id, 'amount': 80.0,
+        })
+        med.action_submit_review()
+        med.action_confirm()
+        self.assertFalse(med.linked_account_id)
+
+        ins_type.account_id = self.expense.id      # ضُبط لاحقاً
+        med.action_create_insurance_transfer()
+        self.assertTrue(med.move_id.line_ids.filtered(
+            lambda l: l.account_id == self.expense))
+
+    def test_no_account_anywhere_gives_a_clear_message(self):
+        ins_type = self.env.ref('bank_settlement.medical_insurance_type_medical_checkup')
+        ins_type.account_id = False
+        med = self.env['bank.settlement.medical.insurance'].create({
+            'fee_type_id': ins_type.id, 'vendor_id': self.vendor.id, 'amount': 80.0,
+        })
+        med.action_submit_review()
+        med.action_confirm()
+        with self.assertRaises(UserError):
+            med.action_create_insurance_transfer()

@@ -415,6 +415,20 @@ class BankSettlementMixin(models.AbstractModel):
             ).prepaid_start_date = self._get_prepaid_coverage_start()
         return self.prepaid_start_date
 
+    def _get_type_default_account(self):
+        """حساب المصروف الافتراضي من *نوع* السجل - يتجاوزه كل نموذج له نوع
+        يحمل حساباً (الرسوم الحكومية، التأمين الطبي)."""
+        return self.env['account.account']
+
+    def _get_expense_account(self):
+        """الحساب الذي يُقيَّد عليه المصروف فعلاً: "الحساب المرتبط" إن
+        حُدِّد، وإلا حساب النوع الافتراضي.
+
+        الاحتياط وقت الاستخدام (لا الاعتماد وحده) يغطي سجلات اعتُمدت قبل
+        إضافة الحساب الافتراضي للأنواع، وأي مسار لا يمر بـaction_confirm."""
+        self.ensure_one()
+        return self.linked_account_id or self._get_type_default_account()
+
     def _get_done_state(self):
         """اسم حالة "منفّذ" في هذا النموذج - السلفة تسمّيها "paid" (تم
         الصرف)، فتُجاوزها. كل منطق ما-بعد-التنفيذ (الإرجاع للتصحيح،
@@ -611,6 +625,16 @@ class BankSettlementMixin(models.AbstractModel):
         # إعادة الاعتماد فعلياً تُغلق نافذة التصحيح المؤقتة (returned_for_
         # correction) - انظر شرحها عند تعريف الحقل أعلاه.
         self.write({'state': 'confirmed', 'returned_for_correction': False})
+        # تعبئة "الحساب المرتبط" من حساب النوع الافتراضي في هذه اللحظة
+        # تحديداً لا قبلها: حقول السداد مقفولة حتى "مؤكدة"
+        # (_get_bank_fields_editable_state)، فهذه أول لحظة يُسمح فيها
+        # بكتابتها - وهي أيضاً أول لحظة يراها المحاسب، فيجدها معبّأة
+        # ويستطيع تغييرها قبل الإتمام. لا تُدهَس قيمة اختارها يدوياً.
+        for rec in self:
+            if not rec.linked_account_id:
+                default = rec._get_type_default_account()
+                if default:
+                    rec.linked_account_id = default
 
     def action_done(self):
         """إتمام السداد/التحويل — ينشئ القيد المحاسبي إن لم يكن موجوداً
@@ -1206,11 +1230,12 @@ class BankSettlementMixin(models.AbstractModel):
         vendor = self._get_settlement_vendor()
         if not vendor:
             raise UserError(_('يجب تحديد المورد أولاً لإنشاء فاتورة المشتريات.'))
-        account = expense_account or self.linked_account_id
+        account = expense_account or self._get_expense_account()
         if not account:
             raise UserError(_(
                 'لا يمكن إنشاء فاتورة المشتريات بدون تحديد "الحساب المرتبط" '
-                '(حساب المصروف الذي تُسجَّل عليه).'
+                '(حساب المصروف الذي تُسجَّل عليه) - أو ضبط حساب مصروف '
+                'افتراضي على نوع السجل.'
             ))
         vals = {
             'move_type': 'in_invoice',
@@ -1299,9 +1324,10 @@ class BankSettlementMixin(models.AbstractModel):
         اليومية البنكي المحدَّد صراحة وحسابه المقابل الرسمي، مع توزيع
         تحليلي على حساب المنصة المشتق من الموظف/المشروع."""
         self.ensure_one()
-        if not self.linked_account_id:
+        if not self._get_expense_account():
             raise UserError(
-                'لا يمكن إنشاء القيد المحاسبي بدون تحديد "الحساب المرتبط".'
+                'لا يمكن إنشاء القيد المحاسبي بدون تحديد "الحساب المرتبط" '
+                '(أو حساب مصروف افتراضي على نوع السجل).'
             )
         if not self.journal_id:
             raise UserError(
@@ -1350,7 +1376,7 @@ class BankSettlementMixin(models.AbstractModel):
             'line_ids': [
                 (0, 0, {
                     'name': self.name,
-                    'account_id': self.linked_account_id.id,
+                    'account_id': self._get_expense_account().id,
                     'partner_id': self._get_settlement_partner_id(),
                     'debit': self.total_amount,
                     'credit': 0.0,

@@ -29,6 +29,7 @@
                 <list string="أنواع الرسوم الحكومية" editable="bottom">
                     <field name="sequence" widget="handle"/>
                     <field name="name"/>
+                    <field name="account_id" options="{'no_create': True}"/>
                     <field name="coverage_start_source"/>
                     <field name="active" column_invisible="True"/>
                 </list>
@@ -66,6 +67,7 @@
                 <list string="أنواع رسوم التأمين الطبي" editable="bottom">
                     <field name="sequence" widget="handle"/>
                     <field name="name"/>
+                    <field name="account_id" options="{'no_create': True}"/>
                     <field name="active" column_invisible="True"/>
                 </list>
             </field>

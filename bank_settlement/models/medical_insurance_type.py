@@ -12,6 +12,17 @@ class BankSettlementMedicalInsuranceType(models.Model):
     name = fields.Char(string='الاسم', required=True)
     sequence = fields.Integer(string='الترتيب', default=10)
     active = fields.Boolean(default=True)
+    # حساب المصروف الافتراضي لهذا النوع - يُملأ في "الحساب المرتبط" لحظة
+    # اعتماد السجل (أول لحظة ينفتح فيها الحقل للمحاسب، انظر
+    # _get_bank_fields_editable_state)، ويبقى قابلاً للتعديل. النوع
+    # الواحد غالباً يُقيَّد على نفس الحساب في كل مرة، فاختياره يدوياً كل
+    # مرة يفتح باب خطأ بلا فائدة.
+    account_id = fields.Many2one(
+        'account.account', string='حساب المصروف الافتراضي',
+        ondelete='restrict',
+        help='يُقترَح تلقائياً في "الحساب المرتبط" عند اعتماد السجل، '
+             'ويمكن تغييره قبل الإتمام.',
+    )
 
     # _sql_constraints (الصيغة القديمة) لم تعد فعّالة إطلاقاً في هذا
     # الإصدار من Odoo - انظر الشرح الكامل في advance_reason.py.

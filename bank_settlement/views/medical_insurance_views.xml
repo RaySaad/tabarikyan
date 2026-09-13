@@ -97,14 +97,23 @@
                                 <field name="vendor_id"
                                        readonly="state in ('done', 'rejected', 'cancel')"/>
                                 <field name="company_iban" readonly="state != 'draft'"/>
-                                <!-- تاريخ التحويل الفعلي - خاص بالمحاسب وقت
-                                     الصرف تحديداً - لا يظهر إلا بعد اعتماد
-                                     المدير العام (أو أثناء "إرجاع للتصحيح"،
-                                     نفس منطق دفتر اليومية/الحساب المرتبط في
-                                     بقية الشاشات، رغم أن هذه الشاشة لا
-                                     تستخدمهما مباشرة). -->
+                                <!-- بيانات السداد الفعلي - خاصة بالمحاسب وقت
+                                     التحويل، ولا تظهر إلا بعد اعتماد المدير
+                                     العام (أو أثناء "إرجاع للتصحيح").
+                                     الحساب والدفتر كانا غائبين عن هذه الشاشة
+                                     لأن الفاتورة القديمة كانت تتجاهلهما؛
+                                     صارت تستخدمهما فعلياً (الحساب يُملأ
+                                     تلقائياً من نوع الرسوم لحظة الاعتماد،
+                                     والدفتر اختياري: فارغ = دفتر المشتريات
+                                     الافتراضي). -->
                                 <field name="transfer_date" readonly="state != 'confirmed' and not returned_for_correction"
                                        invisible="state not in ('confirmed', 'done') and not returned_for_correction"/>
+                                <field name="linked_account_id" readonly="state != 'confirmed' and not returned_for_correction"
+                                       invisible="state not in ('confirmed', 'done') and not returned_for_correction"/>
+                                <field name="journal_id" readonly="state != 'confirmed' and not returned_for_correction"
+                                       invisible="state not in ('confirmed', 'done') and not returned_for_correction"
+                                       domain="[('type', '=', 'purchase'), ('company_id', 'parent_of', company_id)]"
+                                       placeholder="دفتر المشتريات الافتراضي"/>
                             </group>
                             <group string="المبالغ">
                                 <field name="currency_id" invisible="1"/>

@@ -85,6 +85,9 @@ class BankSettlementMedicalInsurance(models.Model):
                     bank_settlement_skip_approval_lock=True,
                 ).fee_type_id = new_record.id
 
+    def _get_type_default_account(self):
+        return self.fee_type_id.account_id
+
     def _uses_vendor_bill(self):
         # التأمين الطبي دائماً فاتورة مورد - مرتبط بمورد حقيقي يُصدر
         # فاتورة رسمية، لا صرف نقدي مباشر.

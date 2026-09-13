@@ -141,6 +141,9 @@ class BankSettlementGovernmentFee(models.Model):
             % (label, coverage_end, self.name)
         ))
 
+    def _get_type_default_account(self):
+        return self.fee_type_id.account_id
+
     def _uses_vendor_bill(self):
         return self.settlement_mode == 'bill'
 
