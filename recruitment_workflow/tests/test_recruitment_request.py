@@ -1258,3 +1258,24 @@ class TestRecruitmentRequest(TransactionCase):
         request = self._create_request()
         request.iqama_expiry_date = False
         self.assertNotIn('iqama_expiry_date', request._build_employee_vals())
+
+    # ------------------------------------------------------------------
+    # الآيبان في طلب التوظيف
+    # ------------------------------------------------------------------
+    def test_invalid_iban_is_rejected(self):
+        """منه يُنشأ الحساب البنكي في ملف الموظف - فخطأ رقم واحد يُحمل
+        لكل سلفة وراتب لاحق."""
+        with self.assertRaises(ValidationError):
+            self._create_request(iban='SA0380000000608010167518')
+
+    def test_iban_is_normalized_on_the_request(self):
+        request = self._create_request(iban='sa03 8000 0000 6080 1016 7519')
+        self.assertEqual(request.iban, 'SA0380000000608010167519')
+
+    def test_created_bank_account_is_linked_to_the_employee(self):
+        """أودو 19 استبدلت bank_account_id بـbank_account_ids - فكان الحساب
+        يُنشأ على جهة الاتصال دون ربطه بالموظف، فتظهر خانته فارغة."""
+        request = self._create_request(iban='SA0380000000608010167519')
+        employee = request._create_employee()
+        self.assertIn('SA0380000000608010167519',
+                      employee.sudo().bank_account_ids.mapped('acc_number'))

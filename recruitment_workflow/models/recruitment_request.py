@@ -4,6 +4,8 @@ import re
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError, UserError
 
+from .saudi_iban import normalize_iban, saudi_iban_error
+
 
 class RecruitmentRequest(models.Model):
     _name = 'recruitment.request'
@@ -479,6 +481,15 @@ class RecruitmentRequest(models.Model):
                     'رقم الهوية يجب أن يبدأ بالرقم 1 (مواطن) أو 2 (مقيم).'
                 ))
 
+    @api.constrains('iban')
+    def _check_iban(self):
+        """الآيبان اختياري هنا، لكن متى أُدخل يجب أن يكون سليماً - منه يُنشأ
+        الحساب البنكي في ملف الموظف (_create_employee_bank_account)."""
+        for rec in self:
+            error = saudi_iban_error(rec.iban)
+            if error:
+                raise ValidationError(error)
+
     @api.constrains('mobile')
     def _check_mobile(self):
         # التصنيف السعودي: 05XXXXXXXX | 9665XXXXXXXX | +9665XXXXXXXX
@@ -591,6 +602,8 @@ class RecruitmentRequest(models.Model):
                     'recruitment.request'
                 ) or _('جديد')
             self._fill_project_derived_vals(vals)
+            if vals.get('iban'):
+                vals['iban'] = normalize_iban(vals['iban'])
         records = super().create(vals_list)
         for rec in records:
             rec._populate_attachment_lines()
@@ -736,6 +749,8 @@ class RecruitmentRequest(models.Model):
     _PROJECT_EDITABLE_STAGE_CODES = ('new', 'project_review')
 
     def write(self, vals):
+        if vals.get('iban'):
+            vals['iban'] = normalize_iban(vals['iban'])
         # ثغرة حقيقية اكتُشفت من بلاغ مستخدم مباشر: project_id (المنصة)
         # كان بلا أي حماية إطلاقاً - لا readonly بالواجهة في أي مرحلة، ولا
         # قيد من جهة الخادم - قابل للتعديل في أي وقت من أي مرحلة. وأخطر من
@@ -1762,15 +1777,20 @@ class RecruitmentRequest(models.Model):
             ('acc_number', '=', self.iban),
             ('partner_id', '=', partner.id),
         ], limit=1)
-        if existing:
-            return existing
-        bank_vals = {
-            'acc_number': self.iban,
-            'partner_id': partner.id,
-        }
-        if self.bank_id and 'bank_id' in Bank._fields:
-            bank_vals['bank_id'] = self.bank_id.id
-        return Bank.create(bank_vals)
+        if not existing:
+            bank_vals = {
+                'acc_number': self.iban,
+                'partner_id': partner.id,
+            }
+            if self.bank_id and 'bank_id' in Bank._fields:
+                bank_vals['bank_id'] = self.bank_id.id
+            existing = Bank.create(bank_vals)
+        # أودو 19 استبدلت bank_account_id على الموظف بـbank_account_ids -
+        # فكان الحساب يُنشأ على جهة الاتصال دون ربطه بالموظف، فتظهر خانة
+        # "الحسابات البنكية" في ملفه فارغة رغم وجود الحساب فعلاً.
+        if 'bank_account_ids' in emp_fields and existing not in employee.sudo().bank_account_ids:
+            employee.sudo().bank_account_ids = [(4, existing.id)]
+        return existing
 
     def _get_contract_model_name(self):
         """تحديد اسم نموذج العقد المتاح وقت التشغيل.

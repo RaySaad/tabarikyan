@@ -83,6 +83,7 @@ class TestApprovalPermissions(TransactionCase):
         """اعتماد المدير العام لا يجوز إلا بعد موافقة مسؤول المشروع -
         وليس مباشرة بعد الإرسال للمراجعة."""
         advance = self.env['bank.settlement.advance'].create({
+            'payment_method': 'stc_pay', 'stc_number': '0501234567',
             'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id, 'amount': 300.0,
         }).with_user(self.manager_user)
         advance.action_submit_review()
@@ -150,6 +151,7 @@ class TestApprovalPermissions(TransactionCase):
         اسمها "paid" (تم الصرف) بدل "done"؛ يجب أن يُمنع الرفض بعدها هي
         الأخرى، وليس فقط قبل الصرف."""
         advance = self.env['bank.settlement.advance'].create({
+            'payment_method': 'stc_pay', 'stc_number': '0501234567',
             'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id,
             'amount': 300.0,
         }).with_user(self.manager_user)
@@ -170,6 +172,7 @@ class TestApprovalPermissions(TransactionCase):
         """السلفة لها نسخة خاصة بها من action_reject (لا تستدعي super())
         - يجب أن تؤرشف السجل تلقائياً هي الأخرى، بنفس مبدأ الـ mixin."""
         advance = self.env['bank.settlement.advance'].create({
+            'payment_method': 'stc_pay', 'stc_number': '0501234567',
             'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id,
             'amount': 300.0,
         })
@@ -217,6 +220,7 @@ class TestApprovalPermissions(TransactionCase):
             'name': 'موظف سلفة تجريبي', 'project_id': project.id,
         })
         advance = self.env['bank.settlement.advance'].create({
+            'payment_method': 'stc_pay', 'stc_number': '0501234567',
             'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id,
             'amount': 300.0, 'employee_id': employee.id,
         })

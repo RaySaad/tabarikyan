@@ -123,11 +123,17 @@
                             </group>
                         </group>
                         <group string="طريقة الاستلام">
-                            <field name="payment_method" readonly="state != 'draft'"/>
+                            <!-- إلزامية في الشاشة للوضوح، والضمان الفعلي عند
+                                 "إرسال للمراجعة" (advance._check_payment_details)
+                                 - يشمل الاستيراد والاستدعاء المباشر. -->
+                            <field name="payment_method" readonly="state != 'draft'" required="1"/>
                             <field name="employee_iban" readonly="state != 'draft'"
-                                   invisible="payment_method != 'bank_transfer'"/>
+                                   invisible="payment_method != 'bank_transfer'"
+                                   required="payment_method == 'bank_transfer'"
+                                   placeholder="SA0000000000000000000000"/>
                             <field name="stc_number" readonly="state != 'draft'"
-                                   invisible="payment_method != 'stc_pay'"/>
+                                   invisible="payment_method != 'stc_pay'"
+                                   required="payment_method == 'stc_pay'"/>
                         </group>
                         <group string="بيانات السداد البنكي">
                             <group>

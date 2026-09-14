@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
+
+from odoo.addons.recruitment_workflow.models.saudi_iban import (
+    normalize_iban, saudi_iban_error,
+)
 
 
 class BankSettlementAdvance(models.Model):
@@ -163,12 +167,86 @@ class BankSettlementAdvance(models.Model):
             return [('waiting_approval', selection.get('waiting_approval'))]
         return []
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('employee_iban'):
+                vals['employee_iban'] = normalize_iban(vals['employee_iban'])
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if vals.get('employee_iban'):
+            vals['employee_iban'] = normalize_iban(vals['employee_iban'])
+        return super().write(vals)
+
+    @api.constrains('employee_iban')
+    def _check_employee_iban(self):
+        for rec in self:
+            error = saudi_iban_error(rec.employee_iban)
+            if error:
+                raise ValidationError(error)
+
+    def _check_payment_details(self):
+        """طريقة الدفع وتفصيلها المطابق إلزاميان قبل الإرسال للمراجعة.
+
+        كانا اختياريين تماماً: فتُرسَل السلفة وتُعتمد وتصل للمحاسب دون أن
+        يُعرف أين يُحوَّل المبلغ - والحقول تُقفل بعد الإرسال فلا يُكملها
+        المحاسب إلا بإرجاع السجل للتصحيح.
+
+        عند الإرسال لا على الحقل نفسه: الإلزام على الحقل يكسر أي سلفة
+        مسودة قائمة بلا طريقة دفع عند أول حفظ. ويسري على الاعتماد المباشر
+        من الإدارة أيضاً لأنه يمر بنفس الزر - فالتجاوز يتخطى مَن يعتمد لا
+        ما يُشترط."""
+        for rec in self:
+            if not rec.payment_method:
+                raise UserError(
+                    'يجب تحديد "طريقة الدفع" قبل إرسال السلفة للمراجعة - '
+                    'وإلا لا يُعرف أين يُحوَّل المبلغ.'
+                )
+            if rec.payment_method == 'bank_transfer' and not rec.employee_iban:
+                raise UserError('طريقة الدفع "تحويل بنكي" تتطلب إدخال آيبان الموظف.')
+            if rec.payment_method == 'stc_pay' and not rec.stc_number:
+                raise UserError('طريقة الدفع "STC Pay" تتطلب إدخال رقم STC Pay.')
+
     def action_submit_review(self):
         for rec in self:
             if rec.state != 'draft':
                 raise UserError('يمكن إرسال السلف في حالة "مسودة" فقط للمراجعة.')
         self._check_amount_positive_before_submit()
+        self._check_payment_details()
         self.write({'state': 'waiting_approval'})
+
+    def _save_iban_to_employee(self):
+        """يحفظ آيبان السلفة في ملف الموظف إن لم يكن له حساب بنكي.
+
+        عند الصرف لا عند الإدخال: فلا يُحفظ آيبان سلفة رُفضت أو صُحِّحت.
+        ولا يُستبدل ولا يُضاف لحساب قائم - الحسابات البنكية للموظف تُدار من
+        الموارد البشرية، والسلفة لا تتخذ قراراً بتغيير حساب صرف راتبه.
+        استثناء واحد: إن كان نفس الآيبان موجوداً على جهة اتصاله دون ربطه
+        بالموظف (فجوة قديمة في طلب التوظيف مع أودو 19) يُربط فقط."""
+        self.ensure_one()
+        if self.payment_method != 'bank_transfer' or not self.employee_iban or not self.employee_id:
+            return
+        employee = self.employee_id.sudo()
+        partner = employee.work_contact_id
+        if not partner or 'bank_account_ids' not in employee._fields:
+            return
+        Bank = self.env['res.partner.bank'].sudo()
+        same = Bank.search([
+            ('partner_id', '=', partner.id), ('acc_number', '=', self.employee_iban),
+        ], limit=1)
+        if same:
+            if same not in employee.bank_account_ids:
+                employee.bank_account_ids = [(4, same.id)]
+            return
+        if employee.bank_account_ids or Bank.search_count([('partner_id', '=', partner.id)]):
+            return
+        account = Bank.create({'acc_number': self.employee_iban, 'partner_id': partner.id})
+        employee.bank_account_ids = [(4, account.id)]
+        employee.message_post(body=(
+            'أُضيف الحساب البنكي %s لملف الموظف من السلفة %s عند صرفها.'
+            % (self.employee_iban, self.name)
+        ))
 
     def action_pm_approve(self):
         """موافقة مسؤول المشروع - مسؤول مشروع الموظف نفسه تحديداً
@@ -219,6 +297,8 @@ class BankSettlementAdvance(models.Model):
             )
             rec._ensure_settlement_move_posted()
         self.write({'state': 'paid'})
+        for rec in self:
+            rec._save_iban_to_employee()
 
     def action_reject(self, reason=False):
         """تجاوز - حالة "منفّذة" في السلفة اسمها "paid" (تم الصرف) بدل

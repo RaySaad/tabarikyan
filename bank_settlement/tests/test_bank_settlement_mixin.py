@@ -203,6 +203,7 @@ class TestBankSettlementMixin(TransactionCase):
         المشروع أو المدير العام (أشد من النموذج الأساسي الذي يسمح
         بالتعديل حتى مرحلة المراجعة)."""
         advance = self.Advance.create({
+            'payment_method': 'stc_pay', 'stc_number': '0501234567',
             'advance_reason_id': self.env.ref(
                 'bank_settlement.advance_reason_salary_advance').id,
             'amount': 300.0,
@@ -226,6 +227,7 @@ class TestBankSettlementMixin(TransactionCase):
         journal = self.env['account.journal'].search([], limit=1)
         account = self.env['account.account'].search([], limit=1)
         advance = self.Advance.create({
+            'payment_method': 'stc_pay', 'stc_number': '0501234567',
             'advance_reason_id': self.env.ref(
                 'bank_settlement.advance_reason_salary_advance').id,
             'amount': 300.0,
@@ -448,11 +450,13 @@ class TestBankSettlementMixin(TransactionCase):
         أي تتبع (tracking) إطلاقاً - أي تعديل عليهما لم يكن يظهر في سجل
         المتابعة (من عدّله ومتى والقيمة القديمة)، ثغرة تدقيق حقيقية على
         حقول تمثّل بالضبط أين تذهب الأموال (ثغرة مكتشفة بمراجعة شاملة)."""
+        # آيبانات سليمة فعلاً: صار الآيبان يُتحقق من رقمه (mod-97)، والقيم
+        # الوهمية السابقة (SA000...0001) تُرفض الآن كما يجب.
         advance = self.Advance.create({
             'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id,
             'amount': 300.0,
             'payment_method': 'bank_transfer',
-            'employee_iban': 'SA0000000000000000000001',
+            'employee_iban': 'SA0380000000608010167519',
         })
         # رسالة التتبع (tracking) تُسجَّل فعلياً عبر precommit hook (انظر
         # mail_thread._message_track: self.env.cr.precommit.data) - لا
@@ -465,7 +469,7 @@ class TestBankSettlementMixin(TransactionCase):
         self.env.cr.flush()
         message_count_before = len(advance.message_ids)
 
-        advance.employee_iban = 'SA0000000000000000000002'
+        advance.employee_iban = 'SA7380000000608010167520'
         self.env.cr.flush()
 
         self.assertGreater(len(advance.message_ids), message_count_before)
@@ -549,6 +553,7 @@ class TestBankSettlementMixin(TransactionCase):
             'name': 'موظف سلفة - إشعار', 'project_id': project.id,
         })
         advance = self.Advance.create({
+            'payment_method': 'stc_pay', 'stc_number': '0501234567',
             'advance_reason_id': self.env.ref('bank_settlement.advance_reason_salary_advance').id,
             'amount': 300.0, 'employee_id': employee.id,
         })
@@ -665,6 +670,7 @@ class TestBankSettlementMixin(TransactionCase):
         الموافقة" مباشرة عبر المعالج (تخطي "وافق مسؤول المشروع")، بدل
         إلزامية التراجع خطوة واحدة فقط في كل مرة."""
         advance = self.Advance.create({
+            'payment_method': 'stc_pay', 'stc_number': '0501234567',
             'advance_reason_id': self.env.ref(
                 'bank_settlement.advance_reason_salary_advance').id,
             'amount': 300.0,
@@ -778,6 +784,7 @@ class TestBankSettlementMixin(TransactionCase):
         الموظف، وليس فقط في النماذج الأربعة الأساسية."""
         other_employee = self.env['hr.employee'].create({'name': 'موظف بديل - سلفة'})
         advance = self.Advance.create({
+            'payment_method': 'stc_pay', 'stc_number': '0501234567',
             'advance_reason_id': self.env.ref(
                 'bank_settlement.advance_reason_salary_advance').id,
             'amount': 300.0,
@@ -816,6 +823,7 @@ class TestBankSettlementMixin(TransactionCase):
         ويُبقي موافقة مسؤول المشروع سارية (بعكس "إعادة لمسودة" التي كانت
         ستمسح الاثنتين معاً)."""
         advance = self.Advance.create({
+            'payment_method': 'stc_pay', 'stc_number': '0501234567',
             'advance_reason_id': self.env.ref(
                 'bank_settlement.advance_reason_salary_advance').id,
             'amount': 300.0,
@@ -844,6 +852,7 @@ class TestBankSettlementMixin(TransactionCase):
         يجب أن يمنع كتابتها فعلياً، محافظاً على نفس الحماية التي كان
         الاستبدال الكامل السابق يوفّرها تلقائياً."""
         advance = self.Advance.create({
+            'payment_method': 'stc_pay', 'stc_number': '0501234567',
             'advance_reason_id': self.env.ref(
                 'bank_settlement.advance_reason_salary_advance').id,
             'amount': 300.0,
@@ -856,6 +865,7 @@ class TestBankSettlementMixin(TransactionCase):
         """التراجع من "وافق مسؤول المشروع" يعيد السلفة إلى "بانتظار
         الموافقة" - الخطوة الثانية ذات المعنى في سلسلة السلفة."""
         advance = self.Advance.create({
+            'payment_method': 'stc_pay', 'stc_number': '0501234567',
             'advance_reason_id': self.env.ref(
                 'bank_settlement.advance_reason_salary_advance').id,
             'amount': 300.0,
@@ -1416,6 +1426,7 @@ class TestSettlementDirectApproval(TransactionCase):
         reason = self.env['bank.settlement.advance.reason'].search([], limit=1) or \
             self.env['bank.settlement.advance.reason'].create({'name': 'سبب اختبار'})
         advance = self.env['bank.settlement.advance'].create({
+            'payment_method': 'stc_pay', 'stc_number': '0501234567',
             'employee_id': employee.id, 'advance_reason_id': reason.id, 'amount': 1000.0})
 
         # المدير العام وحده يُمنع عند موافقة مسؤول المشروع المعيّن
@@ -1462,3 +1473,110 @@ class TestSettlementDirectApproval(TransactionCase):
         fee = self._gov_fee()
         fee.with_user(self.override_user).action_direct_approve(reason='عاجل')
         self.assertEqual(fee.linked_account_id, account)
+
+
+@tagged('post_install', '-at_install')
+class TestAdvancePaymentDetails(TransactionCase):
+    """طريقة الدفع وتفصيلها إلزاميان قبل الإرسال، والآيبان سعودي سليم،
+    ويُحفظ في ملف الموظف عند الصرف إن لم يكن له حساب."""
+
+    VALID_IBAN = 'SA0380000000608010167519'
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env = cls.env(user=cls.env.ref('base.user_admin'))
+        cls.reason = cls.env.ref('bank_settlement.advance_reason_salary_advance')
+
+    def _advance(self, **vals):
+        base = {'advance_reason_id': self.reason.id, 'amount': 300.0}
+        base.update(vals)
+        return self.env['bank.settlement.advance'].create(base)
+
+    # ---- الإلزام عند الإرسال ----
+    def test_payment_method_required_to_submit(self):
+        advance = self._advance()
+        with self.assertRaises(UserError):
+            advance.action_submit_review()
+        self.assertEqual(advance.state, 'draft')
+
+    def test_bank_transfer_requires_iban(self):
+        advance = self._advance(payment_method='bank_transfer')
+        with self.assertRaises(UserError):
+            advance.action_submit_review()
+
+    def test_stc_pay_requires_number(self):
+        advance = self._advance(payment_method='stc_pay')
+        with self.assertRaises(UserError):
+            advance.action_submit_review()
+
+    def test_complete_details_submit(self):
+        advance = self._advance(payment_method='bank_transfer', employee_iban=self.VALID_IBAN)
+        advance.action_submit_review()
+        self.assertEqual(advance.state, 'waiting_approval')
+
+    def test_draft_without_method_can_still_be_saved(self):
+        """الإلزام عند الإرسال لا على الحقل: مسودة قائمة بلا طريقة دفع لا
+        تنكسر عند تعديلها."""
+        advance = self._advance()
+        advance.amount = 450.0
+        self.assertEqual(advance.amount, 450.0)
+
+    # ---- صيغة الآيبان ----
+    def test_iban_is_normalized(self):
+        advance = self._advance(payment_method='bank_transfer',
+                                employee_iban='sa03 8000 0000 6080 1016 7519')
+        self.assertEqual(advance.employee_iban, self.VALID_IBAN)
+
+    def test_iban_with_a_single_wrong_digit_is_rejected(self):
+        """الصيغة وحدها لا تكفي - رقم التحقق يكتشف خطأ الكتابة."""
+        with self.assertRaises(ValidationError):
+            self._advance(payment_method='bank_transfer',
+                          employee_iban='SA0380000000608010167518')
+
+    def test_iban_with_wrong_length_or_country_is_rejected(self):
+        for bad in ('SA038000000060801016751', 'AE070331234567890123456'):
+            with self.assertRaises(ValidationError):
+                self._advance(payment_method='bank_transfer', employee_iban=bad)
+
+    # ---- الحفظ في ملف الموظف عند الصرف ----
+    def _paid_advance(self, employee, iban):
+        journal = self.env['account.journal'].search(
+            [('company_id', '=', self.env.company.id)], limit=1)
+        account = self.env['account.account'].search([], limit=1)
+        advance = self._advance(employee_id=employee.id, payment_method='bank_transfer',
+                                employee_iban=iban)
+        advance.action_submit_review()
+        advance.action_pm_approve()
+        advance.action_confirm()
+        advance.write({'linked_account_id': account.id, 'journal_id': journal.id})
+        advance.action_done()
+        return advance
+
+    def _employee(self, name):
+        partner = self.env['res.partner'].create({'name': name})
+        return self.env['hr.employee'].create({'name': name, 'work_contact_id': partner.id})
+
+    def test_iban_saved_to_employee_without_account(self):
+        employee = self._employee('مندوب بلا حساب')
+        self.assertFalse(employee.bank_account_ids)
+        self._paid_advance(employee, self.VALID_IBAN)
+        self.assertEqual(employee.bank_account_ids.acc_number, self.VALID_IBAN)
+
+    def test_existing_account_is_not_replaced_or_duplicated(self):
+        employee = self._employee('مندوب له حساب')
+        other = self.env['res.partner.bank'].create({
+            'acc_number': 'SA4420000001234567891234',
+            'partner_id': employee.work_contact_id.id})
+        employee.bank_account_ids = [(4, other.id)]
+        self._paid_advance(employee, self.VALID_IBAN)
+        self.assertEqual(employee.bank_account_ids, other,
+                         'السلفة غيّرت حسابات الموظف البنكية القائمة')
+
+    def test_not_saved_before_payout(self):
+        """آيبان سلفة لم تُصرف (قد تُرفض) لا يُحفظ في الملف."""
+        employee = self._employee('مندوب سلفة معلّقة')
+        advance = self._advance(employee_id=employee.id, payment_method='bank_transfer',
+                                employee_iban=self.VALID_IBAN)
+        advance.action_submit_review()
+        self.assertFalse(employee.bank_account_ids)

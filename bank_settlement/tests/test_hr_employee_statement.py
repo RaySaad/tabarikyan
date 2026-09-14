@@ -149,6 +149,7 @@ class TestHrEmployeeStatement(TransactionCase):
         """سلفة = مدين (على الموظف - تُخصم من راتبه لاحقاً)."""
         reason = self.env['bank.settlement.advance.reason'].search([], limit=1)             or self.env['bank.settlement.advance.reason'].create({'name': 'سبب اختبار'})
         return self.env['bank.settlement.advance'].create({
+            'payment_method': 'stc_pay', 'stc_number': '0501234567',
             'employee_id': self.employee.id,
             'advance_reason_id': reason.id,
             'amount': amount,
