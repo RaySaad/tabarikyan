@@ -1361,3 +1361,104 @@ class TestVendorBillSettlement(TransactionCase):
         med.action_confirm()
         with self.assertRaises(UserError):
             med.action_create_insurance_transfer()
+
+
+@tagged('post_install', '-at_install')
+class TestSettlementDirectApproval(TransactionCase):
+    """الاعتماد المباشر من الإدارة في السداد البنكي: يعبر خطوات الاعتماد
+    ويتوقف قبل الصرف - لا يُتمّ ولا يُرحّل."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        base = cls.env.ref('base.group_user')
+        bs_user = cls.env.ref('bank_settlement.group_bank_settlement_user')
+        override = cls.env.ref('recruitment_workflow.group_approval_override')
+
+        def user(login, groups):
+            return cls.env['res.users'].create({
+                'name': login, 'login': login,
+                'group_ids': [(6, 0, [g.id for g in groups])],
+            })
+
+        cls.override_user = user('bs_da_override', [base, bs_user, override])
+        cls.bs_manager = user('bs_da_manager', [
+            base, cls.env.ref('bank_settlement.group_bank_settlement_manager')])
+        cls.pm = user('bs_da_pm', [base])
+        cls.env = cls.env(user=cls.env.ref('base.user_admin'))
+
+    def _gov_fee(self, amount=500.0):
+        return self.env['bank.settlement.government.fee'].create({
+            'government_entity_id': self.env.ref(
+                'bank_settlement.government_entity_mol_resident').id,
+            'fee_type_id': self.env.ref(
+                'bank_settlement.government_fee_type_sponsorship_transfer').id,
+            'amount': amount,
+        })
+
+    def test_government_fee_jumps_to_confirmed_and_stops(self):
+        fee = self._gov_fee()
+        fee.with_user(self.override_user).action_direct_approve(reason='مهلة الجهة تنتهي اليوم')
+        self.assertEqual(fee.state, 'confirmed',
+                         'لم يتوقف عند "مؤكدة" (أول حالة تنفيذية)')
+        self.assertFalse(fee.move_id, 'الاعتماد المباشر لا يجوز أن يُنشئ قيداً')
+        self.assertEqual(fee.direct_approval_user_id, self.override_user)
+        self.assertEqual(fee.direct_approval_reason, 'مهلة الجهة تنتهي اليوم')
+
+    def test_advance_skips_the_specific_project_manager_rule(self):
+        """قاعدة "مسؤول مشروع الموظف تحديداً" كانت تمنع حتى المدير العام."""
+        project = self.env['project.project'].create({
+            'name': 'منصة سلفة عاجلة', 'user_id': self.pm.id})
+        partner = self.env['res.partner'].create({'name': 'مندوب سلفة عاجلة'})
+        employee = self.env['hr.employee'].create({
+            'name': 'مندوب سلفة عاجلة', 'work_contact_id': partner.id})
+        employee._open_platform_history(project)
+        reason = self.env['bank.settlement.advance.reason'].search([], limit=1) or \
+            self.env['bank.settlement.advance.reason'].create({'name': 'سبب اختبار'})
+        advance = self.env['bank.settlement.advance'].create({
+            'employee_id': employee.id, 'advance_reason_id': reason.id, 'amount': 1000.0})
+
+        # المدير العام وحده يُمنع عند موافقة مسؤول المشروع المعيّن
+        advance.action_submit_review()
+        with self.assertRaises(UserError):
+            advance.with_user(self.bs_manager).action_pm_approve()
+
+        advance.with_user(self.override_user).action_direct_approve(reason='حالة طارئة')
+        self.assertEqual(advance.state, 'approved')
+        self.assertFalse(advance.move_id)
+
+    def test_manager_without_the_group_cannot(self):
+        fee = self._gov_fee()
+        with self.assertRaises(UserError):
+            fee.with_user(self.bs_manager).action_direct_approve(reason='محاولة')
+
+    def test_context_alone_grants_nothing(self):
+        fee = self._gov_fee()
+        fee.action_submit_review()
+        plain = self.env['res.users'].create({
+            'name': 'مستخدم عادي', 'login': 'bs_da_plain',
+            'group_ids': [(6, 0, [self.env.ref('base.group_user').id,
+                                  self.env.ref('bank_settlement.group_bank_settlement_user').id])],
+        })
+        with self.assertRaises(UserError):
+            fee.with_user(plain).with_context(
+                bank_settlement_direct_approval=True).action_confirm()
+        self.assertEqual(fee.state, 'under_review')
+
+    def test_data_requirements_are_still_enforced(self):
+        """مبلغ صفري لا يُرسَل للمراجعة - حتى بالاعتماد المباشر."""
+        fee = self._gov_fee(amount=0.0)
+        with self.assertRaises(UserError):
+            fee.with_user(self.override_user).action_direct_approve(reason='عاجل')
+        self.assertEqual(fee.state, 'draft')
+
+    def test_side_effects_of_approval_still_run(self):
+        """تعبئة حساب النوع الافتراضي لحظة الاعتماد تسري كالمعتاد."""
+        account = self.env['account.account'].create({
+            'name': 'مصروف اعتماد مباشر', 'code': 'TDAEXP', 'account_type': 'expense',
+            'company_ids': [(6, 0, self.env.company.ids)]})
+        ftype = self.env.ref('bank_settlement.government_fee_type_sponsorship_transfer')
+        ftype.account_id = account.id
+        fee = self._gov_fee()
+        fee.with_user(self.override_user).action_direct_approve(reason='عاجل')
+        self.assertEqual(fee.linked_account_id, account)

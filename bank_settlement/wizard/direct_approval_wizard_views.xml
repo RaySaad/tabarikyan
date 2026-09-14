@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_bank_settlement_direct_approval_wizard_form" model="ir.ui.view">
+        <field name="name">bank.settlement.direct.approval.wizard.form</field>
+        <field name="model">bank.settlement.direct.approval.wizard</field>
+        <field name="arch" type="xml">
+            <form string="اعتماد مباشر من الإدارة">
+                <field name="res_model" invisible="1"/>
+                <field name="res_id" invisible="1"/>
+                <div class="alert alert-warning" role="alert">
+                    سيعبر السجل <b>كل خطوات الاعتماد</b> دفعة واحدة ويتوقف عند "مؤكدة" (أو "تمت
+                    الموافقة" في السلفة). <b>لا يُصرَف المبلغ ولا يُرحَّل القيد</b> - يبقى الإتمام
+                    للمحاسب. يُسجَّل اسمك والسبب في سجل الطلب.
+                </div>
+                <group>
+                    <field name="reason" placeholder="مثال: رسوم عاجلة قبل انتهاء المهلة ..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm_direct_approval" type="object"
+                            string="اعتماد مباشر" class="btn-primary"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

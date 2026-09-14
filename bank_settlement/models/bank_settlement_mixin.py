@@ -605,8 +605,110 @@ class BankSettlementMixin(models.AbstractModel):
         """طبقة حماية من جهة الخادم للانتقالات الحساسة - لا تعتمد فقط على
         إخفاء الأزرار في الواجهة (والتي يمكن تجاوزها عبر RPC/API مباشرة)."""
         self.ensure_one()
+        # الاعتماد المباشر من الإدارة يتخطى هذا الفحص وحده. آمن رغم أن
+        # _check_group تحرس أيضاً إجراءات غير الاعتماد (رفض، إرجاع، إلغاء
+        # تنفيذ): السياق لا يُضبط إلا داخل action_direct_approve، التي لا
+        # تستدعي سوى خطوات الاعتماد (_get_direct_approval_step).
+        if self._is_approval_override_active():
+            return
         if not any(self.env.user.has_group(g) for g in group_xmlids):
             raise UserError('ليست لديك الصلاحية للقيام بهذا الإجراء.')
+
+    # -- الاعتماد المباشر من الإدارة (الطلبات الطائرة) --------------------
+    # نفس المجموعة المستخدمة في سير التوظيف (هذا الموديول يعتمد عليه):
+    # صلاحية واحدة مقصودة تُمنح بالاسم، لا يملكها أي مستوى تلقائياً.
+    _APPROVAL_OVERRIDE_GROUP = 'recruitment_workflow.group_approval_override'
+
+    direct_approval_user_id = fields.Many2one(
+        'res.users', string='اعتُمد مباشرةً بواسطة', readonly=True, copy=False,
+    )
+    direct_approval_date = fields.Datetime(
+        string='تاريخ الاعتماد المباشر', readonly=True, copy=False,
+    )
+    direct_approval_reason = fields.Text(
+        string='سبب الاعتماد المباشر', readonly=True, copy=False,
+    )
+
+    def _is_approval_override_active(self):
+        """داخل اعتماد مباشر *ومن يملك التجاوز فعلاً* - الشرطان معاً: السياق
+        وحده يمكن تمريره من أي عميل RPC فلا يمنح شيئاً دون المجموعة، والمجموعة
+        وحدها لا تتخطى القيود في الأزرار العادية."""
+        return bool(
+            self.env.context.get('bank_settlement_direct_approval')
+            and self.env.user.has_group(self._APPROVAL_OVERRIDE_GROUP)
+        )
+
+    def _get_direct_approval_step(self):
+        """خطوة الاعتماد التالية من الحالة الحالية، أو None عند بلوغ أول حالة
+        تنفيذية ("مؤكدة" - حيث يُدخل المحاسب بيانات السداد ويُتمّ). يتجاوزها
+        advance.py لسلسلة حالاته المختلفة."""
+        self.ensure_one()
+        return {
+            'draft': self.action_submit_review,
+            'under_review': self.action_confirm,
+        }.get(self.state)
+
+    def action_open_direct_approval_wizard(self):
+        self.ensure_one()
+        self._check_can_direct_approve()
+        return {
+            'name': _('اعتماد مباشر من الإدارة'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'bank.settlement.direct.approval.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_res_model': self._name, 'default_res_id': self.id},
+        }
+
+    def _check_can_direct_approve(self):
+        self.ensure_one()
+        if not self.env.user.has_group(self._APPROVAL_OVERRIDE_GROUP):
+            raise UserError(_('الاعتماد المباشر يتطلب صلاحية "تجاوز صلاحيات الاعتماد".'))
+        if not self._get_direct_approval_step():
+            raise UserError(_(
+                'الاعتماد المباشر متاح قبل اكتمال الاعتماد فقط - هذا السجل '
+                'تجاوزه بالفعل.'
+            ))
+
+    def action_direct_approve(self, reason=False):
+        """يعبر كل خطوات الاعتماد دفعة واحدة ويتوقف عند أول حالة تنفيذية.
+
+        يمر عبر نفس أزرار الاعتماد العادية لا بكتابة الحالة مباشرةً - فتسري
+        متطلبات البيانات (المبلغ موجب قبل الإرسال...) والآثار الجانبية
+        (تعبئة حساب النوع الافتراضي عند الاعتماد، والإشعارات). المتخطَّى
+        فقط "مَن يحق له" (_check_group) وقاعدة "مسؤول مشروع الموظف تحديداً"
+        في السلفة. ولا يُتمّ السجل: الصرف والترحيل المحاسبي يبقيان للمحاسب."""
+        if not reason or not reason.strip():
+            raise UserError(_('يجب توضيح سبب الاعتماد المباشر.'))
+        for rec in self:
+            rec._check_can_direct_approve()
+            selection = dict(rec._fields['state'].selection)
+            start = selection.get(rec.state, rec.state)
+            passed = []
+            approver = rec.with_context(bank_settlement_direct_approval=True)
+            for _step in range(6):  # سقف أمان
+                step = approver._get_direct_approval_step()
+                if not step:
+                    break
+                passed.append(selection.get(approver.state, approver.state))
+                step()
+            rec.with_context(bank_settlement_skip_approval_lock=True).write({
+                'direct_approval_user_id': self.env.user.id,
+                'direct_approval_date': fields.Datetime.now(),
+                'direct_approval_reason': reason,
+            })
+            rec.message_post(body=_(
+                '<b>اعتماد مباشر من الإدارة</b> بواسطة %(user)s<br/>'
+                'من "%(start)s" إلى "%(end)s"، متخطياً: %(steps)s<br/>'
+                'السبب: %(reason)s'
+            ) % {
+                'user': self.env.user.name,
+                'start': start,
+                'end': selection.get(rec.state, rec.state),
+                'steps': '، '.join(passed) or '—',
+                'reason': reason,
+            })
+        return True
 
     def action_submit_review(self):
         for rec in self:

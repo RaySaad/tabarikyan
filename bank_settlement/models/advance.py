@@ -91,6 +91,16 @@ class BankSettlementAdvance(models.Model):
     # ('draft' فقط) أصبحت مطابقة لما كان خاصاً بالسلف سابقاً (عُمِّم على
     # كل الشاشات لاحقاً - انظر bank_settlement_mixin.py).
 
+    def _get_direct_approval_step(self):
+        # سلسلة السلفة: موافقتان منفصلتان (مسؤول المشروع ثم المدير العام)،
+        # ويتوقف عند "تمت الموافقة" حيث يُدخل المحاسب بيانات الصرف.
+        self.ensure_one()
+        return {
+            'draft': self.action_submit_review,
+            'waiting_approval': self.action_pm_approve,
+            'pm_approved': self.action_confirm,
+        }.get(self.state)
+
     def _get_done_state(self):
         # حالة "منفّذ" في السلفة اسمها "paid" (تم الصرف) - بدونها كان
         # زر "إلغاء التنفيذ وتصحيح" لا يظهر على السلف إطلاقاً، وكان
@@ -175,7 +185,9 @@ class BankSettlementAdvance(models.Model):
             # مكتشفة بالاختبار الفعلي (AccessError كان يمنع مسؤول المشروع
             # الحقيقي نفسه من الموافقة أصلاً).
             project_manager = rec.employee_id.sudo().project_id.user_id if rec.employee_id else False
-            if project_manager:
+            # الاعتماد المباشر من الإدارة يتخطى قاعدة "المسؤول تحديداً" -
+            # وهي بالضبط ما كان يمنع حتى المدير العام من اعتماد سلفة عاجلة.
+            if project_manager and not rec._is_approval_override_active():
                 if rec.env.user != project_manager:
                     raise UserError(
                         'هذه الموافقة تتطلب مسؤول مشروع الموظف نفسه تحديداً (%s).'

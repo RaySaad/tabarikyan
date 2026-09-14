@@ -219,5 +219,29 @@
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
         </record>
 
+        <!-- ============================================================
+             تجاوز صلاحيات الاعتماد - للطلبات الطائرة التي تعتمدها
+             الإدارة مباشرةً.
+
+             مجموعة مستقلة لا تُشتقّ من أي مستوى: لا يملكها المدير العام
+             ولا غيره تلقائياً، بل تُمنح بالاسم صراحةً - قرار تجاوز سلسلة
+             الاعتماد يجب أن يكون صلاحية مقصودة لا أثراً جانبياً لمستوى.
+
+             صلاحية مستقلة بمجموعة واحدة، فتظهر في شاشة المستخدم خانة
+             تشغيل/إيقاف منفصلة (لا مستوى ضمن مستويات سير التوظيف).
+             وتُستخدم في السداد البنكي أيضاً (يعتمد على هذا الموديول).
+             ============================================================ -->
+        <record id="privilege_recruitment_workflow_approval_override" model="res.groups.privilege">
+            <field name="name">تجاوز صلاحيات الاعتماد</field>
+            <field name="sequence">90</field>
+            <field name="category_id" ref="module_category_recruitment_workflow"/>
+        </record>
+
+        <record id="group_approval_override" model="res.groups">
+            <field name="name">اعتماد مباشر من الإدارة</field>
+            <field name="privilege_id" ref="privilege_recruitment_workflow_approval_override"/>
+            <field name="comment">يعتمد طلبات التوظيف وطلبات السداد البنكي مباشرةً متخطياً سلسلة الموافقات (بسبب إجباري يُسجَّل)، دون تجاوز متطلبات البيانات (المرفقات، المنصة، سداد الرسوم).</field>
+        </record>
+
     </data>
 </odoo>

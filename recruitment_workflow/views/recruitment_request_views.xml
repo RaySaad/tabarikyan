@@ -23,6 +23,13 @@
                             class="btn-primary"
                             groups="recruitment_workflow.group_recruitment_workflow_gm"
                             invisible="state in ('done','rejected') or stage_code != 'gm_approval'"/>
+                    <!-- اعتماد مباشر من الإدارة (الطلبات الطائرة) - يعبر كل
+                         مراحل الاعتماد دفعة واحدة. مجموعة مستقلة تُمنح
+                         بالاسم، ولا يملكها أي مستوى تلقائياً. -->
+                    <button name="action_open_direct_approval_wizard" type="object"
+                            string="اعتماد مباشر من الإدارة"
+                            groups="recruitment_workflow.group_approval_override"
+                            invisible="state in ('done','rejected') or stage_code not in ('new', 'project_review', 'operations_review', 'gm_approval')"/>
                     <!-- تسجيل/تسوية الرسوم الحكومية - مطلوبة قبل مغادرة
                          مرحلة "جاري نقل الكفالة" إن حُدِّد مبلغ لها. -->
                     <button name="action_register_gov_fee" type="object"
@@ -237,6 +244,12 @@
 
                     <field name="rejection_reason" invisible="state != 'rejected'" readonly="1"/>
 
+                    <div class="alert alert-warning mt-2" role="alert" invisible="not direct_approval_user_id">
+                        <b>اعتُمد مباشرةً من الإدارة</b> بواسطة
+                        <field name="direct_approval_user_id" readonly="1" class="oe_inline"/> في
+                        <field name="direct_approval_date" readonly="1" class="oe_inline"/>
+                        — السبب: <field name="direct_approval_reason" readonly="1" class="oe_inline"/>
+                    </div>
                     <notebook>
                         <page string="البيانات الشخصية" name="personal">
                             <group>
@@ -417,6 +430,8 @@
                 <filter name="filter_in_progress" string="قيد التنفيذ" domain="[('state', '=', 'in_progress')]"/>
                 <filter name="filter_done" string="مكتمل" domain="[('state', '=', 'done')]"/>
                 <filter name="filter_rejected" string="مرفوض" domain="[('state', '=', 'rejected')]"/>
+                <filter name="filter_direct_approval" string="اعتماد مباشر من الإدارة"
+                        domain="[('direct_approval_user_id', '!=', False)]"/>
                 <separator/>
                 <filter name="filter_archived" string="المؤرشفة (المرفوضة)" domain="[('active', '=', False)]"/>
                 <separator/>

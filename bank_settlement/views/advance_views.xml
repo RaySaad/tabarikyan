@@ -72,6 +72,9 @@
                         <button name="action_open_return_wizard" string="إرجاع للتصحيح"
                                 type="object" groups="bank_settlement.group_bank_settlement_manager"
                                 invisible="state not in ('pm_approved', 'approved', 'paid')"/>
+                        <button name="action_open_direct_approval_wizard" string="اعتماد مباشر من الإدارة"
+                                type="object" groups="recruitment_workflow.group_approval_override"
+                                invisible="state not in ('draft', 'waiting_approval', 'pm_approved')"/>
                         <button name="action_open_reject_wizard" string="رفض"
                                 type="object" groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state in ('paid', 'cancel', 'rejected')"/>
@@ -79,6 +82,12 @@
                                statusbar_visible="draft,waiting_approval,pm_approved,approved,paid"/>
                     </header>
                     <sheet>
+                        <div class="alert alert-warning" role="alert" invisible="not direct_approval_user_id">
+                            <b>اعتُمد مباشرةً من الإدارة</b> بواسطة
+                            <field name="direct_approval_user_id" readonly="1" class="oe_inline"/> في
+                            <field name="direct_approval_date" readonly="1" class="oe_inline"/>
+                            — السبب: <field name="direct_approval_reason" readonly="1" class="oe_inline"/>
+                        </div>
                         <widget name="web_ribbon" title="ملغاة" bg_color="text-bg-danger"
                                 invisible="state != 'cancel'"/>
                         <div class="oe_button_box" name="button_box">

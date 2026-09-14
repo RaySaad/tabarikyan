@@ -966,6 +966,11 @@ class RecruitmentRequest(models.Model):
         عبر استدعاء الدالة مباشرة أو الكتابة المباشرة على stage_id (RPC/API).
         """
         self.ensure_one()
+        # الاعتماد المباشر من الإدارة يتخطى هذا الفحص وحده - لا متطلبات
+        # البيانات (_validate_stage_exit) ولا الآثار الجانبية. انظر
+        # action_direct_approve و_is_approval_override_active.
+        if self._is_approval_override_active():
+            return
         stage = stage or self.stage_id
         group_xmlid = self._STAGE_APPROVAL_GROUP.get(stage.code or '')
         if not group_xmlid:
@@ -1009,6 +1014,105 @@ class RecruitmentRequest(models.Model):
             return
         template.send_mail(self.id, force_send=False)
 
+    # ------------------------------------------------------------------
+    # الاعتماد المباشر من الإدارة (الطلبات الطائرة)
+    # ------------------------------------------------------------------
+    # المراحل التي يعبرها الاعتماد المباشر - مراحل *اعتماد* فقط. يتوقف عند
+    # أول مرحلة خارجها ("تم السداد") لأن ما بعدها مراحل تنفيذية لها آثار
+    # حقيقية (سداد الرسوم فعلياً، نقل الكفالة، إنشاء الموظف، تفويض السيارة)
+    # لا قرارات موافقة.
+    _DIRECT_APPROVAL_STAGE_CODES = ('new', 'project_review', 'operations_review', 'gm_approval')
+    _APPROVAL_OVERRIDE_GROUP = 'recruitment_workflow.group_approval_override'
+
+    direct_approval_user_id = fields.Many2one(
+        'res.users', string='اعتُمد مباشرةً بواسطة', readonly=True, copy=False,
+    )
+    direct_approval_date = fields.Datetime(
+        string='تاريخ الاعتماد المباشر', readonly=True, copy=False,
+    )
+    direct_approval_reason = fields.Text(
+        string='سبب الاعتماد المباشر', readonly=True, copy=False,
+    )
+
+    def _is_approval_override_active(self):
+        """هل نحن داخل اعتماد مباشر *ومن يملك التجاوز فعلاً*؟
+
+        الشرطان معاً لا أحدهما: السياق وحده يمكن تمريره من أي عميل RPC،
+        فلا يمنح شيئاً دون المجموعة. والمجموعة وحدها لا تكفي أيضاً - صاحب
+        التجاوز يعتمد عبر الأزرار العادية كأي مستخدم، ولا يتخطى القيود إلا
+        حين يطلب ذلك صراحةً بسبب مسجَّل."""
+        return bool(
+            self.env.context.get('recruitment_direct_approval')
+            and self.env.user.has_group(self._APPROVAL_OVERRIDE_GROUP)
+        )
+
+    def action_open_direct_approval_wizard(self):
+        self.ensure_one()
+        self._check_can_direct_approve()
+        return {
+            'name': _('اعتماد مباشر من الإدارة'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'recruitment.direct.approval.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_request_id': self.id},
+        }
+
+    def _check_can_direct_approve(self):
+        self.ensure_one()
+        if not self.env.user.has_group(self._APPROVAL_OVERRIDE_GROUP):
+            raise UserError(_('الاعتماد المباشر يتطلب صلاحية "تجاوز صلاحيات الاعتماد".'))
+        if (self.stage_id.code or '') not in self._DIRECT_APPROVAL_STAGE_CODES:
+            raise UserError(_(
+                'الاعتماد المباشر متاح لمراحل الاعتماد فقط - الطلب تجاوزها '
+                'بالفعل (المرحلة الحالية: %s).'
+            ) % self.stage_id.name)
+
+    def action_direct_approve(self, reason=False):
+        """يعبر كل مراحل الاعتماد دفعة واحدة، ويتوقف عند أول مرحلة تنفيذية.
+
+        يمر خطوة بخطوة عبر نفس مسار الموافقة العادي (action_approve) - لا
+        يكتب المرحلة الأخيرة مباشرةً - فتبقى كل خطوة مسجَّلة، وتسري
+        متطلبات البيانات عند مغادرة كل مرحلة (_validate_stage_exit:
+        المرفقات، المنصة وحسابها التحليلي...)، وتُنفَّذ آثارها الجانبية
+        (الإشعارات، ومزامنة طلبات الاستقدام في السداد البنكي). الشيء
+        الوحيد المتخطَّى هو "مَن يحق له الاعتماد" (_check_approval_rights)
+        - بما فيه قاعدة "مسؤول المشروع المعيّن تحديداً" التي كانت تمنع حتى
+        المدير العام."""
+        if not reason or not reason.strip():
+            raise UserError(_('يجب توضيح سبب الاعتماد المباشر.'))
+        for rec in self:
+            rec._check_can_direct_approve()
+            start_stage = rec.stage_id
+            passed = []
+            approver = rec.with_context(recruitment_direct_approval=True)
+            # سقف أمان: عدد مراحل الاعتماد + هامش - يمنع حلقة لا نهائية لو
+            # أُعيد ترتيب المراحل بشكل غير متوقع من الإعدادات.
+            for _step in range(len(self._DIRECT_APPROVAL_STAGE_CODES) + 2):
+                if (approver.stage_id.code or '') not in self._DIRECT_APPROVAL_STAGE_CODES:
+                    break
+                passed.append(approver.stage_id.name)
+                approver.action_approve()
+            rec.write({
+                'direct_approval_user_id': self.env.user.id,
+                'direct_approval_date': fields.Datetime.now(),
+                'direct_approval_reason': reason,
+            })
+            if passed:
+                rec._send_stage_mail('recruitment_workflow.mail_template_request_approved')
+            rec.message_post(body=_(
+                '<b>اعتماد مباشر من الإدارة</b> بواسطة %(user)s<br/>'
+                'من مرحلة "%(start)s" إلى "%(end)s"، متخطياً موافقات: %(stages)s<br/>'
+                'السبب: %(reason)s'
+            ) % {
+                'user': self.env.user.name,
+                'start': start_stage.name,
+                'end': rec.stage_id.name,
+                'stages': '، '.join(passed) or '—',
+                'reason': reason,
+            })
+        return True
+
     def action_approve(self):
         """موافقة على المرحلة الحالية والانتقال للتالية."""
         for rec in self:
@@ -1017,7 +1121,11 @@ class RecruitmentRequest(models.Model):
                 body=_('تمت الموافقة على المرحلة: %s') % rec.stage_id.name,
             )
             rec.action_next_stage()
-            rec._send_stage_mail('recruitment_workflow.mail_template_request_approved')
+            # في الاعتماد المباشر تُرسَل رسالة واحدة في نهايته لا رسالة لكل
+            # مرحلة متخطّاة - وإلا وصلت المرشّح ٣-٤ رسائل "تمت الموافقة"
+            # متتالية في نفس الثانية.
+            if not rec.env.context.get('recruitment_direct_approval'):
+                rec._send_stage_mail('recruitment_workflow.mail_template_request_approved')
         return True
 
     def action_open_reject_wizard(self):

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_recruitment_direct_approval_wizard_form" model="ir.ui.view">
+        <field name="name">recruitment.direct.approval.wizard.form</field>
+        <field name="model">recruitment.direct.approval.wizard</field>
+        <field name="arch" type="xml">
+            <form string="اعتماد مباشر من الإدارة">
+                <field name="request_id" invisible="1"/>
+                <div class="alert alert-warning" role="alert">
+                    سيعبر الطلب <b>كل مراحل الاعتماد</b> دفعة واحدة (مسؤول المشروع، مدير العمليات،
+                    المدير العام) ويتوقف عند "تم السداد". تبقى <b>متطلبات البيانات إلزامية</b>:
+                    المرفقات المطلوبة، والمنصة وحسابها التحليلي. يُسجَّل اسمك والسبب في سجل الطلب.
+                </div>
+                <group>
+                    <field name="reason" placeholder="مثال: طلب عاجل لتغطية منصة ..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm_direct_approval" type="object"
+                            string="اعتماد مباشر" class="btn-primary"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>
