@@ -202,6 +202,23 @@ class SaleOrder(models.Model):
         }
 
     # -- عقد الإيجار -----------------------------------------------------
+    def _get_booking_period(self):
+        """فترة الحجز وعدد لياليها - للعرض في العقد.
+
+        تُقرأ حقول تطبيق التأجير (نسخة أودو المدفوعة) بأمان: الموديول لا
+        يعتمد عليه، فقد لا تكون موجودة. والليالي تُحسب بفارق الأيام
+        التقويمية لا بالساعات: دخول 3 مساءً وخروج 11 صباح اليوم التالي
+        ليلة واحدة، لا صفراً كما يعطي الفارق الزمني."""
+        self.ensure_one()
+        fields_present = self._fields
+        start = self.rental_start_date if 'rental_start_date' in fields_present else False
+        end = self.rental_return_date if 'rental_return_date' in fields_present else False
+        nights = 0
+        if start and end:
+            nights = max((end.date() - start.date()).days, 1)
+        return {'start': start, 'end': end, 'nights': nights}
+
+
     def _check_contract_ready(self):
         """العقد يُرسَل بعد تأكيد الحجز وقبض العربون - لا قبلهما.
 

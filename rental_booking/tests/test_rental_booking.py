@@ -524,6 +524,28 @@ class TestRentalContract(AccountTestInvoicingCommon):
         self.assertIn('القسم رقم 3', html)
         self.assertIn('التأمين 300 ريال', html, 'بنود العقد لا تظهر')
 
+    def test_contract_has_no_signatures_and_no_payments_table(self):
+        """طلب صريح: مستند شكلي بسيط للمستأجر - المبالغ ومدة الحجز فقط.
+        تفصيل الدفعات موضعه الفاتورة."""
+        order = self._booking()
+        self._pay(order, 500.0)
+        html = self._render_contract(order)
+
+        self.assertNotIn('التوقيع', html, 'خانات التوقيع ما زالت في العقد')
+        self.assertNotIn('الدفعات المستلمة', html, 'جدول الدفعات ما زال في العقد')
+        self.assertIn('المدفوع', html)
+        self.assertIn('المتبقي', html)
+
+    def test_booking_period_is_shown_when_available(self):
+        """مدة الحجز تأتي من حقول تطبيق التأجير (نسخة مدفوعة) - تُقرأ
+        بأمان، فالموديول لا يعتمد عليه وقد لا تكون موجودة."""
+        order = self._booking()
+        period = order._get_booking_period()
+        self.assertIn('nights', period)
+        if 'rental_start_date' not in order._fields:
+            self.assertFalse(period['start'])
+            self.assertEqual(period['nights'], 0)
+
     def test_printing_follows_the_same_conditions(self):
         order = self._booking()
         with self.assertRaises(UserError):

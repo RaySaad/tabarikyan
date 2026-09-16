@@ -12,45 +12,62 @@
             <field name="binding_type">report</field>
         </record>
 
+        <!-- ================================================================
+             مستند شكلي للمستأجر: المبالغ ومدة الحجز فقط - بلا تواقيع ولا
+             جدول دفعات (طلب صريح). تفصيل الدفعات موضعه الفاتورة، وهناك
+             يظهر "تم الدفع في ..." لكل دفعة.
+             ================================================================ -->
         <template id="report_rental_contract_document">
             <t t-call="web.external_layout">
+                <t t-set="period" t-value="o._get_booking_period()"/>
                 <div class="page">
-                    <h2 class="text-center">عقد إيجار</h2>
-                    <div class="text-center mb-4">
-                        <span>رقم الحجز: </span><span t-field="o.name"/>
+                    <h2 class="text-center mb-1">عقد إيجار</h2>
+                    <div class="text-center text-muted mb-4">
+                        <span t-field="o.name"/>
                         <t t-if="o.booking_reference">
-                            <span> — مرجع المنصة: </span><span t-field="o.booking_reference"/>
+                            <span> — رقم الحجز: </span><span t-field="o.booking_reference"/>
                         </t>
                     </div>
 
-                    <div class="row mb-4">
-                        <div class="col-6">
-                            <strong>الطرف الأول (المؤجِّر)</strong>
-                            <div t-field="o.company_id.partner_id"
-                                 t-options='{"widget": "contact", "fields": ["name", "address", "phone"], "no_marker": True}'/>
-                            <div t-if="o.company_id.vat">الرقم الضريبي: <span t-field="o.company_id.vat"/></div>
-                        </div>
-                        <div class="col-6">
-                            <strong>الطرف الثاني (المستأجر)</strong>
-                            <div><span t-field="o.guest_name"/></div>
-                            <div t-if="o.guest_id_number">رقم الهوية: <span t-field="o.guest_id_number"/></div>
-                            <div t-if="o.guest_mobile">الجوال: <span t-field="o.guest_mobile"/></div>
-                            <div t-if="o.guest_email"><span t-field="o.guest_email"/></div>
-                        </div>
-                    </div>
+                    <table class="table table-sm mb-4">
+                        <tr>
+                            <td style="width:35%"><strong>المستأجر</strong></td>
+                            <td><span t-field="o.guest_name"/></td>
+                        </tr>
+                        <tr t-if="o.guest_id_number">
+                            <td><strong>رقم الهوية</strong></td>
+                            <td><span t-field="o.guest_id_number"/></td>
+                        </tr>
+                        <tr t-if="o.guest_mobile">
+                            <td><strong>رقم الجوال</strong></td>
+                            <td><span t-field="o.guest_mobile"/></td>
+                        </tr>
+                        <tr t-if="period['start']">
+                            <td><strong>الدخول</strong></td>
+                            <td><span t-esc="period['start']"
+                                      t-options='{"widget": "datetime"}'/></td>
+                        </tr>
+                        <tr t-if="period['end']">
+                            <td><strong>الخروج</strong></td>
+                            <td><span t-esc="period['end']"
+                                      t-options='{"widget": "datetime"}'/></td>
+                        </tr>
+                        <tr t-if="period['nights']">
+                            <td><strong>مدة الحجز</strong></td>
+                            <td><span t-esc="period['nights']"/> ليلة</td>
+                        </tr>
+                    </table>
 
                     <table class="table table-sm mb-4">
                         <thead>
                             <tr>
                                 <th>الوحدة / الخدمة</th>
-                                <th class="text-end">الكمية</th>
                                 <th class="text-end">الإجمالي</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr t-foreach="o.order_line.filtered(lambda l: not l.display_type)" t-as="line">
                                 <td><span t-field="line.name"/></td>
-                                <td class="text-end"><span t-field="line.product_uom_qty"/></td>
                                 <td class="text-end"><span t-field="line.price_subtotal"/></td>
                             </tr>
                         </tbody>
@@ -60,7 +77,7 @@
                         <div class="offset-6 col-6">
                             <table class="table table-sm">
                                 <tr>
-                                    <td>إجمالي قيمة العقد</td>
+                                    <td>إجمالي قيمة الحجز</td>
                                     <td class="text-end"><span t-field="o.amount_total"/></td>
                                 </tr>
                                 <tr>
@@ -75,33 +92,11 @@
                         </div>
                     </div>
 
-                    <div t-if="o.booking_payment_ids" class="mb-4">
-                        <strong>الدفعات المستلمة</strong>
-                        <table class="table table-sm">
-                            <tr t-foreach="o.booking_payment_ids.filtered(lambda p: p.state in ('in_process', 'paid'))" t-as="pay">
-                                <td><span t-field="pay.date"/></td>
-                                <td><span t-field="pay.journal_id.name"/></td>
-                                <td class="text-end"><span t-field="pay.amount"/></td>
-                            </tr>
-                        </table>
-                    </div>
-
                     <!-- بنود العقد يحرّرها المستخدم من الإعدادات - لا تُكتب
                          في الكود: نصّ قانوني يخصّهم وقد يتغيّر. -->
-                    <div t-if="o.company_id.rental_contract_terms" class="mb-4">
+                    <div t-if="o.company_id.rental_contract_terms">
                         <strong>بنود العقد</strong>
                         <div t-field="o.company_id.rental_contract_terms"/>
-                    </div>
-
-                    <div class="row mt-5">
-                        <div class="col-6 text-center">
-                            <div>الطرف الأول (المؤجِّر)</div>
-                            <div class="mt-4">التوقيع: ..............................</div>
-                        </div>
-                        <div class="col-6 text-center">
-                            <div>الطرف الثاني (المستأجر)</div>
-                            <div class="mt-4">التوقيع: ..............................</div>
-                        </div>
                     </div>
                 </div>
             </t>
@@ -131,7 +126,7 @@
                     </p>
                     <p>
                         رقم الحجز: <t t-out="object.name or ''"/><br/>
-                        إجمالي قيمة العقد: <t t-out="format_amount(object.amount_total, object.currency_id) or ''"/><br/>
+                        إجمالي قيمة الحجز: <t t-out="format_amount(object.amount_total, object.currency_id) or ''"/><br/>
                         المدفوع: <t t-out="format_amount(object.booking_amount_paid, object.currency_id) or ''"/><br/>
                         المتبقي: <t t-out="format_amount(object.booking_amount_due, object.currency_id) or ''"/>
                     </p>
