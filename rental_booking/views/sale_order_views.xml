@@ -10,6 +10,19 @@
             <field name="model">sale.order</field>
             <field name="inherit_id" ref="sale.view_order_form"/>
             <field name="arch" type="xml">
+                <xpath expr="//header" position="inside">
+                    <button name="action_register_booking_payment" type="object"
+                            string="تسجيل دفعة" class="btn-secondary"
+                            invisible="not is_booking_order or state in ('draft', 'cancel')"/>
+                </xpath>
+                <xpath expr="//div[@name='button_box']" position="inside">
+                    <button name="action_view_booking_payments" type="object"
+                            class="oe_stat_button" icon="fa-money"
+                            invisible="booking_payment_count == 0">
+                        <field name="booking_payment_count" widget="statinfo"
+                               string="دفعات الحجز"/>
+                    </button>
+                </xpath>
                 <xpath expr="//field[@name='partner_id']" position="before">
                     <field name="is_booking_order" invisible="1"/>
                     <field name="booking_source"
@@ -27,6 +40,8 @@
                 <xpath expr="//field[@name='partner_id']" position="after">
                     <field name="guest_name" invisible="not is_booking_order"/>
                     <field name="guest_mobile" invisible="not is_booking_order"/>
+                    <field name="booking_amount_paid"
+                           invisible="not is_booking_order or booking_amount_paid == 0"/>
                     <field name="booking_amount_due"
                            invisible="not is_booking_order or booking_amount_due == 0"/>
                 </xpath>

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from ast import literal_eval
 
+from odoo import fields
 from odoo.exceptions import UserError, ValidationError
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.tests import TransactionCase, tagged
@@ -266,3 +267,131 @@ class TestBookingInvoice(AccountTestInvoicingCommon):
         })
         invoice.action_post()
         self.assertNotIn(invoice, self._due_invoices())
+
+@tagged('post_install', '-at_install')
+class TestBookingPayments(AccountTestInvoicingCommon):
+    """دفعات تُسجَّل على الحجز بتواريخها، وتنعكس على الفاتورة عند صدورها."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env.user.group_ids |= cls.env.ref('sales_team.group_sale_salesman')
+        cls.cash = cls.env.ref('rental_booking.partner_rental_cash')
+        cls.env.company.rental_cash_partner_id = cls.cash.id
+        cls.product = cls.env['product.product'].create({
+            'name': 'ليلة شاليه', 'type': 'service', 'list_price': 1000.0,
+            'invoice_policy': 'order',
+            'property_account_income_id': cls.company_data['default_account_revenue'].id,
+        })
+        cls.journal = cls.company_data['default_journal_cash']
+        # دفعة أودو 19 لا تُنتج قيداً إلا بحساب مقبوضات معلّقة على طريقة
+        # الدفع - تضبطه قوالب دليل الحسابات في الواقع، ونضبطه هنا.
+        outstanding = cls.env['account.account'].create({
+            'name': 'مقبوضات معلّقة', 'code': 'TOUTS1',
+            'account_type': 'asset_current', 'reconcile': True,
+            'company_ids': [(6, 0, cls.env.company.ids)]})
+        cls.journal.inbound_payment_method_line_ids[:1].payment_account_id = outstanding.id
+
+    def _order(self):
+        order = self.env['sale.order'].create({
+            'partner_id': self.cash.id,
+            'booking_source': 'direct',
+            'booking_collected_by': 'cash',
+            'guest_name': 'مستأجر الدفعات',
+            'order_line': [(0, 0, {'product_id': self.product.id, 'product_uom_qty': 1})],
+        })
+        order.action_confirm()
+        return order
+
+    def _pay(self, order, amount, date):
+        self.env['rental.booking.payment.register'].with_context(
+            default_order_id=order.id,
+        ).create({
+            'order_id': order.id, 'amount': amount,
+            'payment_date': date, 'journal_id': self.journal.id,
+        }).action_register()
+
+    def test_payment_is_posted_on_its_own_date(self):
+        """يُرحَّل فوراً بتاريخه - لا يُؤجَّل للفوترة، فرصيد الصندوق صحيح
+        لحظة بلحظة ولا يفشل لو أُقفلت الفترة لاحقاً."""
+        order = self._order()
+        self._pay(order, 500.0, '2026-09-12')
+
+        payment = order.booking_payment_ids
+        self.assertEqual(len(payment), 1)
+        self.assertEqual(payment.date, fields.Date.to_date('2026-09-12'))
+        self.assertEqual(payment.move_id.state, 'posted')
+        self.assertEqual(payment.booking_order_id, order)
+
+    def test_two_payments_show_paid_and_due_before_invoicing(self):
+        order = self._order()
+        total = order.amount_total
+        self._pay(order, 500.0, '2026-09-12')
+        self.assertAlmostEqual(order.booking_amount_paid, 500.0, places=2)
+        self.assertAlmostEqual(order.booking_amount_due, total - 500.0, places=2)
+
+        self._pay(order, 300.0, '2026-09-14')
+        self.assertAlmostEqual(order.booking_amount_paid, 800.0, places=2)
+        self.assertAlmostEqual(order.booking_amount_due, total - 800.0, places=2)
+
+    def test_payments_reflect_on_the_invoice_when_it_is_issued(self):
+        """جوهر الطلب: الدفعات تُسجَّل على الحجز أولاً، فتظهر الفاتورة
+        مسدَّدة بها فور ترحيلها - كفاتورة العميل النموذجية."""
+        order = self._order()
+        total = order.amount_total
+        self._pay(order, 500.0, '2026-09-12')
+        self._pay(order, total - 500.0, '2026-09-14')
+
+        invoice = order._create_invoices()
+        invoice.action_post()
+
+        # in_payment حالة صحيحة أيضاً: المبلغ مطابَق لكنه في حساب
+        # "المقبوضات المعلّقة" حتى يُؤكَّد في كشف البنك. المهم أن المتبقي صفر.
+        self.assertIn(invoice.payment_state, ('paid', 'in_payment'),
+                      'الدفعات المسجَّلة على الحجز لم تنعكس على الفاتورة')
+        self.assertEqual(invoice.amount_residual, 0.0)
+        self.assertAlmostEqual(order.booking_amount_due, 0.0, places=2)
+
+    def test_partial_payments_leave_the_invoice_partially_paid(self):
+        order = self._order()
+        total = order.amount_total
+        self._pay(order, 500.0, '2026-09-12')
+
+        invoice = order._create_invoices()
+        invoice.action_post()
+
+        self.assertEqual(invoice.payment_state, 'partial')
+        self.assertAlmostEqual(invoice.amount_residual, total - 500.0, places=2)
+
+    def test_payment_after_the_invoice_is_reconciled_immediately(self):
+        """الترتيب الآخر: الفاتورة صدرت أولاً ثم دفع النزيل."""
+        order = self._order()
+        total = order.amount_total
+        invoice = order._create_invoices()
+        invoice.action_post()
+        self.assertEqual(invoice.payment_state, 'not_paid')
+
+        self._pay(order, total, '2026-09-14')
+
+        self.assertIn(invoice.payment_state, ('paid', 'in_payment'))
+        self.assertEqual(invoice.amount_residual, 0.0)
+
+    def test_one_guest_payment_never_lands_on_another_booking(self):
+        """العميل المحاسبي واحد لكل النزلاء - والدفعة مربوطة بحجزها، فلا
+        تُطابَق مع فاتورة حجز آخر."""
+        first, second = self._order(), self._order()
+        first_invoice = first._create_invoices()
+        second_invoice = second._create_invoices()
+        (first_invoice + second_invoice).action_post()
+
+        self._pay(first, first.amount_total, '2026-09-12')
+
+        self.assertEqual(first_invoice.amount_residual, 0.0)
+        self.assertEqual(second_invoice.payment_state, 'not_paid',
+                         'دفعة حجز طُبّقت على فاتورة حجز آخر')
+        self.assertEqual(second_invoice.amount_residual, second.amount_total)
+
+    def test_zero_amount_is_rejected(self):
+        order = self._order()
+        with self.assertRaises(UserError):
+            self._pay(order, 0.0, '2026-09-12')

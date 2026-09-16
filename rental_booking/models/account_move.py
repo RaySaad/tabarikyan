@@ -13,3 +13,18 @@ class AccountMove(models.Model):
     # حقل مستقل لا "المرجع": أودو تملأ المرجع باسم أمر البيع (S00892 في
     # نموذج العميل)، وتغييره يقلب سلوكاً قائماً بلا داعٍ.
     booking_reference = fields.Char(string='رقم الحجز', copy=False, tracking=True)
+
+    def _post(self, soft=True):
+        """يطابق دفعات الحجز المسجَّلة *قبل* الفاتورة معها فور ترحيلها.
+
+        المطابقة عند الترحيل لا عند الإنشاء: قيود المسودة لا تُطابَق.
+        وبهذا تظهر الفاتورة "مدفوعة" فور إصدارها متى كان النزيل قد سدّد
+        عند الحجز - كما في فاتورة العميل النموذجية (دفعتان قبل تاريخ
+        الفاتورة ومستحق صفر)."""
+        posted = super()._post(soft=soft)
+        for move in posted.filtered(lambda m: m.move_type == 'out_invoice'):
+            orders = move.invoice_line_ids.sale_line_ids.order_id
+            for order in orders:
+                if 'booking_payment_ids' in order._fields and order.booking_payment_ids:
+                    order._reconcile_booking_payments(move)
+        return posted

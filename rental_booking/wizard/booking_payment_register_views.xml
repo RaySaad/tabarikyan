@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_booking_payment_register_form" model="ir.ui.view">
+            <field name="name">rental.booking.payment.register.form</field>
+            <field name="model">rental.booking.payment.register</field>
+            <field name="arch" type="xml">
+                <form string="تسجيل دفعة على الحجز">
+                    <field name="order_id" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                    <field name="currency_id" invisible="1"/>
+                    <group>
+                        <group>
+                            <field name="amount"/>
+                            <field name="payment_date"/>
+                        </group>
+                        <group>
+                            <field name="journal_id" options="{'no_create': True}"/>
+                            <field name="amount_due" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="memo" placeholder="عربون الحجز / سداد عند الوصول ..."/>
+                    </group>
+                    <footer>
+                        <button name="action_register" type="object"
+                                string="تسجيل الدفعة" class="btn-primary"/>
+                        <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+    </data>
+</odoo>

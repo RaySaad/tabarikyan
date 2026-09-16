@@ -119,21 +119,109 @@ class SaleOrder(models.Model):
         self._check_booking_details()
         return super().action_confirm()
 
-    booking_amount_due = fields.Monetary(
-        string='المتبقي على المستأجر', compute='_compute_booking_amount_due',
+    # دفعات الحجز: تُقبَض عند الحجز وعند الوصول - أي قبل وجود الفاتورة
+    # غالباً. تُرحَّل كل واحدة بتاريخها لحظة تسجيلها (فرصيد الصندوق صحيح
+    # لحظة بلحظة، ولا يفشل الترحيل لو أُقفلت الفترة لاحقاً)، ثم تُطابَق
+    # مع الفاتورة متى صدرت.
+    booking_payment_ids = fields.One2many(
+        'account.payment', 'booking_order_id', string='دفعات الحجز',
+    )
+    booking_payment_count = fields.Integer(compute='_compute_booking_amounts')
+    booking_amount_paid = fields.Monetary(
+        string='المدفوع', compute='_compute_booking_amounts',
         currency_field='currency_id',
-        help='مجموع المتبقي على فواتير هذا الحجز المرحَّلة - يُحسب لكل '
-             'فاتورة على حدة، فلا يتأثر بكون العميل المحاسبي مشتركاً.',
+    )
+    booking_amount_due = fields.Monetary(
+        string='المتبقي على المستأجر', compute='_compute_booking_amounts',
+        currency_field='currency_id',
+        help='إجمالي الحجز ناقص ما سُدّد - يعمل قبل إصدار الفاتورة وبعدها.',
     )
 
-    @api.depends('invoice_ids.amount_residual', 'invoice_ids.state',
-                 'invoice_ids.move_type')
-    def _compute_booking_amount_due(self):
+    @api.depends('amount_total', 'booking_payment_ids.state',
+                 'booking_payment_ids.amount', 'invoice_ids.amount_residual',
+                 'invoice_ids.state', 'invoice_ids.move_type')
+    def _compute_booking_amounts(self):
+        """المتبقي من مصدرين حسب المرحلة - لأن الفوترة قد تسبق الدفع وقد
+        تليه (أفاد المستخدم أن الحالتين تقعان):
+
+        - قبل صدور الفاتورة: إجمالي الحجز ناقص دفعاته المرحَّلة.
+        - بعد صدورها: متبقي الفاتورة نفسها - وهو يشمل *كل* ما سُدّد، بما
+          فيه دفعة سجّلها المحاسب من شاشة الفاتورة مباشرة لا من زر الحجز.
+          الاعتماد على دفعات الحجز وحدها هنا كان سيُظهر الحجز غير مسدَّد
+          بينما فاتورته مدفوعة.
+        """
         for order in self:
+            order.booking_payment_count = len(order.booking_payment_ids)
             invoices = order.invoice_ids.filtered(
-                lambda m: m.state == 'posted' and m.move_type in ('out_invoice', 'out_refund')
+                lambda m: m.state == 'posted'
+                and m.move_type in ('out_invoice', 'out_refund'))
+            if invoices:
+                due = sum(invoices.mapped('amount_residual'))
+            else:
+                # الملغاة والمرفوضة لا تُحتسب، والمسودة لم تُقبَض بعد.
+                posted_payments = order.booking_payment_ids.filtered(
+                    lambda p: p.state in ('in_process', 'paid'))
+                due = order.amount_total - sum(posted_payments.mapped('amount'))
+            order.booking_amount_due = due
+            order.booking_amount_paid = max(order.amount_total - due, 0.0)
+
+    def action_register_booking_payment(self):
+        self.ensure_one()
+        return {
+            'name': 'تسجيل دفعة على الحجز',
+            'type': 'ir.actions.act_window',
+            'res_model': 'rental.booking.payment.register',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_order_id': self.id},
+        }
+
+    def action_view_booking_payments(self):
+        self.ensure_one()
+        return {
+            'name': 'دفعات الحجز',
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.payment',
+            'view_mode': 'list,form',
+            'domain': [('booking_order_id', '=', self.id)],
+        }
+
+    def _reconcile_booking_payments(self, invoices=None):
+        """يطابق دفعات الحجز غير المطابَقة مع فواتيره المرحَّلة.
+
+        يُستدعى من الطرفين لأن الترتيب يختلف من حجز لآخر (أفاد المستخدم
+        أن الفاتورة قد تسبق الدفع وقد تليه): عند ترحيل الفاتورة
+        (account_move._post) وعند تسجيل دفعة على حجز له فاتورة مرحَّلة
+        بالفعل.
+
+        المطابقة تكون بحساب الذمم المدينة، ومجمَّعة به: قد تختلف حسابات
+        الذمم بين السجلات، وأودو لا تطابق سطرين بحسابين مختلفين."""
+        self.ensure_one()
+        if invoices is None:
+            invoices = self.invoice_ids
+        invoices = invoices.filtered(
+            lambda m: m.state == 'posted' and m.move_type == 'out_invoice')
+        if not invoices:
+            return
+        payments = self.booking_payment_ids.filtered(
+            lambda p: p.state in ('in_process', 'paid') and p.move_id.state == 'posted')
+        if not payments:
+            return
+
+        def open_receivable_lines(records):
+            return records.line_ids.filtered(
+                lambda line: line.account_id.account_type == 'asset_receivable'
+                and not line.reconciled
             )
-            order.booking_amount_due = sum(invoices.mapped('amount_residual'))
+
+        payment_lines = open_receivable_lines(payments.move_id)
+        invoice_lines = open_receivable_lines(invoices)
+        for account in payment_lines.account_id:
+            lines = (payment_lines + invoice_lines).filtered(
+                lambda line: line.account_id == account)
+            if len(lines.move_id) > 1:
+                lines.reconcile()
+
 
     def _prepare_invoice(self):
         """ينقل بيانات المستأجر للفاتورة لتُطبع عليها.
