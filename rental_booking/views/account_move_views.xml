@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- بيانات المستأجر على الفاتورة: تُنقل من أمر التأجير، وتُعرض
+             هنا ليصححها المحاسب قبل الترحيل عند اللزوم (اسم مكتوب خطأ
+             في الاستقبال مثلاً) دون العودة للأمر. -->
+        <record id="view_move_form_booking" model="ir.ui.view">
+            <field name="name">account.move.form.booking</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_move_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="guest_name"
+                           invisible="move_type not in ('out_invoice', 'out_refund')"
+                           readonly="state != 'draft'"/>
+                    <field name="guest_id_number"
+                           invisible="move_type not in ('out_invoice', 'out_refund') or not guest_name"
+                           readonly="state != 'draft'"/>
+                    <field name="guest_mobile"
+                           invisible="move_type not in ('out_invoice', 'out_refund') or not guest_name"
+                           readonly="state != 'draft'"/>
+                    <field name="booking_reference"
+                           invisible="move_type not in ('out_invoice', 'out_refund') or not guest_name"
+                           readonly="state != 'draft'"/>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

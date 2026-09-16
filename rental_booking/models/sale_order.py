@@ -27,8 +27,12 @@ class SaleOrder(models.Model):
         help='رقم الحجز في المنصة - هو الرابط بين هذا الأمر وهوية النزيل '
              'الموثّقة عندها، وبه تُطابَق تحويلات المنصة مع حجوزاتكم.',
     )
-    guest_name = fields.Char(string='اسم النزيل', copy=False)
-    guest_mobile = fields.Char(string='جوال النزيل', copy=False)
+    guest_name = fields.Char(string='اسم المستأجر', copy=False)
+    guest_id_number = fields.Char(
+        string='رقم هوية المستأجر', copy=False,
+        help='يُطبع على الفاتورة الضريبية المبسطة مع الاسم والجوال.',
+    )
+    guest_mobile = fields.Char(string='جوال المستأجر', copy=False)
 
     # الحقول تُعرض على شاشة التأجير وحدها: أمر البيع العادي له عملاؤه
     # الحقيقيون. تُقرأ is_rental_order بأمان - يضيفها تطبيق التأجير
@@ -114,3 +118,22 @@ class SaleOrder(models.Model):
     def action_confirm(self):
         self._check_booking_details()
         return super().action_confirm()
+
+    def _prepare_invoice(self):
+        """ينقل بيانات المستأجر للفاتورة لتُطبع عليها.
+
+        الفاتورة الضريبية *المبسطة* (بيع لفرد) لا تشترط بيانات المشتري
+        نظاماً، ورمز QR يحمل بيانات البائع وحدها - فطباعة اسم المستأجر من
+        هنا سليمة، ويبقى العميل المحاسبي "عميل نقدي" فلا تتضخم جهات
+        الاتصال. أما الفاتورة الضريبية الكاملة (شركة برقم ضريبي) فتبقى
+        بجهة اتصالها الحقيقية: حقول المستأجر تكون فارغة فلا يتغير شيء."""
+        vals = super()._prepare_invoice()
+        if self.guest_name or self.guest_id_number or self.guest_mobile:
+            vals.update({
+                'guest_name': self.guest_name,
+                'guest_id_number': self.guest_id_number,
+                'guest_mobile': self.guest_mobile,
+            })
+        if self.booking_reference:
+            vals['booking_reference'] = self.booking_reference
+        return vals
