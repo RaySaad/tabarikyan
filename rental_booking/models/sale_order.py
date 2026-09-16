@@ -119,6 +119,22 @@ class SaleOrder(models.Model):
         self._check_booking_details()
         return super().action_confirm()
 
+    booking_amount_due = fields.Monetary(
+        string='المتبقي على المستأجر', compute='_compute_booking_amount_due',
+        currency_field='currency_id',
+        help='مجموع المتبقي على فواتير هذا الحجز المرحَّلة - يُحسب لكل '
+             'فاتورة على حدة، فلا يتأثر بكون العميل المحاسبي مشتركاً.',
+    )
+
+    @api.depends('invoice_ids.amount_residual', 'invoice_ids.state',
+                 'invoice_ids.move_type')
+    def _compute_booking_amount_due(self):
+        for order in self:
+            invoices = order.invoice_ids.filtered(
+                lambda m: m.state == 'posted' and m.move_type in ('out_invoice', 'out_refund')
+            )
+            order.booking_amount_due = sum(invoices.mapped('amount_residual'))
+
     def _prepare_invoice(self):
         """ينقل بيانات المستأجر للفاتورة لتُطبع عليها.
 

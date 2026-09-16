@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============================================================
+             متابعة المبالغ المتبقية على المستأجرين.
+
+             المتبقي يُحسب لكل فاتورة على حدة، فيعمل رغم أن العميل
+             المحاسبي مشترك ("عميل نقدي"). أما تقارير الذمم وكشف الحساب
+             في المحاسبة فتتجمّع على العميل فلا تُفيد هنا - وهذه الشاشة
+             بديلها: تعرض المتبقي باسم المستأجر وجواله ورقم حجزه.
+
+             شرط الفلترة هو وجود اسم مستأجر لا نوع العميل - فتظهر
+             الحجوزات أياً كان عميلها.
+             ============================================================ -->
+        <record id="view_move_tree_booking_due" model="ir.ui.view">
+            <field name="name">account.move.list.booking.due</field>
+            <field name="model">account.move</field>
+            <field name="arch" type="xml">
+                <list string="مبالغ متبقية على المستأجرين" create="false"
+                      decoration-danger="invoice_date_due and invoice_date_due &lt; current_date">
+                    <field name="name" string="الفاتورة"/>
+                    <field name="guest_name"/>
+                    <field name="guest_mobile" optional="show"/>
+                    <field name="guest_id_number" optional="hide"/>
+                    <field name="booking_reference" optional="show"/>
+                    <field name="invoice_date"/>
+                    <field name="invoice_date_due" string="تاريخ الاستحقاق"/>
+                    <field name="partner_id" string="العميل المحاسبي" optional="hide"/>
+                    <field name="amount_total" sum="الإجمالي"/>
+                    <field name="amount_residual" string="المتبقي" sum="المتبقي"/>
+                    <field name="payment_state" widget="badge"/>
+                    <field name="currency_id" column_invisible="True"/>
+                    <field name="state" column_invisible="True"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_move_search_booking_due" model="ir.ui.view">
+            <field name="name">account.move.search.booking.due</field>
+            <field name="model">account.move</field>
+            <field name="arch" type="xml">
+                <search string="بحث في المبالغ المتبقية">
+                    <field name="guest_name" string="اسم المستأجر"/>
+                    <field name="guest_mobile" string="الجوال"/>
+                    <field name="guest_id_number" string="رقم الهوية"/>
+                    <field name="booking_reference" string="رقم الحجز"/>
+                    <field name="name" string="الفاتورة"/>
+                    <filter name="overdue" string="تجاوزت الاستحقاق"
+                            domain="[('invoice_date_due', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                    <filter name="partial" string="مدفوعة جزئياً"
+                            domain="[('payment_state', '=', 'partial')]"/>
+                    <filter name="not_paid" string="لم تُدفع"
+                            domain="[('payment_state', '=', 'not_paid')]"/>
+                    <group>
+                        <filter name="group_guest" string="المستأجر"
+                                context="{'group_by': 'guest_name'}"/>
+                        <filter name="group_due" string="تاريخ الاستحقاق"
+                                context="{'group_by': 'invoice_date_due'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_booking_amount_due" model="ir.actions.act_window">
+            <field name="name">مبالغ متبقية على المستأجرين</field>
+            <field name="res_model">account.move</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_move_search_booking_due"/>
+            <field name="domain">[('move_type', '=', 'out_invoice'), ('state', '=', 'posted'), ('payment_state', 'in', ['not_paid', 'partial']), ('guest_name', '!=', False)]</field>
+            <field name="context">{'create': False}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">لا توجد مبالغ متبقية</p>
+                <p>كل فواتير المستأجرين مسدَّدة بالكامل.</p>
+            </field>
+        </record>
+
+        <record id="action_booking_amount_due_list" model="ir.actions.act_window.view">
+            <field name="sequence">1</field>
+            <field name="view_mode">list</field>
+            <field name="view_id" ref="view_move_tree_booking_due"/>
+            <field name="act_window_id" ref="action_booking_amount_due"/>
+        </record>
+
+        <menuitem id="menu_booking_amount_due"
+                  name="مبالغ متبقية على المستأجرين"
+                  parent="sale.sale_order_menu"
+                  action="action_booking_amount_due"
+                  sequence="90"/>
+
+    </data>
+</odoo>

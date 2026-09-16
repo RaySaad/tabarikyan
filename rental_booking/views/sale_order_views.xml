@@ -27,6 +27,8 @@
                 <xpath expr="//field[@name='partner_id']" position="after">
                     <field name="guest_name" invisible="not is_booking_order"/>
                     <field name="guest_mobile" invisible="not is_booking_order"/>
+                    <field name="booking_amount_due"
+                           invisible="not is_booking_order or booking_amount_due == 0"/>
                 </xpath>
             </field>
         </record>

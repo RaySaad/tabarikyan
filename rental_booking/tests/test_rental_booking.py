@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+from ast import literal_eval
+
 from odoo.exceptions import UserError, ValidationError
+from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.tests import TransactionCase, tagged
 
 
@@ -116,40 +119,26 @@ class TestRentalBooking(TransactionCase):
 
 
 @tagged('post_install', '-at_install')
-class TestBookingInvoice(TransactionCase):
-    """الفاتورة الضريبية المبسطة باسم المستأجر، والعميل المحاسبي نقدي."""
+class TestBookingInvoice(AccountTestInvoicingCommon):
+    """الفاتورة الضريبية المبسطة باسم المستأجر، والمتبقي لكل حجز.
+
+    تقوم على تجهيزة أودو المحاسبية (AccountTestInvoicingCommon): تُنشئ
+    دليل حسابات ودفاتر كاملة. قاعدة التطوير هنا بلا دليل، وبناؤه يدوياً
+    في الاختبار ترك ثغرة حقيقية - الدفعة تُنشأ ولا تُطابَق مع الفاتورة
+    فيبقى المتبقي كاملاً، فلا يختبر الاختبار ما كُتب له."""
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # تجهيزة أودو المحاسبية تعمل بمستخدم محاسبي بلا صلاحية مبيعات.
+        cls.env.user.group_ids |= cls.env.ref('sales_team.group_sale_salesman')
         cls.cash = cls.env.ref('rental_booking.partner_rental_cash')
-        # قاعدة الاختبار بلا دليل حسابات، والفوترة تحتاج دفتر مبيعات
-        # وحساب إيراد - تشحنهما قوالب الدليل عادةً فنُنشئهما هنا.
-        company = cls.env.company
-        income = cls.env['account.account'].search(
-            [('company_ids', 'in', company.id), ('account_type', '=', 'income')], limit=1)
-        if not income:
-            income = cls.env['account.account'].create({
-                'name': 'إيراد اختبار', 'code': 'TINC01', 'account_type': 'income',
-                'company_ids': [(6, 0, company.ids)]})
-        receivable = cls.env['account.account'].search(
-            [('company_ids', 'in', company.id),
-             ('account_type', '=', 'asset_receivable')], limit=1)
-        if not receivable:
-            receivable = cls.env['account.account'].create({
-                'name': 'ذمم مدينة اختبار', 'code': 'TREC01',
-                'account_type': 'asset_receivable', 'reconcile': True,
-                'company_ids': [(6, 0, company.ids)]})
-        cls.cash.property_account_receivable_id = receivable.id
-        if not cls.env['account.journal'].search(
-                [('company_id', '=', company.id), ('type', '=', 'sale')], limit=1):
-            cls.env['account.journal'].create({
-                'name': 'مبيعات اختبار', 'code': 'TSJ', 'type': 'sale',
-                'company_id': company.id, 'default_account_id': income.id})
+        cls.env.company.rental_cash_partner_id = cls.cash.id
         cls.product = cls.env['product.product'].create({
             'name': 'ليلة شاليه', 'type': 'service', 'list_price': 1300.0,
             'invoice_policy': 'order',
-            'property_account_income_id': income.id})
+            'property_account_income_id': cls.company_data['default_account_revenue'].id,
+        })
 
     def _confirmed_order(self, **vals):
         order = self.env['sale.order'].create(dict({
@@ -167,6 +156,21 @@ class TestBookingInvoice(TransactionCase):
     def _invoice(self, order):
         return order._create_invoices()
 
+    def _register_payment(self, invoice, amount):
+        self.env['account.payment.register'].with_context(
+            active_model='account.move', active_ids=invoice.ids,
+        ).create({'amount': amount}).action_create_payments()
+
+    def _render(self, invoice):
+        return self.env['ir.actions.report']._render_qweb_html(
+            'account.report_invoice', invoice.ids)[0].decode()
+
+    def _due_invoices(self):
+        # domain على الإجراء نص في أودو 19 - يُحوَّل قبل البحث.
+        action = self.env.ref('rental_booking.action_booking_amount_due')
+        return self.env['account.move'].search(literal_eval(action.domain))
+
+    # ---- نقل بيانات المستأجر ----
     def test_guest_details_reach_the_invoice(self):
         invoice = self._invoice(self._confirmed_order())
         self.assertEqual(invoice.guest_name, 'خلود علي الخليفي')
@@ -175,8 +179,7 @@ class TestBookingInvoice(TransactionCase):
 
     def test_accounting_customer_stays_the_cash_partner(self):
         """الذمم والتقارير تبقى على العميل النقدي - الاسم للطباعة فقط."""
-        invoice = self._invoice(self._confirmed_order())
-        self.assertEqual(invoice.partner_id, self.cash)
+        self.assertEqual(self._invoice(self._confirmed_order()).partner_id, self.cash)
 
     def test_booking_reference_reaches_the_invoice(self):
         """في حقله الخاص - و"المرجع" يبقى اسم أمر البيع كما تملؤه أودو
@@ -189,10 +192,6 @@ class TestBookingInvoice(TransactionCase):
         self.assertEqual(invoice.ref, order.name)
 
     # ---- الطباعة ----
-    def _render(self, invoice):
-        return self.env['ir.actions.report']._render_qweb_html(
-            'account.report_invoice', invoice.ids)[0].decode()
-
     def test_printed_invoice_shows_the_guest_not_the_cash_partner(self):
         html = self._render(self._invoice(self._confirmed_order()))
         self.assertIn('خلود علي الخليفي', html, 'اسم المستأجر لا يظهر على الفاتورة')
@@ -206,8 +205,7 @@ class TestBookingInvoice(TransactionCase):
         جهة اتصالها كما هي."""
         company_partner = self.env['res.partner'].create({
             'name': 'شركة مستأجرة', 'vat': '311111111111113',
-            'company_type': 'company',
-            'property_account_receivable_id': self.cash.property_account_receivable_id.id})
+            'company_type': 'company'})
         order = self.env['sale.order'].create({
             'partner_id': company_partner.id,
             'order_line': [(0, 0, {'product_id': self.product.id, 'product_uom_qty': 1})],
@@ -215,5 +213,56 @@ class TestBookingInvoice(TransactionCase):
         order.action_confirm()
         invoice = order._create_invoices()
         self.assertFalse(invoice.guest_name)
-        html = self._render(invoice)
-        self.assertIn('شركة مستأجرة', html)
+        self.assertIn('شركة مستأجرة', self._render(invoice))
+
+    # ---- المبالغ المتبقية ----
+    def test_partial_payment_leaves_a_tracked_balance(self):
+        """المتبقي يُحسب لكل فاتورة على حدة، فيعمل رغم أن العميل مشترك."""
+        order = self._confirmed_order()
+        invoice = self._invoice(order)
+        invoice.action_post()
+        total = invoice.amount_total          # شامل الضريبة كما في الواقع
+        self.assertGreater(total, 0.0)
+
+        self._register_payment(invoice, 500.0)
+
+        self.assertAlmostEqual(invoice.amount_residual, total - 500.0, places=2)
+        self.assertEqual(invoice.payment_state, 'partial')
+        self.assertAlmostEqual(order.booking_amount_due, total - 500.0, places=2,
+                               msg='المتبقي لا يظهر على شاشة الحجز')
+
+    def test_two_guests_balances_do_not_mix(self):
+        """أهم فحص: عميلهما المحاسبي واحد - فيجب أن يبقى متبقي كل حجز
+        مستقلاً عن الآخر."""
+        first = self._invoice(self._confirmed_order(guest_name='نزيل أول'))
+        second = self._invoice(self._confirmed_order(guest_name='نزيل ثانٍ'))
+        (first + second).action_post()
+        self.assertEqual(first.partner_id, second.partner_id)
+
+        second_total = second.amount_total
+        self._register_payment(first, first.amount_total)
+
+        self.assertEqual(first.amount_residual, 0.0)
+        self.assertAlmostEqual(second.amount_residual, second_total, places=2,
+                               msg='سداد نزيل أثّر على رصيد نزيل آخر')
+
+    def test_due_screen_lists_only_unpaid_bookings(self):
+        paid = self._invoice(self._confirmed_order(guest_name='نزيل سدّد'))
+        unpaid = self._invoice(self._confirmed_order(guest_name='نزيل متبقٍ'))
+        (paid + unpaid).action_post()
+        self._register_payment(paid, paid.amount_total)
+
+        listed = self._due_invoices()
+        self.assertIn(unpaid, listed)
+        self.assertNotIn(paid, listed)
+
+    def test_due_screen_ignores_ordinary_invoices(self):
+        """فاتورة بلا مستأجر (شركة مثلاً) ليست من شأن هذه الشاشة."""
+        partner = self.env['res.partner'].create({'name': 'شركة أخرى'})
+        invoice = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': partner.id,
+            'invoice_line_ids': [(0, 0, {'product_id': self.product.id, 'quantity': 1,
+                                         'price_unit': 100.0})],
+        })
+        invoice.action_post()
+        self.assertNotIn(invoice, self._due_invoices())
