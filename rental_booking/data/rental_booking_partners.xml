@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate: جهتا اتصال حقيقيتان يعدّلهما المستخدم (اسم، هاتف،
+         حساب مدين...) - وتحديث الموديول يجب ألا يدهس تعديلاته. -->
+    <data noupdate="1">
+
+        <record id="partner_rental_cash" model="res.partner">
+            <field name="name">عميل نقدي</field>
+            <field name="company_type">person</field>
+            <field name="customer_rank">1</field>
+            <field name="comment">عميل موحّد لحجوزات الشاليهات المحصّلة نقداً من النزيل. هوية النزيل ورقم حجزه مسجَّلان على أمر التأجير نفسه.</field>
+        </record>
+
+        <record id="partner_rental_gathern" model="res.partner">
+            <field name="name">جاذرن</field>
+            <field name="company_type">company</field>
+            <field name="customer_rank">1</field>
+            <field name="supplier_rank">1</field>
+            <field name="comment">منصة الحجز - تحصّل من النزيل وتحوّل المبلغ بعد خصم عمولتها، فتظهر مستحقاتكم عليها حتى التحويل.</field>
+        </record>
+
+    </data>
+</odoo>

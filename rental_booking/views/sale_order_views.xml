@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- يرث نموذج أمر البيع الأساسي عمداً: شاشة التأجير في النسخة
+             المدفوعة ترث النموذج نفسه، فتظهر الحقول فيها دون أن يعتمد
+             الموديول على تطبيق التأجير. -->
+        <record id="view_order_form_booking" model="ir.ui.view">
+            <field name="name">sale.order.form.booking</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='partner_id']" position="before">
+                    <field name="is_booking_order" invisible="1"/>
+                    <field name="booking_source"
+                           readonly="state in ('sale', 'cancel')"/>
+                    <field name="booking_collected_by"
+                           invisible="not booking_source"
+                           required="booking_source == 'platform'"
+                           readonly="state in ('sale', 'cancel')"/>
+                    <field name="booking_reference"
+                           invisible="not booking_source"
+                           required="booking_source == 'platform'"
+                           readonly="state in ('sale', 'cancel')"
+                           placeholder="رقم الحجز في المنصة"/>
+                </xpath>
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="guest_name" invisible="not is_booking_order"/>
+                    <field name="guest_mobile" invisible="not is_booking_order"/>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_order_tree_booking" model="ir.ui.view">
+            <field name="name">sale.order.list.booking</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="booking_reference" optional="show"/>
+                    <field name="guest_name" optional="hide"/>
+                    <field name="booking_source" optional="hide"/>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_sales_order_filter_booking" model="ir.ui.view">
+            <field name="name">sale.order.search.booking</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='name']" position="after">
+                    <field name="booking_reference" string="رقم الحجز"/>
+                    <field name="guest_name" string="اسم النزيل"/>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>
