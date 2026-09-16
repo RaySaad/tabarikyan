@@ -459,7 +459,6 @@ class TestRentalContract(AccountTestInvoicingCommon):
             'guest_name': 'خلود علي الخليفي',
             'guest_id_number': '1032509497',
             'guest_mobile': '0500192440',
-            'guest_email': 'guest@example.com',
             'order_line': [(0, 0, {'product_id': self.product.id, 'product_uom_qty': 1})],
         }, **vals))
         if confirm:
@@ -481,38 +480,15 @@ class TestRentalContract(AccountTestInvoicingCommon):
     def test_contract_blocked_before_confirmation(self):
         order = self._booking(confirm=False)
         with self.assertRaises(UserError):
-            order.action_send_rental_contract()
+            order.action_print_rental_contract()
 
     def test_contract_blocked_before_any_payment(self):
         """عقد بلا عربون مقبوض = التزام بلا مقابل."""
         order = self._booking()
         self.assertEqual(order.booking_amount_paid, 0.0)
         with self.assertRaises(UserError):
-            order.action_send_rental_contract()
+            order.action_print_rental_contract()
 
-    def test_contract_blocked_without_guest_email(self):
-        order = self._booking(guest_email=False)
-        self._pay(order, 500.0)
-        with self.assertRaises(UserError):
-            order.action_send_rental_contract()
-
-    # ---- الإرسال ----
-    def test_contract_is_sent_to_the_guest_not_the_cash_partner(self):
-        """البريد من حقل المستأجر: العميل المحاسبي مشترك، وإرساله إليه
-        يعني إرسال عقود كل النزلاء لعنوان واحد."""
-        order = self._booking()
-        self._pay(order, 500.0)
-
-        order.action_send_rental_contract()
-
-        mail = self.env['mail.mail'].search(
-            [('model', '=', 'sale.order'), ('res_id', '=', order.id)], limit=1)
-        self.assertTrue(mail, 'لم تُنشأ رسالة العقد')
-        self.assertIn('guest@example.com', mail.email_to or '')
-        self.assertTrue(mail.attachment_ids, 'العقد لم يُرفق بالرسالة')
-        self.assertTrue(order.contract_sent_date)
-
-    # ---- محتوى العقد ----
     def test_contract_shows_parties_amounts_and_terms(self):
         order = self._booking()
         self._pay(order, 500.0)
