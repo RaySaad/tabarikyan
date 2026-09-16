@@ -56,6 +56,13 @@ class RentalBookingPaymentRegister(models.TransientModel):
         if not self.order_id.partner_id:
             raise UserError('يجب تحديد العميل على الحجز قبل تسجيل الدفعة.')
         payment = self.env['account.payment'].create({
+            # الشركة صراحةً من شركة الحجز - وإلا حسبتها أودو من *دفتر*
+            # الدفع: دفاترهم على الشركة الأم والحجز على فرع ("منتجع سحابة
+            # سما")، فتخرج الدفعة على شركة وقيدها على أخرى وترفضها أودو
+            # ("لا يُسمح بأي تداخل بين الشركات"). وتحديدها هنا يُسكِت
+            # الحساب التلقائي أيضاً: شرطه ألا تكون شركة الدفتر من أصول
+            # شركة الدفعة - والأم أصلٌ للفرع، فلا يتدخل.
+            'company_id': self.order_id.company_id.id,
             'payment_type': 'inbound',
             'partner_type': 'customer',
             'partner_id': self.order_id.partner_id.id,

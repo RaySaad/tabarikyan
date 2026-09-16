@@ -392,6 +392,30 @@ class TestBookingPayments(AccountTestInvoicingCommon):
                          'دفعة حجز طُبّقت على فاتورة حجز آخر')
         self.assertEqual(second_invoice.amount_residual, second.amount_total)
 
+    def test_payment_company_follows_the_booking_not_the_journal(self):
+        """الحالة التي ظهرت عندهم: دفاتر الدفع على الشركة الأم والحجز على
+        فرع ("منتجع سحابة سما"). بلا تحديد الشركة صراحةً تحسبها أودو من
+        الدفتر، فتخرج الدفعة على شركة وقيدها على أخرى وترفضها أودو:
+        "لا يُسمح بأي تداخل بين الشركات"."""
+        branch = self.env['res.company'].create({
+            'name': 'منتجع فرعي', 'parent_id': self.env.company.id})
+        self.env.user.company_ids |= branch
+        # الفرع في الواقع يرث دليل حسابات الأم عند إنشائه (precommit)، وهذا
+        # لا يجري داخل الاختبار، فنضبط ذمم العميل للفرع يدوياً.
+        self.cash.with_company(branch).property_account_receivable_id =             self.company_data['default_account_receivable']
+        order = self._order()
+        order.company_id = branch.id
+        self.assertEqual(self.journal.company_id, branch.parent_id,
+                         'الدفتر ليس على الشركة الأم - الاختبار لا يفحص الحالة')
+
+        self._pay(order, 100.0, '2026-09-16')
+
+        payment = order.booking_payment_ids
+        self.assertEqual(payment.company_id, branch,
+                         'شركة الدفعة تبعت الدفتر لا الحجز')
+        self.assertEqual(payment.move_id.company_id, payment.company_id,
+                         'قيد الدفعة على شركة غير شركة الدفعة')
+
     def test_journals_of_the_parent_company_are_offered_to_a_branch(self):
         """الحالة التي ظهرت عند المستخدم: الحجز على فرع ودفاتر الصندوق
         على الشركة الأم - فكانت قائمة "طريقة الدفع" فارغة تماماً."""
