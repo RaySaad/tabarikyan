@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from ast import literal_eval
+from unittest.mock import patch
 
 from odoo import fields
 from odoo.exceptions import UserError, ValidationError
@@ -390,6 +391,36 @@ class TestBookingPayments(AccountTestInvoicingCommon):
         self.assertEqual(second_invoice.payment_state, 'not_paid',
                          'دفعة حجز طُبّقت على فاتورة حجز آخر')
         self.assertEqual(second_invoice.amount_residual, second.amount_total)
+
+    def test_journals_of_the_parent_company_are_offered_to_a_branch(self):
+        """الحالة التي ظهرت عند المستخدم: الحجز على فرع ودفاتر الصندوق
+        على الشركة الأم - فكانت قائمة "طريقة الدفع" فارغة تماماً."""
+        branch = self.env['res.company'].create({
+            'name': 'فرع الشاليهات', 'parent_id': self.env.company.id})
+        Wizard = self.env['rental.booking.payment.register']
+
+        journals = self.env['account.journal'].search(
+            Wizard._eligible_journal_domain(branch))
+
+        self.assertIn(self.journal, journals,
+                      'دفاتر الشركة الأم لا تظهر لحجز على فرع')
+
+    def test_strict_company_match_would_have_been_empty(self):
+        """يثبت أن سبب الفراغ هو المطابقة الصارمة لا غياب الدفاتر."""
+        branch = self.env['res.company'].create({
+            'name': 'فرع آخر', 'parent_id': self.env.company.id})
+        strict = self.env['account.journal'].search([
+            ('type', 'in', ('bank', 'cash')), ('company_id', '=', branch.id)])
+        self.assertFalse(strict)
+
+    def test_missing_journal_gives_a_clear_message(self):
+        """بدل قائمة فارغة صامتة."""
+        order = self._order()
+        with patch.object(
+            type(self.env['account.journal']), 'search_count', return_value=0
+        ):
+            with self.assertRaises(UserError):
+                order.action_register_booking_payment()
 
     def test_zero_amount_is_rejected(self):
         order = self._order()

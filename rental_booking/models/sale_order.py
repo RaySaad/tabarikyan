@@ -167,6 +167,14 @@ class SaleOrder(models.Model):
 
     def action_register_booking_payment(self):
         self.ensure_one()
+        Wizard = self.env['rental.booking.payment.register']
+        if not self.env['account.journal'].search_count(
+                Wizard._eligible_journal_domain(self.company_id)):
+            raise UserError(
+                'لا يوجد دفتر صندوق أو بنك متاح لشركة "%s" (ولا لشركتها '
+                'الأم). أنشئ دفتراً من: المحاسبة ← الإعدادات ← دفاتر '
+                'اليومية.' % self.company_id.display_name
+            )
         return {
             'name': 'تسجيل دفعة على الحجز',
             'type': 'ir.actions.act_window',

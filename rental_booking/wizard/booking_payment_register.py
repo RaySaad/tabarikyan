@@ -24,10 +24,19 @@ class RentalBookingPaymentRegister(models.TransientModel):
     amount = fields.Monetary(string='المبلغ', required=True)
     journal_id = fields.Many2one(
         'account.journal', string='طريقة الدفع', required=True,
-        domain="[('type', 'in', ('bank', 'cash')), ('company_id', '=', company_id)]",
+        # parent_of لا "=": الحجز قد يكون على فرع بينما دفاتر الصندوق
+        # والبنك على الشركة الأم - وهو ترتيبكم الفعلي (نفس ما يفعله
+        # bank_settlement). المطابقة الصارمة كانت تُفرغ القائمة تماماً.
+        domain="[('type', 'in', ('bank', 'cash')), ('company_id', 'parent_of', company_id)]",
     )
     company_id = fields.Many2one(related='order_id.company_id')
     memo = fields.Char(string='البيان')
+
+    @api.model
+    def _eligible_journal_domain(self, company):
+        """دفاتر الصندوق/البنك الصالحة لتحصيل حجز هذه الشركة - شاملةً
+        دفاتر الشركة الأم إن كان الحجز على فرع."""
+        return [('type', 'in', ('bank', 'cash')), ('company_id', 'parent_of', company.id)]
 
     @api.model
     def default_get(self, fields_list):
@@ -36,10 +45,8 @@ class RentalBookingPaymentRegister(models.TransientModel):
         if order and 'amount' in fields_list:
             values['amount'] = max(order.booking_amount_due, 0.0)
         if order and 'journal_id' in fields_list:
-            values['journal_id'] = self.env['account.journal'].search([
-                ('type', 'in', ('bank', 'cash')),
-                ('company_id', '=', order.company_id.id),
-            ], limit=1).id
+            values['journal_id'] = self.env['account.journal'].search(
+                self._eligible_journal_domain(order.company_id), limit=1).id
         return values
 
     def action_register(self):
