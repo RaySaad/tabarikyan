@@ -426,3 +426,107 @@ class TestBookingPayments(AccountTestInvoicingCommon):
         order = self._order()
         with self.assertRaises(UserError):
             self._pay(order, 0.0, '2026-09-12')
+
+@tagged('post_install', '-at_install')
+class TestRentalContract(AccountTestInvoicingCommon):
+    """عقد الإيجار: يُطبع ويُرسل بعد تأكيد الحجز وقبض العربون."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env.user.group_ids |= cls.env.ref('sales_team.group_sale_salesman')
+        cls.cash = cls.env.ref('rental_booking.partner_rental_cash')
+        cls.env.company.rental_cash_partner_id = cls.cash.id
+        cls.env.company.rental_contract_terms = (
+            '<p>التأمين 300 ريال يُسترجع عند المغادرة.</p>')
+        cls.product = cls.env['product.product'].create({
+            'name': 'القسم رقم 3', 'type': 'service', 'list_price': 1000.0,
+            'invoice_policy': 'order',
+            'property_account_income_id': cls.company_data['default_account_revenue'].id,
+        })
+        cls.journal = cls.company_data['default_journal_cash']
+        outstanding = cls.env['account.account'].create({
+            'name': 'مقبوضات معلّقة عقد', 'code': 'TOUTC1',
+            'account_type': 'asset_current', 'reconcile': True,
+            'company_ids': [(6, 0, cls.env.company.ids)]})
+        cls.journal.inbound_payment_method_line_ids[:1].payment_account_id = outstanding.id
+
+    def _booking(self, confirm=True, **vals):
+        order = self.env['sale.order'].create(dict({
+            'partner_id': self.cash.id,
+            'booking_source': 'direct',
+            'booking_collected_by': 'cash',
+            'guest_name': 'خلود علي الخليفي',
+            'guest_id_number': '1032509497',
+            'guest_mobile': '0500192440',
+            'guest_email': 'guest@example.com',
+            'order_line': [(0, 0, {'product_id': self.product.id, 'product_uom_qty': 1})],
+        }, **vals))
+        if confirm:
+            order.action_confirm()
+        return order
+
+    def _pay(self, order, amount):
+        self.env['rental.booking.payment.register'].create({
+            'order_id': order.id, 'amount': amount,
+            'payment_date': fields.Date.context_today(order),
+            'journal_id': self.journal.id,
+        }).action_register()
+
+    def _render_contract(self, order):
+        return self.env['ir.actions.report']._render_qweb_html(
+            'rental_booking.report_rental_contract', order.ids)[0].decode()
+
+    # ---- شروط الإرسال ----
+    def test_contract_blocked_before_confirmation(self):
+        order = self._booking(confirm=False)
+        with self.assertRaises(UserError):
+            order.action_send_rental_contract()
+
+    def test_contract_blocked_before_any_payment(self):
+        """عقد بلا عربون مقبوض = التزام بلا مقابل."""
+        order = self._booking()
+        self.assertEqual(order.booking_amount_paid, 0.0)
+        with self.assertRaises(UserError):
+            order.action_send_rental_contract()
+
+    def test_contract_blocked_without_guest_email(self):
+        order = self._booking(guest_email=False)
+        self._pay(order, 500.0)
+        with self.assertRaises(UserError):
+            order.action_send_rental_contract()
+
+    # ---- الإرسال ----
+    def test_contract_is_sent_to_the_guest_not_the_cash_partner(self):
+        """البريد من حقل المستأجر: العميل المحاسبي مشترك، وإرساله إليه
+        يعني إرسال عقود كل النزلاء لعنوان واحد."""
+        order = self._booking()
+        self._pay(order, 500.0)
+
+        order.action_send_rental_contract()
+
+        mail = self.env['mail.mail'].search(
+            [('model', '=', 'sale.order'), ('res_id', '=', order.id)], limit=1)
+        self.assertTrue(mail, 'لم تُنشأ رسالة العقد')
+        self.assertIn('guest@example.com', mail.email_to or '')
+        self.assertTrue(mail.attachment_ids, 'العقد لم يُرفق بالرسالة')
+        self.assertTrue(order.contract_sent_date)
+
+    # ---- محتوى العقد ----
+    def test_contract_shows_parties_amounts_and_terms(self):
+        order = self._booking()
+        self._pay(order, 500.0)
+        html = self._render_contract(order)
+
+        self.assertIn('عقد إيجار', html)
+        self.assertIn('خلود علي الخليفي', html)
+        self.assertIn('1032509497', html)
+        self.assertIn('القسم رقم 3', html)
+        self.assertIn('التأمين 300 ريال', html, 'بنود العقد لا تظهر')
+
+    def test_printing_follows_the_same_conditions(self):
+        order = self._booking()
+        with self.assertRaises(UserError):
+            order.action_print_rental_contract()
+        self._pay(order, 500.0)
+        self.assertTrue(order.action_print_rental_contract())

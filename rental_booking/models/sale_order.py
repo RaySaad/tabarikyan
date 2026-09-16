@@ -33,6 +33,13 @@ class SaleOrder(models.Model):
         help='يُطبع على الفاتورة الضريبية المبسطة مع الاسم والجوال.',
     )
     guest_mobile = fields.Char(string='جوال المستأجر', copy=False)
+    guest_email = fields.Char(
+        string='بريد المستأجر', copy=False,
+        help='يُرسَل إليه عقد الإيجار - العميل المحاسبي "عميل نقدي" '
+             'وبريده ليس بريد النزيل.',
+    )
+    contract_sent_date = fields.Datetime(
+        string='تاريخ إرسال العقد', readonly=True, copy=False)
 
     # الحقول تُعرض على شاشة التأجير وحدها: أمر البيع العادي له عملاؤه
     # الحقيقيون. تُقرأ is_rental_order بأمان - يضيفها تطبيق التأجير
@@ -193,6 +200,53 @@ class SaleOrder(models.Model):
             'view_mode': 'list,form',
             'domain': [('booking_order_id', '=', self.id)],
         }
+
+    # -- عقد الإيجار -----------------------------------------------------
+    def _check_contract_ready(self):
+        """العقد يُرسَل بعد تأكيد الحجز وقبض العربون - لا قبلهما.
+
+        إرساله قبل التأكيد يعني عقداً على حجز قد لا يتم، وقبل العربون
+        يعني التزاماً بلا مقابل مقبوض."""
+        self.ensure_one()
+        if self.state not in ('sale', 'done'):
+            raise UserError('يُرسَل العقد بعد تأكيد الحجز فقط.')
+        if self.booking_amount_paid <= 0:
+            raise UserError(
+                'لم يُسجَّل أي مبلغ على هذا الحجز بعد. سجّل العربون أولاً '
+                'من زر "تسجيل دفعة".'
+            )
+
+    def action_print_rental_contract(self):
+        self.ensure_one()
+        self._check_contract_ready()
+        return self.env.ref('rental_booking.action_report_rental_contract').report_action(self)
+
+    def action_send_rental_contract(self):
+        """يرسل العقد لبريد المستأجر مع نسخة PDF مرفقة.
+
+        البريد من حقل المستأجر لا من العميل: العميل المحاسبي مشترك
+        ("عميل نقدي") فبريده - إن وُجد - ليس بريد النزيل، وإرساله إليه
+        يعني إرسال عقود كل النزلاء لعنوان واحد."""
+        self.ensure_one()
+        self._check_contract_ready()
+        if not self.guest_email:
+            raise UserError(
+                'لا يوجد بريد للمستأجر. أدخله في حقل "بريد المستأجر" على '
+                'الحجز - أو اطبع العقد وسلّمه بطريقتكم المعتادة.'
+            )
+        template = self.env.ref(
+            'rental_booking.mail_template_rental_contract', raise_if_not_found=False)
+        if not template:
+            raise UserError('قالب رسالة العقد غير موجود.')
+        template.send_mail(
+            self.id,
+            email_values={'email_to': self.guest_email},
+            force_send=True,
+        )
+        self.contract_sent_date = fields.Datetime.now()
+        self.message_post(body=(
+            'أُرسل عقد الإيجار إلى %s.' % self.guest_email))
+        return True
 
     def _reconcile_booking_payments(self, invoices=None):
         """يطابق دفعات الحجز غير المطابَقة مع فواتيره المرحَّلة.

@@ -27,6 +27,11 @@
                             </div>
                         </div>
                     </setting>
+                    <setting id="rental_contract_terms_setting" string="بنود عقد الإيجار"
+                             help="النص الذي يُطبع في العقد ويُرسل للمستأجر">
+                        <field name="rental_contract_terms"
+                               placeholder="اكتب بنود العقد هنا (مدة الإيجار، التأمين، الإلغاء، أوقات الدخول والخروج ...)"/>
+                    </setting>
                     </block>
                 </xpath>
             </field>
