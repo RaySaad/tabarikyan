@@ -92,6 +92,18 @@ class TestRentalBooking(TransactionCase):
         self._order(booking_source='direct', booking_collected_by='cash')
         self._order(booking_source='direct', booking_collected_by='cash')
 
+    # ---- الشاشة ----
+    def test_guest_fields_have_a_place_on_the_booking_screen(self):
+        """كل بيان يُطبع على الفاتورة المبسطة يلزمه حقل يُكتب فيه.
+
+        رقم هوية المستأجر كان معرَّفاً في النموذج ويُطبع على الفاتورة
+        والعقد، بلا حقل في شاشة الحجز - فلا سبيل لإدخاله."""
+        arch = self.env['sale.order'].get_view(
+            self.env.ref('sale.view_order_form').id, 'form')['arch']
+        for field in ('guest_name', 'guest_id_number', 'guest_mobile'):
+            self.assertIn('name="%s"' % field, arch,
+                          'الحقل %s لا يظهر في شاشة الحجز' % field)
+
     # ---- الفحص عند التأكيد ----
     def test_platform_booking_requires_a_reference_to_confirm(self):
         order = self._order(booking_source='platform', booking_collected_by='platform')
