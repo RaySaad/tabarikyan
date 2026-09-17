@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="res_config_settings_view_form_booking" model="ir.ui.view">
+            <field name="name">res.config.settings.form.booking</field>
+            <field name="model">res.config.settings</field>
+            <field name="inherit_id" ref="sale.res_config_settings_view_form"/>
+            <field name="arch" type="xml">
+                <!-- كتلة خاصة: كتل مبيعات القياسية في أودو 19 هي
+                     "التسعير" و"الموصّلات" فقط، ولا واحدة منهما موضع
+                     مناسب لعملاء الحجوزات. -->
+                <xpath expr="//app[@name='sale_management']" position="inside">
+                    <block title="حجوزات التأجير" id="rental_booking_setting_container">
+                    <setting id="rental_booking_partners" string="عملاء حجوزات التأجير"
+                             help="جهتا الاتصال اللتان تُضبطان تلقائياً حسب جهة تحصيل الحجز">
+                        <div class="content-group">
+                            <div class="mt16">
+                                <label for="rental_cash_partner_id" class="o_light_label"/>
+                                <field name="rental_cash_partner_id" class="oe_inline"
+                                       options="{'no_create': True}"/>
+                            </div>
+                            <div class="mt8">
+                                <label for="rental_platform_partner_id" class="o_light_label"/>
+                                <field name="rental_platform_partner_id" class="oe_inline"
+                                       options="{'no_create': True}"/>
+                            </div>
+                        </div>
+                    </setting>
+                    <setting id="rental_contract_terms_setting" string="بنود عقد الإيجار"
+                             help="النص الذي يُطبع في العقد ويُرسل للمستأجر">
+                        <field name="rental_contract_terms"
+                               placeholder="اكتب بنود العقد هنا (مدة الإيجار، التأمين، الإلغاء، أوقات الدخول والخروج ...)"/>
+                    </setting>
+                    </block>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

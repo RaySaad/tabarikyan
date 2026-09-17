@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============================================================
+             الفاتورة الضريبية المبسطة باسم المستأجر.
+
+             العميل المحاسبي يبقى "عميل نقدي" (جهات الاتصال نظيفة
+             والمستحقات مرتبة)، بينما تُطبع الفاتورة باسم المستأجر
+             وهويته وجواله. نظامياً سليم: الفاتورة المبسطة (بيع لفرد) لا
+             تشترط بيانات المشتري، ورمز QR المطلوب يحمل بيانات البائع
+             وحدها - اسم المنشأة ورقمها الضريبي والتاريخ والإجمالي وقيمة
+             الضريبة.
+
+             يسري فقط متى وُجد اسم مستأجر: الفاتورة الضريبية الكاملة
+             (شركة برقم ضريبي) تبقى بعنوان جهة اتصالها كما هي تماماً.
+
+             أودو تعرض كتلة العنوان في موضعين حسب تطابق عنوان الشحن مع
+             عنوان الفوترة - فيُعالَج الموضعان معاً.
+             ============================================================ -->
+        <template id="report_invoice_document_booking"
+                  inherit_id="account.report_invoice_document">
+
+            <xpath expr="//div[@name='address_not_same_as_shipping']//address"
+                   position="attributes">
+                <attribute name="t-if">not o.guest_name</attribute>
+            </xpath>
+            <xpath expr="//div[@name='address_not_same_as_shipping']//address"
+                   position="after">
+                <t t-call="rental_booking.report_invoice_guest_block"/>
+            </xpath>
+
+            <xpath expr="//div[@name='address_same_as_shipping']//address"
+                   position="attributes">
+                <attribute name="t-if">not o.guest_name</attribute>
+            </xpath>
+            <xpath expr="//div[@name='address_same_as_shipping']//address"
+                   position="after">
+                <t t-call="rental_booking.report_invoice_guest_block"/>
+            </xpath>
+
+        </template>
+
+        <template id="report_invoice_guest_block">
+            <div t-if="o.guest_name" class="mb-0" name="booking_guest_block">
+                <address class="mb-0">
+                    <span t-field="o.guest_name"/>
+                </address>
+                <div t-if="o.guest_id_number">
+                    رقم الهوية: <span t-field="o.guest_id_number"/>
+                </div>
+                <div t-if="o.guest_mobile">
+                    رقم الجوال: <span t-field="o.guest_mobile"/>
+                </div>
+                <div t-if="o.booking_reference">
+                    رقم الحجز: <span t-field="o.booking_reference"/>
+                </div>
+            </div>
+        </template>
+
+    </data>
+</odoo>
