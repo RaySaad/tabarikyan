@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="partner_attachment_zip_view_form" model="ir.ui.view">
+            <field name="name">partner.attachment.zip.form</field>
+            <field name="model">partner.attachment.zip</field>
+            <field name="arch" type="xml">
+                <form string="تنزيل المرفقات">
+                    <div class="alert alert-info" role="alert">
+                        الملف جاهز - اضغط عليه لتنزيله. بداخله مجلد لكل جهة اتصال باسمها.
+                    </div>
+                    <group>
+                        <field name="attachment_count"/>
+                        <field name="total_size"/>
+                        <field name="file_name" invisible="1"/>
+                        <field name="file_data" filename="file_name"/>
+                    </group>
+                    <footer>
+                        <button string="إغلاق" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- إجراء مربوط بجهات الاتصال: يظهر في قائمة "الإجراءات" (⚙) من
+             القائمة بعد تحديد عدة جهات، ومن داخل جهة واحدة. مربوط بالربط
+             لا بوراثة الشاشات - فلا يترك أثراً في شاشات أودو عند إلغاء
+             تثبيت الموديول. -->
+        <record id="action_partner_attachment_zip" model="ir.actions.act_window">
+            <field name="name">تنزيل المرفقات</field>
+            <field name="res_model">partner.attachment.zip</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="base.model_res_partner"/>
+            <field name="binding_view_types">list,form</field>
+        </record>
+
+    </data>
+</odoo>
