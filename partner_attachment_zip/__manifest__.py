@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'تنزيل مرفقات جهات الاتصال - Contact Attachments Zip',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'category': 'Productivity',
     'summary': 'تنزيل مرفقات جهة اتصال أو عدة جهات في ملف مضغوط واحد',
     'description': """

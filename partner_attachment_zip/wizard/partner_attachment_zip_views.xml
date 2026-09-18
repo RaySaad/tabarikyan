@@ -8,7 +8,7 @@
             <field name="arch" type="xml">
                 <form string="تنزيل المرفقات">
                     <div class="alert alert-info" role="alert">
-                        الملف جاهز - اضغط عليه لتنزيله. بداخله مجلد لكل جهة اتصال باسمها.
+                        الملف جاهز - اضغط "تنزيل الملف". بداخله مجلد لكل جهة اتصال باسمها.
                     </div>
                     <group>
                         <field name="attachment_count"/>
@@ -17,6 +17,8 @@
                         <field name="file_data" filename="file_name"/>
                     </group>
                     <footer>
+                        <button name="action_download" type="object"
+                                string="تنزيل الملف" class="btn-primary"/>
                         <button string="إغلاق" class="btn-secondary" special="cancel"/>
                     </footer>
                 </form>
@@ -27,13 +29,16 @@
              القائمة بعد تحديد عدة جهات، ومن داخل جهة واحدة. مربوط بالربط
              لا بوراثة الشاشات - فلا يترك أثراً في شاشات أودو عند إلغاء
              تثبيت الموديول. -->
-        <record id="action_partner_attachment_zip" model="ir.actions.act_window">
+        <!-- معرّف جديد لا تبديل نوع المعرّف القديم (act_window): أودو
+             ترفض تغيير نموذج سجل تحت معرّف قائم، وتحذف القديم وحدها عند
+             الترقية لأنه لم يعد في ملفات الموديول. -->
+        <record id="action_partner_attachment_zip_server" model="ir.actions.server">
             <field name="name">تنزيل المرفقات</field>
-            <field name="res_model">partner.attachment.zip</field>
-            <field name="view_mode">form</field>
-            <field name="target">new</field>
+            <field name="model_id" ref="base.model_res_partner"/>
             <field name="binding_model_id" ref="base.model_res_partner"/>
             <field name="binding_view_types">list,form</field>
+            <field name="state">code</field>
+            <field name="code">action = env['partner.attachment.zip'].action_prepare()</field>
         </record>
 
     </data>

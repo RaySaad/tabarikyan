@@ -118,3 +118,76 @@ class TestPartnerAttachmentZip(TransactionCase):
         wizard, _archive = self._zip(self.company_partner)
         self.assertTrue(wizard.file_name.startswith('شركة اليمنترا_'))
         self.assertTrue(wizard.file_name.endswith('.zip'))
+
+    # ---- فتح النافذة ----
+    def test_action_opens_a_saved_record(self):
+        """السجل غير المحفوظ لا يعطي حقل الملف رابط تنزيل - فلا بد أن
+        ينشئه الإجراء أولاً ويفتح النافذة عليه."""
+        self._attach(self.company_partner, 'ملف.pdf')
+
+        action = self.env['partner.attachment.zip'].with_context(
+            active_model='res.partner', active_ids=self.company_partner.ids,
+        ).action_prepare()
+
+        self.assertEqual(action['res_model'], 'partner.attachment.zip')
+        self.assertTrue(action.get('res_id'), 'النافذة تُفتح بلا سجل محفوظ')
+        wizard = self.env['partner.attachment.zip'].browse(action['res_id'])
+        self.assertTrue(wizard.exists())
+        self.assertTrue(wizard.file_data)
+
+    def test_download_button_points_at_the_saved_file(self):
+        self._attach(self.company_partner, 'ملف.pdf')
+        wizard = self.env['partner.attachment.zip'].with_context(
+            active_model='res.partner', active_ids=self.company_partner.ids,
+        ).create({})
+
+        action = wizard.action_download()
+
+        self.assertEqual(action['type'], 'ir.actions.act_url')
+        self.assertIn('/web/content/partner.attachment.zip/%s/file_data/' % wizard.id,
+                      action['url'])
+        self.assertIn('download=true', action['url'])
+
+
+@tagged('post_install', '-at_install')
+class TestPartnerAttachmentZipStream(TransactionCase):
+    """مسار التنزيل نفسه الذي يسلكه /web/content: إيجاد السجل، فحص
+    الصلاحية، ثم تحويل الحقل إلى ملف باسمه.
+
+    (بقية المسار - بناء الاستجابة - يتطلب طلب HTTP حقيقياً، فلا يُختبر
+    هنا؛ جُرّب الرابط على خادم حي فأعاد 200 و application/zip.)"""
+
+    def test_the_download_url_resolves_to_the_zip(self):
+        partner = self.env['res.partner'].create({'name': 'شركة التنزيل'})
+        self.env['ir.attachment'].create({
+            'name': 'شهادة.pdf', 'raw': b'PDF-DATA',
+            'res_model': 'res.partner', 'res_id': partner.id})
+        wizard = self.env['partner.attachment.zip'].with_context(
+            active_model='res.partner', active_ids=partner.ids).create({})
+
+        # ما يفعله /web/content أولاً: يجد السجل ويفحص صلاحية القراءة.
+        record = self.env['ir.binary']._find_record(
+            res_model='partner.attachment.zip', res_id=wizard.id, field='file_data')
+
+        self.assertEqual(record, wizard)
+        archive = zipfile.ZipFile(io.BytesIO(base64.b64decode(record.file_data)))
+        self.assertEqual(archive.namelist(), ['شركة التنزيل/شهادة.pdf'])
+        self.assertEqual(archive.read('شركة التنزيل/شهادة.pdf'), b'PDF-DATA')
+
+
+@tagged('post_install', '-at_install')
+class TestPartnerAttachmentZipBinding(TransactionCase):
+    """الربط بشاشة جهات الاتصال - وإلا لا يظهر الإجراء أصلاً."""
+
+    def test_action_is_bound_to_contacts(self):
+        action = self.env.ref(
+            'partner_attachment_zip.action_partner_attachment_zip_server')
+        self.assertEqual(action.binding_model_id.model, 'res.partner')
+        self.assertEqual(action.binding_view_types, 'list,form')
+
+    def test_the_old_act_window_id_is_gone(self):
+        """المعرّف القديم استُبدل بإجراء خادم تحت معرّف آخر؛ بقاؤه يعني
+        ظهور إجراءين في القائمة أحدهما معطوب."""
+        self.assertFalse(self.env.ref(
+            'partner_attachment_zip.action_partner_attachment_zip',
+            raise_if_not_found=False))

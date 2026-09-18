@@ -3,6 +3,7 @@ import base64
 import io
 import re
 import zipfile
+from urllib.parse import quote
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
@@ -56,6 +57,35 @@ class PartnerAttachmentZip(models.TransientModel):
             'file_name': self._zip_name(partners),
         })
         return res
+
+    # ------------------------------------------------------------------
+    @api.model
+    def action_prepare(self):
+        """ينشئ السجل ثم يفتحه.
+
+        فتح النافذة على سجل غير محفوظ (قيم default_get وحدها) لا يعطي
+        حقل الملف رابطاً للتنزيل: الرابط يحتاج رقم سجل في قاعدة
+        البيانات. فنحفظه أولاً ثم نفتحه عليه."""
+        wizard = self.create({})
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'تنزيل المرفقات',
+            'res_model': self._name,
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
+
+    def action_download(self):
+        self.ensure_one()
+        if not self.file_data:
+            raise UserError('لم يُبنَ الملف المضغوط.')
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/web/content/%s/%s/file_data/%s?download=true' % (
+                self._name, self.id, quote(self.file_name or 'attachments.zip')),
+            'target': 'self',
+        }
 
     # ------------------------------------------------------------------
     @api.model
