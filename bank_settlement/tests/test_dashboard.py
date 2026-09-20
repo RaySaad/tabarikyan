@@ -58,3 +58,11 @@ class TestBankSettlementDashboard(TransactionCase):
         res = self.Dashboard.action_post_all_due_prepaid()
         self.assertIn(res.get('type'), ['ir.actions.client'])
 
+    def test_filter_by_project_id(self):
+        """التحقق من تصفية لوحة المؤشرات حسب منصة/مشروع محدد دون أخطاء."""
+        project = self.env['project.project'].search([], limit=1)
+        if project:
+            data = self.Dashboard.get_dashboard_data('all', project_id=project.id)
+            self.assertIn('kpis', data)
+            self.assertIn('total_settled_amount', data['kpis'])
+

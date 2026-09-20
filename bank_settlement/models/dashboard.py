@@ -186,7 +186,7 @@ class BankSettlementDashboard(models.AbstractModel):
             ('period_end_date', '<=', today),
         ]
         if proj_id:
-            prepaid_domain.append(('project_id', '=', proj_id))
+            prepaid_domain.append(('employee_id.project_id', '=', proj_id))
         due_prepaid_recs = self.env['bank.settlement.prepaid.line'].sudo().search(prepaid_domain)
         due_prepaid_count = len(due_prepaid_recs)
         due_prepaid_amt = sum(due_prepaid_recs.mapped('amount'))
@@ -204,6 +204,8 @@ class BankSettlementDashboard(models.AbstractModel):
         ]
         for m_name, d_state, a_field in models_config:
             d = [('company_id', 'in', company_ids), ('state', '=', d_state)]
+            if proj_id:
+                d.append(('project_id', '=', proj_id))
             if current_start and current_end:
                 d.extend([('create_date', '>=', f'{current_start} 00:00:00'), ('create_date', '<=', f'{current_end} 23:59:59')])
             grouped = self.env[m_name].sudo()._read_group(d, groupby=['project_id'], aggregates=[f'{a_field}:sum'])
