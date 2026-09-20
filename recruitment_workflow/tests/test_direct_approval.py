@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
+from odoo.addons.recruitment_workflow.models.internal_context import INTERNAL
 
 
 @tagged('post_install', '-at_install')
@@ -41,7 +42,7 @@ class TestRecruitmentDirectApproval(TransactionCase):
             'email': 'flying_%s@example.com' % identification_id,
             'project_id': self.project.id,
         })
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_project_review.id,
         })
         self.assertEqual(request.project_manager_id, self.assigned_pm)
@@ -109,7 +110,7 @@ class TestRecruitmentDirectApproval(TransactionCase):
 
     def test_not_available_past_the_approval_stages(self):
         request = self._request_at_project_review('1234567807')
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_paid.id,
         })
         with self.assertRaises(UserError):

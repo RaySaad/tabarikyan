@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
+from .internal_context import INTERNAL, is_internal
 
 
 class HrEmployeeExitRequest(models.Model):
@@ -191,7 +192,7 @@ class HrEmployeeExitRequest(models.Model):
                         'لا يمكن تعديل بيانات الطلب الأساسية (الموظف/نوع '
                         'الخروج/آخر يوم عمل) بعد إرساله للمراجعة.'
                     ))
-        if 'state' in vals and not self.env.context.get('exit_request_skip_state_guard'):
+        if 'state' in vals and not is_internal(self.env, 'exit_request_skip_state_guard'):
             new_state = vals['state']
             for rec in self:
                 if new_state in (rec.state, 'cancel', 'draft'):
@@ -301,7 +302,7 @@ class HrEmployeeExitRequest(models.Model):
             if rec.state == 'done':
                 raise UserError(_('لا يمكن إعادة طلب نُفِّذ بالفعل لمسودة.'))
             rec._check_group('recruitment_workflow.group_recruitment_workflow_operations')
-        self.with_context(exit_request_skip_state_guard=True).write({'state': 'draft'})
+        self.with_context(exit_request_skip_state_guard=INTERNAL).write({'state': 'draft'})
 
     # -- التنفيذ ------------------------------------------------------------
     def _execute_exit(self):

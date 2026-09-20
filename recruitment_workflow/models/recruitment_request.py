@@ -3,6 +3,7 @@ import re
 
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError, UserError
+from .internal_context import INTERNAL, is_internal
 
 from .saudi_iban import normalize_iban, saudi_iban_error
 
@@ -828,7 +829,7 @@ class RecruitmentRequest(models.Model):
         # المستخدم كل الصلاحيات - لضمان مرور كل موافقة كحدث منفصل موثّق.
         # أما الإرجاع لمرحلة سابقة فممنوع بالكامل عبر هذا المسار: يجب أن يمر
         # حصراً عبر معالج "إرجاع للتصحيح" (action_return_to_stage).
-        if 'stage_id' in vals and not self.env.context.get('skip_stage_validation'):
+        if 'stage_id' in vals and not is_internal(self.env, 'skip_stage_validation'):
             new_stage = self.env['recruitment.stage'].browse(vals['stage_id'])
             for rec in self:
                 if not rec.stage_id or new_stage == rec.stage_id:
@@ -1071,7 +1072,7 @@ class RecruitmentRequest(models.Model):
         التجاوز يعتمد عبر الأزرار العادية كأي مستخدم، ولا يتخطى القيود إلا
         حين يطلب ذلك صراحةً بسبب مسجَّل."""
         return bool(
-            self.env.context.get('recruitment_direct_approval')
+            is_internal(self.env, 'recruitment_direct_approval')
             and self.env.user.has_group(self._APPROVAL_OVERRIDE_GROUP)
         )
 
@@ -1114,7 +1115,7 @@ class RecruitmentRequest(models.Model):
             rec._check_can_direct_approve()
             start_stage = rec.stage_id
             passed = []
-            approver = rec.with_context(recruitment_direct_approval=True)
+            approver = rec.with_context(recruitment_direct_approval=INTERNAL)
             # سقف أمان: عدد مراحل الاعتماد + هامش - يمنع حلقة لا نهائية لو
             # أُعيد ترتيب المراحل بشكل غير متوقع من الإعدادات.
             for _step in range(len(self._DIRECT_APPROVAL_STAGE_CODES) + 2):
@@ -1153,7 +1154,7 @@ class RecruitmentRequest(models.Model):
             # في الاعتماد المباشر تُرسَل رسالة واحدة في نهايته لا رسالة لكل
             # مرحلة متخطّاة - وإلا وصلت المرشّح ٣-٤ رسائل "تمت الموافقة"
             # متتالية في نفس الثانية.
-            if not rec.env.context.get('recruitment_direct_approval'):
+            if not is_internal(self.env, 'recruitment_direct_approval'):
                 rec._send_stage_mail('recruitment_workflow.mail_template_request_approved')
         return True
 
@@ -1210,7 +1211,7 @@ class RecruitmentRequest(models.Model):
         # حتى يُوقَف الإرجاع بالكامل إن رُفض).
         self._unlock_gov_fee_for_correction()
         # السماح بالكتابة رغم أن الوجهة مرحلة سابقة (نتجاوز فحص الانتقال للأمام)
-        self.with_context(skip_stage_validation=True).write({
+        self.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': target_stage.id,
         })
         # إعادة الحالة لقيد التنفيذ إن كانت مرفوضة
@@ -1281,7 +1282,7 @@ class RecruitmentRequest(models.Model):
     def action_reset_to_draft(self):
         for rec in self:
             rec._check_group('recruitment_workflow.group_recruitment_workflow_operations')
-            rec.with_context(skip_stage_validation=True).write({
+            rec.with_context(skip_stage_validation=INTERNAL).write({
                 'state': 'in_progress',
                 'rejection_reason': False,
                 'stage_id': rec._default_stage_id().id,

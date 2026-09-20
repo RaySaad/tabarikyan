@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import _, fields, models
 from odoo.exceptions import UserError
+from odoo.addons.recruitment_workflow.models.internal_context import INTERNAL, is_internal
 
 
 class AccountMove(models.Model):
@@ -69,4 +70,4 @@ class AccountMove(models.Model):
         """يُفتح الحارسان أعلاه لعملية نظامية واحدة فقط: مسار "إلغاء
         التنفيذ وتصحيح" في bank.settlement.mixin، وهو المسار الوحيد الذي
         يُلغي/يعكس قيد سداد بطريقة متّسقة مع حالة سجله."""
-        return self.env.context.get('bank_settlement_internal_move_write')
+        return is_internal(self.env, 'bank_settlement_internal_move_write')

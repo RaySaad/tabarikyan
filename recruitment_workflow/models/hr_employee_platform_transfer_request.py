@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
+from .internal_context import INTERNAL, is_internal
 
 
 class HrEmployeePlatformTransferRequest(models.Model):
@@ -111,9 +112,7 @@ class HrEmployeePlatformTransferRequest(models.Model):
                         'الجديدة/التاريخ) بعد "إرسال للمراجعة" - أعد الطلب '
                         'لمسودة أولاً (زر "إعادة لمسودة") إن احتجت تصحيحها.'
                     ))
-        if 'state' in vals and not self.env.context.get(
-            'platform_transfer_skip_state_guard'
-        ):
+        if 'state' in vals and not is_internal(self.env, 'platform_transfer_skip_state_guard'):
             new_state = vals['state']
             for rec in self:
                 if new_state == rec.state or new_state == 'cancel':
@@ -304,7 +303,7 @@ class HrEmployeePlatformTransferRequest(models.Model):
             rec.message_post(body=_(
                 'تمت إعادة طلب النقل لمسودة للتصحيح.<br/>السبب: %s'
             ) % reason)
-        self.with_context(platform_transfer_skip_state_guard=True).write({'state': 'draft'})
+        self.with_context(platform_transfer_skip_state_guard=INTERNAL).write({'state': 'draft'})
 
     def action_cancel(self):
         for rec in self:

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
+from odoo.addons.recruitment_workflow.models.internal_context import INTERNAL
 
 
 @tagged('post_install', '-at_install')
@@ -166,7 +167,7 @@ class TestBankSettlementMixin(TransactionCase):
         gov_fee = self._create_gov_fee()
         self._complete_to_confirmed(gov_fee)
 
-        gov_fee.with_context(bank_settlement_skip_approval_lock=True).write({
+        gov_fee.with_context(bank_settlement_skip_approval_lock=INTERNAL).write({
             'employee_id': other_employee.id,
         })
         self.assertEqual(gov_fee.employee_id, other_employee)

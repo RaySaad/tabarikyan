@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
+from odoo.addons.recruitment_workflow.models.internal_context import INTERNAL
 
 
 @tagged('post_install', '-at_install')
@@ -112,7 +113,7 @@ class TestRecruitmentRequestIntegration(TransactionCase):
         الحكومية فعلياً."""
         request = self._create_request(identification_id='1234567835', email='bs5@example.com')
         request.action_register_gov_fee()
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_paid.id,
         })
 
@@ -150,7 +151,7 @@ class TestRecruitmentRequestIntegration(TransactionCase):
         السجل القديم تلقائياً ويفتح مبلغ الرسوم على طلب التوظيف للتعديل
         مجدداً - بدل بقائه مقفولاً للأبد رغم الرجوع لمرحلة سابقة."""
         request = self._create_request(identification_id='1234567840', email='bs9@example.com')
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_sponsorship_transfer.id,
         })
         request.action_register_gov_fee()
@@ -175,7 +176,7 @@ class TestRecruitmentRequestIntegration(TransactionCase):
         "مسودة" دائماً. يجب أن يبقى الحذف النظامي يعمل رغم قفل الحذف
         العام (عبر bank_settlement_skip_approval_lock)."""
         request = self._create_request(identification_id='1234567842', email='bs11@example.com')
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_sponsorship_transfer.id,
         })
         request.action_register_gov_fee()
@@ -213,7 +214,7 @@ class TestRecruitmentRequestIntegration(TransactionCase):
         السداد البنكي بحالة "منفّذة" - قيد محاسبي حقيقي موجود). التصحيح
         في هذه الحالة يجب أن يمر من السداد البنكي نفسه، وليس من هنا."""
         request = self._create_request(identification_id='1234567841', email='bs10@example.com')
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_sponsorship_transfer.id,
         })
         request.action_register_gov_fee()
@@ -246,7 +247,7 @@ class TestRecruitmentRequestIntegration(TransactionCase):
             identification_id='1234567836', email='bs6@example.com',
             gov_fee_amount=0.0,
         )
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_paid.id,
         })
 

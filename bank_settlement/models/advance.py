@@ -2,6 +2,7 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
+from odoo.addons.recruitment_workflow.models.internal_context import INTERNAL, is_internal
 from odoo.addons.recruitment_workflow.models.saudi_iban import (
     normalize_iban, saudi_iban_error,
 )
@@ -214,7 +215,7 @@ class BankSettlementAdvance(models.Model):
                 raise UserError('يمكن إرسال السلف في حالة "مسودة" فقط للمراجعة.')
         self._check_amount_positive_before_submit()
         self._check_payment_details()
-        self.write({'state': 'waiting_approval'})
+        self._write_state({'state': 'waiting_approval'})
 
     def _save_iban_to_employee(self):
         """يحفظ آيبان السلفة في ملف الموظف إن لم يكن له حساب بنكي.
@@ -276,7 +277,7 @@ class BankSettlementAdvance(models.Model):
         # إعادة موافقة مسؤول المشروع فعلياً (بعد إرجاع محتمل من "تمت
         # الموافقة") تُغلق نافذة التصحيح المؤقتة - انظر returned_for_
         # correction في bank_settlement_mixin.py.
-        self.write({'state': 'pm_approved', 'returned_for_correction': False})
+        self._write_state({'state': 'pm_approved', 'returned_for_correction': False})
 
     def action_confirm(self):
         """الموافقة على السلفة (اعتماد المدير العام) - تأتي بعد موافقة
@@ -285,7 +286,7 @@ class BankSettlementAdvance(models.Model):
             if rec.state != 'pm_approved':
                 raise UserError('يمكن اعتماد المدير العام بعد موافقة مسؤول المشروع فقط.')
             rec._check_group('bank_settlement.group_bank_settlement_manager')
-        self.write({'state': 'approved', 'returned_for_correction': False})
+        self._write_state({'state': 'approved', 'returned_for_correction': False})
 
     def action_done(self):
         for rec in self:
@@ -296,7 +297,7 @@ class BankSettlementAdvance(models.Model):
                 'bank_settlement.group_bank_settlement_manager',
             )
             rec._ensure_settlement_move_posted()
-        self.write({'state': 'paid'})
+        self._write_state({'state': 'paid'})
         for rec in self:
             rec._save_iban_to_employee()
 
@@ -319,7 +320,7 @@ class BankSettlementAdvance(models.Model):
             )
         for rec in self:
             rec.message_post(body='تم رفض السلفة.<br/>السبب: %s' % reason)
-        self.write({'state': 'rejected', 'rejection_reason': reason, 'active': False})
+        self._write_state({'state': 'rejected', 'rejection_reason': reason, 'active': False})
 
     _ADVANCE_REASON_MIGRATION_MAP = {
         'salary_advance': 'bank_settlement.advance_reason_salary_advance',
@@ -349,5 +350,5 @@ class BankSettlementAdvance(models.Model):
                 # بيانات قديمة موجودة أصلاً (قد تخص سلفاً مُعتمَدة/مصروفة
                 # فعلاً)، وليست تعديلاً حقيقياً لقيمة مختلفة.
                 self.browse(rec_id).with_context(
-                    bank_settlement_skip_approval_lock=True,
+                    bank_settlement_skip_approval_lock=INTERNAL,
                 ).advance_reason_id = new_record.id

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from . import internal_context
 from . import recruitment_analytic_mixin
 from . import recruitment_stage
 from . import recruitment_attachment_type

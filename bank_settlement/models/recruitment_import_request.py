@@ -3,6 +3,7 @@ import re
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+from odoo.addons.recruitment_workflow.models.internal_context import INTERNAL, is_internal
 
 
 class RecruitmentImportRequest(models.Model):
@@ -349,7 +350,7 @@ class RecruitmentImportRequest(models.Model):
 
         if self.bank_settlement_gov_fee_id and not self.bank_settlement_gov_fee_id.employee_id:
             self.bank_settlement_gov_fee_id.with_context(
-                bank_settlement_skip_approval_lock=True,
+                bank_settlement_skip_approval_lock=INTERNAL,
             ).write({
                 'employee_id': employee.id,
                 'partner_id': employee._get_personal_partner().id,

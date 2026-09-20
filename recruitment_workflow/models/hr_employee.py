@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
+from .internal_context import INTERNAL, is_internal
 
 
 class HrEmployee(models.Model):
@@ -109,7 +110,7 @@ class HrEmployee(models.Model):
         if open_lines:
             open_lines.write({'date_end': date_end})
         if employee.project_id:
-            employee.with_context(platform_history_internal_write=True).project_id = False
+            employee.with_context(platform_history_internal_write=INTERNAL).project_id = False
         return True
 
     def action_view_warnings(self):
@@ -256,9 +257,7 @@ class HrEmployee(models.Model):
         # تغيّر تاريخ انتهاء الإقامة (تجديد جديد) يُعيد فتح باب التنبيه.
         if 'iqama_expiry_date' in vals:
             vals.setdefault('iqama_expiry_activity_done', False)
-        if 'project_id' in vals and not self.env.context.get(
-            'platform_history_internal_write'
-        ):
+        if 'project_id' in vals and not is_internal(self.env, 'platform_history_internal_write'):
             raise UserError(_(
                 'لا يمكن تعديل "المنصة الحالية" مباشرة.\n'
                 'استخدم زر "طلب نقل لمنصة أخرى" في سجل الموظف - يمر بخط '
@@ -338,7 +337,7 @@ class HrEmployee(models.Model):
             'date_start': date_start,
             'note': note or False,
         })
-        employee.with_context(platform_history_internal_write=True).project_id = project.id
+        employee.with_context(platform_history_internal_write=INTERNAL).project_id = project.id
         employee._sync_contract_project()
         employee._sync_partner_analytic_distribution(project)
         employee.message_post(body=_(

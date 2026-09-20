@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
+from odoo.addons.recruitment_workflow.models.internal_context import INTERNAL, is_internal
 
 
 class BankSettlementMixin(models.AbstractModel):
@@ -342,10 +343,19 @@ class BankSettlementMixin(models.AbstractModel):
 
     @api.model_create_multi
     def create(self, vals_list):
+        internal = is_internal(self.env, self._STATE_WRITE_KEY)
         for vals in vals_list:
             if vals.get('name', 'New') == 'New':
                 vals['name'] = self._get_sequence_code_for_create(vals)
             self._fill_employee_derived_vals(vals)
+            # الإنشاء في حالة متقدّمة مباشرةً يتخطّى سلسلة الاعتماد كما
+            # يتخطّاها تغيير الحالة بـwrite - السجل الجديد يبدأ مسودة
+            # دائماً، ويتقدّم بأزرار الاعتماد وحدها.
+            if not internal and vals.get('state') not in (None, False, 'draft'):
+                raise UserError(
+                    'لا يمكن إنشاء سجل سداد في حالة متقدّمة مباشرةً - '
+                    'يبدأ السجل مسودة ويتقدّم بأزرار الاعتماد.'
+                )
         return super().create(vals_list)
 
     def _get_locked_fields_after_approval(self):
@@ -411,7 +421,7 @@ class BankSettlementMixin(models.AbstractModel):
         self.ensure_one()
         if not self.prepaid_start_date:
             self.with_context(
-                bank_settlement_skip_approval_lock=True,
+                bank_settlement_skip_approval_lock=INTERNAL,
             ).prepaid_start_date = self._get_prepaid_coverage_start()
         return self.prepaid_start_date
 
@@ -477,8 +487,25 @@ class BankSettlementMixin(models.AbstractModel):
         'approved' بدل 'confirmed') تُجاوز هذه الدالة."""
         return 'confirmed'
 
+    _STATE_WRITE_KEY = 'bank_settlement_state_write'
+
+    def _write_state(self, vals):
+        """المعبر الوحيد لتغيير حالة سجل السداد.
+
+        الحارس في write() يرفض أي تغيير حالة لا يمر من هنا، فلا يستطيع
+        مستخدم يملك صلاحية الكتابة أن يقفز بالسجل إلى "تم الصرف"
+        بـwrite مباشر عبر RPC متجاوزاً موافقة مسؤول المشروع واعتماد
+        المدير العام (ثغرة مُثبتة بفحص مباشر)."""
+        return self.with_context(**{self._STATE_WRITE_KEY: INTERNAL}).write(vals)
+
     def write(self, vals):
-        skip_lock = self.env.context.get('bank_settlement_skip_approval_lock')
+        if 'state' in vals and not is_internal(self.env, self._STATE_WRITE_KEY):
+            raise UserError(
+                'لا يمكن تغيير حالة سجل السداد بالكتابة المباشرة - '
+                'استخدم أزرار الإرسال/الموافقة/الاعتماد، فكل انتقال '
+                'يمر بفحص صلاحيته ويُسجَّل في سجل التتبع.'
+            )
+        skip_lock = is_internal(self.env, 'bank_settlement_skip_approval_lock')
         locked = self._get_locked_fields_after_approval()
         # يُتجاوز القفل عمداً لعملية نظامية واحدة: إكمال حقل الموظف
         # تلقائياً بمجرد إنشاء سجله الرسمي (hr.employee) في recruitment_
@@ -580,7 +607,7 @@ class BankSettlementMixin(models.AbstractModel):
         # المسدَّد بعد عند "إرجاع للتصحيح" من recruitment_workflow (انظر
         # bank_settlement/models/recruitment_request.py:
         # _unlock_gov_fee_for_correction).
-        if not self.env.context.get('bank_settlement_skip_approval_lock'):
+        if not is_internal(self.env, 'bank_settlement_skip_approval_lock'):
             for rec in self:
                 if rec.state != 'draft':
                     raise UserError(
@@ -634,7 +661,7 @@ class BankSettlementMixin(models.AbstractModel):
         وحده يمكن تمريره من أي عميل RPC فلا يمنح شيئاً دون المجموعة، والمجموعة
         وحدها لا تتخطى القيود في الأزرار العادية."""
         return bool(
-            self.env.context.get('bank_settlement_direct_approval')
+            is_internal(self.env, 'bank_settlement_direct_approval')
             and self.env.user.has_group(self._APPROVAL_OVERRIDE_GROUP)
         )
 
@@ -685,14 +712,14 @@ class BankSettlementMixin(models.AbstractModel):
             selection = dict(rec._fields['state'].selection)
             start = selection.get(rec.state, rec.state)
             passed = []
-            approver = rec.with_context(bank_settlement_direct_approval=True)
+            approver = rec.with_context(bank_settlement_direct_approval=INTERNAL)
             for _step in range(6):  # سقف أمان
                 step = approver._get_direct_approval_step()
                 if not step:
                     break
                 passed.append(selection.get(approver.state, approver.state))
                 step()
-            rec.with_context(bank_settlement_skip_approval_lock=True).write({
+            rec.with_context(bank_settlement_skip_approval_lock=INTERNAL).write({
                 'direct_approval_user_id': self.env.user.id,
                 'direct_approval_date': fields.Datetime.now(),
                 'direct_approval_reason': reason,
@@ -715,7 +742,7 @@ class BankSettlementMixin(models.AbstractModel):
             if rec.state != 'draft':
                 raise UserError('يمكن إرسال السجلات في حالة "مسودة" فقط للمراجعة.')
         self._check_amount_positive_before_submit()
-        self.write({'state': 'under_review'})
+        self._write_state({'state': 'under_review'})
 
     def action_confirm(self):
         """التأكيد (تحت المراجعة -> مؤكدة) - يقتصر على المدير العام، حسب
@@ -726,7 +753,7 @@ class BankSettlementMixin(models.AbstractModel):
             rec._check_group('bank_settlement.group_bank_settlement_manager')
         # إعادة الاعتماد فعلياً تُغلق نافذة التصحيح المؤقتة (returned_for_
         # correction) - انظر شرحها عند تعريف الحقل أعلاه.
-        self.write({'state': 'confirmed', 'returned_for_correction': False})
+        self._write_state({'state': 'confirmed', 'returned_for_correction': False})
         # تعبئة "الحساب المرتبط" من حساب النوع الافتراضي في هذه اللحظة
         # تحديداً لا قبلها: حقول السداد مقفولة حتى "مؤكدة"
         # (_get_bank_fields_editable_state)، فهذه أول لحظة يُسمح فيها
@@ -754,7 +781,7 @@ class BankSettlementMixin(models.AbstractModel):
                 rec._ensure_prepaid_schedule_posted()
             else:
                 rec._ensure_settlement_move_posted()
-        self.write({'state': 'done'})
+        self._write_state({'state': 'done'})
 
     def _compute_prepaid_schedule_lines(self, start_date, end_date, total_amount):
         """يبني جدول استهلاك دقيق بالأيام (وليس بتقريب شهري) - لكل شهر
@@ -995,7 +1022,7 @@ class BankSettlementMixin(models.AbstractModel):
             # مرحَّلاً بقيم قديمة بينما السجل عاد للمراجعة.
             if rec.state == rec._get_done_state():
                 rec._unpost_settlement_move()
-            rec.write({'state': chosen, 'returned_for_correction': True})
+            rec._write_state({'state': chosen, 'returned_for_correction': True})
 
     def action_open_reject_wizard(self):
         """يفتح معالج "رفض" (يفرض تسجيل السبب) - الزر في الواجهة يستدعي
@@ -1037,7 +1064,7 @@ class BankSettlementMixin(models.AbstractModel):
             )
         for rec in self:
             rec.message_post(body='تم رفض السجل.<br/>السبب: %s' % reason)
-        self.write({'state': 'rejected', 'rejection_reason': reason, 'active': False})
+        self._write_state({'state': 'rejected', 'rejection_reason': reason, 'active': False})
 
     def _unpost_settlement_move(self):
         """يعيد قيد السداد المرحَّل إلى مسودة ليقبل التصحيح.
@@ -1080,7 +1107,7 @@ class BankSettlementMixin(models.AbstractModel):
         move = self.move_id.sudo()
         if not move or move.state != 'posted':
             return
-        move.with_context(bank_settlement_internal_move_write=True).button_draft()
+        move.with_context(bank_settlement_internal_move_write=INTERNAL).button_draft()
 
     def _refresh_and_post_settlement_move(self, vals=None):
         """يحدّث قيد السداد المسودة بالقيم الحالية للسجل ثم يرحّله -
@@ -1225,7 +1252,7 @@ class BankSettlementMixin(models.AbstractModel):
         if move.state == 'draft':
             # قيد قديم لم يُرحَّل بعد (سجلات ما قبل الترحيل الفوري) - لا
             # شيء يُعكَس محاسبياً؛ يُلغى ويبقى للتدقيق.
-            move.with_context(bank_settlement_internal_move_write=True).button_cancel()
+            move.with_context(bank_settlement_internal_move_write=INTERNAL).button_cancel()
             return self.env['account.move']
         if move.state == 'cancel':
             return self.env['account.move']
@@ -1284,7 +1311,10 @@ class BankSettlementMixin(models.AbstractModel):
             # فصل القيد الأصلي: الإتمام التالي ينشئ قيداً صحيحاً جديداً
             # (action_done تتخطى الإنشاء إن كان move_id موجوداً). الأصل
             # والعكسي يبقيان في الدفاتر ومسجَّلين في المحادثة أعلاه.
-            rec.with_context(bank_settlement_skip_approval_lock=True).write({
+            rec.with_context(
+                bank_settlement_skip_approval_lock=INTERNAL,
+                **{rec._STATE_WRITE_KEY: INTERNAL}
+            ).write({
                 'move_id': False,
                 'state': 'confirmed',
                 'returned_for_correction': True,

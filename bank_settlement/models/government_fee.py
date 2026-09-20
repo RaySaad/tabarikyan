@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
+from odoo.addons.recruitment_workflow.models.internal_context import INTERNAL, is_internal
 
 
 class BankSettlementGovernmentFee(models.Model):
@@ -176,7 +177,7 @@ class BankSettlementGovernmentFee(models.Model):
         return tuple(f for f in super()._get_locked_bank_fields() if f != 'bank_reference')
 
     def write(self, vals):
-        if 'bank_reference' in vals and not self.env.context.get('bank_settlement_skip_approval_lock'):
+        if 'bank_reference' in vals and not is_internal(self.env, 'bank_settlement_skip_approval_lock'):
             for rec in self:
                 if rec.state in ('done', 'rejected', 'cancel'):
                     raise UserError(
@@ -185,7 +186,7 @@ class BankSettlementGovernmentFee(models.Model):
                     )
         # المورد يبقى مفتوحاً حتى اكتمال السجل (بنفس قاعدة التأمين
         # الطبي) - فهو وجهة الفاتورة الفعلية وقد تتأخر معرفته.
-        if 'vendor_id' in vals and not self.env.context.get('bank_settlement_skip_approval_lock'):
+        if 'vendor_id' in vals and not is_internal(self.env, 'bank_settlement_skip_approval_lock'):
             for rec in self:
                 if rec.state in ('done', 'rejected', 'cancel'):
                     raise UserError(
@@ -252,7 +253,7 @@ class BankSettlementGovernmentFee(models.Model):
                     # بيانات قديمة (قد تخص سجلاً مُعتمَداً/منفَّذاً فعلاً)،
                     # وليست تعديلاً حقيقياً لقيمة مختلفة.
                     self.browse(rec_id).with_context(
-                        bank_settlement_skip_approval_lock=True,
+                        bank_settlement_skip_approval_lock=INTERNAL,
                     ).government_entity_id = new_record.id
 
         if 'fee_type' in existing_columns:
@@ -265,5 +266,5 @@ class BankSettlementGovernmentFee(models.Model):
                 new_record = self.env.ref(xmlid, raise_if_not_found=False) if xmlid else False
                 if new_record:
                     self.browse(rec_id).with_context(
-                        bank_settlement_skip_approval_lock=True,
+                        bank_settlement_skip_approval_lock=INTERNAL,
                     ).fee_type_id = new_record.id

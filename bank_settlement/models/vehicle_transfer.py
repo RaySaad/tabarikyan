@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
+from odoo.addons.recruitment_workflow.models.internal_context import INTERNAL, is_internal
 
 
 class BankSettlementVehicleTransfer(models.Model):
@@ -125,5 +126,5 @@ class BankSettlementVehicleTransfer(models.Model):
                 # يتجاوز قفل "لا تعديل بعد الاعتماد" عمداً - هجرة بيانات
                 # قديمة، وليست تعديلاً حقيقياً لقيمة مختلفة.
                 self.browse(rec_id).with_context(
-                    bank_settlement_skip_approval_lock=True,
+                    bank_settlement_skip_approval_lock=INTERNAL,
                 ).transfer_type_id = new_record.id

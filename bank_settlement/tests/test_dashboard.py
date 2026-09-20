@@ -85,24 +85,21 @@ class TestBankSettlementDashboard(TransactionCase):
             'project_id': p1_jahez.id,
             'advance_reason_id': reason.id,
             'amount': 1500.0,
-            'state': 'paid',
-        })
+        })._write_state({'state': 'paid'})
         self.Advance.create({
             'name': 'سلفة هنقرستيشن شركة 1',
             'company_id': comp1.id,
             'project_id': p1_hunger.id,
             'advance_reason_id': reason.id,
             'amount': 500.0,
-            'state': 'paid',
-        })
+        })._write_state({'state': 'paid'})
         self.Advance.create({
             'name': 'سلفة جاهز شركة 2',
             'company_id': comp2.id,
             'project_id': p2_jahez.id,
             'advance_reason_id': reason.id,
             'amount': 2500.0,
-            'state': 'paid',
-        })
+        })._write_state({'state': 'paid'})
 
         admin = self.env.ref('base.user_admin')
         admin.write({'company_ids': [(4, comp2.id)]})

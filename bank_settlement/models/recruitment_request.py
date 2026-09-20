@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import fields, models, _
 from odoo.exceptions import UserError
+from odoo.addons.recruitment_workflow.models.internal_context import INTERNAL, is_internal
 
 
 class RecruitmentRequest(models.Model):
@@ -70,7 +71,7 @@ class RecruitmentRequest(models.Model):
             # يدوياً حقيقياً من مستخدم يتجاوز سجل التدقيق (انظر bank_
             # settlement_mixin.unlink()).
             gov_fee.sudo().with_context(
-                bank_settlement_skip_approval_lock=True,
+                bank_settlement_skip_approval_lock=INTERNAL,
             ).unlink()
         return super()._unlock_gov_fee_for_correction()
 
@@ -205,7 +206,7 @@ class RecruitmentRequest(models.Model):
         gov_fee = self.bank_settlement_gov_fee_id
         if not (gov_fee and self.project_id):
             return
-        gov_fee.with_context(bank_settlement_skip_approval_lock=True).write({
+        gov_fee.with_context(bank_settlement_skip_approval_lock=INTERNAL).write({
             'project_id': self.project_id.id,
             'company_id': self.company_id.id,
         })
@@ -226,7 +227,7 @@ class RecruitmentRequest(models.Model):
             # لنفس المرشّح المعتمَد أصلاً، وليس تغييراً فعلياً لهوية من
             # يخصّه السداد (انظر bank_settlement_mixin.write()).
             self.bank_settlement_gov_fee_id.with_context(
-                bank_settlement_skip_approval_lock=True,
+                bank_settlement_skip_approval_lock=INTERNAL,
             ).write({
                 'employee_id': employee.id,
                 'partner_id': employee._get_personal_partner().id,

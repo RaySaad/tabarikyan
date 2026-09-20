@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
+from .internal_context import INTERNAL, is_internal
 
 from .fleet_vehicle_change_config import VEHICLE_CHANGE_TYPES
 
@@ -392,9 +393,7 @@ class FleetVehicleChangeRequest(models.Model):
         # برسالة "لا يمكن تعديل بيانات الطلب الأساسية" - ثغرة حقيقية
         # اكتشفها الاختبار الآلي قبل الوصول للمستخدم. نفس مبدأ
         # bank_settlement_skip_approval_lock في السداد البنكي.
-        if any(f in vals for f in locked) and not self.env.context.get(
-            'vehicle_change_internal_write'
-        ):
+        if any(f in vals for f in locked) and not is_internal(self.env, 'vehicle_change_internal_write'):
             for rec in self:
                 if rec.state != 'draft':
                     raise UserError(_(
@@ -402,9 +401,7 @@ class FleetVehicleChangeRequest(models.Model):
                         'المركبات/نوع الطلب) بعد إرساله للمراجعة - استخدم '
                         '"إعادة لمسودة" لتصحيحها.'
                     ))
-        if 'state' in vals and not self.env.context.get(
-            'vehicle_change_skip_state_guard'
-        ):
+        if 'state' in vals and not is_internal(self.env, 'vehicle_change_skip_state_guard'):
             new_state = vals['state']
             for rec in self:
                 if new_state in (rec.state, 'cancel'):
@@ -634,7 +631,7 @@ class FleetVehicleChangeRequest(models.Model):
             rec.message_post(body=_(
                 'تمت إعادة الطلب لمسودة للتصحيح.<br/>السبب: %s'
             ) % reason)
-        self.with_context(vehicle_change_skip_state_guard=True).write({
+        self.with_context(vehicle_change_skip_state_guard=INTERNAL).write({
             'state': 'draft', 'rejection_reason': reason,
         })
 
@@ -701,7 +698,7 @@ class FleetVehicleChangeRequest(models.Model):
             'description': self.note or '',
             'company_id': self.company_id.id,
         })
-        self.with_context(vehicle_change_internal_write=True).accident_report_id = report.id
+        self.with_context(vehicle_change_internal_write=INTERNAL).accident_report_id = report.id
         self.message_post(body=_(
             'أُنشئ بلاغ حادث تلقائياً: %s - يُرجى استكمال بياناته '
             '(رقم الحادث الرسمي وتحديد المسؤولية).'

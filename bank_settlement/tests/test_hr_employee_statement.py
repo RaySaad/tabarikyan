@@ -30,6 +30,13 @@ class TestHrEmployeeStatement(TransactionCase):
         cls.journal = cls.env['account.journal'].search(
             [('type', '=', 'general'), ('company_id', '=', cls.env.company.id)], limit=1,
         )
+        # قاعدة بلا دفتر عام (بيئة تطوير أو شركة جديدة) كانت تُسقط كل
+        # اختبارات الكشف بخطأ قاعدة بيانات خام - ننشئ دفتراً خاصاً بها.
+        if not cls.journal:
+            cls.journal = cls.env['account.journal'].create({
+                'name': 'دفتر اختبار كشف الحساب', 'code': 'TSTMT',
+                'type': 'general', 'company_id': cls.env.company.id,
+            })
 
     def _create_dues_move(self, state, debit=0.0, credit=100.0, move_date=False):
         move = self.env['account.move'].create({

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
 from odoo.exceptions import UserError
+from odoo.addons.recruitment_workflow.models.internal_context import INTERNAL, is_internal
 
 
 class BankSettlementMedicalInsurance(models.Model):
@@ -46,7 +47,7 @@ class BankSettlementMedicalInsurance(models.Model):
         ]
 
     def write(self, vals):
-        if 'vendor_id' in vals and not self.env.context.get('bank_settlement_skip_approval_lock'):
+        if 'vendor_id' in vals and not is_internal(self.env, 'bank_settlement_skip_approval_lock'):
             for rec in self:
                 if rec.state in ('done', 'rejected', 'cancel'):
                     raise UserError(
@@ -82,7 +83,7 @@ class BankSettlementMedicalInsurance(models.Model):
                 # يتجاوز قفل "لا تعديل بعد الاعتماد" عمداً - هجرة بيانات
                 # قديمة، وليست تعديلاً حقيقياً لقيمة مختلفة.
                 self.browse(rec_id).with_context(
-                    bank_settlement_skip_approval_lock=True,
+                    bank_settlement_skip_approval_lock=INTERNAL,
                 ).fee_type_id = new_record.id
 
     def _get_type_default_account(self):

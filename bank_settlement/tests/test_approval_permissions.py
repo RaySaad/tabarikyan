@@ -71,7 +71,13 @@ class TestApprovalPermissions(TransactionCase):
         السداد البنكي نفسه (is_bank_settlement_move) - أي قيد محاسبي آخر
         في الشركة (فاتورة عميل عادية مثلاً) يجب أن يبقى مخفياً عنه تماماً
         رغم صلاحية القراءة الممنوحة له على نموذج account.move نفسه."""
-        unrelated_move = self.env['account.move'].create({'ref': 'قيد غير مرتبط بالسداد البنكي'})
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1,
+        ) or self.env['account.journal'].create({
+            'name': 'دفتر اختبار الصلاحيات', 'code': 'TPERM', 'type': 'general',
+        })
+        unrelated_move = self.env['account.move'].create({
+            'ref': 'قيد غير مرتبط بالسداد البنكي', 'journal_id': journal.id})
         self.assertFalse(unrelated_move.is_bank_settlement_move)
 
         found = self.env['account.move'].with_user(self.plain_user).search(

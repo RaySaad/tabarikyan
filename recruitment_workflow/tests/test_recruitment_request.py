@@ -8,6 +8,7 @@ from psycopg2 import IntegrityError
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import Form, TransactionCase, tagged
 from odoo.tools import mute_logger
+from odoo.addons.recruitment_workflow.models.internal_context import INTERNAL
 
 
 @tagged('post_install', '-at_install')
@@ -49,7 +50,9 @@ class TestRecruitmentRequest(TransactionCase):
             return  # bank_settlement غير مثبَّت في هذا السياق
         if not request.bank_settlement_gov_fee_id:
             request.action_register_gov_fee()
-        request.bank_settlement_gov_fee_id.sudo().write({'state': 'done'})
+        # الحالة تُكتَب عبر المعبر الداخلي - الكتابة المباشرة
+        # ممنوعة الآن حتى بـsudo (حماية من تجاوز سلسلة الاعتماد).
+        request.bank_settlement_gov_fee_id.sudo()._write_state({'state': 'done'})
 
     # ------------------------------------------------------------------
     # التحقق من صحة البيانات (identification_id / mobile)
@@ -105,7 +108,7 @@ class TestRecruitmentRequest(TransactionCase):
             'name': 'مرحلة تجريبية للحذف', 'code': 'test_delete_stage',
         })
         request = self._create_request(identification_id='1123456784', email='x@example.com')
-        request.with_context(skip_stage_validation=True).write({'stage_id': stage.id})
+        request.with_context(skip_stage_validation=INTERNAL).write({'stage_id': stage.id})
 
         with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError):
             stage.unlink()
@@ -315,7 +318,7 @@ class TestRecruitmentRequest(TransactionCase):
         request = self._create_request(
             identification_id='1234567891', email='c@example.com', project_id=project.id,
         )
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_project_review.id,
         })
         next_stage = request._next_stage()
@@ -338,7 +341,7 @@ class TestRecruitmentRequest(TransactionCase):
             identification_id='1234567895', email='g@example.com', project_id=project.id,
             fee_amount=500.0, gov_fee_amount=1000.0,
         )
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
         })
         self._complete_gov_fee_for_request(request)
@@ -358,7 +361,7 @@ class TestRecruitmentRequest(TransactionCase):
         request = self._create_request(
             identification_id='1234567893', email='e@example.com', project_id=project.id,
         )
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_operations_review.id,
         })
 
@@ -372,7 +375,7 @@ class TestRecruitmentRequest(TransactionCase):
         request = self._create_request(
             identification_id='1234567894', email='f@example.com', project_id=project.id,
         )
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_operations_review.id,
         })
 
@@ -398,7 +401,7 @@ class TestRecruitmentRequest(TransactionCase):
         request = self._create_request(
             identification_id='1234567892', email='d@example.com', project_id=project.id,
         )
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_project_review.id,
         })
 
@@ -431,7 +434,7 @@ class TestRecruitmentRequest(TransactionCase):
             identification_id='1234567896', email='h@example.com',
             project_id=project.id, project_manager_id=assigned_pm.id,
         )
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_project_review.id,
         })
 
@@ -471,7 +474,7 @@ class TestRecruitmentRequest(TransactionCase):
             project_id=project.id, project_manager_id=assigned_pm.id,
         )
 
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_project_review.id,
         })
 
@@ -509,7 +512,7 @@ class TestRecruitmentRequest(TransactionCase):
             identification_id='1234567897', email='paidstage@example.com',
             gov_fee_amount=1000.0,
         )
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
         })
 
@@ -527,7 +530,7 @@ class TestRecruitmentRequest(TransactionCase):
         معنى له (كل طلب توظيف حقيقي يترتب عليه رسوم حكومية لنقل الكفالة)."""
         self.env.user.write({'group_ids': [(4, self.group_ops.id)]})
         request = self._create_request(identification_id='1234567844', email='an@example.com')
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_paid').id,
         })
 
@@ -546,7 +549,7 @@ class TestRecruitmentRequest(TransactionCase):
     def test_create_employee_now_creates_employee_past_sponsorship_done(self):
         self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(identification_id='1234567849', email='as@example.com')
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_car_request').id,
         })
         self.assertFalse(request.employee_id)
@@ -566,7 +569,7 @@ class TestRecruitmentRequest(TransactionCase):
     def test_create_employee_now_blocked_if_employee_already_exists(self):
         self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
         request = self._create_request(identification_id='1234567851', email='au@example.com')
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_sponsorship_done').id,
         })
         self.assertTrue(request.employee_id)
@@ -579,7 +582,7 @@ class TestRecruitmentRequest(TransactionCase):
         لا) - نتحقق منه هنا بمعزل عن حالة employee_id تحديداً."""
         plain_user = self._create_plain_user('create_employee_now_test_user')
         request = self._create_request(identification_id='1234567852', email='av@example.com')
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_sponsorship_done').id,
         })
 
@@ -631,7 +634,7 @@ class TestRecruitmentRequest(TransactionCase):
             identification_id='1234567809', email='t@example.com',
             project_id=project.id, project_manager_id=assigned_pm.id,
         )
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_project_review.id,
         })
 
@@ -646,7 +649,7 @@ class TestRecruitmentRequest(TransactionCase):
             'group_ids': [(4, self.env.ref('recruitment_workflow.group_recruitment_workflow_hr').id)],
         })
         request = self._create_request(identification_id='1234567810', email='u2@example.com')
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_sponsorship_transfer.id,
         })
 
@@ -662,7 +665,7 @@ class TestRecruitmentRequest(TransactionCase):
             'group_ids': [(4, self.env.ref('recruitment_workflow.group_recruitment_workflow_hr').id)],
         })
         request = self._create_request(identification_id='1234567811', email='u3@example.com')
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_project_review.id,
         })
 
@@ -679,7 +682,7 @@ class TestRecruitmentRequest(TransactionCase):
         request = self._create_request(
             identification_id='1234567806', email='q@example.com', project_id=project.id,
         )
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_operations_review.id,
         })
 
@@ -709,7 +712,7 @@ class TestRecruitmentRequest(TransactionCase):
             identification_id='1234567807', email='r@example.com',
             project_id=project.id, project_manager_id=assigned_pm.id,
         )
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_operations_review.id,
         })
 
@@ -756,7 +759,7 @@ class TestRecruitmentRequest(TransactionCase):
             identification_id='1234567899', email='k@example.com', project_id=project.id,
             vehicle_id=vehicle.id, car_request_state='authorized',
         )
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_car_request').id,
         })
 
@@ -808,7 +811,7 @@ class TestRecruitmentRequest(TransactionCase):
         request.write({'project_id': project_b.id})
         self.assertEqual(request.project_id, project_b)
 
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_project_review.id,
         })
         request.write({'project_id': project_a.id})
@@ -821,7 +824,7 @@ class TestRecruitmentRequest(TransactionCase):
             identification_id='1234567856', email='project_lock_2@example.com',
             project_id=project_a.id,
         )
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_operations_review.id,
         })
 
@@ -846,7 +849,7 @@ class TestRecruitmentRequest(TransactionCase):
         )
         original_company = request.company_id
         self.assertNotEqual(original_company, other_company)
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_operations_review.id,
         })
 
@@ -999,7 +1002,7 @@ class TestRecruitmentRequest(TransactionCase):
         request = self._received_car_request(
             '1234567832', 'own3@example.com', car_source='delegate')
         request.action_fleet_authorize()
-        request.with_context(skip_stage_validation=True).write({'stage_id': stage.id})
+        request.with_context(skip_stage_validation=INTERNAL).write({'stage_id': stage.id})
 
         request.action_next_stage()
 
@@ -1123,7 +1126,7 @@ class TestRecruitmentRequest(TransactionCase):
         request = self._create_request(identification_id='1234567841', email='ak@example.com')
         self.assertFalse(request.employee_id)
 
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_sponsorship_done').id,
         })
 
@@ -1155,7 +1158,7 @@ class TestRecruitmentRequest(TransactionCase):
         # (أُنشئت مبكراً عند تسجيل الرسوم الحكومية مثلاً) - فتُعاد استخدامها
         # كـwork_contact_id للموظف عند إنشائه، بدل شريك منفصل بلا صلة.
         candidate_partner = request._get_or_create_candidate_partner()
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_sponsorship_done').id,
         })
         self.assertTrue(request.employee_id)
@@ -1191,7 +1194,7 @@ class TestRecruitmentRequest(TransactionCase):
         )
         # لا استدعاء لـ_get_or_create_candidate_partner هنا إطلاقاً - يحاكي
         # عدم وجود أي رسوم حكومية سجّلت جهة اتصال المرشّح مبكراً.
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.env.ref('recruitment_workflow.stage_sponsorship_done').id,
         })
         self.assertTrue(request.employee_id)
@@ -1242,7 +1245,7 @@ class TestRecruitmentRequest(TransactionCase):
             identification_id='1234567819', email='ac@example.com',
             gov_fee_amount=1000.0,
         )
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_sponsorship_transfer.id,
         })
 
@@ -1257,7 +1260,7 @@ class TestRecruitmentRequest(TransactionCase):
         request = self._create_request(
             identification_id='1234567820', email='ad@example.com',
         )
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_sponsorship_transfer.id,
         })
 
@@ -1275,7 +1278,7 @@ class TestRecruitmentRequest(TransactionCase):
             identification_id='1234567824', email='ah@example.com',
             gov_fee_amount=1000.0,
         )
-        request.with_context(skip_stage_validation=True).write({
+        request.with_context(skip_stage_validation=INTERNAL).write({
             'stage_id': self.stage_sponsorship_transfer.id,
         })
         request.action_register_gov_fee()
