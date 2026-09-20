@@ -11,8 +11,9 @@
                       decoration-info="state == 'confirmed'"
                       decoration-muted="state == 'draft'">
                     <field name="name"/>
+                    <field name="report_type"/>
                     <field name="accident_date"/>
-                    <field name="accident_number"/>
+                    <field name="accident_number" optional="show"/>
                     <field name="vehicle_id"/>
                     <field name="employee_id"/>
                     <field name="responsibility"/>
@@ -35,6 +36,11 @@
                     <field name="accident_number"/>
                     <field name="vehicle_id"/>
                     <field name="employee_id"/>
+                    <filter name="official" string="حوادث رسمية"
+                            domain="[('report_type', '=', 'official')]"/>
+                    <filter name="minor" string="تلفيات بسيطة"
+                            domain="[('report_type', '=', 'minor')]"/>
+                    <separator/>
                     <filter name="undetermined" string="المسؤولية غير محددة"
                             domain="[('responsibility', '=', 'undetermined')]"/>
                     <filter name="employee_fault" string="بمسؤولية المندوب"
@@ -43,6 +49,7 @@
                     <filter name="open_reports" string="غير مغلقة"
                             domain="[('state', '!=', 'closed')]"/>
                     <group>
+                        <filter name="group_by_type" string="نوع البلاغ" context="{'group_by': 'report_type'}"/>
                         <filter name="group_by_state" string="الحالة" context="{'group_by': 'state'}"/>
                         <filter name="group_by_responsibility" string="المسؤولية" context="{'group_by': 'responsibility'}"/>
                         <filter name="group_by_vehicle" string="المركبة" context="{'group_by': 'vehicle_id'}"/>
@@ -86,8 +93,13 @@
                         </div>
                         <group>
                             <group string="بيانات الحادث">
+                                <field name="report_type" widget="radio"
+                                       readonly="state == 'closed'"/>
                                 <field name="accident_date" readonly="state == 'closed'"/>
-                                <field name="accident_number" readonly="state == 'closed'"/>
+                                <!-- لا رقم رسمي للتلف البسيط: إظهار الحقل
+                                     فارغاً يُوهم بأن البلاغ ناقص. -->
+                                <field name="accident_number" readonly="state == 'closed'"
+                                       invisible="report_type == 'minor'"/>
                                 <field name="vehicle_id" readonly="state != 'draft'"
                                        options="{'no_create': True}"/>
                                 <field name="employee_id" readonly="state != 'draft'"
@@ -101,13 +113,20 @@
                                 <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             </group>
                         </group>
-                        <group string="وصف الحادث">
+                        <group string="وصف الحادث / التلف">
                             <field name="description" nolabel="1" readonly="state == 'closed'"/>
                         </group>
-                        <div class="alert alert-info" role="alert">
+                        <div class="alert alert-info" role="alert"
+                             invisible="report_type == 'minor'">
                             أرفق تقرير تحديد المسؤولية والتقديرات وصور الحادث في الدردشة أدناه.
                             إن ترتّبت مطالبة مالية على المندوب، تُسجَّل كسجل "تحويل مركبة"
                             في السداد البنكي فتظهر في كشف حسابه.
+                        </div>
+                        <div class="alert alert-info" role="alert"
+                             invisible="report_type != 'minor'">
+                            تلف بسيط غير رسمي: أرفق الصور في الدردشة أدناه، وحدّد
+                            التقدير المبدئي. إن ترتّبت مطالبة على المندوب تُسجَّل
+                            كسجل "تحويل مركبة" في السداد البنكي فتظهر في كشف حسابه.
                         </div>
                     </sheet>
                     <chatter/>

@@ -182,7 +182,13 @@
                                  في recruitment_request.py للتحقق الملزم
                                  من جهة الخادم - هذا الـdomain مجرد تسهيل
                                  للواجهة، قابل للتجاوز عبر RPC مباشر). -->
+                            <!-- مصدر السيارة يحسمه قسم الأسطول عند
+                                 التفويض: مندوب على سيارته لا تُحجَز له
+                                 سيارة أسطول. -->
+                            <field name="car_source" widget="radio"
+                                   readonly="car_request_state == 'authorized'"/>
                             <field name="vehicle_id"
+                                   invisible="car_source == 'delegate'"
                                    domain="[('recruitment_state', '=', 'available'),
                                             '|', ('project_id', '=', project_id), ('project_id', '=', False),
                                             '|', ('company_id', '=', company_id), ('company_id', '=', False)]"

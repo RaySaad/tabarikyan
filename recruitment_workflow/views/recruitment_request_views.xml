@@ -301,6 +301,9 @@
                                            groups="recruitment_workflow.group_recruitment_workflow_fleet"/>
                                     <field name="car_requested"/>
                                     <field name="car_request_state"/>
+                                    <!-- يراه مسؤول المشروع للعلم: يفسّر
+                                         تفويض الطلب بلا سيارة مخصَّصة. -->
+                                    <field name="car_source" readonly="1"/>
                                 </group>
                             </group>
                         </page>

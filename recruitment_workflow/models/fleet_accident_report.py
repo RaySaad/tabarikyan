@@ -26,6 +26,17 @@ class FleetAccidentReport(models.Model):
         string='رقم البلاغ', required=True, copy=False, readonly=True,
         default=lambda self: _('جديد'),
     )
+    report_type = fields.Selection(
+        selection=[
+            ('official', 'حادث رسمي'),
+            ('minor', 'تلفيات بسيطة - غير رسمي'),
+        ],
+        string='نوع البلاغ', default='official', required=True, tracking=True,
+        help='"حادث رسمي": له رقم من نجم/المرور وتترتب عليه إجراءات خارجية. '
+             '"تلفيات بسيطة": اصطدام بجدار أو خدش أو ما شابه مما يقع من '
+             'المندوب ولا يُحرَّر فيه بلاغ رسمي - يُسجَّل ليبقى في تاريخ '
+             'المركبة والمندوب، وتُقدَّر قيمته، وتُطالَب به عند اللزوم.',
+    )
     accident_number = fields.Char(
         string='رقم الحادث الرسمي', tracking=True,
         help='رقم الحادث الصادر من نجم/المرور - يُستخدَم للمطابقة مع '
@@ -87,6 +98,11 @@ class FleetAccidentReport(models.Model):
         string='عدد الطلبات المرتبطة', compute='_compute_change_request_count',
     )
 
+    _SEQUENCE_BY_TYPE = {
+        'official': 'fleet.accident.report',
+        'minor': 'fleet.accident.report.minor',
+    }
+
     @api.depends('change_request_ids')
     def _compute_change_request_count(self):
         for rec in self:
@@ -101,12 +117,30 @@ class FleetAccidentReport(models.Model):
         if self.vehicle_id and not self.employee_id:
             self.employee_id = self.vehicle_id._get_current_driver_employee()
 
+    @api.onchange('report_type')
+    def _onchange_report_type(self):
+        """التلف البسيط لا رقم رسمي له - وتركه مكتوباً من اختيار سابق
+        يُوهم بوجود بلاغ لدى نجم. ومسؤوليته في العادة على المندوب نفسه
+        (اصطدام بجدار أو ما شابه) فتُقترح عليه ليُغلق البلاغ بخطوة
+        واحدة - وتبقى قابلة للتغيير بيد مشرف الحركة."""
+        if self.report_type == 'minor':
+            self.accident_number = False
+            if self.responsibility == 'undetermined':
+                self.responsibility = 'employee'
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             if not vals.get('name') or vals['name'] == _('جديد'):
+                # ترقيم مستقل لكل نوع (ACC مقابل DMG): التلفيات البسيطة
+                # أكثر عدداً بكثير، وخلطها في تسلسل واحد يُضيّع تسلسل
+                # الحوادث الرسمية التي تُطابَق مع التأمين والجهات.
+                code = self._SEQUENCE_BY_TYPE.get(
+                    vals.get('report_type') or 'official',
+                    'fleet.accident.report',
+                )
                 vals['name'] = self.env['ir.sequence'].next_by_code(
-                    'fleet.accident.report'
+                    code
                 ) or _('جديد')
         return super().create(vals_list)
 

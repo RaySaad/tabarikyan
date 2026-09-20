@@ -244,6 +244,17 @@ class RecruitmentRequest(models.Model):
         copy=False,
         domain="[('recruitment_state', '=', 'available')]",
     )
+    car_source = fields.Selection(
+        selection=[
+            ('company', 'سيارة من الشركة'),
+            ('delegate', 'سيارة المندوب الخاصة'),
+        ],
+        string='مصدر السيارة', default='company', required=True,
+        tracking=True, copy=False,
+        help='"سيارة المندوب الخاصة": المندوب يعمل على سيارته، فلا تُحجَز '
+             'له سيارة من الأسطول ولا تُطلب. يفوّض قسم الأسطول الطلب '
+             'بهذا الخيار فيمضي الطلب في مراحله.',
+    )
     car_requested = fields.Boolean(
         string='تم طلب سيارة',
         tracking=True,
@@ -722,7 +733,10 @@ class RecruitmentRequest(models.Model):
             ))
 
         if current_stage.require_car:
-            if not self.vehicle_id:
+            # سيارة المندوب الخاصة تفي بشرط المرحلة: لا سيارة أسطول
+            # تُخصَّص أصلاً، وبدون هذا الاستثناء يعلق الطلب هنا رغم
+            # اعتماد الأسطول له.
+            if not self.vehicle_id and self.car_source != 'delegate':
                 raise UserError(_(
                     'لا يمكن الانتقال للمرحلة التالية. يجب تخصيص سيارة متاحة من الأسطول.\n'
                     'في حال عدم توفر سيارة لا يمكن متابعة الطلب.'
@@ -1393,6 +1407,18 @@ class RecruitmentRequest(models.Model):
     # ------------------------------------------------------------------
     # منطق طلب السيارة (التكامل مع الأسطول)
     # ------------------------------------------------------------------
+    @api.constrains('car_source', 'vehicle_id')
+    def _check_car_source(self):
+        """سيارة مندوب خاصة وسيارة أسطول مخصَّصة في طلب واحد تناقض:
+        إحداهما محجوزة في الأسطول باسم مندوب لا يستعملها."""
+        for rec in self:
+            if rec.car_source == 'delegate' and rec.vehicle_id:
+                raise ValidationError(_(
+                    'لا يمكن الجمع بين "سيارة المندوب الخاصة" وسيارة مخصَّصة '
+                    'من الأسطول (%s). احذف السيارة المخصَّصة أو أعد المصدر '
+                    'إلى "سيارة من الشركة".'
+                ) % rec.vehicle_id.display_name)
+
     @api.constrains('vehicle_id', 'company_id')
     def _check_vehicle_company(self):
         """طلب صريح: لا يُسمح بربط طلب توظيف بسيارة تابعة لفرع آخر عن فرع
@@ -1435,7 +1461,10 @@ class RecruitmentRequest(models.Model):
         # لكن في فرع آخر فقط.
         if self.company_id:
             domain += ['|', ('company_id', '=', self.company_id.id), ('company_id', '=', False)]
-        no_vehicles_available = not self.env['fleet.vehicle'].search_count(domain)
+        no_vehicles_available = (
+            self.car_source != 'delegate'
+            and not self.env['fleet.vehicle'].search_count(domain)
+        )
 
         self.write({
             'car_requested': True,
@@ -1494,6 +1523,16 @@ class RecruitmentRequest(models.Model):
             rec._check_group('recruitment_workflow.group_recruitment_workflow_fleet')
             if rec.car_request_state != 'received':
                 raise UserError(_('يجب استلام الطلب أولاً قبل التفويض.'))
+            if rec.car_source == 'delegate':
+                # المندوب على سيارته: لا سيارة تُحجَز ولا حالة مركبة
+                # تتغيّر ولا سائق مستقبلي يُربط - يُسجَّل القرار فقط
+                # ليمضي الطلب في مراحله.
+                rec.car_request_state = 'authorized'
+                rec.message_post(body=_(
+                    'تم التفويض: المندوب يعمل على سيارته الخاصة - لم تُخصَّص '
+                    'سيارة من الأسطول.'
+                ))
+                continue
             if not rec.vehicle_id:
                 raise UserError(_('يجب اختيار سيارة متاحة قبل التفويض.'))
             rec.car_request_state = 'authorized'

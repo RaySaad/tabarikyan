@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from datetime import date
 
+from unittest.mock import patch
+
 from psycopg2 import IntegrityError
 
 from odoo.exceptions import UserError, ValidationError
@@ -916,7 +918,13 @@ class TestRecruitmentRequest(TransactionCase):
             identification_id='1234567812', email='v@example.com', project_id=project.id,
         )
 
-        result = request.action_send_car_request()
+        # "لا توجد سيارة متاحة" حالةٌ نفرضها صراحةً: الاعتماد على خلوّ
+        # الأسطول في قاعدة الاختبار يجعل النتيجة رهن بيانات القاعدة
+        # (نسخة عن قاعدة حقيقية فيها سيارات متاحة = فشل زائف).
+        with patch.object(
+            type(self.env['fleet.vehicle']), 'search_count', return_value=0
+        ):
+            result = request.action_send_car_request()
 
         self.assertTrue(request.car_requested)
         self.assertEqual(request.car_request_state, 'requested')
@@ -953,6 +961,61 @@ class TestRecruitmentRequest(TransactionCase):
         self.assertTrue(request.car_requested)
         self.assertEqual(request.car_request_state, 'requested')
         self.assertFalse(result)
+
+    # ------------------------------------------------------------------
+    # سيارة المندوب الخاصة: تفويض بلا حجز سيارة من الأسطول
+    # ------------------------------------------------------------------
+    def _received_car_request(self, identification_id, email, **kwargs):
+        self.env.user.write({'group_ids': [(4, self.group_manager.id)]})
+        project = self.env['project.project'].create(
+            {'name': 'منصة سيارة المندوب %s' % identification_id})
+        request = self._create_request(
+            identification_id=identification_id, email=email,
+            project_id=project.id, **kwargs)
+        request.action_send_car_request()
+        request.action_fleet_receive()
+        return request
+
+    def test_delegate_owned_car_is_authorized_without_a_fleet_vehicle(self):
+        """المندوب على سيارته: لا سيارة تُحجَز، والطلب يُفوَّض ويمضي."""
+        request = self._received_car_request(
+            '1234567830', 'own1@example.com', car_source='delegate')
+
+        request.action_fleet_authorize()
+
+        self.assertEqual(request.car_request_state, 'authorized')
+        self.assertFalse(request.vehicle_id, 'حُجزت سيارة أسطول بلا داعٍ')
+
+    def test_company_car_still_requires_choosing_a_vehicle(self):
+        request = self._received_car_request('1234567831', 'own2@example.com')
+        with self.assertRaises(UserError):
+            request.action_fleet_authorize()
+
+    def test_stage_requiring_a_car_accepts_the_delegate_own_car(self):
+        """بلا هذا الاستثناء يعلق الطلب عند المرحلة التي تشترط السيارة
+        رغم اعتماد الأسطول له."""
+        stage = self.env.ref('recruitment_workflow.stage_car_request')
+        self.assertTrue(stage.require_car, 'المرحلة لم تعد تشترط السيارة')
+        request = self._received_car_request(
+            '1234567832', 'own3@example.com', car_source='delegate')
+        request.action_fleet_authorize()
+        request.with_context(skip_stage_validation=True).write({'stage_id': stage.id})
+
+        request.action_next_stage()
+
+        self.assertNotEqual(request.stage_id, stage, 'الطلب علق عند مرحلة السيارة')
+
+    def test_delegate_car_cannot_hold_a_fleet_vehicle_too(self):
+        brand = self.env['fleet.vehicle.model.brand'].create({'name': 'ماركة سيارة المندوب'})
+        model = self.env['fleet.vehicle.model'].create({
+            'name': 'موديل سيارة المندوب', 'brand_id': brand.id})
+        vehicle = self.env['fleet.vehicle'].create({
+            'model_id': model.id, 'recruitment_state': 'available'})
+        request = self._create_request(
+            identification_id='1234567833', email='own4@example.com')
+
+        with self.assertRaises(ValidationError):
+            request.write({'car_source': 'delegate', 'vehicle_id': vehicle.id})
 
     # ------------------------------------------------------------------
     # ربط السيارة بفرع الطلب نفسه (بدل أي سيارة متاحة بغض النظر عن الفرع)

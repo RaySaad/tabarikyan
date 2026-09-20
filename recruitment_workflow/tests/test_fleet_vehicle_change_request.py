@@ -233,6 +233,51 @@ class TestFleetVehicleChangeRequest(TransactionCase):
         report.with_user(self.approver).action_close()
         self.assertEqual(report.state, 'closed')
 
+    # ---- التلفيات البسيطة ----
+    def test_minor_damage_gets_its_own_numbering(self):
+        """التلفيات أكثر عدداً من الحوادث الرسمية؛ خلطها في تسلسل واحد
+        يُضيّع تسلسل ما يُطابَق مع التأمين والجهات."""
+        official = self.env['fleet.accident.report'].create({
+            'vehicle_id': self.vehicle_old.id, 'employee_id': self.employee.id})
+        minor = self.env['fleet.accident.report'].create({
+            'report_type': 'minor',
+            'vehicle_id': self.vehicle_old.id, 'employee_id': self.employee.id})
+
+        self.assertEqual(official.report_type, 'official', 'الافتراضي ليس الرسمي')
+        self.assertTrue(official.name.startswith('ACC/'), official.name)
+        self.assertTrue(minor.name.startswith('DMG/'), minor.name)
+
+    def test_minor_damage_suggests_the_delegate_as_responsible(self):
+        """اصطدام بجدار مسؤوليته على المندوب عادةً - تُقترح ليُغلق البلاغ
+        بخطوة واحدة، وتبقى قابلة للتغيير."""
+        report = self.env['fleet.accident.report'].new({
+            'vehicle_id': self.vehicle_old.id, 'employee_id': self.employee.id,
+            'accident_number': '4400-رسمي'})
+        report.report_type = 'minor'
+        report._onchange_report_type()
+
+        self.assertEqual(report.responsibility, 'employee')
+        self.assertFalse(report.accident_number, 'رقم رسمي باقٍ على تلف غير رسمي')
+
+    def test_minor_damage_runs_the_same_short_flow(self):
+        report = self.env['fleet.accident.report'].create({
+            'report_type': 'minor', 'responsibility': 'employee',
+            'estimated_cost': 350.0,
+            'description': 'اصطدام بجدار في موقع العميل - خدش في الجهة اليمنى',
+            'vehicle_id': self.vehicle_old.id, 'employee_id': self.employee.id})
+
+        report.with_user(self.approver).action_confirm()
+        report.with_user(self.approver).action_close()
+
+        self.assertEqual(report.state, 'closed')
+        self.assertFalse(report.change_request_ids, 'تلف بسيط لا يستلزم طلب تغيير مركبة')
+
+    def test_automatic_report_from_an_accident_request_stays_official(self):
+        request = self._create_request(request_type='accident', new_vehicle_id=False)
+        self._upload_required_attachments(request)
+        self._approve_and_receive(request)
+        self.assertEqual(request.accident_report_id.report_type, 'official')
+
     def test_attachment_lines_follow_request_type(self):
         """تغيير نوع الطلب يعيد بناء المرفقات المطلوبة - مع الاحتفاظ بأي
         سطر رُفع فيه ملف فعلاً حتى لا يفقد المستخدم مستنداً رفعه."""
