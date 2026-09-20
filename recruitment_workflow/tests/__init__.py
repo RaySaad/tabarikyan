@@ -8,3 +8,4 @@ from . import test_fleet_vehicle_change_request
 from . import test_hr_employee_discipline
 from . import test_iqama_expiry_notice
 from . import test_direct_approval
+from . import test_dashboard

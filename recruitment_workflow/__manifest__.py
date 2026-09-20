@@ -84,6 +84,7 @@
         'views/fleet_accident_report_views.xml',
         'views/fleet_vehicle_change_request_views.xml',
         'views/hr_employee_discipline_views.xml',
+        'views/recruitment_workflow_dashboard_views.xml',
         'views/recruitment_workflow_menus.xml',
         'reports/recruitment_request_report.xml',
     ],
@@ -93,6 +94,9 @@
     'assets': {
         'web.assets_backend': [
             'recruitment_workflow/static/src/scss/recruitment_workflow.scss',
+            'recruitment_workflow/static/src/scss/recruitment_workflow_dashboard.scss',
+            'recruitment_workflow/static/src/js/recruitment_workflow_dashboard.js',
+            'recruitment_workflow/static/src/xml/recruitment_workflow_dashboard.xml',
         ],
     },
     'installable': True,

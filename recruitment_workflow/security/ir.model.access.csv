@@ -57,3 +57,4 @@ access_hr_employee_exit_request_pm,hr.employee.exit.request.pm,model_hr_employee
 access_hr_employee_exit_request_hr,hr.employee.exit.request.hr,model_hr_employee_exit_request,group_recruitment_workflow_hr,1,1,1,0
 access_hr_employee_exit_request_ops,hr.employee.exit.request.ops,model_hr_employee_exit_request,group_recruitment_workflow_operations,1,1,1,1
 access_recruitment_direct_approval_wizard,recruitment.direct.approval.wizard,model_recruitment_direct_approval_wizard,group_approval_override,1,1,1,1
+access_recruitment_workflow_dashboard,recruitment.workflow.dashboard,model_recruitment_workflow_dashboard,base.group_user,1,0,0,0

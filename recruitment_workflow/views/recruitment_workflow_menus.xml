@@ -6,6 +6,12 @@
               parent="hr_recruitment.menu_hr_recruitment_root"
               sequence="15"/>
 
+    <menuitem id="menu_recruitment_workflow_dashboard"
+              name="لوحة المؤشرات"
+              parent="menu_recruitment_workflow_root"
+              action="action_recruitment_workflow_dashboard"
+              sequence="1"/>
+
     <menuitem id="menu_recruitment_request"
               name="طلبات التوظيف"
               parent="menu_recruitment_workflow_root"

@@ -19,3 +19,4 @@ from . import hr_employee_warning
 from . import hr_employee_exit_request
 from . import res_company
 from . import res_config_settings
+from . import dashboard
