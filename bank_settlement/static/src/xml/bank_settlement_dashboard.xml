@@ -1,0 +1,487 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="bank_settlement.BankSettlementDashboard">
+        <div class="o_bank_settlement_dashboard o_action position-relative h-100 overflow-auto" dir="rtl">
+
+            <!-- مؤشر التحميل (Loading Spinner) -->
+            <div t-if="state.isLoading" class="o_bs_loading_overlay d-flex flex-column justify-content-center align-items-center">
+                <div class="spinner-border text-primary mb-3" style="width: 3.5rem; height: 3.5rem;" role="status"/>
+                <h5 class="text-muted fw-bold">جاري تحميل بيانات لوحة المؤشرات...</h5>
+            </div>
+
+            <div class="container-fluid p-4" t-if="!state.isLoading">
+
+                <!-- 1. شريط التحكم والترويسة (Dashboard Header & Controls) -->
+                <div class="row align-items-center mb-4 g-3">
+                    <div class="col-12 col-lg-5">
+                        <div class="d-flex align-items-center">
+                            <div class="o_bs_header_icon me-3">
+                                <i class="fa fa-university fa-2x text-primary"/>
+                            </div>
+                            <div>
+                                <h3 class="fw-bold mb-1 text-dark">لوحة مؤشرات السداد البنكي</h3>
+                                <p class="text-muted mb-0 small">نظرة مالية وتنفيذية شاملة على السلف، الرسوم، المركبات، التأمين وتصفيات المناديب</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-7">
+                        <div class="d-flex flex-wrap justify-content-lg-end align-items-center gap-2">
+                            <!-- فلتر الفترة الزمنية -->
+                            <div class="d-flex align-items-center bg-white rounded-pill px-3 py-1 border shadow-sm">
+                                <i class="fa fa-calendar-o text-muted me-2"/>
+                                <span class="small text-muted me-2">الفترة:</span>
+                                <select class="form-select form-select-sm border-0 bg-transparent fw-bold" 
+                                        style="cursor: pointer; width: auto;"
+                                        t-model="state.selectedPeriod" 
+                                        t-on-change="onPeriodChange">
+                                    <option value="today">اليوم</option>
+                                    <option value="this_week">هذا الأسبوع</option>
+                                    <option value="this_month">هذا الشهر</option>
+                                    <option value="last_month">الشهر الماضي</option>
+                                    <option value="this_year">هذه السنة</option>
+                                    <option value="all">كل الأوقات</option>
+                                </select>
+                            </div>
+
+                            <!-- فلتر المنصة / المشروع -->
+                            <div class="d-flex align-items-center bg-white rounded-pill px-3 py-1 border shadow-sm">
+                                <i class="fa fa-cubes text-muted me-2"/>
+                                <span class="small text-muted me-2">المنصة:</span>
+                                <select class="form-select form-select-sm border-0 bg-transparent fw-bold" 
+                                        style="cursor: pointer; width: auto;"
+                                        t-model="state.selectedProjectId" 
+                                        t-on-change="onProjectChange">
+                                    <option value="0">جميع المنصات</option>
+                                    <t t-foreach="state.projects" t-as="proj" t-key="proj.id">
+                                        <option t-att-value="proj.id" t-esc="proj.name"/>
+                                    </t>
+                                </select>
+                            </div>
+
+                            <!-- زر التحديث السريع -->
+                            <button class="btn btn-outline-primary rounded-pill shadow-sm px-3" 
+                                    t-on-click="refreshDashboard" 
+                                    title="تحديث البيانات">
+                                <i class="fa fa-refresh me-1"/> تحديث
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. مركز الإجراءات السريعة (Quick Action Bar) -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4 o_bs_quick_bar">
+                    <div class="card-body p-3">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                            <span class="fw-bold small text-secondary d-none d-md-inline">
+                                <i class="fa fa-bolt text-warning me-1"/> إجراءات سريعة:
+                            </span>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button class="btn btn-sm btn-light border rounded-pill px-3 fw-bold" t-on-click="() => this.createRecord('bank.settlement.advance', 'طلب سلفة جديدة')">
+                                    <i class="fa fa-plus text-primary me-1"/> سلفة جديدة
+                                </button>
+                                <button class="btn btn-sm btn-light border rounded-pill px-3 fw-bold" t-on-click="() => this.createRecord('bank.settlement.government.fee', 'تسجيل رسوم حكومية')">
+                                    <i class="fa fa-plus text-info me-1"/> رسوم حكومية
+                                </button>
+                                <button class="btn btn-sm btn-light border rounded-pill px-3 fw-bold" t-on-click="() => this.createRecord('bank.settlement.vehicle.transfer', 'تحويل مركبة جديد')">
+                                    <i class="fa fa-plus text-warning me-1"/> تحويل مركبة
+                                </button>
+                                <button class="btn btn-sm btn-light border rounded-pill px-3 fw-bold" t-on-click="() => this.createRecord('bank.settlement.medical.insurance', 'تأمين طبي جديد')">
+                                    <i class="fa fa-plus text-success me-1"/> تأمين طبي
+                                </button>
+                                <button class="btn btn-sm btn-light border rounded-pill px-3 fw-bold" t-on-click="() => this.createRecord('bank.settlement.representative', 'تسجيل تصفية مندوب')">
+                                    <i class="fa fa-plus text-danger me-1"/> تصفية مندوب
+                                </button>
+                                <button class="btn btn-sm btn-primary rounded-pill px-3 fw-bold shadow-sm" t-on-click="openEmployeeStatementWizard">
+                                    <i class="fa fa-file-text-o me-1"/> كشف حساب موظف
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. شريط التنبيهات الذكية (Alert Banners) -->
+                <div t-if="state.alerts.due_prepaid_count > 0" class="alert alert-warning border-0 shadow-sm rounded-4 d-flex align-items-center justify-content-between p-3 mb-4">
+                    <div class="d-flex align-items-center">
+                        <div class="o_bs_alert_icon bg-warning text-white rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                            <i class="fa fa-clock-o fa-lg"/>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 fw-bold text-dark">استحقاقات دفعات مقدمة جاهزة للترحيل</h6>
+                            <p class="mb-0 small text-muted">
+                                يوجد <strong class="text-danger" t-esc="state.alerts.due_prepaid_count"/> فترة استحقاق بإجمالي 
+                                <strong class="text-dark" t-esc="formatCurrency(state.alerts.due_prepaid_amount)"/> انتهت مدتها ومستحقة للترحيل كقيود مصروفات فعلية.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-warning btn-sm fw-bold px-3 shadow-sm rounded-pill text-dark" t-on-click="postDuePrepaid">
+                            <i class="fa fa-check me-1"/> ترحيل الفترات المستحقة الآن
+                        </button>
+                    </div>
+                </div>
+
+                <div t-if="state.approvals.returned_correction_count > 0" class="alert alert-info border-0 shadow-sm rounded-4 d-flex align-items-center justify-content-between p-3 mb-4">
+                    <div class="d-flex align-items-center">
+                        <div class="o_bs_alert_icon bg-info text-white rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                            <i class="fa fa-undo fa-lg"/>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 fw-bold text-dark">سجلات أُرجعت للتصحيح</h6>
+                            <p class="mb-0 small text-muted">
+                                يوجد <strong class="text-primary" t-esc="state.approvals.returned_correction_count"/> معاملة أُرجعت للتصحيح بواسطة الإدارة وتنتظر تعديل بياناتها.
+                            </p>
+                        </div>
+                    </div>
+                    <button class="btn btn-outline-info btn-sm fw-bold px-3 rounded-pill" t-on-click="() => this.openRecords('bank.settlement.advance', [['returned_for_correction', '=', true]], 'السجلات المعادة للتصحيح')">
+                        عرض السجلات
+                    </button>
+                </div>
+
+                <!-- 4. بطاقات المؤشرات المالية الرئيسية (Top Financial KPI Cards) -->
+                <div class="row g-3 mb-4">
+                    <!-- إجمالي المصروفات المنفذة -->
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="card h-100 border-0 shadow-sm rounded-4 o_bs_kpi_card o_bs_card_total p-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <span class="text-muted small fw-bold">إجمالي المصروفات المنفذة</span>
+                                    <h2 class="fw-bold mb-0 text-success mt-1" t-esc="formatCurrency(state.kpis.total_settled_amount)"/>
+                                </div>
+                                <div class="o_bs_card_icon bg-success-subtle text-success rounded-4 p-3">
+                                    <i class="fa fa-money fa-2x"/>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mt-3 pt-2 border-top">
+                                <span class="small text-muted">
+                                    <strong t-esc="state.kpis.total_settled_count"/> عملية مكتملة
+                                </span>
+                                <span t-if="state.kpis.growth_rate !== 0" 
+                                      t-attf-class="badge rounded-pill small #{state.kpis.growth_rate > 0 ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'}">
+                                    <i t-attf-class="fa #{state.kpis.growth_rate > 0 ? 'fa-arrow-up' : 'fa-arrow-down'} me-1"/>
+                                    <t t-esc="Math.abs(state.kpis.growth_rate)"/>% عن الفترة السابقة
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- السلف المنصرفة -->
+                    <div class="col-12 col-md-6 col-xl-2">
+                        <div class="card h-100 border-0 shadow-sm rounded-4 o_bs_kpi_card o_bs_card_adv p-3"
+                             role="button" t-on-click="() => this.openRecords('bank.settlement.advance', [['state', '=', 'paid']], 'السلف المنصرفة')">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="text-muted small fw-bold">السلف المنصرفة</span>
+                                <div class="o_bs_card_mini_icon text-primary"><i class="fa fa-handshake-o"/></div>
+                            </div>
+                            <h4 class="fw-bold mb-1 text-dark" t-esc="formatCurrency(state.kpis.advances.amount)"/>
+                            <span class="small text-muted"><strong t-esc="state.kpis.advances.count"/> سلفة</span>
+                        </div>
+                    </div>
+
+                    <!-- الرسوم الحكومية -->
+                    <div class="col-12 col-md-6 col-xl-2">
+                        <div class="card h-100 border-0 shadow-sm rounded-4 o_bs_kpi_card o_bs_card_gov p-3"
+                             role="button" t-on-click="() => this.openRecords('bank.settlement.government.fee', [['state', '=', 'done']], 'الرسوم الحكومية المسددة')">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="text-muted small fw-bold">الرسوم الحكومية</span>
+                                <div class="o_bs_card_mini_icon text-info"><i class="fa fa-building-o"/></div>
+                            </div>
+                            <h4 class="fw-bold mb-1 text-dark" t-esc="formatCurrency(state.kpis.government_fees.amount)"/>
+                            <span class="small text-muted"><strong t-esc="state.kpis.government_fees.count"/> رسوم مسددة</span>
+                        </div>
+                    </div>
+
+                    <!-- تحويلات المركبات -->
+                    <div class="col-12 col-md-6 col-xl-2">
+                        <div class="card h-100 border-0 shadow-sm rounded-4 o_bs_kpi_card o_bs_card_veh p-3"
+                             role="button" t-on-click="() => this.openRecords('bank.settlement.vehicle.transfer', [['state', '=', 'done']], 'تحويلات المركبات')">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="text-muted small fw-bold">تحويلات المركبات</span>
+                                <div class="o_bs_card_mini_icon text-warning"><i class="fa fa-car"/></div>
+                            </div>
+                            <h4 class="fw-bold mb-1 text-dark" t-esc="formatCurrency(state.kpis.vehicle_transfers.amount)"/>
+                            <span class="small text-muted"><strong t-esc="state.kpis.vehicle_transfers.count"/> تحويل</span>
+                        </div>
+                    </div>
+
+                    <!-- التأمين الطبي وتصفيات المناديب -->
+                    <div class="col-12 col-md-6 col-xl-2">
+                        <div class="card h-100 border-0 shadow-sm rounded-4 o_bs_kpi_card o_bs_card_med p-3"
+                             role="button" t-on-click="() => this.openRecords('bank.settlement.medical.insurance', [['state', '=', 'done']], 'التأمين والفحص الطبي')">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="text-muted small fw-bold">التأمين الطبي</span>
+                                <div class="o_bs_card_mini_icon text-success"><i class="fa fa-heartbeat"/></div>
+                            </div>
+                            <h4 class="fw-bold mb-1 text-dark" t-esc="formatCurrency(state.kpis.medical_insurance.amount)"/>
+                            <span class="small text-muted"><strong t-esc="state.kpis.medical_insurance.count"/> وثيقة</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. مركز الموافقات والإجراءات المعلقة (Action & Approvals Center) -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-header bg-white border-0 pt-3 pb-0 px-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <h5 class="fw-bold mb-0 text-dark">
+                                <i class="fa fa-tasks text-primary me-2"/> مركز الموافقات والعمليات العالقة
+                            </h5>
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill small">يتطلب إجراء</span>
+                        </div>
+                    </div>
+                    <div class="card-body px-4 pb-4 pt-3">
+                        <div class="row g-3">
+                            <!-- سلف بانتظار موافقة مسؤول المشروع -->
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <div class="o_bs_pipeline_item p-3 rounded-4 border bg-light h-100"
+                                     role="button" t-on-click="() => this.openRecords('bank.settlement.advance', [['state', '=', 'waiting_approval']], 'سلف بانتظار موافقة مسؤول المشروع')">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="fw-bold text-dark small">سلف: موافقة مسؤول المشروع</span>
+                                        <span class="badge bg-warning text-dark rounded-pill" t-esc="state.approvals.adv_wait_pm.count"/>
+                                    </div>
+                                    <div class="fw-bold text-warning-emphasis fs-5" t-esc="formatCurrency(state.approvals.adv_wait_pm.amount)"/>
+                                    <div class="small text-muted mt-1">بانتظار موافقة المشرف ➔</div>
+                                </div>
+                            </div>
+
+                            <!-- سلف بانتظار اعتماد المدير العام -->
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <div class="o_bs_pipeline_item p-3 rounded-4 border bg-light h-100"
+                                     role="button" t-on-click="() => this.openRecords('bank.settlement.advance', [['state', '=', 'pm_approved']], 'سلف بانتظار اعتماد المدير العام')">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="fw-bold text-dark small">سلف: اعتماد المدير العام</span>
+                                        <span class="badge bg-primary text-white rounded-pill" t-esc="state.approvals.adv_wait_gm.count"/>
+                                    </div>
+                                    <div class="fw-bold text-primary fs-5" t-esc="formatCurrency(state.approvals.adv_wait_gm.amount)"/>
+                                    <div class="small text-muted mt-1">وافق عليها مسؤول المشروع ➔</div>
+                                </div>
+                            </div>
+
+                            <!-- سلف معتمدة بانتظار الصرف الفعلي -->
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <div class="o_bs_pipeline_item p-3 rounded-4 border bg-light h-100"
+                                     role="button" t-on-click="() => this.openRecords('bank.settlement.advance', [['state', '=', 'approved']], 'سلف معتمدة بانتظار الصرف')">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="fw-bold text-dark small">سلف: بانتظار الصرف الفعلي</span>
+                                        <span class="badge bg-success text-white rounded-pill" t-esc="state.approvals.adv_appr_unpaid.count"/>
+                                    </div>
+                                    <div class="fw-bold text-success fs-5" t-esc="formatCurrency(state.approvals.adv_appr_unpaid.amount)"/>
+                                    <div class="small text-muted mt-1">اعتمدت وتنتظر المحاسب ➔</div>
+                                </div>
+                            </div>
+
+                            <!-- رسوم ومصروفات تحت المراجعة -->
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <div class="o_bs_pipeline_item p-3 rounded-4 border bg-light h-100"
+                                     role="button" t-on-click="() => this.openRecords('bank.settlement.government.fee', [['state', '=', 'under_review']], 'رسوم حكومية تحت المراجعة')">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="fw-bold text-dark small">رسوم حكومية: تحت المراجعة</span>
+                                        <span class="badge bg-info text-white rounded-pill" t-esc="state.approvals.gov_under_review.count"/>
+                                    </div>
+                                    <div class="fw-bold text-info fs-5" t-esc="formatCurrency(state.approvals.gov_under_review.amount)"/>
+                                    <div class="small text-muted mt-1">تنتظر الاعتماد والمراجعة ➔</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- الصف الثاني من المراجعات -->
+                        <div class="row g-3 mt-1">
+                            <div class="col-12 col-sm-4">
+                                <div class="d-flex align-items-center justify-content-between p-2 px-3 rounded-3 border bg-white"
+                                     role="button" t-on-click="() => this.openRecords('bank.settlement.vehicle.transfer', [['state', '=', 'under_review']], 'تحويلات مركبات تحت المراجعة')">
+                                    <span class="small fw-bold text-muted"><i class="fa fa-car me-1 text-warning"/> تحويلات مركبات للمراجعة</span>
+                                    <span class="badge bg-warning-subtle text-warning-emphasis fw-bold" t-esc="state.approvals.veh_under_review.count"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-4">
+                                <div class="d-flex align-items-center justify-content-between p-2 px-3 rounded-3 border bg-white"
+                                     role="button" t-on-click="() => this.openRecords('bank.settlement.medical.insurance', [['state', '=', 'under_review']], 'تأمين طبي تحت المراجعة')">
+                                    <span class="small fw-bold text-muted"><i class="fa fa-heartbeat me-1 text-success"/> تأمين طبي للمراجعة</span>
+                                    <span class="badge bg-success-subtle text-success fw-bold" t-esc="state.approvals.med_under_review.count"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-4">
+                                <div class="d-flex align-items-center justify-content-between p-2 px-3 rounded-3 border bg-white"
+                                     role="button" t-on-click="() => this.openRecords('bank.settlement.representative', [['state', '=', 'under_review']], 'تصفيات مناديب للمراجعة')">
+                                    <span class="small fw-bold text-muted"><i class="fa fa-users me-1 text-danger"/> تصفيات مناديب للمراجعة</span>
+                                    <span class="badge bg-danger-subtle text-danger fw-bold" t-esc="state.approvals.rep_under_review.count"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. شبكة الرسوم البيانية التفاعلية (Interactive Charts Grid) -->
+                <div class="row g-4 mb-4">
+                    <!-- الرسم 1: الاتجاه الشهري للمصروفات -->
+                    <div class="col-12 col-xl-8">
+                        <div class="card border-0 shadow-sm rounded-4 h-100">
+                            <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <h5 class="fw-bold mb-1 text-dark">
+                                            <i class="fa fa-line-chart text-primary me-2"/> تطور المصروفات والمدفوعات (آخر 6 أشهر)
+                                        </h5>
+                                        <p class="text-muted small mb-0">مقارنة شهرية لتكاليف السلف، الرسوم، تحويلات المركبات، التأمين والتصفيات</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body px-4 pb-4">
+                                <div style="position: relative; height: 320px;">
+                                    <canvas t-ref="monthlyTrendChart"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- الرسم 2: توزيع التكاليف حسب المنصة -->
+                    <div class="col-12 col-xl-4">
+                        <div class="card border-0 shadow-sm rounded-4 h-100">
+                            <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                                <h5 class="fw-bold mb-1 text-dark">
+                                    <i class="fa fa-pie-chart text-info me-2"/> التكاليف حسب المنصة
+                                </h5>
+                                <p class="text-muted small mb-0">نسبة التكاليف التشغيلية لكل منصة توصيل</p>
+                            </div>
+                            <div class="card-body px-4 pb-4 d-flex align-items-center justify-content-center">
+                                <div style="position: relative; height: 290px; width: 100%;">
+                                    <canvas t-ref="platformChart"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- الصف الثاني من الرسوم البيانية -->
+                <div class="row g-4 mb-4">
+                    <!-- الرسم 3: توزيع المصروفات حسب نوع العملية -->
+                    <div class="col-12 col-lg-4">
+                        <div class="card border-0 shadow-sm rounded-4 h-100">
+                            <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                                <h5 class="fw-bold mb-1 text-dark">
+                                    <i class="fa fa-adjust text-warning me-2"/> التوزيع حسب نوع المصروف
+                                </h5>
+                                <p class="text-muted small mb-0">الحصة النسبية لكل فئة سداد</p>
+                            </div>
+                            <div class="card-body px-4 pb-4 d-flex align-items-center justify-content-center">
+                                <div style="position: relative; height: 260px; width: 100%;">
+                                    <canvas t-ref="categoryChart"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- الرسم 4: أعلى الرسوم الحكومية تكلفة -->
+                    <div class="col-12 col-lg-4">
+                        <div class="card border-0 shadow-sm rounded-4 h-100">
+                            <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                                <h5 class="fw-bold mb-1 text-dark">
+                                    <i class="fa fa-bar-chart text-success me-2"/> أعلى الرسوم الحكومية
+                                </h5>
+                                <p class="text-muted small mb-0">الأنواع الأكثر استهلاكاً للمبالغ</p>
+                            </div>
+                            <div class="card-body px-4 pb-4">
+                                <div style="position: relative; height: 260px;">
+                                    <canvas t-ref="topGovFeesChart"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- الرسم 5: أعلى تحويلات ومصاريف المركبات -->
+                    <div class="col-12 col-lg-4">
+                        <div class="card border-0 shadow-sm rounded-4 h-100">
+                            <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                                <h5 class="fw-bold mb-1 text-dark">
+                                    <i class="fa fa-truck text-danger me-2"/> أعلى مصاريف المركبات
+                                </h5>
+                                <p class="text-muted small mb-0">تصنيفات تحويلات أسطول السيارات</p>
+                            </div>
+                            <div class="card-body px-4 pb-4">
+                                <div style="position: relative; height: 260px;">
+                                    <canvas t-ref="topVehicleTypesChart"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. سجل أحدث العمليات والمدفوعات (Recent Transactions Table) -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-header bg-white border-0 pt-4 px-4 pb-3">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <h5 class="fw-bold mb-1 text-dark">
+                                    <i class="fa fa-history text-secondary me-2"/> أحدث العمليات والمدفوعات
+                                </h5>
+                                <p class="text-muted small mb-0">آخر 10 معاملات مسجلة في النظام مع حالتها وإمكانية فتحها مباشرة</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0 text-nowrap">
+                                <thead class="table-light">
+                                    <tr class="small text-muted">
+                                        <th class="ps-4">الكود / الرقم</th>
+                                        <th>نوع العملية</th>
+                                        <th>الموظف / المستفيد</th>
+                                        <th>المنصة</th>
+                                        <th>المبلغ</th>
+                                        <th>التاريخ</th>
+                                        <th>الحالة</th>
+                                        <th class="pe-4 text-center">إجراء</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-if="state.recentTransactions.length === 0">
+                                        <tr>
+                                            <td colspan="8" class="text-center py-4 text-muted">
+                                                <i class="fa fa-inbox fa-3x mb-2 d-block text-black-50"/>
+                                                لا توجد عمليات مسجلة في هذه الفترة
+                                            </td>
+                                        </tr>
+                                    </t>
+                                    <t t-foreach="state.recentTransactions" t-as="trx" t-key="trx.model + '_' + trx.id">
+                                        <tr>
+                                            <td class="ps-4 fw-bold">
+                                                <a href="#" class="text-decoration-none text-primary" t-on-click.prevent="() => this.viewRecord(trx.model, trx.id, trx.name)">
+                                                    <t t-esc="trx.name"/>
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <span t-attf-class="badge rounded-pill px-2 py-1 o_bs_type_badge o_bs_type_#{trx.type_code}" t-esc="trx.type_title"/>
+                                            </td>
+                                            <td>
+                                                <span class="fw-bold text-dark" t-esc="trx.employee_name"/>
+                                            </td>
+                                            <td>
+                                                <span class="text-muted small" t-esc="trx.project_name"/>
+                                            </td>
+                                            <td>
+                                                <span class="fw-bold text-success" t-esc="formatCurrency(trx.amount)"/>
+                                            </td>
+                                            <td>
+                                                <span class="small text-muted" t-esc="trx.date"/>
+                                            </td>
+                                            <td>
+                                                <span t-attf-class="badge rounded-pill px-2 py-1 o_bs_state_badge o_bs_state_#{trx.state}" t-esc="trx.state_label"/>
+                                            </td>
+                                            <td class="pe-4 text-center">
+                                                <button class="btn btn-sm btn-outline-secondary rounded-circle" 
+                                                        title="فتح السجل"
+                                                        t-on-click="() => this.viewRecord(trx.model, trx.id, trx.name)">
+                                                    <i class="fa fa-eye"/>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </t>
+</templates>
+

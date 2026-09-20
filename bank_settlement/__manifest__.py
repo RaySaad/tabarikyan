@@ -58,9 +58,17 @@ recruitment_workflow لبيانات المناديب (hr.employee) والمنص�
         'views/recruitment_request_views.xml',
         'views/recruitment_import_request_views.xml',
         'views/hr_employee_exit_request_views.xml',
+        'views/dashboard_views.xml',
         'views/menu_views.xml',
         'report/hr_employee_statement_report.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'bank_settlement/static/src/scss/bank_settlement_dashboard.scss',
+            'bank_settlement/static/src/xml/bank_settlement_dashboard.xml',
+            'bank_settlement/static/src/js/bank_settlement_dashboard.js',
+        ],
+    },
     'installable': True,
     'application': True,
     'auto_install': False,

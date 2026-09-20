@@ -6,3 +6,4 @@ from . import test_vehicle_transfer
 from . import test_hr_employee_statement
 from . import test_employee_statement_wizard
 from . import test_prepaid_schedule
+from . import test_dashboard

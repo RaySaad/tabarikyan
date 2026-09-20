@@ -1,0 +1,182 @@
+// ==========================================================================
+// تنسيقات لوحة مؤشرات السداد البنكي - Bank Settlement Dashboard
+// ==========================================================================
+
+.o_bank_settlement_dashboard {
+    background-color: #f8fafc;
+    font-family: inherit;
+
+    // شريط الترويسة والأيقونة
+    .o_bs_header_icon {
+        width: 52px;
+        height: 52px;
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(59, 130, 246, 0.15);
+    }
+
+    // شريط الإجراءات السريعة
+    .o_bs_quick_bar {
+        background: #ffffff;
+        border: 1px solid #f1f5f9;
+        transition: all 0.2s ease;
+    }
+
+    // شاشة التحميل (Overlay)
+    .o_bs_loading_overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.85);
+        z-index: 999;
+        backdrop-filter: blur(2px);
+    }
+
+    // بطاقات المؤشرات المالية (KPI Cards)
+    .o_bs_kpi_card {
+        background: #ffffff;
+        border: 1px solid #f1f5f9;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        position: relative;
+        overflow: hidden;
+
+        &:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08) !important;
+        }
+
+        &[role="button"] {
+            cursor: pointer;
+        }
+
+        .o_bs_card_icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+        }
+
+        .o_bs_card_mini_icon {
+            width: 32px;
+            height: 32px;
+            background: #f8fafc;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+    }
+
+    // تمييز بطاقة الإجمالي الكلي
+    .o_bs_card_total {
+        border-top: 4px solid #10b981;
+    }
+    .o_bs_card_adv {
+        border-top: 4px solid #6366f1;
+    }
+    .o_bs_card_gov {
+        border-top: 4px solid #0ea5e9;
+    }
+    .o_bs_card_veh {
+        border-top: 4px solid #f59e0b;
+    }
+    .o_bs_card_med {
+        border-top: 4px solid #10b981;
+    }
+
+    // عناصر مسار الموافقات
+    .o_bs_pipeline_item {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
+        cursor: pointer;
+
+        &:hover {
+            background: #ffffff !important;
+            border-color: #cbd5e1;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+    }
+
+    // بادجات أنواع المعاملات في جدول أحدث العمليات
+    .o_bs_type_badge {
+        font-weight: 600;
+        font-size: 0.75rem;
+
+        &.o_bs_type_advance {
+            background-color: #ede9fe;
+            color: #6d28d9;
+        }
+        &.o_bs_type_government_fee {
+            background-color: #e0f2fe;
+            color: #0369a1;
+        }
+        &.o_bs_type_vehicle_transfer {
+            background-color: #fef3c7;
+            color: #b45309;
+        }
+        &.o_bs_type_medical_insurance {
+            background-color: #d1fae5;
+            color: #047857;
+        }
+        &.o_bs_type_representative {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+    }
+
+    // بادجات الحالات
+    .o_bs_state_badge {
+        font-weight: 500;
+        font-size: 0.75rem;
+
+        &.o_bs_state_draft {
+            background-color: #f1f5f9;
+            color: #475569;
+        }
+        &.o_bs_state_waiting_approval {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        &.o_bs_state_pm_approved {
+            background-color: #e0e7ff;
+            color: #3730a3;
+        }
+        &.o_bs_state_under_review {
+            background-color: #e0f2fe;
+            color: #075985;
+        }
+        &.o_bs_state_approved {
+            background-color: #ccfbf1;
+            color: #115e59;
+        }
+        &.o_bs_state_confirmed {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+        &.o_bs_state_paid,
+        &.o_bs_state_done {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+        &.o_bs_state_rejected,
+        &.o_bs_state_cancel {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+    }
+
+    // التجاوب ودعم RTL
+    .table > :not(caption) > * > * {
+        padding: 0.85rem 0.75rem;
+    }
+}
+

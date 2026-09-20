@@ -31,6 +31,10 @@
                   groups="bank_settlement.group_bank_settlement_user"
                   sequence="5"/>
 
+        <menuitem id="menu_bank_settlement_dashboard" name="لوحة المؤشرات"
+                  parent="menu_bank_settlement_root"
+                  action="action_bank_settlement_dashboard" sequence="1"/>
+
         <menuitem id="menu_bank_settlement_advance" name="السلف"
                   parent="menu_bank_settlement_root"
                   action="action_bank_settlement_advance" sequence="10"/>
