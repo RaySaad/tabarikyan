@@ -66,3 +66,63 @@ class TestBankSettlementDashboard(TransactionCase):
             self.assertIn('kpis', data)
             self.assertIn('total_settled_amount', data['kpis'])
 
+    def test_multi_company_platform_aggregation(self):
+        """التحقق من تجميع تكاليف المنصات عبر الشركات المتعددة وعدم اختفاء المشاريع من الدائرة."""
+        comp1 = self.env.company
+        comp2 = self.env['res.company'].create({'name': 'شركة فرعية تجريبية'})
+
+        reason = self.env['bank.settlement.advance.reason'].create({'name': 'سبب تجريبي للمنصات'})
+
+        # إنشاء منصتين بنفس الاسم في الشركتين
+        p1_jahez = self.env['project.project'].create({'name': 'جاهز', 'company_id': comp1.id})
+        p2_jahez = self.env['project.project'].create({'name': 'جاهز', 'company_id': comp2.id})
+        p1_hunger = self.env['project.project'].create({'name': 'هنقرستيشن', 'company_id': comp1.id})
+
+        # إنشاء سلف في الشركتين
+        self.Advance.create({
+            'name': 'سلفة جاهز شركة 1',
+            'company_id': comp1.id,
+            'project_id': p1_jahez.id,
+            'advance_reason_id': reason.id,
+            'amount': 1500.0,
+            'state': 'paid',
+        })
+        self.Advance.create({
+            'name': 'سلفة هنقرستيشن شركة 1',
+            'company_id': comp1.id,
+            'project_id': p1_hunger.id,
+            'advance_reason_id': reason.id,
+            'amount': 500.0,
+            'state': 'paid',
+        })
+        self.Advance.create({
+            'name': 'سلفة جاهز شركة 2',
+            'company_id': comp2.id,
+            'project_id': p2_jahez.id,
+            'advance_reason_id': reason.id,
+            'amount': 2500.0,
+            'state': 'paid',
+        })
+
+        admin = self.env.ref('base.user_admin')
+        admin.write({'company_ids': [(4, comp2.id)]})
+
+        # سياق متعدد الشركات
+        dash_multi = self.Dashboard.with_context(allowed_company_ids=[comp1.id, comp2.id])
+        
+        # 1. عند اختيار جميع المنصات: يجب أن تظهر جاهز بمجموع الشركتين (1500 + 2500 = 4000)
+        data_all = dash_multi.get_dashboard_data('all')
+        plt_labels = data_all['charts']['platform']['labels']
+        plt_data = data_all['charts']['platform']['data']
+        self.assertIn('جاهز', plt_labels)
+        self.assertIn('هنقرستيشن', plt_labels)
+        jahez_index = plt_labels.index('جاهز')
+        self.assertEqual(plt_data[jahez_index], 4000.0)
+
+        # 2. عند اختيار منصة جاهز تحديداً:
+        # - يجب أن يكون إجمالي المؤشرات محتوياً على تكاليف جاهز في كلا الشركتين (4000.0)
+        # - ويجب أن تبقى الدائرة تعرض باقي المشاريع (هنقرستيشن) ولا تختفي باقي المشاريع
+        data_jahez = dash_multi.get_dashboard_data('all', project_id=p1_jahez.id)
+        self.assertEqual(data_jahez['kpis']['total_settled_amount'], 4000.0)
+        self.assertIn('هنقرستيشن', data_jahez['charts']['platform']['labels'])
+        self.assertIn('جاهز', data_jahez['charts']['platform']['labels'])

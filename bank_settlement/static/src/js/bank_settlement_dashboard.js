@@ -90,6 +90,12 @@ export class BankSettlementDashboard extends Component {
             this.state.recentTransactions = data.recent_transactions;
             this.state.projects = data.projects;
             this.state.currency = data.currency;
+
+            // التحقق من أن المنصة المختارة ما زالت موجودة في قائمة المشاريع المتاحة
+            const projId = parseInt(this.state.selectedProjectId) || 0;
+            if (projId && !data.projects.some((p) => p.id === projId)) {
+                this.state.selectedProjectId = 0;
+            }
         } catch (error) {
             console.error("Error loading bank settlement dashboard data:", error);
             this.notification.add(_t("تعذر تحميل بيانات لوحة المؤشرات، يرجى المحاولة لاحقاً."), {
@@ -187,7 +193,7 @@ export class BankSettlementDashboard extends Component {
                         {
                             data: hasData ? plt.data : [1],
                             backgroundColor: hasData
-                                ? ["#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6", "#64748B"]
+                                ? ["#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6", "#64748B", "#F97316", "#06B6D4", "#84CC16"]
                                 : ["#E2E8F0"],
                             borderWidth: 2,
                         },
@@ -199,7 +205,19 @@ export class BankSettlementDashboard extends Component {
                     cutout: "68%",
                     plugins: {
                         legend: { position: "bottom", rtl: true },
-                        tooltip: { rtl: true, enabled: hasData },
+                        tooltip: {
+                            rtl: true,
+                            enabled: hasData,
+                            callbacks: {
+                                label: (context) => {
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    const formattedVal = this.formatCurrency(value);
+                                    return ` ${context.label}: ${formattedVal} (${percentage}%)`;
+                                },
+                            },
+                        },
                     },
                 },
             });

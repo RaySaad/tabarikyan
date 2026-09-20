@@ -84,8 +84,20 @@ class BankSettlementDashboard(models.AbstractModel):
         company_ids = self.env.companies.ids
         current_start, current_end, prev_start, prev_end = self._get_period_date_range(period)
 
-        # تحويل project_id لرقم صحيح إن وُجد
+        # تحويل project_id لرقم صحيح ومطابقة كافة المشاريع ذات نفس اسم المنصة عبر الشركات النشطة
         proj_id = int(project_id) if project_id else False
+        matching_project_ids = []
+        if proj_id:
+            target_project = self.env['project.project'].sudo().browse(proj_id)
+            if target_project.exists():
+                target_name = (target_project.name or '').strip()
+                matching_projects = self.env['project.project'].sudo().search([
+                    '|', ('company_id', '=', False), ('company_id', 'in', company_ids),
+                    ('name', '=ilike', target_name),
+                ])
+                matching_project_ids = matching_projects.ids
+            if not matching_project_ids:
+                matching_project_ids = [proj_id]
 
         # عملة الشركة الأساسية
         currency = self.env.company.currency_id
@@ -97,9 +109,12 @@ class BankSettlementDashboard(models.AbstractModel):
 
         # 1. حساب مبالغ وأعداد العمليات المنجزة (Settled / Paid)
         def _get_settled_stats(model_name, done_state='done', amount_field='amount', date_field='transfer_date'):
-            base_domain = [('company_id', 'in', company_ids), ('state', '=', done_state)]
-            if proj_id:
-                base_domain.append(('project_id', '=', proj_id))
+            base_domain = [
+                '|', ('company_id', '=', False), ('company_id', 'in', company_ids),
+                ('state', '=', done_state)
+            ]
+            if matching_project_ids:
+                base_domain.append(('project_id', 'in', matching_project_ids))
 
             # الفترة الحالية
             curr_domain = list(base_domain)
@@ -149,9 +164,12 @@ class BankSettlementDashboard(models.AbstractModel):
 
         # 2. مركز الموافقات والإجراءات المعلقة (Approvals Pipeline)
         def _get_pending_stats(model_name, state_value, amount_field='amount'):
-            domain = [('company_id', 'in', company_ids), ('state', '=', state_value)]
-            if proj_id:
-                domain.append(('project_id', '=', proj_id))
+            domain = [
+                '|', ('company_id', '=', False), ('company_id', 'in', company_ids),
+                ('state', '=', state_value)
+            ]
+            if matching_project_ids:
+                domain.append(('project_id', 'in', matching_project_ids))
             recs = self.env[model_name].sudo().search(domain)
             return len(recs), sum(recs.mapped(amount_field))
 
@@ -167,9 +185,12 @@ class BankSettlementDashboard(models.AbstractModel):
         rep_review_count, rep_review_amt = _get_pending_stats('bank.settlement.representative', 'under_review', 'amount')
 
         # سجلات أُرجعت للتصحيح عبر كل النماذج
-        ret_domain = [('company_id', 'in', company_ids), ('returned_for_correction', '=', True)]
-        if proj_id:
-            ret_domain.append(('project_id', '=', proj_id))
+        ret_domain = [
+            '|', ('company_id', '=', False), ('company_id', 'in', company_ids),
+            ('returned_for_correction', '=', True)
+        ]
+        if matching_project_ids:
+            ret_domain.append(('project_id', 'in', matching_project_ids))
         returned_count = (
             self.env['bank.settlement.advance'].sudo().search_count(ret_domain) +
             self.env['bank.settlement.government.fee'].sudo().search_count(ret_domain) +
@@ -181,12 +202,12 @@ class BankSettlementDashboard(models.AbstractModel):
         # 3. التنبيهات: أسطر الدفعات المقدمة المستحقة للترحيل الآن
         today = fields.Date.context_today(self)
         prepaid_domain = [
-            ('company_id', 'in', company_ids),
+            '|', ('company_id', '=', False), ('company_id', 'in', company_ids),
             ('state', '=', 'draft'),
             ('period_end_date', '<=', today),
         ]
-        if proj_id:
-            prepaid_domain.append(('employee_id.project_id', '=', proj_id))
+        if matching_project_ids:
+            prepaid_domain.append(('employee_id.project_id', 'in', matching_project_ids))
         due_prepaid_recs = self.env['bank.settlement.prepaid.line'].sudo().search(prepaid_domain)
         due_prepaid_count = len(due_prepaid_recs)
         due_prepaid_amt = sum(due_prepaid_recs.mapped('amount'))
@@ -194,23 +215,29 @@ class BankSettlementDashboard(models.AbstractModel):
         # 4. الرسوم البيانية التفاعلية (Charts Data)
 
         # أ. توزيع التكاليف حسب المنصة (Platform Breakdown)
+        # الرسم الدائري يعرض التوزيع الشامل لكافة المنصات عبر الشركات النشطة دائماً دون حجب باقي المشاريع
         platform_dict = {}
         models_config = [
-            ('bank.settlement.advance', 'paid', 'amount'),
-            ('bank.settlement.government.fee', 'done', 'total_amount'),
-            ('bank.settlement.vehicle.transfer', 'done', 'amount'),
-            ('bank.settlement.medical.insurance', 'done', 'amount'),
-            ('bank.settlement.representative', 'done', 'amount'),
+            ('bank.settlement.advance', 'paid', 'amount', 'transfer_date'),
+            ('bank.settlement.government.fee', 'done', 'total_amount', 'transfer_date'),
+            ('bank.settlement.vehicle.transfer', 'done', 'amount', 'transfer_date'),
+            ('bank.settlement.medical.insurance', 'done', 'amount', 'transfer_date'),
+            ('bank.settlement.representative', 'done', 'amount', 'date'),
         ]
-        for m_name, d_state, a_field in models_config:
-            d = [('company_id', 'in', company_ids), ('state', '=', d_state)]
-            if proj_id:
-                d.append(('project_id', '=', proj_id))
+        for m_name, d_state, a_field, d_field in models_config:
+            d = [
+                '|', ('company_id', '=', False), ('company_id', 'in', company_ids),
+                ('state', '=', d_state)
+            ]
             if current_start and current_end:
-                d.extend([('create_date', '>=', f'{current_start} 00:00:00'), ('create_date', '<=', f'{current_end} 23:59:59')])
+                d.extend([
+                    '|',
+                    '&', (d_field, '>=', current_start), (d_field, '<=', current_end),
+                    '&', (d_field, '=', False), ('create_date', '>=', f'{current_start} 00:00:00'), ('create_date', '<=', f'{current_end} 23:59:59')
+                ])
             grouped = self.env[m_name].sudo()._read_group(d, groupby=['project_id'], aggregates=[f'{a_field}:sum'])
             for proj_rec, amt in grouped:
-                proj_name = proj_rec.name if proj_rec else _('بدون منصة محددة')
+                proj_name = (proj_rec.name or '').strip() if proj_rec else _('بدون منصة محددة')
                 platform_dict[proj_name] = platform_dict.get(proj_name, 0.0) + (amt or 0.0)
 
         platform_labels = list(platform_dict.keys())
@@ -241,32 +268,40 @@ class BankSettlementDashboard(models.AbstractModel):
 
         for lbl, m_s, m_e in months_list:
             monthly_trend_labels.append(lbl)
-            def _get_month_sum(m_name, d_state, a_field):
+            def _get_month_sum(m_name, d_state, a_field, d_field='transfer_date'):
                 d = [
-                    ('company_id', 'in', company_ids),
+                    '|', ('company_id', '=', False), ('company_id', 'in', company_ids),
                     ('state', '=', d_state),
-                    ('create_date', '>=', f'{m_s} 00:00:00'),
-                    ('create_date', '<=', f'{m_e} 23:59:59'),
+                    '|',
+                    '&', (d_field, '>=', m_s), (d_field, '<=', m_e),
+                    '&', (d_field, '=', False), ('create_date', '>=', f'{m_s} 00:00:00'), ('create_date', '<=', f'{m_e} 23:59:59')
                 ]
-                if proj_id:
-                    d.append(('project_id', '=', proj_id))
+                if matching_project_ids:
+                    d.append(('project_id', 'in', matching_project_ids))
                 res = self.env[m_name].sudo().search(d)
                 return round(sum(res.mapped(a_field)), 2)
 
-            monthly_trend_adv.append(_get_month_sum('bank.settlement.advance', 'paid', 'amount'))
-            monthly_trend_gov.append(_get_month_sum('bank.settlement.government.fee', 'done', 'total_amount'))
-            monthly_trend_veh.append(_get_month_sum('bank.settlement.vehicle.transfer', 'done', 'amount'))
-            monthly_trend_med.append(_get_month_sum('bank.settlement.medical.insurance', 'done', 'amount'))
-            monthly_trend_rep.append(_get_month_sum('bank.settlement.representative', 'done', 'amount'))
+            monthly_trend_adv.append(_get_month_sum('bank.settlement.advance', 'paid', 'amount', 'transfer_date'))
+            monthly_trend_gov.append(_get_month_sum('bank.settlement.government.fee', 'done', 'total_amount', 'transfer_date'))
+            monthly_trend_veh.append(_get_month_sum('bank.settlement.vehicle.transfer', 'done', 'amount', 'transfer_date'))
+            monthly_trend_med.append(_get_month_sum('bank.settlement.medical.insurance', 'done', 'amount', 'transfer_date'))
+            monthly_trend_rep.append(_get_month_sum('bank.settlement.representative', 'done', 'amount', 'date'))
 
         # د. أعلى أنواع الرسوم الحكومية تكلفة (Top Government Fee Types)
         top_gov_fees_labels = []
         top_gov_fees_data = []
-        gov_fee_domain = [('company_id', 'in', company_ids), ('state', '=', 'done')]
-        if proj_id:
-            gov_fee_domain.append(('project_id', '=', proj_id))
+        gov_fee_domain = [
+            '|', ('company_id', '=', False), ('company_id', 'in', company_ids),
+            ('state', '=', 'done')
+        ]
+        if matching_project_ids:
+            gov_fee_domain.append(('project_id', 'in', matching_project_ids))
         if current_start and current_end:
-            gov_fee_domain.extend([('create_date', '>=', f'{current_start} 00:00:00'), ('create_date', '<=', f'{current_end} 23:59:59')])
+            gov_fee_domain.extend([
+                '|',
+                '&', ('transfer_date', '>=', current_start), ('transfer_date', '<=', current_end),
+                '&', ('transfer_date', '=', False), ('create_date', '>=', f'{current_start} 00:00:00'), ('create_date', '<=', f'{current_end} 23:59:59')
+            ])
         gov_grouped = self.env['bank.settlement.government.fee'].sudo()._read_group(
             gov_fee_domain, groupby=['fee_type_id'], aggregates=['total_amount:sum'], order='total_amount:sum desc', limit=6
         )
@@ -278,11 +313,18 @@ class BankSettlementDashboard(models.AbstractModel):
         # هـ. أعلى أنواع تحويلات ومصاريف المركبات (Top Vehicle Transfer Types)
         top_veh_labels = []
         top_veh_data = []
-        veh_domain = [('company_id', 'in', company_ids), ('state', '=', 'done')]
-        if proj_id:
-            veh_domain.append(('project_id', '=', proj_id))
+        veh_domain = [
+            '|', ('company_id', '=', False), ('company_id', 'in', company_ids),
+            ('state', '=', 'done')
+        ]
+        if matching_project_ids:
+            veh_domain.append(('project_id', 'in', matching_project_ids))
         if current_start and current_end:
-            veh_domain.extend([('create_date', '>=', f'{current_start} 00:00:00'), ('create_date', '<=', f'{current_end} 23:59:59')])
+            veh_domain.extend([
+                '|',
+                '&', ('transfer_date', '>=', current_start), ('transfer_date', '<=', current_end),
+                '&', ('transfer_date', '=', False), ('create_date', '>=', f'{current_start} 00:00:00'), ('create_date', '<=', f'{current_end} 23:59:59')
+            ])
         veh_grouped = self.env['bank.settlement.vehicle.transfer'].sudo()._read_group(
             veh_domain, groupby=['transfer_type_id'], aggregates=['amount:sum'], order='amount:sum desc', limit=6
         )
@@ -315,9 +357,9 @@ class BankSettlementDashboard(models.AbstractModel):
         }
 
         for model_name, type_title, type_code, amt_col in models_meta:
-            rec_dom = [('company_id', 'in', company_ids)]
-            if proj_id:
-                rec_dom.append(('project_id', '=', proj_id))
+            rec_dom = ['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]
+            if matching_project_ids:
+                rec_dom.append(('project_id', 'in', matching_project_ids))
             records = self.env[model_name].sudo().search(rec_dom, order='create_date desc', limit=4)
             for r in records:
                 emp_name = r.employee_id.name if getattr(r, 'employee_id', False) else '-'
@@ -328,6 +370,7 @@ class BankSettlementDashboard(models.AbstractModel):
                         emp_name = r.vendor_id.name
 
                 proj_name = r.project_id.name if getattr(r, 'project_id', False) else '-'
+                comp_name = r.company_id.name if getattr(r, 'company_id', False) else _('عامة')
                 dt = r.transfer_date or (r.create_date.date() if r.create_date else today)
 
                 recent_items.append({
@@ -338,6 +381,7 @@ class BankSettlementDashboard(models.AbstractModel):
                     'type_code': type_code,
                     'employee_name': emp_name,
                     'project_name': proj_name,
+                    'company_name': comp_name,
                     'amount': round(getattr(r, amt_col, 0.0) or 0.0, 2),
                     'date': str(dt),
                     'create_date': r.create_date or fields.Datetime.now(),
@@ -351,10 +395,20 @@ class BankSettlementDashboard(models.AbstractModel):
         for item in recent_transactions:
             item.pop('create_date', None)
 
-        # 6. قائمة المشاريع/المنصات لفلتر الواجهة
-        projects = self.env['project.project'].sudo().search_read(
-            [('company_id', 'in', company_ids)], ['id', 'name'], order='name asc'
-        )
+        # 6. قائمة المشاريع/المنصات لفلتر الواجهة (تجميع فريد حسب الاسم لتغطية كافة الشركات النشطة)
+        all_projects = self.env['project.project'].sudo().search([
+            '|', ('company_id', '=', False), ('company_id', 'in', company_ids)
+        ], order='name asc')
+        unique_platforms = []
+        seen_names = set()
+        for p in all_projects:
+            p_name = (p.name or '').strip()
+            if p_name and p_name not in seen_names:
+                seen_names.add(p_name)
+                unique_platforms.append({
+                    'id': p.id,
+                    'name': p_name,
+                })
 
         return {
             'currency': currency_data,
@@ -424,7 +478,7 @@ class BankSettlementDashboard(models.AbstractModel):
                 },
             },
             'recent_transactions': recent_transactions,
-            'projects': projects,
+            'projects': unique_platforms,
         }
 
     @api.model
@@ -438,7 +492,7 @@ class BankSettlementDashboard(models.AbstractModel):
 
         today = fields.Date.context_today(self)
         due_lines = self.env['bank.settlement.prepaid.line'].sudo().search([
-            ('company_id', 'in', self.env.companies.ids),
+            '|', ('company_id', '=', False), ('company_id', 'in', self.env.companies.ids),
             ('state', '=', 'draft'),
             ('period_end_date', '<=', today),
         ])
@@ -465,4 +519,3 @@ class BankSettlementDashboard(models.AbstractModel):
                 'sticky': False,
             }
         }
-

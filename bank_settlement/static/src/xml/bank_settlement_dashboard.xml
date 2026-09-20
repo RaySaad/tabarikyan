@@ -424,6 +424,7 @@
                                         <th class="ps-4">الكود / الرقم</th>
                                         <th>نوع العملية</th>
                                         <th>الموظف / المستفيد</th>
+                                        <th>الشركة</th>
                                         <th>المنصة</th>
                                         <th>المبلغ</th>
                                         <th>التاريخ</th>
@@ -434,7 +435,7 @@
                                 <tbody>
                                     <t t-if="state.recentTransactions.length === 0">
                                         <tr>
-                                            <td colspan="8" class="text-center py-4 text-muted">
+                                            <td colspan="9" class="text-center py-4 text-muted">
                                                 <i class="fa fa-inbox fa-3x mb-2 d-block text-black-50"/>
                                                 لا توجد عمليات مسجلة في هذه الفترة
                                             </td>
@@ -452,6 +453,9 @@
                                             </td>
                                             <td>
                                                 <span class="fw-bold text-dark" t-esc="trx.employee_name"/>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-light text-secondary border rounded-pill px-2 py-1 small" t-esc="trx.company_name"/>
                                             </td>
                                             <td>
                                                 <span class="text-muted small" t-esc="trx.project_name"/>
