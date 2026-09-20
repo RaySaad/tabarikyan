@@ -81,8 +81,11 @@
                                 type="object" class="btn-primary"
                                 groups="recruitment_workflow.group_recruitment_workflow_hr,recruitment_workflow.group_recruitment_workflow_operations"
                                 invisible="state != 'draft'"/>
+                        <!-- نفس المجموعات التي تفرضها الدالة في الخادم:
+                             ظهوره للجميع يعني نقرة تنتهي برسالة رفض. -->
                         <button name="action_notified" string="تم إبلاغ الموظف"
                                 type="object" class="btn-primary"
+                                groups="recruitment_workflow.group_recruitment_workflow_project_manager,recruitment_workflow.group_recruitment_workflow_hr,recruitment_workflow.group_recruitment_workflow_operations,recruitment_workflow.group_recruitment_workflow_fleet_supervisor"
                                 invisible="state != 'confirmed'"/>
                         <button name="action_reset_draft" string="إعادة لمسودة"
                                 type="object"
