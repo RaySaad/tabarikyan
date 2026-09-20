@@ -62,20 +62,45 @@
                         <thead>
                             <tr>
                                 <th>الوحدة / الخدمة</th>
-                                <th class="text-end">الإجمالي</th>
+                                <th class="text-end">الإجمالي شامل الضريبة</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr t-foreach="o.order_line.filtered(lambda l: not l.display_type)" t-as="line">
-                                <td><span t-field="line.name"/></td>
-                                <td class="text-end"><span t-field="line.price_subtotal"/></td>
-                            </tr>
+                            <!-- السطور الوصفية (ملاحظات وأقسام) تُعرض كما
+                                 كتبها الموظف: الملاحظة تحت المنتج شرطٌ
+                                 يقرأه المستأجر (التأمين مثلاً)، وحذفها من
+                                 العقد يُسقط ما اتُّفق عليه. -->
+                            <t t-foreach="o.order_line" t-as="line">
+                                <tr t-if="line.display_type == 'line_section'">
+                                    <td colspan="2"><strong t-field="line.name"/></td>
+                                </tr>
+                                <tr t-elif="line.display_type == 'line_note'">
+                                    <td colspan="2">
+                                        <span class="text-muted fst-italic" t-field="line.name"/>
+                                    </td>
+                                </tr>
+                                <tr t-elif="not line.display_type">
+                                    <td><span t-field="line.name"/></td>
+                                    <!-- شامل الضريبة ليطابق إجمالي الحجز
+                                         أسفل الجدول: البند قبل الضريبة مع
+                                         إجمالي بعدها تناقض في عين العميل. -->
+                                    <td class="text-end"><span t-field="line.price_total"/></td>
+                                </tr>
+                            </t>
                         </tbody>
                     </table>
 
                     <div class="row mb-4">
                         <div class="offset-6 col-6">
                             <table class="table table-sm">
+                                <tr>
+                                    <td>الإجمالي قبل الضريبة</td>
+                                    <td class="text-end"><span t-field="o.amount_untaxed"/></td>
+                                </tr>
+                                <tr t-if="o.amount_tax">
+                                    <td>ضريبة القيمة المضافة</td>
+                                    <td class="text-end"><span t-field="o.amount_tax"/></td>
+                                </tr>
                                 <tr>
                                     <td>إجمالي قيمة الحجز</td>
                                     <td class="text-end"><span t-field="o.amount_total"/></td>
