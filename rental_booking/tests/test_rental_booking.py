@@ -558,6 +558,52 @@ class TestRentalContract(AccountTestInvoicingCommon):
             self.assertFalse(period['start'])
             self.assertEqual(period['nights'], 0)
 
+    def test_line_amounts_include_tax_like_the_total(self):
+        """العقد كان يعرض البند قبل الضريبة وإجمالي الحجز بعدها، فيقرأ
+        العميل رقمين لا يجمعان."""
+        tax = self.env['account.tax'].create({
+            'name': 'ضريبة 15%', 'amount': 15.0, 'amount_type': 'percent',
+            'type_tax_use': 'sale'})
+        order = self._booking(order_line=[(0, 0, {
+            'product_id': self.product.id, 'product_uom_qty': 1,
+            'tax_ids': [(6, 0, tax.ids)]})])
+        self._pay(order, 500.0)
+        line = order.order_line[0]
+        self.assertNotEqual(line.price_total, line.price_subtotal)
+
+        html = self._render_contract(order)
+
+        self.assertIn('{:,.2f}'.format(line.price_total), html,
+                      'مبلغ البند لا يظهر شاملاً الضريبة')
+        self.assertIn('ضريبة القيمة المضافة', html, 'سطر الضريبة غائب')
+        self.assertIn('{:,.2f}'.format(order.amount_untaxed), html)
+        self.assertIn('{:,.2f}'.format(order.amount_total), html)
+
+    def test_notes_written_under_the_product_appear(self):
+        """ملاحظة السطر شرط متفق عليه (التأمين مثلاً) - إسقاطها من العقد
+        إسقاط لما اتُّفق عليه."""
+        note = 'يوجد تأمين بمبلغ 300 يدفع عند الوصول ويسترجع عند المغادرة.'
+        order = self._booking(order_line=[
+            (0, 0, {'product_id': self.product.id, 'product_uom_qty': 1}),
+            (0, 0, {'display_type': 'line_note', 'name': note}),
+        ])
+        self._pay(order, 500.0)
+
+        html = self._render_contract(order)
+
+        self.assertIn(note, html)
+
+    def test_sections_appear_as_headings(self):
+        order = self._booking(order_line=[
+            (0, 0, {'display_type': 'line_section', 'name': 'الوحدات المحجوزة'}),
+            (0, 0, {'product_id': self.product.id, 'product_uom_qty': 1}),
+        ])
+        self._pay(order, 500.0)
+
+        html = self._render_contract(order)
+
+        self.assertIn('الوحدات المحجوزة', html)
+
     def test_printing_follows_the_same_conditions(self):
         order = self._booking()
         with self.assertRaises(UserError):

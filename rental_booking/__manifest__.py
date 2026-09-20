@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'حجوزات التأجير: عميل نقدي ومصدر الحجز - Rental Booking',
-    'version': '19.0.1.0.1',
+    'version': '19.0.1.0.2',
     'category': 'Sales/Rental',
     'summary': 'حجوزات الشاليهات بعميل ثابت ورقم حجز، بدل جهة اتصال لكل نزيل',
     'description': """
