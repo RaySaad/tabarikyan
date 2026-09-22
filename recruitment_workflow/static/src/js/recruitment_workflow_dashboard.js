@@ -5,10 +5,14 @@ import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
 import { loadBundle } from "@web/core/assets";
+import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 
 export class RecruitmentWorkflowDashboard extends Component {
     static template = "recruitment_workflow.RecruitmentWorkflowDashboard";
-    static props = {};
+    // أودو تمرّر لكل "إجراء عميل" خصائصها القياسية (action،
+    // actionId، updateActionState، className...). تركها غير معلَنة
+    // يُسقط الشاشة في أودو 19 بخطأ OwlError: Invalid props.
+    static props = { ...standardActionServiceProps };
 
     setup() {
         this.orm = useService("orm");
