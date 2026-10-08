@@ -6,13 +6,13 @@
         <field name="model">project.project</field>
         <field name="inherit_id" ref="project.edit_project"/>
         <field name="arch" type="xml">
-            <field name="user_id" position="after" options="{'no_open': True}">
+            <field name="user_id" position="after" options="{'no_create': True, 'no_open': True}">
                 <field name="recruitment_hidden"
                        groups="recruitment_workflow.group_recruitment_workflow_user"/>
                 <field name="department_id"
-                       groups="recruitment_workflow.group_recruitment_workflow_user" options="{'no_open': True}"/>
+                       groups="recruitment_workflow.group_recruitment_workflow_user" options="{'no_create': True, 'no_open': True}"/>
                 <field name="default_job_id"
-                       groups="recruitment_workflow.group_recruitment_workflow_user" options="{'no_open': True}"/>
+                       groups="recruitment_workflow.group_recruitment_workflow_user" options="{'no_create': True, 'no_open': True}"/>
                 <field name="compensation_type_ids" widget="many2many_tags"
                        options="{'no_create': True}"
                        groups="recruitment_workflow.group_recruitment_workflow_user"/>

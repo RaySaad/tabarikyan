@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <form string="إعادة طلب تغيير المركبة لمسودة">
                 <group>
-                    <field name="request_id" readonly="1" options="{'no_open': True}"/>
+                    <field name="request_id" readonly="1" options="{'no_create': True, 'no_open': True}"/>
                     <field name="reason"
                            placeholder="مثال: مرفقات ناقصة، المركبة البديلة غير مناسبة..."/>
                 </group>

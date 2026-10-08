@@ -11,10 +11,10 @@
                       decoration-info="state not in ('draft', 'done', 'cancel')"
                       decoration-muted="state in ('draft', 'cancel')">
                     <field name="name"/>
-                    <field name="employee_id" options="{'no_open': True}"/>
+                    <field name="employee_id" options="{'no_create': True, 'no_open': True}"/>
                     <field name="request_type"/>
-                    <field name="current_vehicle_id" options="{'no_open': True}"/>
-                    <field name="new_vehicle_id" options="{'no_open': True}"/>
+                    <field name="current_vehicle_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="new_vehicle_id" options="{'no_create': True, 'no_open': True}"/>
                     <field name="request_date"/>
                     <field name="state" widget="badge"
                            decoration-success="state == 'done'"
@@ -30,10 +30,10 @@
             <field name="arch" type="xml">
                 <search string="طلبات تغيير المركبات">
                     <field name="name"/>
-                    <field name="employee_id" options="{'no_open': True}"/>
-                    <field name="current_vehicle_id" options="{'no_open': True}"/>
-                    <field name="new_vehicle_id" options="{'no_open': True}"/>
-                    <field name="accident_report_id" options="{'no_open': True}"/>
+                    <field name="employee_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="current_vehicle_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="new_vehicle_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="accident_report_id" options="{'no_create': True, 'no_open': True}"/>
                     <filter name="my_requests" string="طلباتي"
                             domain="[('create_uid', '=', uid)]"/>
                     <separator/>
@@ -130,7 +130,7 @@
                                 <field name="residency_number"/>
                                 <field name="birthday"/>
                                 <field name="absher_mobile"/>
-                                <field name="project_id" options="{'no_open': True}"/>
+                                <field name="project_id" options="{'no_create': True, 'no_open': True}"/>
                             </group>
                             <group string="تفاصيل الطلب">
                                 <field name="request_type" readonly="state != 'draft'"/>
@@ -140,12 +140,12 @@
                                 <field name="accident_report_id"
                                        invisible="request_type != 'accident'"
                                        readonly="state != 'draft'"
-                                       domain="[('vehicle_id', '=', current_vehicle_id)]" options="{'no_open': True}"/>
+                                       domain="[('vehicle_id', '=', current_vehicle_id)]" options="{'no_create': True, 'no_open': True}"/>
                                 <field name="accident_number"
                                        invisible="request_type != 'accident' or not accident_report_id"/>
                                 <field name="old_vehicle_target_state"
                                        readonly="state in ('done', 'cancel')"/>
-                                <field name="company_id" groups="base.group_multi_company" readonly="1" options="{'no_open': True}"/>
+                                <field name="company_id" groups="base.group_multi_company" readonly="1" options="{'no_create': True, 'no_open': True}"/>
                             </group>
                         </group>
                         <group>
@@ -154,8 +154,8 @@
                                        options="{'no_create': True, 'no_open': True}"/>
                                 <field name="current_plate"/>
                                 <field name="current_vin"/>
-                                <field name="current_model_id" options="{'no_open': True}"/>
-                                <field name="current_vehicle_company_id" groups="base.group_multi_company" options="{'no_open': True}"/>
+                                <field name="current_model_id" options="{'no_create': True, 'no_open': True}"/>
+                                <field name="current_vehicle_company_id" groups="base.group_multi_company" options="{'no_create': True, 'no_open': True}"/>
                             </group>
                             <group string="المركبة الجديدة (اختيارية)">
                                 <field name="new_vehicle_id" readonly="state != 'draft'"
@@ -163,9 +163,9 @@
                                        domain="[('recruitment_state', '=', 'available')]"/>
                                 <field name="new_plate" invisible="not new_vehicle_id"/>
                                 <field name="new_vin" invisible="not new_vehicle_id"/>
-                                <field name="new_model_id" invisible="not new_vehicle_id" options="{'no_open': True}"/>
+                                <field name="new_model_id" invisible="not new_vehicle_id" options="{'no_create': True, 'no_open': True}"/>
                                 <field name="new_vehicle_company_id" groups="base.group_multi_company"
-                                       invisible="not new_vehicle_id" options="{'no_open': True}"/>
+                                       invisible="not new_vehicle_id" options="{'no_create': True, 'no_open': True}"/>
                             </group>
                         </group>
                         <div class="alert alert-info" role="alert" invisible="new_vehicle_id">
@@ -183,7 +183,7 @@
                                     <group string="استلام المركبة القديمة">
                                         <field name="receipt_odometer" readonly="state != 'waiting_receipt'"/>
                                         <field name="receipt_date"/>
-                                        <field name="receipt_user_id" options="{'no_open': True}"/>
+                                        <field name="receipt_user_id" options="{'no_create': True, 'no_open': True}"/>
                                     </group>
                                     <group string="تسليم المركبة الجديدة" invisible="not new_vehicle_id">
                                         <field name="delivery_odometer" readonly="state != 'waiting_receipt'"/>
@@ -198,7 +198,7 @@
                                 <field name="attachment_line_ids" readonly="state not in ('draft', 'waiting_supervisor')">
                                     <list editable="bottom" create="0" delete="0">
                                         <field name="sequence" widget="handle"/>
-                                        <field name="attachment_type_id" readonly="1" options="{'no_open': True}"/>
+                                        <field name="attachment_type_id" readonly="1" options="{'no_create': True, 'no_open': True}"/>
                                         <field name="required" readonly="1"/>
                                         <field name="file" filename="file_name" widget="binary"/>
                                         <field name="file_name" column_invisible="True"/>
@@ -213,7 +213,7 @@
                                         <field name="approval_date"/>
                                     </group>
                                     <group>
-                                        <field name="maintenance_log_id" invisible="not maintenance_log_id" options="{'no_open': True}"/>
+                                        <field name="maintenance_log_id" invisible="not maintenance_log_id" options="{'no_create': True, 'no_open': True}"/>
                                     </group>
                                 </group>
                                 <group string="ملاحظات">

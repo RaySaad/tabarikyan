@@ -32,7 +32,7 @@
             </xpath>
             <xpath expr="//sheet" position="inside">
                 <group string="التوظيف / الأسطول" name="recruitment_platform">
-                    <field name="project_id" options="{'no_open': True}"/>
+                    <field name="project_id" options="{'no_create': True, 'no_open': True}"/>
                     <button name="action_open_branch_transfer_wizard" type="object"
                             string="نقل لفرع آخر" class="btn-link"
                             icon="fa-exchange"
@@ -50,7 +50,7 @@
             <form string="نقل لفرع آخر">
                 <field name="vehicle_id" invisible="1"/>
                 <group>
-                    <field name="current_company_id" options="{'no_open': True}"/>
+                    <field name="current_company_id" options="{'no_create': True, 'no_open': True}"/>
                     <field name="company_id" options="{'no_create': True, 'no_open': True}"/>
                     <field name="note" placeholder="ملاحظة اختيارية..."/>
                 </group>
@@ -104,12 +104,12 @@
         <field name="arch" type="xml">
             <list string="تاريخ فروع السيارات" default_order="date_start desc"
                   decoration-success="is_current">
-                <field name="vehicle_id" options="{'no_open': True}"/>
-                <field name="company_id" options="{'no_open': True}"/>
+                <field name="vehicle_id" options="{'no_create': True, 'no_open': True}"/>
+                <field name="company_id" options="{'no_create': True, 'no_open': True}"/>
                 <field name="date_start"/>
                 <field name="date_end"/>
                 <field name="is_current" widget="boolean_toggle" readonly="1"/>
-                <field name="moved_by" optional="hide"/>
+                <field name="moved_by" optional="hide" options="{'no_create': True, 'no_open': True}"/>
                 <field name="note" optional="hide"/>
             </list>
         </field>
@@ -121,11 +121,11 @@
         <field name="arch" type="xml">
             <form string="فترة تبعية لفرع">
                 <group>
-                    <field name="vehicle_id" options="{'no_open': True}"/>
-                    <field name="company_id" options="{'no_open': True}"/>
+                    <field name="vehicle_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="company_id" options="{'no_create': True, 'no_open': True}"/>
                     <field name="date_start"/>
                     <field name="date_end"/>
-                    <field name="moved_by"/>
+                    <field name="moved_by" options="{'no_create': True, 'no_open': True}"/>
                     <field name="note"/>
                 </group>
             </form>
@@ -169,7 +169,7 @@
                         <group string="بيانات المندوب">
                             <field name="employee_name" readonly="1"/>
                             <field name="mobile" readonly="1"/>
-                            <field name="project_id" readonly="1" options="{'no_open': True}"/>
+                            <field name="project_id" readonly="1" options="{'no_create': True, 'no_open': True}"/>
                         </group>
                         <group string="السيارة">
                             <!-- قابلة للتعديل هنا فقط - قسم الأسطول هو من

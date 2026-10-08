@@ -10,10 +10,10 @@
                       decoration-danger="state == 'rejected'">
                     <field name="name"/>
                     <field name="date"/>
-                    <field name="employee_id" string="اسم المندوب" options="{'no_open': True}"/>
+                    <field name="employee_id" string="اسم المندوب" options="{'no_create': True, 'no_open': True}"/>
                     <field name="residency_number"/>
                     <field name="iban"/>
-                    <field name="project_id" string="اسم التطبيق" options="{'no_open': True}"/>
+                    <field name="project_id" string="اسم التطبيق" options="{'no_create': True, 'no_open': True}"/>
                     <field name="platform_employee_id" string="ID رقم"/>
                     <field name="settlement_amount" sum="الإجمالي"/>
                     <field name="state" widget="badge"
@@ -31,8 +31,8 @@
             <field name="arch" type="xml">
                 <search string="تصفيات المناديب">
                     <field name="name"/>
-                    <field name="employee_id" string="اسم المندوب" options="{'no_open': True}"/>
-                    <field name="project_id" string="اسم التطبيق" options="{'no_open': True}"/>
+                    <field name="employee_id" string="اسم المندوب" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="project_id" string="اسم التطبيق" options="{'no_create': True, 'no_open': True}"/>
                     <filter name="inactive" string="مؤرشف" domain="[('active', '=', False)]"/>
                     <group>
                         <filter name="group_by_state" string="الحالة" context="{'group_by': 'state'}"/>
@@ -77,7 +77,7 @@
                     <sheet>
                         <div class="alert alert-warning" role="alert" invisible="not direct_approval_user_id">
                             <b>اعتُمد مباشرةً من الإدارة</b> بواسطة
-                            <field name="direct_approval_user_id" readonly="1" class="oe_inline" options="{'no_open': True}"/> في
+                            <field name="direct_approval_user_id" readonly="1" class="oe_inline" options="{'no_create': True, 'no_open': True}"/> في
                             <field name="direct_approval_date" readonly="1" class="oe_inline"/>
                             — السبب: <field name="direct_approval_reason" readonly="1" class="oe_inline"/>
                         </div>
@@ -102,15 +102,15 @@
                             <group string="بيانات المندوب">
                                 <field name="date" readonly="state != 'draft'"/>
                                 <field name="employee_id" string="اسم المندوب" required="1"
-                                       readonly="state != 'draft'" options="{'no_open': True}"/>
+                                       readonly="state != 'draft'" options="{'no_create': True, 'no_open': True}"/>
                                 <field name="residency_number"/>
                                 <field name="iban" readonly="state != 'draft'"/>
-                                <field name="company_id" groups="base.group_multi_company" readonly="1" options="{'no_open': True}"/>
+                                <field name="company_id" groups="base.group_multi_company" readonly="1" options="{'no_create': True, 'no_open': True}"/>
                             </group>
                             <group string="بيانات المنصة">
                                 <field name="project_id" string="اسم التطبيق"
-                                       readonly="state != 'draft'" options="{'no_open': True}"/>
-                                <field name="analytic_account_id" readonly="1" options="{'no_open': True}"/>
+                                       readonly="state != 'draft'" options="{'no_create': True, 'no_open': True}"/>
+                                <field name="analytic_account_id" readonly="1" options="{'no_create': True, 'no_open': True}"/>
                                 <field name="platform_employee_id" string="ID رقم"
                                        readonly="state != 'draft'"/>
                             </group>
@@ -123,9 +123,9 @@
                                  ويبقيان قابلين للتعبئة تحديداً في تلك الحالة
                                  (قبل تسجيل السداد الفعلي). -->
                             <field name="linked_account_id" readonly="state != 'confirmed' and not returned_for_correction"
-                                   invisible="state not in ('confirmed', 'done') and not returned_for_correction" options="{'no_open': True}"/>
+                                   invisible="state not in ('confirmed', 'done') and not returned_for_correction" options="{'no_create': True, 'no_open': True}"/>
                             <field name="journal_id" readonly="state != 'confirmed' and not returned_for_correction"
-                                   invisible="state not in ('confirmed', 'done') and not returned_for_correction" options="{'no_open': True}"/>
+                                   invisible="state not in ('confirmed', 'done') and not returned_for_correction" options="{'no_create': True, 'no_open': True}"/>
                         </group>
                         <group string="الدفعة المقدمة">
                             <group>
@@ -133,7 +133,7 @@
                                 <field name="prepaid_days" invisible="not is_prepaid"
                                        readonly="state != 'draft'"/>
                                 <field name="prepaid_category_id" invisible="not is_prepaid"
-                                       readonly="state != 'draft'" options="{'no_open': True}"/>
+                                       readonly="state != 'draft'" options="{'no_create': True, 'no_open': True}"/>
                             </group>
                             <group invisible="not is_prepaid">
                                 <field name="prepaid_line_count" invisible="1"/>

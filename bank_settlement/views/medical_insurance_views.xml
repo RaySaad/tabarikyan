@@ -9,9 +9,9 @@
                 <list string="التأمين الطبي" decoration-success="state == 'done'"
                       decoration-danger="state == 'rejected'">
                     <field name="name"/>
-                    <field name="fee_type_id" options="{'no_open': True}"/>
-                    <field name="employee_id" options="{'no_open': True}"/>
-                    <field name="vendor_id" options="{'no_open': True}"/>
+                    <field name="fee_type_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="employee_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="vendor_id" options="{'no_create': True, 'no_open': True}"/>
                     <field name="amount"/>
                     <field name="tax_amount"/>
                     <field name="total_amount" sum="الإجمالي"/>
@@ -30,8 +30,8 @@
             <field name="arch" type="xml">
                 <search string="التأمين الطبي">
                     <field name="name"/>
-                    <field name="employee_id" options="{'no_open': True}"/>
-                    <field name="vendor_id" options="{'no_open': True}"/>
+                    <field name="employee_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="vendor_id" options="{'no_create': True, 'no_open': True}"/>
                     <filter name="inactive" string="مؤرشف" domain="[('active', '=', False)]"/>
                     <group>
                         <filter name="group_by_state" string="الحالة" context="{'group_by': 'state'}"/>
@@ -77,7 +77,7 @@
                     <sheet>
                         <div class="alert alert-warning" role="alert" invisible="not direct_approval_user_id">
                             <b>اعتُمد مباشرةً من الإدارة</b> بواسطة
-                            <field name="direct_approval_user_id" readonly="1" class="oe_inline" options="{'no_open': True}"/> في
+                            <field name="direct_approval_user_id" readonly="1" class="oe_inline" options="{'no_create': True, 'no_open': True}"/> في
                             <field name="direct_approval_date" readonly="1" class="oe_inline"/>
                             — السبب: <field name="direct_approval_reason" readonly="1" class="oe_inline"/>
                         </div>
@@ -99,12 +99,12 @@
                         </div>
                         <group>
                             <group string="بيانات التأمين">
-                                <field name="fee_type_id" readonly="state != 'draft'" options="{'no_open': True}"/>
+                                <field name="fee_type_id" readonly="state != 'draft'" options="{'no_create': True, 'no_open': True}"/>
                                 <!-- طلب صريح: يبقى المورد قابلاً للتعديل من
                                      "مسودة" وحتى آخر مرحلة، لا يُقفَل فور
                                      مغادرة "مسودة" كباقي حقول الهوية هنا. -->
                                 <field name="vendor_id"
-                                       readonly="state in ('done', 'rejected', 'cancel')" options="{'no_open': True}"/>
+                                       readonly="state in ('done', 'rejected', 'cancel')" options="{'no_create': True, 'no_open': True}"/>
                                 <field name="company_iban" readonly="state != 'draft'"/>
                                 <!-- بيانات السداد الفعلي - خاصة بالمحاسب وقت
                                      التحويل، ولا تظهر إلا بعد اعتماد المدير
@@ -118,11 +118,11 @@
                                 <field name="transfer_date" readonly="state != 'confirmed' and not returned_for_correction"
                                        invisible="state not in ('confirmed', 'done') and not returned_for_correction"/>
                                 <field name="linked_account_id" readonly="state != 'confirmed' and not returned_for_correction"
-                                       invisible="state not in ('confirmed', 'done') and not returned_for_correction" options="{'no_open': True}"/>
+                                       invisible="state not in ('confirmed', 'done') and not returned_for_correction" options="{'no_create': True, 'no_open': True}"/>
                                 <field name="journal_id" readonly="state != 'confirmed' and not returned_for_correction"
                                        invisible="state not in ('confirmed', 'done') and not returned_for_correction"
                                        domain="[('type', '=', 'purchase'), ('company_id', 'parent_of', company_id)]"
-                                       placeholder="دفتر المشتريات الافتراضي" options="{'no_open': True}"/>
+                                       placeholder="دفتر المشتريات الافتراضي" options="{'no_create': True, 'no_open': True}"/>
                             </group>
                             <group string="المبالغ">
                                 <field name="currency_id" invisible="1"/>
@@ -134,14 +134,14 @@
                         <group>
                             <group string="بيانات المندوب">
                                 <field name="employee_id" string="اسم المندوب" required="1"
-                                       readonly="state != 'draft'" options="{'no_open': True}"/>
+                                       readonly="state != 'draft'" options="{'no_create': True, 'no_open': True}"/>
                                 <field name="residency_number"/>
-                                <field name="company_id" groups="base.group_multi_company" readonly="1" options="{'no_open': True}"/>
+                                <field name="company_id" groups="base.group_multi_company" readonly="1" options="{'no_create': True, 'no_open': True}"/>
                             </group>
                             <group string="المنصة">
                                 <field name="project_id" string="التطبيق"
-                                       readonly="state != 'draft'" options="{'no_open': True}"/>
-                                <field name="analytic_account_id" readonly="1" options="{'no_open': True}"/>
+                                       readonly="state != 'draft'" options="{'no_create': True, 'no_open': True}"/>
+                                <field name="analytic_account_id" readonly="1" options="{'no_create': True, 'no_open': True}"/>
                                 <field name="operating_system" string="نظام التشغيل"/>
                             </group>
                         </group>
@@ -151,7 +151,7 @@
                                 <field name="prepaid_days" invisible="not is_prepaid"
                                        readonly="state != 'draft'"/>
                                 <field name="prepaid_category_id" invisible="not is_prepaid"
-                                       readonly="state != 'draft'" options="{'no_open': True}"/>
+                                       readonly="state != 'draft'" options="{'no_create': True, 'no_open': True}"/>
                             </group>
                             <group invisible="not is_prepaid">
                                 <field name="prepaid_line_count" invisible="1"/>

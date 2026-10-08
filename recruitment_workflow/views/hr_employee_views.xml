@@ -38,7 +38,7 @@
                 <button name="action_open_platform_transfer_request" type="object"
                         string="طلب نقل لمنصة أخرى" class="btn-link"
                         icon="fa-exchange" invisible="not project_id"/>
-                <field name="analytic_account_id" readonly="1" invisible="not analytic_account_id" options="{'no_open': True}"/>
+                <field name="analytic_account_id" readonly="1" invisible="not analytic_account_id" options="{'no_create': True, 'no_open': True}"/>
                 <field name="absher_mobile"/>
             </xpath>
         </field>
@@ -91,9 +91,9 @@
         <field name="arch" type="xml">
             <list string="تاريخ المنصات" default_order="date_start desc"
                   decoration-success="is_current">
-                <field name="employee_id" options="{'no_open': True}"/>
-                <field name="project_id" options="{'no_open': True}"/>
-                <field name="analytic_account_id" optional="hide" options="{'no_open': True}"/>
+                <field name="employee_id" options="{'no_create': True, 'no_open': True}"/>
+                <field name="project_id" options="{'no_create': True, 'no_open': True}"/>
+                <field name="analytic_account_id" optional="hide" options="{'no_create': True, 'no_open': True}"/>
                 <field name="date_start"/>
                 <field name="date_end"/>
                 <field name="is_current" widget="boolean_toggle" readonly="1"/>
@@ -108,9 +108,9 @@
         <field name="arch" type="xml">
             <form string="فترة عمل على منصة">
                 <group>
-                    <field name="employee_id" options="{'no_open': True}"/>
-                    <field name="project_id" options="{'no_open': True}"/>
-                    <field name="analytic_account_id" readonly="1" options="{'no_open': True}"/>
+                    <field name="employee_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="project_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="analytic_account_id" readonly="1" options="{'no_create': True, 'no_open': True}"/>
                     <field name="date_start"/>
                     <field name="date_end"/>
                     <field name="note"/>
