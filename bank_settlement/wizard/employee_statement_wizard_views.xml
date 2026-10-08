@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <form string="كشف حساب الموظف">
                 <group>
-                    <field name="employee_id" options="{'no_create': True}"/>
+                    <field name="employee_id" options="{'no_create': True, 'no_open': True}"/>
                     <field name="date_mode" widget="radio"/>
                     <field name="date_from" invisible="date_mode != 'custom'"
                            required="date_mode == 'custom'"/>

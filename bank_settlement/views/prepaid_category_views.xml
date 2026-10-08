@@ -10,9 +10,9 @@
                 <list string="فئات الدفعة المقدمة" editable="bottom">
                     <field name="sequence" widget="handle"/>
                     <field name="name"/>
-                    <field name="prepaid_account_id"/>
-                    <field name="expense_account_id"/>
-                    <field name="journal_id"/>
+                    <field name="prepaid_account_id" options="{'no_open': True}"/>
+                    <field name="expense_account_id" options="{'no_open': True}"/>
+                    <field name="journal_id" options="{'no_open': True}"/>
                     <field name="active" column_invisible="True"/>
                 </list>
             </field>
@@ -31,7 +31,7 @@
                 <list string="جدول استحقاق الدفعة المقدمة" create="0">
                     <field name="sequence"/>
                     <field name="name"/>
-                    <field name="employee_id"/>
+                    <field name="employee_id" options="{'no_open': True}"/>
                     <field name="period_start_date"/>
                     <field name="period_end_date"/>
                     <field name="amount" sum="الإجمالي"/>
@@ -87,8 +87,8 @@
                         <group>
                             <group>
                                 <field name="name"/>
-                                <field name="employee_id"/>
-                                <field name="category_id"/>
+                                <field name="employee_id" options="{'no_open': True}"/>
+                                <field name="category_id" options="{'no_open': True}"/>
                             </group>
                             <group>
                                 <field name="period_start_date"/>

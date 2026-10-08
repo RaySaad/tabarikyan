@@ -16,9 +16,9 @@
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="category"/>
-                <field name="partner_id" optional="show"/>
-                <field name="expense_account_id"/>
-                <field name="journal_id"/>
+                <field name="partner_id" optional="show" options="{'no_open': True}"/>
+                <field name="expense_account_id" options="{'no_open': True}"/>
+                <field name="journal_id" options="{'no_open': True}"/>
                 <field name="active" widget="boolean_toggle"/>
             </list>
         </field>
@@ -33,11 +33,11 @@
                     <group>
                         <field name="name"/>
                         <field name="category"/>
-                        <field name="partner_id"/>
-                        <field name="expense_account_id"/>
-                        <field name="journal_id"/>
+                        <field name="partner_id" options="{'no_open': True}"/>
+                        <field name="expense_account_id" options="{'no_open': True}"/>
+                        <field name="journal_id" options="{'no_open': True}"/>
                         <field name="active"/>
-                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="company_id" groups="base.group_multi_company" options="{'no_open': True}"/>
                     </group>
                 </sheet>
             </form>

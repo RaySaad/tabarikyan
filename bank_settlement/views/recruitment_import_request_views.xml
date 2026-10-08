@@ -85,8 +85,8 @@
                         </div>
                         <group>
                             <group string="بيانات الرسوم الحكومية">
-                                <field name="government_entity_id" readonly="state != 'draft'"/>
-                                <field name="fee_type_id" readonly="state != 'draft'"/>
+                                <field name="government_entity_id" readonly="state != 'draft'" options="{'no_open': True}"/>
+                                <field name="fee_type_id" readonly="state != 'draft'" options="{'no_open': True}"/>
                                 <field name="gov_fee_amount" readonly="state != 'draft'"/>
                                 <field name="currency_id" invisible="1"/>
                                 <field name="bank_settlement_gov_fee_state" readonly="1"
@@ -100,7 +100,7 @@
                                      الحكومية هنا أيضاً (انظر
                                      _sync_gov_fee_platform_company). -->
                                 <field name="company_id" groups="base.group_multi_company"
-                                       readonly="state != 'draft'"/>
+                                       readonly="state != 'draft'" options="{'no_open': True}"/>
                             </group>
                             <group string="بيانات الموظف الأساسية"
                                    invisible="state in ('draft', 'fee_registered')">

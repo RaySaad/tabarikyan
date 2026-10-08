@@ -14,8 +14,8 @@
                     <field name="report_type"/>
                     <field name="accident_date"/>
                     <field name="accident_number" optional="show"/>
-                    <field name="vehicle_id"/>
-                    <field name="employee_id"/>
+                    <field name="vehicle_id" options="{'no_open': True}"/>
+                    <field name="employee_id" options="{'no_open': True}"/>
                     <field name="responsibility"/>
                     <field name="estimated_cost" sum="إجمالي التقديرات"/>
                     <field name="currency_id" column_invisible="True"/>
@@ -34,8 +34,8 @@
                 <search string="بلاغات الحوادث">
                     <field name="name"/>
                     <field name="accident_number"/>
-                    <field name="vehicle_id"/>
-                    <field name="employee_id"/>
+                    <field name="vehicle_id" options="{'no_open': True}"/>
+                    <field name="employee_id" options="{'no_open': True}"/>
                     <filter name="official" string="حوادث رسمية"
                             domain="[('report_type', '=', 'official')]"/>
                     <filter name="minor" string="تلفيات بسيطة"
@@ -101,16 +101,16 @@
                                 <field name="accident_number" readonly="state == 'closed'"
                                        invisible="report_type == 'minor'"/>
                                 <field name="vehicle_id" readonly="state != 'draft'"
-                                       options="{'no_create': True}"/>
+                                       options="{'no_create': True, 'no_open': True}"/>
                                 <field name="employee_id" readonly="state != 'draft'"
-                                       options="{'no_create': True}"/>
+                                       options="{'no_create': True, 'no_open': True}"/>
                                 <field name="location" readonly="state == 'closed'"/>
                             </group>
                             <group string="المسؤولية والتقدير">
                                 <field name="responsibility" readonly="state == 'closed'"/>
                                 <field name="estimated_cost" readonly="state == 'closed'"/>
                                 <field name="currency_id" invisible="1"/>
-                                <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                                <field name="company_id" groups="base.group_multi_company" readonly="1" options="{'no_open': True}"/>
                             </group>
                         </group>
                         <group string="وصف الحادث / التلف">

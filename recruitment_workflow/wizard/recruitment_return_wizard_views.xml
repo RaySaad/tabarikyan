@@ -14,7 +14,7 @@
                 <group>
                     <field name="target_stage_id"
                            domain="[('id', 'in', available_stage_ids)]"
-                           options="{'no_create': True}"/>
+                           options="{'no_create': True, 'no_open': True}"/>
                     <field name="reason" placeholder="وضّح البيانات الناقصة أو غير الصحيحة المطلوب تصحيحها..."/>
                 </group>
                 <footer>

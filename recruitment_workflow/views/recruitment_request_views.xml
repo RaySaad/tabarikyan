@@ -176,10 +176,10 @@
                             <field name="passport_no"/>
                         </group>
                         <group string="بيانات الوظيفة">
-                            <field name="job_id"/>
+                            <field name="job_id" options="{'no_open': True}"/>
                             <!-- للعرض فقط - تُشتَق من قسم المشروع مباشرة إن
                                  وُجد، وإلا من قسم الوظيفة الافتراضية. -->
-                            <field name="department_id" readonly="1"/>
+                            <field name="department_id" readonly="1" options="{'no_open': True}"/>
                             <!-- للعرض فقط - تُشتَق تلقائياً من المسؤول المعيّن
                                  على المشروع المختار (project.user_id)، ولا
                                  تُعدَّل يدوياً هنا: تعديلها هنا كان يسمح لأي
@@ -187,7 +187,7 @@
                                  المرحلة (project_review/car_request) لنفسه.
                                  لتصحيح مسؤول مشروع خاطئ، عدّله من شاشة
                                  المشروع نفسه. -->
-                            <field name="project_manager_id" readonly="1"/>
+                            <field name="project_manager_id" readonly="1" options="{'no_open': True}"/>
                             <!-- مستبعد فقط ما حُدِّد صراحة كـ"استبعاد من قائمة
                                  التوظيف" (recruitment_hidden) - مستقل تماماً
                                  عن علامة الموقع الإلكتروني، حتى تبقى منصة
@@ -195,12 +195,12 @@
                                  العام بعد. -->
                             <field name="project_id" required="stage_code == 'new'"
                                    domain="[('recruitment_hidden', '=', False)]"
-                                   options="{'no_create': True}"/>
+                                   options="{'no_create': True, 'no_open': True}"/>
                             <field name="analytic_account_id" readonly="1"
-                                   invisible="not analytic_account_id"/>
+                                   invisible="not analytic_account_id" options="{'no_open': True}"/>
                             <!-- للعرض فقط - تُشتَق تلقائياً من شركة المشروع
                                  المختار أعلاه، لا تُعدَّل يدوياً. -->
-                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="1" options="{'no_open': True}"/>
                         </group>
                     </group>
 
@@ -231,7 +231,7 @@
                             <field name="project_compensation_type_ids" invisible="1"/>
                             <field name="compensation_type_id"
                                    domain="[('id', 'in', project_compensation_type_ids)]"
-                                   options="{'no_create': True}"/>
+                                   options="{'no_create': True, 'no_open': True}"/>
                             <field name="main_application"/>
                         </group>
                         <group string="العقد">
@@ -246,7 +246,7 @@
 
                     <div class="alert alert-warning mt-2" role="alert" invisible="not direct_approval_user_id">
                         <b>اعتُمد مباشرةً من الإدارة</b> بواسطة
-                        <field name="direct_approval_user_id" readonly="1" class="oe_inline"/> في
+                        <field name="direct_approval_user_id" readonly="1" class="oe_inline" options="{'no_open': True}"/> في
                         <field name="direct_approval_date" readonly="1" class="oe_inline"/>
                         — السبب: <field name="direct_approval_reason" readonly="1" class="oe_inline"/>
                     </div>
@@ -254,13 +254,13 @@
                         <page string="البيانات الشخصية" name="personal">
                             <group>
                                 <group string="معلومات شخصية">
-                                    <field name="country_id"/>
+                                    <field name="country_id" options="{'no_open': True}"/>
                                     <field name="gender"/>
                                     <field name="marital"/>
                                 </group>
                                 <group string="الحساب البنكي">
                                     <field name="iban" placeholder="SA00 0000 0000 0000 0000 0000"/>
-                                    <field name="bank_id" options="{'no_create': True}"/>
+                                    <field name="bank_id" options="{'no_create': True, 'no_open': True}"/>
                                 </group>
                             </group>
                             <group string="العنوان الوطني">
@@ -281,7 +281,7 @@
                             <field name="attachment_line_ids">
                                 <list editable="bottom">
                                     <field name="sequence" widget="handle"/>
-                                    <field name="attachment_type_id" readonly="1"/>
+                                    <field name="attachment_type_id" readonly="1" options="{'no_open': True}"/>
                                     <field name="required" readonly="1"/>
                                     <field name="file" filename="file_name" widget="binary"/>
                                     <field name="file_name" column_invisible="1"/>
@@ -298,7 +298,7 @@
                                          حالة الطلب (تم الإرسال/الاستلام/التفويض) دون
                                          الحاجة لمعرفة السيارة المخصصة تحديداً. -->
                                     <field name="vehicle_id" readonly="1"
-                                           groups="recruitment_workflow.group_recruitment_workflow_fleet"/>
+                                           groups="recruitment_workflow.group_recruitment_workflow_fleet" options="{'no_open': True}"/>
                                     <field name="car_requested"/>
                                     <field name="car_request_state"/>
                                     <!-- يراه مسؤول المشروع للعلم: يفسّر
@@ -311,7 +311,7 @@
                         <page string="الموظف والعقد" name="contract" invisible="not employee_id and not has_contract">
                             <field name="has_contract" invisible="1"/>
                             <group>
-                                <field name="employee_id"/>
+                                <field name="employee_id" options="{'no_open': True}"/>
                                 <field name="contract_ref" invisible="not has_contract"/>
                             </group>
                             <div class="alert alert-warning" role="alert"
@@ -339,17 +339,17 @@
                 <field name="employee_name"/>
                 <field name="identification_id"/>
                 <field name="mobile"/>
-                <field name="job_id"/>
-                <field name="project_id"/>
-                <field name="stage_id"/>
+                <field name="job_id" options="{'no_open': True}"/>
+                <field name="project_id" options="{'no_open': True}"/>
+                <field name="stage_id" options="{'no_open': True}"/>
                 <field name="vehicle_id" optional="hide"
-                       groups="recruitment_workflow.group_recruitment_workflow_fleet"/>
+                       groups="recruitment_workflow.group_recruitment_workflow_fleet" options="{'no_open': True}"/>
                 <field name="attachment_progress" widget="progressbar" optional="show"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'done'"
                        decoration-danger="state == 'rejected'"
                        decoration-info="state == 'in_progress'"/>
-                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide" options="{'no_open': True}"/>
             </list>
         </field>
     </record>
@@ -360,15 +360,15 @@
         <field name="model">recruitment.request</field>
         <field name="arch" type="xml">
             <kanban default_group_by="stage_id" class="o_kanban_small_column" records_draggable="false">
-                <field name="stage_id"/>
+                <field name="stage_id" options="{'no_open': True}"/>
                 <field name="state"/>
                 <field name="color"/>
                 <field name="employee_name"/>
                 <field name="name"/>
                 <field name="identification_id"/>
                 <field name="mobile"/>
-                <field name="job_id"/>
-                <field name="project_id"/>
+                <field name="job_id" options="{'no_open': True}"/>
+                <field name="project_id" options="{'no_open': True}"/>
                 <field name="attachment_progress"/>
                 <templates>
                     <t t-name="card">
@@ -383,7 +383,7 @@
                                     </small>
                                 </div>
                                 <span class="badge text-bg-info" t-if="record.project_id.value">
-                                    <field name="project_id"/>
+                                    <field name="project_id" options="{'no_open': True}"/>
                                 </span>
                             </div>
                             <div>
@@ -393,7 +393,7 @@
                                 <span><i class="fa fa-phone me-1" title="الجوال" role="img"/><field name="mobile"/></span>
                             </div>
                             <div t-if="record.job_id.value">
-                                <span><i class="fa fa-briefcase me-1" title="الوظيفة" role="img"/><field name="job_id"/></span>
+                                <span><i class="fa fa-briefcase me-1" title="الوظيفة" role="img"/><field name="job_id" options="{'no_open': True}"/></span>
                             </div>
                             <div class="mt-2">
                                 <field name="attachment_progress" widget="progressbar"/>
@@ -423,12 +423,12 @@
                 <field name="employee_name"/>
                 <field name="identification_id"/>
                 <field name="mobile"/>
-                <field name="job_id"/>
-                <field name="stage_id"/>
-                <field name="vehicle_id" groups="recruitment_workflow.group_recruitment_workflow_fleet"/>
+                <field name="job_id" options="{'no_open': True}"/>
+                <field name="stage_id" options="{'no_open': True}"/>
+                <field name="vehicle_id" groups="recruitment_workflow.group_recruitment_workflow_fleet" options="{'no_open': True}"/>
                 <field name="state"/>
-                <field name="project_manager_id"/>
-                <field name="project_id"/>
+                <field name="project_manager_id" options="{'no_open': True}"/>
+                <field name="project_id" options="{'no_open': True}"/>
                 <separator/>
                 <filter name="filter_in_progress" string="قيد التنفيذ" domain="[('state', '=', 'in_progress')]"/>
                 <filter name="filter_done" string="مكتمل" domain="[('state', '=', 'done')]"/>
@@ -473,8 +473,8 @@
             <list string="طلبات السيارات - التوظيف" create="0">
                 <field name="name"/>
                 <field name="employee_name"/>
-                <field name="project_id"/>
-                <field name="vehicle_id"/>
+                <field name="project_id" options="{'no_open': True}"/>
+                <field name="vehicle_id" options="{'no_open': True}"/>
                 <field name="car_request_state" widget="badge"
                        decoration-success="car_request_state == 'authorized'"
                        decoration-info="car_request_state == 'requested'"
