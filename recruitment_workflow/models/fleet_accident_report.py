@@ -19,8 +19,10 @@ class FleetAccidentReport(models.Model):
     _ensure_accident_report)."""
     _name = 'fleet.accident.report'
     _description = 'بلاغ حادث مركبة'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin',
+                'recruitment.workflow.employee.company.mixin']
     _order = 'accident_date desc, id desc'
+    _COMPANY_SOURCES = ('employee_id', 'vehicle_id')
 
     name = fields.Char(
         string='رقم البلاغ', required=True, copy=False, readonly=True,

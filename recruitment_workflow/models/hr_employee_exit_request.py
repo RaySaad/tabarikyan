@@ -26,7 +26,8 @@ class HrEmployeeExitRequest(models.Model):
     مستحقاته تُعالَج من تصفيته النهائية."""
     _name = 'hr.employee.exit.request'
     _description = 'طلب إنهاء خدمة'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin',
+                'recruitment.workflow.employee.company.mixin']
     _order = 'create_date desc'
 
     name = fields.Char(

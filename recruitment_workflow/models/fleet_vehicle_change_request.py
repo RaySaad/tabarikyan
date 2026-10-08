@@ -34,8 +34,10 @@ class FleetVehicleChangeRequest(models.Model):
     بديلة متاحة فوراً)."""
     _name = 'fleet.vehicle.change.request'
     _description = 'طلب تغيير مركبة'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin',
+                'recruitment.workflow.employee.company.mixin']
     _order = 'create_date desc'
+    _COMPANY_SOURCES = ('employee_id', 'current_vehicle_id')
 
     name = fields.Char(
         string='الكود', required=True, copy=False, readonly=True,

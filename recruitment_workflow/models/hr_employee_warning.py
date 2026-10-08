@@ -45,7 +45,8 @@ class HrEmployeeWarning(models.Model):
     """
     _name = 'hr.employee.warning'
     _description = 'إنذار موظف'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin',
+                'recruitment.workflow.employee.company.mixin']
     _order = 'date desc, id desc'
 
     name = fields.Char(

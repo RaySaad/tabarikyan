@@ -30,7 +30,8 @@ class HrEmployeePlatformTransferRequest(models.Model):
     """
     _name = 'hr.employee.platform.transfer.request'
     _description = 'طلب نقل موظف بين المنصات'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin',
+                'recruitment.workflow.employee.company.mixin']
     _order = 'create_date desc'
 
     name = fields.Char(

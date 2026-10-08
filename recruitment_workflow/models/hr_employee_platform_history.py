@@ -6,7 +6,8 @@ from odoo.exceptions import UserError
 class HrEmployeePlatformHistory(models.Model):
     _name = 'hr.employee.platform.history'
     _description = 'سجل تاريخ منصات المندوب'
-    _inherit = ['recruitment.workflow.analytic.mixin']
+    _inherit = ['recruitment.workflow.analytic.mixin',
+                'recruitment.workflow.employee.company.mixin']
     _order = 'date_start desc, id desc'
     _rec_name = 'project_id'
 
