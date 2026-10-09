@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_fleet_branch_rental_charge_list" model="ir.ui.view">
+            <field name="name">fleet.branch.rental.charge.list</field>
+            <field name="model">fleet.branch.rental.charge</field>
+            <field name="arch" type="xml">
+                <list string="تحميل أجرة الأسطول"
+                      decoration-success="state == 'posted'"
+                      decoration-muted="state == 'cancel'">
+                    <field name="name"/>
+                    <field name="period_date"/>
+                    <field name="company_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="amount_rent" sum="الأجرة"/>
+                    <field name="amount_damage" sum="التلفيات"/>
+                    <field name="amount_total" sum="الإجمالي"/>
+                    <field name="currency_id" column_invisible="True"/>
+                    <field name="state" widget="badge"
+                           decoration-success="state == 'posted'"
+                           decoration-info="state == 'confirmed'"
+                           decoration-muted="state == 'draft'"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_fleet_branch_rental_charge_form" model="ir.ui.view">
+            <field name="name">fleet.branch.rental.charge.form</field>
+            <field name="model">fleet.branch.rental.charge</field>
+            <field name="arch" type="xml">
+                <form string="تحميل أجرة الأسطول">
+                    <header>
+                        <button name="action_generate_lines" type="object"
+                                string="توليد السطور" class="btn-primary"
+                                invisible="state != 'draft'"/>
+                        <button name="action_confirm" type="object"
+                                string="اعتماد" class="btn-primary"
+                                invisible="state != 'draft' or not line_ids"/>
+                        <button name="action_post" type="object"
+                                string="ترحيل القيود" class="btn-primary"
+                                invisible="state != 'confirmed'"/>
+                        <button name="action_reset_draft" type="object"
+                                string="إعادة لمسودة"
+                                invisible="state != 'confirmed'"/>
+                        <button name="action_cancel" type="object"
+                                string="إلغاء"
+                                invisible="state == 'cancel'"
+                                confirm="سيُعكس القيدان المحاسبيان إن كان التحميل مُرحَّلاً. متابعة؟"/>
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="draft,confirmed,posted"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_moves" type="object"
+                                    class="oe_stat_button" icon="fa-book"
+                                    invisible="not move_branch_id">
+                                <span class="o_stat_text">القيود</span>
+                            </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1><field name="name" readonly="1"/></h1>
+                        </div>
+                        <group>
+                            <group string="الفترة والفرع">
+                                <field name="company_id" readonly="state != 'draft'"
+                                       options="{'no_create': True, 'no_open': True}"/>
+                                <field name="period_date" readonly="state != 'draft'"/>
+                                <field name="date_from" readonly="1"/>
+                                <field name="date_to" readonly="1"/>
+                                <field name="fleet_company_id" readonly="1"
+                                       options="{'no_create': True, 'no_open': True}"/>
+                            </group>
+                            <group string="المبالغ">
+                                <field name="amount_rent" readonly="1"/>
+                                <field name="amount_damage" readonly="1"/>
+                                <field name="amount_total" readonly="1"
+                                       class="oe_subtotal_footer_separator"/>
+                                <field name="currency_id" invisible="1"/>
+                                <field name="move_branch_id" readonly="1"
+                                       invisible="not move_branch_id"
+                                       options="{'no_create': True, 'no_open': True}"/>
+                                <field name="move_fleet_id" readonly="1"
+                                       invisible="not move_fleet_id"
+                                       options="{'no_create': True, 'no_open': True}"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="الأجرة" name="rent">
+                                <field name="line_ids" readonly="state != 'draft'"
+                                       domain="[('line_type', '=', 'rent')]"
+                                       context="{'default_line_type': 'rent'}">
+                                    <list editable="bottom">
+                                        <field name="line_type" column_invisible="True"/>
+                                        <field name="vehicle_id"
+                                               options="{'no_create': True, 'no_open': True}"/>
+                                        <field name="date_from"/>
+                                        <field name="date_to"/>
+                                        <field name="days" sum="الأيام"/>
+                                        <field name="monthly_rate"/>
+                                        <field name="amount" sum="الإجمالي"/>
+                                        <field name="currency_id" column_invisible="True"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="التلفيات والحوادث" name="damage">
+                                <field name="line_ids" readonly="state != 'draft'"
+                                       domain="[('line_type', '=', 'damage')]"
+                                       context="{'default_line_type': 'damage'}">
+                                    <list editable="bottom">
+                                        <field name="line_type" column_invisible="True"/>
+                                        <field name="accident_report_id"
+                                               options="{'no_create': True, 'no_open': True}"/>
+                                        <field name="vehicle_id"
+                                               options="{'no_create': True, 'no_open': True}"/>
+                                        <field name="cost"/>
+                                        <field name="share_percent"/>
+                                        <field name="amount" sum="الإجمالي"/>
+                                        <field name="currency_id" column_invisible="True"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="ملاحظات" name="note">
+                                <field name="note" nolabel="1"/>
+                            </page>
+                        </notebook>
+                        <div class="alert alert-info" role="alert">
+                            الأجرة تشمل الاستهلاك والتأمين والاستمارة والصيانة الدورية
+                            والأعطال. الحوادث والتلفيات وحدها تُحمَّل على الفرع بنسبة
+                            تحمّله، ويستردّها من المندوب عند مسؤوليته بسجل "تحويل مركبة"
+                            في السداد البنكي. وأيام وجود السيارة لدى الأسطول لا تُحتسب.
+                        </div>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_fleet_branch_rental_charge_search" model="ir.ui.view">
+            <field name="name">fleet.branch.rental.charge.search</field>
+            <field name="model">fleet.branch.rental.charge</field>
+            <field name="arch" type="xml">
+                <search string="تحميل أجرة الأسطول">
+                    <field name="name"/>
+                    <field name="company_id"/>
+                    <filter name="draft" string="مسودة" domain="[('state', '=', 'draft')]"/>
+                    <filter name="confirmed" string="معتمَد" domain="[('state', '=', 'confirmed')]"/>
+                    <filter name="posted" string="مُرحَّل" domain="[('state', '=', 'posted')]"/>
+                    <group>
+                        <filter name="group_company" string="الفرع"
+                                context="{'group_by': 'company_id'}"/>
+                        <filter name="group_period" string="الشهر"
+                                context="{'group_by': 'period_date'}"/>
+                        <filter name="group_state" string="الحالة"
+                                context="{'group_by': 'state'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_fleet_branch_rental_charge" model="ir.actions.act_window">
+            <field name="name">تحميل أجرة الأسطول</field>
+            <field name="res_model">fleet.branch.rental.charge</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">أنشئ تحميل الشهر لفرع</p>
+                <p>تُولَّد السطور من تاريخ تبعية المركبات وبلاغات الحوادث المغلقة -
+                   بلا إدخال يدوي.</p>
+            </field>
+        </record>
+
+        <record id="action_fleet_branch_rental_generate_all" model="ir.actions.server">
+            <field name="name">توليد تحميل الشهر لكل الفروع</field>
+            <field name="model_id" ref="model_fleet_branch_rental_charge"/>
+            <field name="state">code</field>
+            <field name="code">action = env['fleet.branch.rental.charge'].action_generate_all_branches()</field>
+        </record>
+
+    </data>
+</odoo>

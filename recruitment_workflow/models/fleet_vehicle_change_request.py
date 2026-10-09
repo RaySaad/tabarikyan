@@ -264,11 +264,15 @@ class FleetVehicleChangeRequest(models.Model):
         الحماية الموجودة في طلبات التوظيف (_check_vehicle_company)، وإلا
         أمكن تخصيص مركبة فرع لموظف فرع آخر فتختل ملكية الأصول والتكاليف
         بين الفروع."""
+        fleet_owner = self.env['res.company']._get_fleet_owner_company()
         for rec in self:
             if not (rec.new_vehicle_id and rec.employee_id):
                 continue
             employee_company = rec.employee_id.sudo().company_id
             vehicle_company = rec.new_vehicle_id.sudo().company_id
+            # مركبة شركة الأسطول مستثناة: مالك مركزي يؤجّر لكل الفروع.
+            if vehicle_company and vehicle_company == fleet_owner:
+                continue
             if employee_company and vehicle_company and employee_company != vehicle_company:
                 raise UserError(_(
                     'المركبة الجديدة "%(vehicle)s" تتبع الفرع "%(vcompany)s" '

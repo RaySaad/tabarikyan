@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_fleet_accident_report_form_rental" model="ir.ui.view">
+            <field name="name">fleet.accident.report.form.rental</field>
+            <field name="model">fleet.accident.report</field>
+            <field name="inherit_id" ref="recruitment_workflow.view_fleet_accident_report_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='estimated_cost']" position="after">
+                    <field name="actual_cost" readonly="state == 'closed'"/>
+                    <field name="branch_share_percent" readonly="state == 'closed'"/>
+                    <field name="branch_charge_amount" readonly="1"
+                           invisible="not actual_cost"/>
+                    <field name="close_date" readonly="1" invisible="not close_date"/>
+                    <field name="rental_charge_line_id" readonly="1"
+                           invisible="not rental_charge_line_id"
+                           options="{'no_create': True, 'no_open': True}"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

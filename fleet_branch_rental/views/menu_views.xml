@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <menuitem id="menu_fleet_branch_rental_root"
+                  name="أجرة الأسطول"
+                  parent="fleet.menu_root"
+                  sequence="60"
+                  groups="recruitment_workflow.group_recruitment_workflow_fleet"/>
+
+        <menuitem id="menu_fleet_branch_rental_charge"
+                  name="تحميل الفروع"
+                  parent="menu_fleet_branch_rental_root"
+                  action="action_fleet_branch_rental_charge"
+                  sequence="10"/>
+
+        <menuitem id="menu_fleet_branch_rental_generate"
+                  name="توليد تحميل الشهر"
+                  parent="menu_fleet_branch_rental_root"
+                  action="action_fleet_branch_rental_generate_all"
+                  sequence="20"
+                  groups="recruitment_workflow.group_recruitment_workflow_fleet_manager"/>
+    </data>
+</odoo>

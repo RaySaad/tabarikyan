@@ -245,6 +245,11 @@ class RecruitmentRequest(models.Model):
         copy=False,
         domain="[('recruitment_state', '=', 'available')]",
     )
+    fleet_owner_company_id = fields.Many2one(
+        'res.company', string='شركة الأسطول',
+        compute='_compute_fleet_owner_company_id',
+        help='الشركة المالكة للمركبات - مركباتها متاحة لكل الفروع.',
+    )
     car_source = fields.Selection(
         selection=[
             ('company', 'سيارة من الشركة'),
@@ -1408,6 +1413,11 @@ class RecruitmentRequest(models.Model):
     # ------------------------------------------------------------------
     # منطق طلب السيارة (التكامل مع الأسطول)
     # ------------------------------------------------------------------
+    def _compute_fleet_owner_company_id(self):
+        owner = self.env['res.company']._get_fleet_owner_company()
+        for rec in self:
+            rec.fleet_owner_company_id = owner
+
     @api.constrains('car_source', 'vehicle_id')
     def _check_car_source(self):
         """سيارة مندوب خاصة وسيارة أسطول مخصَّصة في طلب واحد تناقض:
@@ -1430,7 +1440,13 @@ class RecruitmentRequest(models.Model):
         هو التحقق الملزم الفعلي من جهة الخادم. سيارة بلا فرع محدَّد
         (company_id فارغ - "متاحة لكل الفروع") مستثناة عمداً، مطابقةً
         لنفس منطق الـdomain."""
+        fleet_owner = self.env['res.company']._get_fleet_owner_company()
         for rec in self:
+            # مركبة شركة الأسطول متاحة لمناديب كل الفروع: هي المالك
+            # المركزي الذي يؤجّرها لهم - وبدون هذا الاستثناء تفرغ
+            # قائمة السيارات تماماً بعد نقل الملكية إليها.
+            if rec.vehicle_id.company_id and rec.vehicle_id.company_id == fleet_owner:
+                continue
             if rec.vehicle_id and rec.company_id and rec.vehicle_id.company_id \
                     and rec.vehicle_id.company_id != rec.company_id:
                 raise ValidationError(_(

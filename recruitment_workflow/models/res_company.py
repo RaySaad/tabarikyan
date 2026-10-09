@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class ResCompany(models.Model):
@@ -13,3 +14,28 @@ class ResCompany(models.Model):
         help='قبل هذه المدة من تاريخ انتهاء إقامة المندوب يُنشأ نشاط '
              'لمسؤول الموارد البشرية للتنبيه بالتجديد. صفر = بلا تنبيه.',
     )
+
+    # شركة الأسطول: الشركة المالكة للمركبات التي تستعملها بقية الفروع.
+    # مُعرَّفة هنا لا في موديول الأجرة، لأن القيود والشاشات في سير
+    # التوظيف نفسه تحتاج معرفتها لتسمح بمركبة الأسطول لموظفي الفروع.
+    is_fleet_owner = fields.Boolean(
+        string='شركة الأسطول',
+        help='الشركة المالكة للمركبات التي تؤجّرها لفروع التشغيل. '
+             'مركباتها متاحة لمناديب كل الفروع.',
+    )
+
+    @api.constrains('is_fleet_owner')
+    def _check_single_fleet_owner(self):
+        """شركتا أسطول تعنيان قائمتَي مركبات متاحة متوازيتين."""
+        for company in self.filtered('is_fleet_owner'):
+            other = self.sudo().search([
+                ('is_fleet_owner', '=', True), ('id', '!=', company.id),
+            ], limit=1)
+            if other:
+                raise ValidationError(_(
+                    'شركة الأسطول محدَّدة مسبقاً: "%s". ألغِ تحديدها أولاً.'
+                ) % other.display_name)
+
+    @api.model
+    def _get_fleet_owner_company(self):
+        return self.sudo().search([('is_fleet_owner', '=', True)], limit=1)

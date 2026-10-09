@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="res_config_settings_view_form_rental" model="ir.ui.view">
+            <field name="name">res.config.settings.form.fleet.rental</field>
+            <field name="model">res.config.settings</field>
+            <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//block[@name='companies_setting_container']" position="after">
+                    <block title="أجرة الأسطول للفروع" name="fleet_rental">
+                        <setting string="شركة الأسطول"
+                                 help="حدّدها على الشركة المالكة للمركبات - واحدة فقط في المجموعة.">
+                            <field name="is_fleet_owner"/>
+                            <div class="content-group" invisible="not is_fleet_owner">
+                                <div class="mt8">
+                                    <label for="fleet_rental_start_date" class="o_light_label"/>
+                                    <field name="fleet_rental_start_date"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="حسابات التحميل"
+                                 help="يحددها المحاسب لكل شركة - وتُورَّث من الشركة الأم إن تُركت فارغة.">
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="fleet_rental_journal_id" class="col-lg-5 o_light_label"/>
+                                    <field name="fleet_rental_journal_id"
+                                           options="{'no_create': True, 'no_open': True}"/>
+                                </div>
+                                <div class="row">
+                                    <label for="fleet_rental_expense_account_id" class="col-lg-5 o_light_label"/>
+                                    <field name="fleet_rental_expense_account_id"
+                                           options="{'no_create': True, 'no_open': True}"/>
+                                </div>
+                                <div class="row">
+                                    <label for="fleet_rental_interco_account_id" class="col-lg-5 o_light_label"/>
+                                    <field name="fleet_rental_interco_account_id"
+                                           options="{'no_create': True, 'no_open': True}"/>
+                                </div>
+                                <div class="row">
+                                    <label for="fleet_rental_income_account_id" class="col-lg-5 o_light_label"/>
+                                    <field name="fleet_rental_income_account_id"
+                                           options="{'no_create': True, 'no_open': True}"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

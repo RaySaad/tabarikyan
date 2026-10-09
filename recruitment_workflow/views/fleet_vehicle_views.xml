@@ -187,11 +187,12 @@
                                  سيارة أسطول. -->
                             <field name="car_source" widget="radio"
                                    readonly="car_request_state == 'authorized'"/>
+                            <field name="fleet_owner_company_id" invisible="1"/>
                             <field name="vehicle_id"
                                    invisible="car_source == 'delegate'"
                                    domain="[('recruitment_state', '=', 'available'),
                                             '|', ('project_id', '=', project_id), ('project_id', '=', False),
-                                            '|', ('company_id', '=', company_id), ('company_id', '=', False)]"
+                                            '|', ('company_id', 'in', [company_id, fleet_owner_company_id]), ('company_id', '=', False)]"
                                    options="{'no_create': True, 'no_open': True}"/>
                             <field name="car_requested" readonly="1"/>
                         </group>

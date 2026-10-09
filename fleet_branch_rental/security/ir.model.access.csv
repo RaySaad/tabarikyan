@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_charge_fleet_user,fleet.branch.rental.charge.user,model_fleet_branch_rental_charge,recruitment_workflow.group_recruitment_workflow_fleet,1,0,0,0
+access_charge_fleet_manager,fleet.branch.rental.charge.manager,model_fleet_branch_rental_charge,recruitment_workflow.group_recruitment_workflow_fleet_manager,1,1,1,1
+access_charge_accountant,fleet.branch.rental.charge.accountant,model_fleet_branch_rental_charge,account.group_account_manager,1,1,1,1
+access_charge_line_fleet_user,fleet.branch.rental.charge.line.user,model_fleet_branch_rental_charge_line,recruitment_workflow.group_recruitment_workflow_fleet,1,0,0,0
+access_charge_line_fleet_manager,fleet.branch.rental.charge.line.manager,model_fleet_branch_rental_charge_line,recruitment_workflow.group_recruitment_workflow_fleet_manager,1,1,1,1
+access_charge_line_accountant,fleet.branch.rental.charge.line.accountant,model_fleet_branch_rental_charge_line,account.group_account_manager,1,1,1,1
