@@ -7,6 +7,12 @@
                   sequence="60"
                   groups="recruitment_workflow.group_recruitment_workflow_fleet"/>
 
+        <menuitem id="menu_fleet_rental_contract"
+                  name="عقود التأجير"
+                  parent="menu_fleet_branch_rental_root"
+                  action="action_fleet_rental_contract"
+                  sequence="5"/>
+
         <menuitem id="menu_fleet_branch_rental_charge"
                   name="تحميل الفروع"
                   parent="menu_fleet_branch_rental_root"

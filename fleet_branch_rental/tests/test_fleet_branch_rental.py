@@ -36,7 +36,15 @@ class TestFleetBranchRental(TransactionCase):
             'company_id': (company or self.branch).id, 'period_date': period})
 
     def _assign(self, company, date_start, note='اختبار'):
-        self.vehicle.sudo()._open_branch_history(company, note, date_start=date_start)
+        """تخصيص المركبة لفرع = عقد تأجير سارٍ. الملكية لا تتحرك:
+        المركبة تبقى في دفاتر الأسطول."""
+        return self.env['fleet.rental.contract']._issue_for_assignment(
+            self.vehicle, company, employee=self.employee,
+            date_start=date_start)
+
+    def _return(self, date_end, reason='إرجاع'):
+        self.env['fleet.rental.contract']._end_for_vehicle(
+            self.vehicle, reason, date_end)
 
     # ---- الأجرة ----
     def test_full_month_charges_the_whole_rate(self):
@@ -53,7 +61,7 @@ class TestFleetBranchRental(TransactionCase):
         """تسليم السيارة للأسطول عند حادث أو عطل كبير يوقف الأجرة -
         ولا يُحتسب يوم التسليم على الفرع (هو أول يوم عند الأسطول)."""
         self._assign(self.branch, date(2026, 2, 1))
-        self._assign(self.fleet_company, date(2026, 3, 11), 'تسليم للأسطول')
+        self._return(date(2026, 3, 11), 'تسليم للأسطول بعد حادث')
         charge = self._charge()
 
         charge.action_generate_lines()
@@ -86,8 +94,8 @@ class TestFleetBranchRental(TransactionCase):
         self.assertEqual(charge.line_ids.days, 12, 'من 20 إلى 31 مارس')
 
     def test_a_vehicle_marked_not_chargeable_is_skipped(self):
-        self.vehicle.rental_chargeable = False
         self._assign(self.branch, date(2026, 2, 1))
+        self.vehicle.rental_chargeable = False
         charge = self._charge()
 
         charge.action_generate_lines()
@@ -285,3 +293,53 @@ class TestFleetBranchRental(TransactionCase):
 
         self.assertTrue(again.line_ids.filtered(lambda l: l.line_type == 'damage'),
                         'البلاغ بقي محجوزاً بعد إلغاء تحميله')
+
+    # ---- العقد ----
+    def test_fleet_approval_issues_an_active_contract(self):
+        """موافقة الأسطول على طلب السيارة تُصدر العقد في الخطوة نفسها -
+        لا دورة اعتماد ثانية."""
+        self.env.user.group_ids |= self.env.ref(
+            'recruitment_workflow.group_recruitment_workflow_manager')
+        project = self.env['project.project'].create({'name': 'منصة العقد'})
+        # الشركة لا تُكتب مباشرة على الطلب (محمية) - تُؤخذ من سياق
+        # الشركة المفعَّلة عند الإنشاء.
+        request = self.env['recruitment.request'].with_company(self.branch).create({
+            'employee_name': 'مرشح العقد', 'identification_id': '2998877665',
+            'mobile': '0500000009', 'email': 'contract@example.com',
+            'project_id': project.id})
+        self.assertEqual(request.company_id, self.branch)
+        self.vehicle.recruitment_state = 'available'
+        request.action_send_car_request()
+        request.action_fleet_receive()
+        request.vehicle_id = self.vehicle.id
+
+        request.action_fleet_authorize()
+
+        contract = request.rental_contract_id
+        self.assertTrue(contract, 'لم يصدر عقد مع التفويض')
+        self.assertEqual(contract.state, 'active')
+        self.assertEqual(contract.company_id, self.branch)
+        self.assertEqual(contract.fleet_company_id, self.fleet_company)
+        self.assertAlmostEqual(contract.monthly_rate, 3100.0, places=2)
+
+    def test_the_vehicle_stays_owned_by_the_fleet_company(self):
+        """العقد سجل استخدام لا ملكية - المركبة تبقى في دفاتر الأسطول."""
+        self._assign(self.branch, date(2026, 3, 1))
+        self.assertEqual(self.vehicle.company_id, self.fleet_company)
+
+    def test_one_vehicle_cannot_be_rented_to_two_branches_at_once(self):
+        self._assign(self.branch, date(2026, 3, 1))
+        with self.assertRaises(Exception):
+            self.env['fleet.rental.contract'].create({
+                'company_id': self.other_branch.id,
+                'vehicle_id': self.vehicle.id,
+                'date_start': date(2026, 3, 5),
+                'monthly_rate': 3100.0})
+
+    def test_reassigning_to_another_branch_ends_the_first_contract(self):
+        first = self._assign(self.branch, date(2026, 3, 1))
+        second = self._assign(self.other_branch, date(2026, 3, 16))
+
+        self.assertEqual(first.state, 'ended')
+        self.assertEqual(first.date_end, date(2026, 3, 16))
+        self.assertEqual(second.state, 'active')

@@ -172,41 +172,43 @@ class FleetBranchRentalCharge(models.Model):
         return True
 
     def _generate_rent_lines(self):
+        """الأجرة من عقود التأجير: العقد هو سجل الاستخدام، والملكية
+        تبقى لشركة الأسطول فلا تُقاس الأجرة بحركة ملكية."""
         self.ensure_one()
         start, end = self._effective_date_from(), self.date_to
         if start > end:
             return
-        days_in_month = calendar.monthrange(self.date_from.year, self.date_from.month)[1]
-        History = self.env['fleet.vehicle.branch.history'].sudo()
-        segments = History.search([
+        days_in_month = calendar.monthrange(
+            self.date_from.year, self.date_from.month)[1]
+        contracts = self.env['fleet.rental.contract'].sudo().search([
             ('company_id', '=', self.company_id.id),
+            ('state', 'in', ('active', 'ended')),
             ('date_start', '<=', end),
             '|', ('date_end', '=', False), ('date_end', '>=', start),
         ], order='vehicle_id, date_start')
-        for segment in segments:
-            vehicle = segment.vehicle_id
-            if not vehicle.rental_chargeable or vehicle.rental_monthly_rate <= 0:
+        for contract in contracts:
+            vehicle = contract.vehicle_id
+            if not vehicle.rental_chargeable or contract.monthly_rate <= 0:
                 continue
-            # الفترة [البداية، النهاية) - يوم التسليم للأسطول لا يُحتسب
-            # على الفرع: معالج النقل يكتب date_end = يوم انتقال الملكية،
-            # وهو نفسه بداية فترة الجهة التالية؛ فلو حُسب على الطرفين
-            # لتضاعف يومٌ واحد في كل نقل.
-            seg_start = max(segment.date_start, start)
-            stop_exclusive = min(segment.date_end or (end + timedelta(days=1)),
+            # الفترة [التسليم، الإرجاع) - يوم الإرجاع لا يُحتسب على الفرع،
+            # فهو أول يوم عند الأسطول أو عند الفرع التالي؛ ولولا ذلك
+            # لتضاعف يومٌ في كل تسليم.
+            seg_start = max(contract.date_start, start)
+            stop_exclusive = min(contract.date_end or (end + timedelta(days=1)),
                                  end + timedelta(days=1))
             days = (stop_exclusive - seg_start).days
             if days <= 0:
                 continue
-            seg_end = stop_exclusive - timedelta(days=1)
-            daily = vehicle.rental_monthly_rate / days_in_month
+            daily = contract.monthly_rate / days_in_month
             self.env['fleet.branch.rental.charge.line'].create({
                 'charge_id': self.id,
                 'line_type': 'rent',
+                'contract_id': contract.id,
                 'vehicle_id': vehicle.id,
                 'date_from': seg_start,
-                'date_to': seg_end,
+                'date_to': stop_exclusive - timedelta(days=1),
                 'days': days,
-                'monthly_rate': vehicle.rental_monthly_rate,
+                'monthly_rate': contract.monthly_rate,
                 'amount': daily * days,
             })
 
@@ -422,6 +424,8 @@ class FleetBranchRentalChargeLine(models.Model):
         string='النوع', required=True, default='rent',
     )
     vehicle_id = fields.Many2one('fleet.vehicle', string='المركبة', required=True)
+    contract_id = fields.Many2one(
+        'fleet.rental.contract', string='العقد', ondelete='restrict')
     # سطر الأجرة
     date_from = fields.Date(string='من')
     date_to = fields.Date(string='إلى')

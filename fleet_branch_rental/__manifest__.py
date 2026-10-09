@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'أجرة الأسطول للفروع - Fleet Branch Rental',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'category': 'Human Resources/Fleet',
     'summary': 'تحميل الفروع أجرة السيارات شهرياً، وتكاليف الحوادث بنسبة التحمل',
     'description': """
@@ -11,6 +11,8 @@
 يحتسب التحميل الشهري ويرحّله محاسبياً.
 
 السيناريو المعتمد:
+- **عقد تأجير** يصدر بموافقة الأسطول على طلب السيارة في خطوة واحدة،
+  وهو سجل الاستخدام ومصدر احتساب الأجرة. الملكية تبقى للأسطول.
 - السيارة تُؤجَّر للفرع **شاملة الأعطال والصيانة الدورية** (على الأسطول).
 - **الحوادث والتلفيات على الفرع** بنسبة تحمّله، ويستردّها من المندوب
   عند مسؤوليته عبر "تحويل مركبة" في السداد البنكي.
@@ -34,6 +36,7 @@
         'security/fleet_branch_rental_security.xml',
         'data/sequence_data.xml',
         'views/fleet_vehicle_views.xml',
+        'views/fleet_rental_contract_views.xml',
         'views/fleet_accident_report_views.xml',
         'views/fleet_branch_rental_charge_views.xml',
         'views/res_config_settings_views.xml',
