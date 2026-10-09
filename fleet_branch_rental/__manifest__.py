@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'أجرة الأسطول للفروع - Fleet Branch Rental',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.2.0',
     'category': 'Human Resources/Fleet',
     'summary': 'تحميل الفروع أجرة السيارات شهرياً، وتكاليف الحوادث بنسبة التحمل',
     'description': """
@@ -40,6 +40,7 @@
         'views/fleet_accident_report_views.xml',
         'views/fleet_branch_rental_charge_views.xml',
         'views/res_config_settings_views.xml',
+        'wizard/fleet_rental_opening_wizard_views.xml',
         'views/menu_views.xml',
     ],
     'installable': True,

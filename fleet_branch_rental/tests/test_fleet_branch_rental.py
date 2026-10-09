@@ -343,3 +343,64 @@ class TestFleetBranchRental(TransactionCase):
         self.assertEqual(first.state, 'ended')
         self.assertEqual(first.date_end, date(2026, 3, 16))
         self.assertEqual(second.state, 'active')
+
+    # ---- العقود الافتتاحية ----
+    def test_opening_wizard_creates_a_contract_per_driven_vehicle(self):
+        """البداية: سيارات وسائقون بلا عقود - الأداة تبنيها دفعة واحدة."""
+        partner = self.env['res.partner'].create({'name': 'سائق افتتاحي'})
+        employee = self.env['hr.employee'].create({
+            'name': 'سائق افتتاحي', 'company_id': self.branch.id,
+            'work_contact_id': partner.id})
+        self.vehicle.driver_id = partner.id
+
+        wizard = self.env['fleet.rental.opening.wizard'].create({
+            'date_start': date(2026, 3, 1)})
+        wizard.action_create_contracts()
+
+        contract = self.env['fleet.rental.contract'].search([
+            ('vehicle_id', '=', self.vehicle.id), ('state', '=', 'active')])
+        self.assertEqual(len(contract), 1)
+        self.assertEqual(contract.company_id, self.branch)
+        self.assertEqual(contract.employee_id, employee)
+        self.assertEqual(contract.date_start, date(2026, 3, 1))
+        self.assertAlmostEqual(contract.monthly_rate, 3100.0, places=2)
+
+    def test_opening_wizard_skips_vehicles_without_a_driver(self):
+        self.vehicle.driver_id = False
+        wizard = self.env['fleet.rental.opening.wizard'].create({
+            'date_start': date(2026, 3, 1), 'vehicle_ids': [(6, 0, self.vehicle.ids)]})
+
+        with self.assertRaises(UserError):
+            wizard.action_create_contracts()
+
+    def test_opening_wizard_does_not_duplicate_an_existing_contract(self):
+        partner = self.env['res.partner'].create({'name': 'سائق مكرر'})
+        self.env['hr.employee'].create({
+            'name': 'سائق مكرر', 'company_id': self.branch.id,
+            'work_contact_id': partner.id})
+        self.vehicle.driver_id = partner.id
+        self._assign(self.branch, date(2026, 2, 1))
+
+        self.env['fleet.rental.opening.wizard'].create({
+            'date_start': date(2026, 3, 1),
+            'vehicle_ids': [(6, 0, self.vehicle.ids)],
+        }).action_create_contracts()
+
+        contracts = self.env['fleet.rental.contract'].search([
+            ('vehicle_id', '=', self.vehicle.id), ('state', '=', 'active')])
+        self.assertEqual(len(contracts), 1, 'تكرر العقد لنفس المركبة')
+
+    def test_an_imported_old_accident_is_never_charged(self):
+        """الحوادث القديمة تُرفع كسجلات تدقيق - تاريخ بدء الاحتساب
+        يمنع دخولها أي تحميل محاسبي."""
+        self.fleet_company.fleet_rental_start_date = date(2026, 3, 1)
+        old = self._closed_report(cost=5000.0, responsibility='employee',
+                                  close_on=date(2025, 8, 20))
+        self.assertTrue(old.close_date < date(2026, 3, 1))
+
+        for month in (date(2025, 8, 1), date(2026, 3, 1)):
+            charge = self._charge(period=month)
+            charge.action_generate_lines()
+            self.assertFalse(
+                charge.line_ids.filtered(lambda l: l.line_type == 'damage'),
+                'حادث قديم دخل التحميل عن %s' % month)

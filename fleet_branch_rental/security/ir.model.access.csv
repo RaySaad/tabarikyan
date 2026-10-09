@@ -9,3 +9,4 @@ access_contract_fleet_user,fleet.rental.contract.user,model_fleet_rental_contrac
 access_contract_user,fleet.rental.contract.reader,model_fleet_rental_contract,recruitment_workflow.group_recruitment_workflow_user,1,0,0,0
 access_contract_fleet_manager,fleet.rental.contract.manager,model_fleet_rental_contract,recruitment_workflow.group_recruitment_workflow_fleet_manager,1,1,1,1
 access_contract_accountant,fleet.rental.contract.accountant,model_fleet_rental_contract,account.group_account_manager,1,1,1,1
+access_opening_wizard_manager,fleet.rental.opening.wizard.manager,model_fleet_rental_opening_wizard,recruitment_workflow.group_recruitment_workflow_fleet_manager,1,1,1,1
