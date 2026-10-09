@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_fleet_vehicle_list_idle" model="ir.ui.view">
+            <field name="name">fleet.vehicle.list.idle</field>
+            <field name="model">fleet.vehicle</field>
+            <field name="arch" type="xml">
+                <list string="المركبات الراكدة" create="0"
+                      decoration-danger="rental_idle_days &gt; 30"
+                      decoration-warning="rental_idle_days &gt; 7">
+                    <field name="license_plate"/>
+                    <field name="model_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="driver_id" optional="show"
+                           options="{'no_create': True, 'no_open': True}"/>
+                    <field name="rental_monthly_rate" sum="الأجرة الشهرية الضائعة"/>
+                    <field name="rental_idle_since"/>
+                    <field name="rental_idle_days"/>
+                    <field name="state_id" optional="hide"
+                           options="{'no_create': True, 'no_open': True}"/>
+                    <field name="currency_id" column_invisible="True"/>
+                    <button name="action_open_idle_cost" type="object"
+                            string="تكلفة الركود" icon="fa-calculator"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_fleet_vehicle_search_idle" model="ir.ui.view">
+            <field name="name">fleet.vehicle.search.idle</field>
+            <field name="model">fleet.vehicle</field>
+            <field name="inherit_id" ref="fleet.fleet_vehicle_view_search"/>
+            <field name="arch" type="xml">
+                <xpath expr="//search" position="inside">
+                    <filter name="rental_idle" string="راكدة (بلا عقد)"
+                            domain="[('is_rental_idle', '=', True)]"/>
+                    <filter name="rental_active" string="مؤجَّرة"
+                            domain="[('rental_contract_id', '!=', False)]"/>
+                    <group>
+                        <filter name="group_rental_branch" string="الفرع المستأجر"
+                                context="{'group_by': 'rental_branch_id'}"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="action_fleet_vehicle_idle" model="ir.actions.act_window">
+            <field name="name">المركبات الراكدة</field>
+            <field name="res_model">fleet.vehicle</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('is_rental_idle', '=', True)]</field>
+            <field name="view_id" ref="view_fleet_vehicle_list_idle"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">لا مركبة راكدة</p>
+                <p>كل مركبة خاضعة للتحميل وبلا عقد سارٍ تظهر هنا - تكلفتها على
+                   الأسطول بلا مقابل.</p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

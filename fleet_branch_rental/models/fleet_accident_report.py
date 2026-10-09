@@ -6,6 +6,15 @@ from odoo.exceptions import UserError
 # "المندوب": يتحملها الفرع ثم يستردّها من مندوبه عبر "تحويل مركبة"
 # في السداد البنكي. "طرف آخر": على التأمين/الطرف المقابل.
 # "غير محدد": لا تُحمَّل حتى تُحسم.
+# نسبة ما يتحمله المندوب شخصياً - يستردّها الفرع منه بسجل "تحويل
+# مركبة" في السداد البنكي فيظهر في كشف حسابه ويُخصم من راتبه أو عمولته.
+_EMPLOYEE_SHARE_BY_RESPONSIBILITY = {
+    'employee': 100.0,
+    'third_party': 0.0,
+    'shared': 50.0,
+    'undetermined': 0.0,
+}
+
 _SHARE_BY_RESPONSIBILITY = {
     'employee': 100.0,
     'third_party': 0.0,
@@ -31,6 +40,16 @@ class FleetAccidentReport(models.Model):
         string='المحمَّل على الفرع', compute='_compute_branch_charge_amount',
         store=True,
     )
+    employee_share_percent = fields.Float(
+        string='نسبة تحمّل المندوب %', tracking=True,
+        compute='_compute_employee_share_percent', store=True, readonly=False,
+        help='ما يُطالَب به المندوب شخصياً - يُسجَّل في السداد البنكي '
+             'فيظهر في كشف حسابه ويُخصم من راتبه أو عمولته.',
+    )
+    employee_claim_id = fields.Many2one(
+        'bank.settlement.vehicle.transfer', string='مطالبة المندوب',
+        readonly=True, copy=False,
+    )
     close_date = fields.Date(
         string='تاريخ الإغلاق', readonly=True, copy=False,
         help='يُسجَّل عند إغلاق البلاغ - وبه يُحدَّد شهر التحميل.',
@@ -47,10 +66,58 @@ class FleetAccidentReport(models.Model):
             rec.branch_share_percent = _SHARE_BY_RESPONSIBILITY.get(
                 rec.responsibility, 0.0)
 
+    @api.depends('responsibility')
+    def _compute_employee_share_percent(self):
+        for rec in self:
+            rec.employee_share_percent = _EMPLOYEE_SHARE_BY_RESPONSIBILITY.get(
+                rec.responsibility, 0.0)
+
     @api.depends('actual_cost', 'branch_share_percent')
     def _compute_branch_charge_amount(self):
         for rec in self:
             rec.branch_charge_amount = rec.actual_cost * rec.branch_share_percent / 100.0
+
+    def action_create_employee_claim(self):
+        """ينشئ مطالبة المندوب في السداد البنكي مسودةً.
+
+        كان هذا يُكتب يدوياً، والنسيان يعني ضياع المبلغ - وهو أكثر ما
+        يسقط في الزحام. تُنشأ مسودةً عمداً: تمر بسلسلة الاعتماد
+        المعتادة هناك كأي مستحق على موظف.
+        """
+        self.ensure_one()
+        if self.employee_claim_id:
+            raise UserError(_('أُنشئت مطالبة لهذا البلاغ: %s.')
+                            % self.employee_claim_id.name)
+        if not self.employee_id:
+            raise UserError(_('لا مندوب محدَّد في البلاغ.'))
+        amount = self.actual_cost * self.employee_share_percent / 100.0
+        if amount <= 0:
+            raise UserError(_(
+                'لا مبلغ يُطالَب به: أدخل التكلفة الفعلية ونسبة تحمّل المندوب.'))
+        transfer_type = self.env.company._get_fleet_rental_config(
+            'fleet_accident_claim_type_id')
+        if not transfer_type:
+            raise UserError(_(
+                'لم يُحدَّد "نوع تحويل مطالبات الحوادث" في الإعدادات.'))
+        claim = self.env['bank.settlement.vehicle.transfer'].create({
+            'employee_id': self.employee_id.id,
+            'transfer_type_id': transfer_type.id,
+            'vehicle_id': self.vehicle_id.id,
+            'amount': amount,
+            'notes': _('بلاغ %(report)s - نسبة تحمّل المندوب %(share)s%%')
+            % {'report': self.name, 'share': self.employee_share_percent},
+        })
+        self.employee_claim_id = claim.id
+        self.message_post(body=_(
+            'أُنشئت مطالبة على المندوب بمبلغ %(amount)s (%(claim)s) - تتابَع '
+            'من السداد البنكي.') % {'amount': amount, 'claim': claim.name})
+        return {
+            'name': _('مطالبة المندوب'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'bank.settlement.vehicle.transfer',
+            'res_id': claim.id,
+            'view_mode': 'form',
+        }
 
     def action_close(self):
         res = super().action_close()

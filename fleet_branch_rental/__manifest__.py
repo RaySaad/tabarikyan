@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'أجرة الأسطول للفروع - Fleet Branch Rental',
-    'version': '19.0.1.2.0',
+    'version': '19.0.1.3.0',
     'category': 'Human Resources/Fleet',
     'summary': 'تحميل الفروع أجرة السيارات شهرياً، وتكاليف الحوادث بنسبة التحمل',
     'description': """
@@ -30,12 +30,13 @@
     'author': 'Aidea - ذكاء الفكرة',
     'website': 'https://aidea.sa',
     'license': 'LGPL-3',
-    'depends': ['recruitment_workflow', 'account', 'fleet'],
+    'depends': ['recruitment_workflow', 'bank_settlement', 'account', 'fleet'],
     'data': [
         'security/ir.model.access.csv',
         'security/fleet_branch_rental_security.xml',
         'data/sequence_data.xml',
         'views/fleet_vehicle_views.xml',
+        'views/fleet_vehicle_idle_views.xml',
         'views/fleet_rental_contract_views.xml',
         'views/fleet_accident_report_views.xml',
         'views/fleet_branch_rental_charge_views.xml',

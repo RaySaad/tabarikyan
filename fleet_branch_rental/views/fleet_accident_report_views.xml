@@ -6,9 +6,19 @@
             <field name="model">fleet.accident.report</field>
             <field name="inherit_id" ref="recruitment_workflow.view_fleet_accident_report_form"/>
             <field name="arch" type="xml">
+                <xpath expr="//header" position="inside">
+                    <button name="action_create_employee_claim" type="object"
+                            string="مطالبة المندوب" class="btn-secondary"
+                            invisible="employee_claim_id or not employee_id or employee_share_percent &lt;= 0 or actual_cost &lt;= 0"
+                            groups="recruitment_workflow.group_recruitment_workflow_fleet_manager"/>
+                </xpath>
                 <xpath expr="//field[@name='estimated_cost']" position="after">
                     <field name="actual_cost" readonly="state == 'closed'"/>
                     <field name="branch_share_percent" readonly="state == 'closed'"/>
+                    <field name="employee_share_percent" readonly="state == 'closed'"/>
+                    <field name="employee_claim_id" readonly="1"
+                           invisible="not employee_claim_id"
+                           options="{'no_create': True, 'no_open': True}"/>
                     <field name="branch_charge_amount" readonly="1"
                            invisible="not actual_cost"/>
                     <field name="close_date" readonly="1" invisible="not close_date"/>

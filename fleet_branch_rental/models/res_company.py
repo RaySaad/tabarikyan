@@ -30,6 +30,13 @@ class ResCompany(models.Model):
         help='يُستخدَم في قيد شركة الأسطول (دائن).',
     )
 
+    fleet_accident_claim_type_id = fields.Many2one(
+        'bank.settlement.vehicle.transfer.type',
+        string='نوع تحويل مطالبات الحوادث',
+        help='النوع الذي تُسجَّل به مطالبة المندوب عن تحمّله في الحوادث - '
+             'تظهر في كشف حسابه وتُخصم من راتبه أو عمولته.',
+    )
+
     def _get_fleet_rental_config(self, fname):
         """قيمة الإعداد من الشركة، وإلا من شركتها الأم - الفروع عادةً
         تشارك الأم دليل حساباتها فلا داعي لتكرار الضبط في كل فرع."""

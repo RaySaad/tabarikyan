@@ -29,3 +29,7 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.fleet_rental_income_account_id', readonly=False,
         string='حساب استرداد تكلفة الأسطول',
     )
+    fleet_accident_claim_type_id = fields.Many2one(
+        related='company_id.fleet_accident_claim_type_id', readonly=False,
+        string='نوع تحويل مطالبات الحوادث',
+    )

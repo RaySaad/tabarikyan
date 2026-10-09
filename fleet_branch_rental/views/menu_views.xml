@@ -19,6 +19,12 @@
                   action="action_fleet_branch_rental_charge"
                   sequence="10"/>
 
+        <menuitem id="menu_fleet_vehicle_idle"
+                  name="المركبات الراكدة"
+                  parent="menu_fleet_branch_rental_root"
+                  action="action_fleet_vehicle_idle"
+                  sequence="15"/>
+
         <menuitem id="menu_fleet_rental_opening"
                   name="عقود افتتاحية"
                   parent="menu_fleet_branch_rental_root"

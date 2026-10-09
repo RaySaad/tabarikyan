@@ -269,14 +269,34 @@ class FleetBranchRentalCharge(models.Model):
             ) % {'label': label, 'company': company.display_name})
         return account
 
-    def _prepare_move_lines(self, debit_account, credit_account, label):
+    def _prepare_move_lines(self, debit_account, credit_account, label,
+                            analytic=False, company=False):
+        """سطر مدين لكل حساب تحليلي (عند طلب التحليل) مقابل سطر دائن
+        واحد - فتظهر تكلفة كل منصة في تقاريرها."""
         self.ensure_one()
-        return [
-            (0, 0, {'name': label, 'account_id': debit_account.id,
-                    'debit': self.amount_total, 'credit': 0.0}),
-            (0, 0, {'name': label, 'account_id': credit_account.id,
-                    'debit': 0.0, 'credit': self.amount_total}),
-        ]
+        lines = []
+        if analytic:
+            groups = {}
+            for line in self.line_ids:
+                key = str(line._get_analytic_distribution(company) or '')
+                groups.setdefault(key, [0.0, line._get_analytic_distribution(company)])
+                groups[key][0] += line.amount
+            for amount, distribution in groups.values():
+                if self.currency_id.is_zero(amount):
+                    continue
+                lines.append((0, 0, {
+                    'name': label, 'account_id': debit_account.id,
+                    'debit': amount, 'credit': 0.0,
+                    'analytic_distribution': distribution or False,
+                }))
+        if not lines:
+            lines.append((0, 0, {
+                'name': label, 'account_id': debit_account.id,
+                'debit': self.amount_total, 'credit': 0.0}))
+        lines.append((0, 0, {
+            'name': label, 'account_id': credit_account.id,
+            'debit': 0.0, 'credit': self.amount_total}))
+        return lines
 
     def action_post(self):
         """قيدان متقابلان: مصروف في الفرع، واسترداد في الأسطول.
@@ -308,7 +328,7 @@ class FleetBranchRentalCharge(models.Model):
                                      'حساب مصروف أجرة السيارات'),
                     rec._get_account(rec.company_id, 'fleet_rental_interco_account_id',
                                      'الحساب الجاري بين الفروع'),
-                    label),
+                    label, analytic=True, company=rec.company_id),
             })
             fleet_move = self.env['account.move'].sudo().with_company(fleet).create({
                 'company_id': fleet.id,
@@ -438,3 +458,19 @@ class FleetBranchRentalChargeLine(models.Model):
     share_percent = fields.Float(string='نسبة التحمل %')
 
     amount = fields.Monetary(string='المحمَّل', required=True)
+
+    def _get_analytic_distribution(self, company):
+        """حساب منصة المندوب التحليلي - فتدخل أجرة السيارة في ربحية
+        المنصة كبقية تكاليفها، بدل أن تبقى خارج التحليل.
+
+        يُتخطى الحساب التابع لشركة أخرى: أودو تمنع التداخل بين
+        الشركات، ولا يصح أن يسقط القيد كله لأجل بُعد تحليلي.
+        """
+        self.ensure_one()
+        employee = self.contract_id.employee_id or self.accident_report_id.employee_id
+        account = employee.sudo().project_id.account_id if employee else False
+        if not account:
+            return False
+        if account.company_id and account.company_id != company:
+            return False
+        return {str(account.id): 100.0}

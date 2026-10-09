@@ -404,3 +404,95 @@ class TestFleetBranchRental(TransactionCase):
             self.assertFalse(
                 charge.line_ids.filtered(lambda l: l.line_type == 'damage'),
                 'حادث قديم دخل التحميل عن %s' % month)
+
+    # ---- التوزيع التحليلي ----
+    def test_rent_entry_carries_the_platform_analytic_account(self):
+        """أجرة السيارة من أكبر بنود التشغيل - بلا توزيع تحليلي تخرج
+        ربحية المنصة ناقصة."""
+        self._configure_accounts()
+        project = self.env['project.project'].create({'name': 'منصة التحليلي'})
+        project._create_default_analytic_account()
+        # المنصة لا تُكتب مباشرة على الموظف (تمر بخط سير نقل) - نستعمل
+        # نفس المسار الداخلي الذي يستعمله النظام.
+        self.employee.sudo()._open_platform_history(project)
+        self._assign(self.branch, date(2026, 3, 1))
+        charge = self._charge()
+        charge.action_generate_lines()
+        charge.action_confirm()
+
+        charge.action_post()
+
+        expense = self.branch.fleet_rental_expense_account_id
+        line = charge.move_branch_id.line_ids.filtered(
+            lambda l: l.account_id == expense)
+        self.assertTrue(line.analytic_distribution, 'القيد بلا توزيع تحليلي')
+        self.assertIn(str(project.account_id.id), line.analytic_distribution)
+
+    def test_an_analytic_account_of_another_company_is_skipped(self):
+        """حساب تحليلي لشركة أخرى يُسقط القيد كله في أودو - نتخطاه
+        بدل أن يفشل الترحيل."""
+        self._configure_accounts()
+        foreign = self.env['account.analytic.plan'].sudo().search([], limit=1) \
+            or self.env['account.analytic.plan'].sudo().create({'name': 'خطة اختبار'})
+        account = self.env['account.analytic.account'].sudo().create({
+            'name': 'تحليلي شركة أخرى', 'plan_id': foreign.id,
+            'company_id': self.other_branch.id})
+        project = self.env['project.project'].create(
+            {'name': 'منصة شركة أخرى', 'account_id': account.id})
+        self.employee.sudo()._open_platform_history(project)
+        self._assign(self.branch, date(2026, 3, 1))
+        charge = self._charge()
+        charge.action_generate_lines()
+        charge.action_confirm()
+
+        charge.action_post()
+
+        self.assertEqual(charge.state, 'posted', 'سقط الترحيل بسبب تحليلي غريب')
+
+    # ---- المركبات الراكدة ----
+    def test_a_vehicle_without_a_contract_shows_as_idle(self):
+        self.assertTrue(self.vehicle.is_rental_idle)
+        contract = self._assign(self.branch, date(2026, 3, 1))
+        self.vehicle.invalidate_recordset()
+        self.assertFalse(self.vehicle.is_rental_idle)
+        self.assertEqual(self.vehicle.rental_branch_id, self.branch)
+
+        contract.action_end('إرجاع', date(2026, 3, 20))
+        self.vehicle.invalidate_recordset()
+
+        self.assertTrue(self.vehicle.is_rental_idle)
+        self.assertEqual(self.vehicle.rental_idle_since, date(2026, 3, 20))
+
+    # ---- مطالبة المندوب ----
+    def test_claim_button_creates_a_settlement_on_the_delegate(self):
+        claim_type = self.env['bank.settlement.vehicle.transfer.type'].search(
+            [], limit=1)
+        self.env.company.fleet_accident_claim_type_id = claim_type.id
+        report = self._closed_report(cost=4000.0, responsibility='employee')
+
+        report.action_create_employee_claim()
+
+        claim = report.employee_claim_id
+        self.assertTrue(claim, 'لم تُنشأ المطالبة')
+        self.assertEqual(claim.employee_id, self.employee)
+        self.assertAlmostEqual(claim.amount, 4000.0, places=2)
+        self.assertEqual(claim.state, 'draft', 'المطالبة تمر بسلسلة الاعتماد')
+
+    def test_claim_is_not_created_twice(self):
+        claim_type = self.env['bank.settlement.vehicle.transfer.type'].search(
+            [], limit=1)
+        self.env.company.fleet_accident_claim_type_id = claim_type.id
+        report = self._closed_report(cost=4000.0, responsibility='employee')
+        report.action_create_employee_claim()
+
+        with self.assertRaises(UserError):
+            report.action_create_employee_claim()
+
+    def test_no_claim_when_the_third_party_is_responsible(self):
+        claim_type = self.env['bank.settlement.vehicle.transfer.type'].search(
+            [], limit=1)
+        self.env.company.fleet_accident_claim_type_id = claim_type.id
+        report = self._closed_report(cost=4000.0, responsibility='third_party')
+
+        with self.assertRaises(UserError):
+            report.action_create_employee_claim()
