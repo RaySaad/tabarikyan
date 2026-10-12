@@ -16,10 +16,11 @@ class FleetVehicle(models.Model):
              'تغطي الاستهلاك والتأمين والاستمارة والصيانة الدورية '
              'والأعطال - أما الحوادث والتلفيات فعلى الفرع بنسبة تحمّله.',
     )
-    currency_id = fields.Many2one(
-        'res.currency', string='العملة',
-        default=lambda self: self.env.company.currency_id,
-    )
+    # لا نعيد تعريف currency_id: أودو تعرّفها على المركبة مرتبطةً بعملة
+    # شركتها (related='company_id.currency_id'). إعادة تعريفها حقلاً
+    # عادياً بقيمة من شركة المستخدم كانت تقطع ذلك الارتباط وتُظهر أجرة
+    # مركبة الأسطول بعملة شركة المستخدم الحالي - وهو ما نبّه إليه
+    # تحذير "Redundant default" في سجل الخادم.
     rental_contract_ids = fields.One2many(
         'fleet.rental.contract', 'vehicle_id', string='عقود التأجير',
     )
