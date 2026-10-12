@@ -8,3 +8,4 @@ from . import test_employee_statement_wizard
 from . import test_prepaid_schedule
 from . import test_dashboard
 from . import test_rpc_bypass
+from . import test_translation_cron_removed
