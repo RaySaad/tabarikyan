@@ -3,6 +3,7 @@
 import { Component, useState, onWillStart, useRef, useEffect } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { _t } from "@web/core/l10n/translation";
 import { loadBundle } from "@web/core/assets";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 
@@ -16,6 +17,9 @@ export class FleetDashboard extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
+        this.notification = useService("notification");
+
+        this.trendChartRef = useRef("trendChart");
         this.branchChartRef = useRef("branchChart");
         this.costChartRef = useRef("costChart");
         this.charts = {};
@@ -23,6 +27,7 @@ export class FleetDashboard extends Component {
         this.state = useState({
             loading: true,
             month: new Date().toISOString().slice(0, 7) + "-01",
+            branchId: 0,
             data: null,
         });
 
@@ -36,6 +41,7 @@ export class FleetDashboard extends Component {
                 if (!this.state.loading && this.state.data) {
                     this.renderCharts();
                 }
+                return () => this.destroyCharts();
             },
             () => [this.state.loading, this.state.data]
         );
@@ -45,12 +51,23 @@ export class FleetDashboard extends Component {
         this.state.loading = true;
         this.state.data = await this.orm.call("fleet.dashboard", "get_dashboard_data", [], {
             month: this.state.month,
+            branch_id: this.state.branchId || null,
         });
         this.state.loading = false;
     }
 
+    async refresh() {
+        await this.load();
+        this.notification.add(_t("حُدِّثت بيانات اللوحة."), { type: "success" });
+    }
+
     async onMonthChange(ev) {
         this.state.month = ev.target.value + "-01";
+        await this.load();
+    }
+
+    async onBranchChange(ev) {
+        this.state.branchId = parseInt(ev.target.value, 10) || 0;
         await this.load();
     }
 
@@ -65,8 +82,76 @@ export class FleetDashboard extends Component {
         return (this.state.data && this.state.data.kpi) || {};
     }
 
+    /** الرسم الزمني لا يُعرض وكل أشهره أصفار - يُستبدل بحالة فراغ. */
+    get hasTrend() {
+        const trend = this.state.data && this.state.data.trend;
+        if (!trend) {
+            return false;
+        }
+        return ["rent", "service", "fuel", "accident"].some((key) =>
+            (trend[key] || []).some((value) => value > 0)
+        );
+    }
+
+    /** ارتفاع يتبع عدد الأعمدة: خمس مركبات تملأ اللوح، ومركبتان لا
+     *  تتركان فراغاً كبيراً تحتهما. */
+    get costChartHeight() {
+        const rows = ((this.state.data && this.state.data.top_cost) || []).length;
+        return Math.max(150, rows * 46 + 50) + "px";
+    }
+
     money(value) {
-        return (value || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const amount = (value || 0).toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+        const currency = (this.state.data && this.state.data.currency) || {};
+        return currency.symbol ? `${amount} ${currency.symbol}` : amount;
+    }
+
+    typeTone(type) {
+        return {
+            contract: "blue",
+            accident: "red",
+            charge: "green",
+            fuel: "violet",
+        }[type] || "grey";
+    }
+
+    stateTone(state) {
+        return {
+            active: "green",
+            posted: "green",
+            done: "green",
+            confirmed: "blue",
+            draft: "grey",
+            ended: "grey",
+            closed: "grey",
+            cancel: "red",
+        }[state] || "grey";
+    }
+
+    // ------------------------------------------------------------------
+    // الرسوم
+    // ------------------------------------------------------------------
+    destroyCharts() {
+        Object.keys(this.charts).forEach((key) => {
+            if (this.charts[key]) {
+                this.charts[key].destroy();
+                this.charts[key] = null;
+            }
+        });
+    }
+
+    /** ألوان النص والشبكة تُقرأ من سمة أودو الجارية فتصلح للوضعين. */
+    get chartTheme() {
+        const styles = getComputedStyle(document.body);
+        return {
+            ink: styles.getPropertyValue("--body-color").trim() || "#475569",
+            muted: styles.getPropertyValue("--secondary-color").trim() || "#94a3b8",
+            grid: styles.getPropertyValue("--border-color").trim() || "#eef2f7",
+            surface: styles.getPropertyValue("--body-bg").trim() || "#ffffff",
+        };
     }
 
     renderCharts() {
@@ -74,17 +159,104 @@ export class FleetDashboard extends Component {
         if (!Chart) {
             return;
         }
-        const palette = ["#2563eb", "#10b981", "#f59e0b", "#7c3aed", "#ef4444", "#0ea5e9"];
-        const destroy = (key) => {
-            if (this.charts[key]) {
-                this.charts[key].destroy();
-                this.charts[key] = null;
-            }
+        // الإتلاف خارج شروط وجود المراجع: حين تصير البيانات فارغة يختفي
+        // الـ canvas من الشجرة بينما يبقى كائن Chart معلَّقاً عليه.
+        this.destroyCharts();
+
+        const theme = this.chartTheme;
+        const palette = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4"];
+        const legend = {
+            display: true,
+            position: "bottom",
+            labels: {
+                color: theme.ink,
+                usePointStyle: true,
+                pointStyle: "circle",
+                boxWidth: 8,
+                padding: 14,
+                font: { size: 11 },
+            },
         };
+
+        // -- تطور ستة أشهر: أعمدة مكدَّسة للتكاليف وخط للأجرة -----------
+        const trend = this.state.data.trend || {};
+        if (this.trendChartRef.el) {
+            this.charts.trend = new Chart(this.trendChartRef.el, {
+                data: {
+                    labels: trend.labels || [],
+                    datasets: [{
+                        type: "line",
+                        label: _t("أجرة مرحَّلة"),
+                        data: trend.rent || [],
+                        borderColor: "#10b981",
+                        backgroundColor: "rgba(16, 185, 129, 0.14)",
+                        borderWidth: 3,
+                        tension: 0.35,
+                        fill: true,
+                        pointRadius: 4,
+                        pointBackgroundColor: "#10b981",
+                        order: 0,
+                    }, {
+                        type: "bar",
+                        label: _t("ورشة"),
+                        data: trend.service || [],
+                        backgroundColor: "#3b82f6",
+                        borderRadius: 6,
+                        maxBarThickness: 26,
+                        stack: "cost",
+                        order: 1,
+                    }, {
+                        type: "bar",
+                        label: _t("وقود (الفروع)"),
+                        data: trend.fuel || [],
+                        backgroundColor: "#8b5cf6",
+                        borderRadius: 6,
+                        maxBarThickness: 26,
+                        stack: "cost",
+                        order: 1,
+                    }, {
+                        type: "bar",
+                        label: _t("حوادث"),
+                        data: trend.accident || [],
+                        backgroundColor: "#ef4444",
+                        borderRadius: 6,
+                        maxBarThickness: 26,
+                        stack: "cost",
+                        order: 1,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: "index", intersect: false },
+                    plugins: {
+                        legend,
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) =>
+                                    `${ctx.dataset.label}: ${this.money(ctx.parsed.y)}`,
+                            },
+                        },
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: { display: false },
+                            ticks: { color: theme.muted, font: { size: 11 } },
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { color: theme.grid },
+                            border: { display: false },
+                            ticks: { color: theme.muted, font: { size: 11 } },
+                        },
+                    },
+                },
+            });
+        }
+
+        // -- توزيع المركبات على الفروع ------------------------------------
         const branch = this.state.data.by_branch || [];
-        // الإتلاف خارج الشرط: حين تصير البيانات فارغة يختفي الـ canvas من
-        // الشجرة بينما يبقى كائن Chart ومستمع تغيير الحجم معلَّقين عليه.
-        destroy("branch");
         if (this.branchChartRef.el) {
             this.charts.branch = new Chart(this.branchChartRef.el, {
                 type: "doughnut",
@@ -93,7 +265,8 @@ export class FleetDashboard extends Component {
                     datasets: [{
                         data: branch.map((r) => r.value),
                         backgroundColor: branch.map((l, i) => palette[i % palette.length]),
-                        borderWidth: 0,
+                        borderWidth: 2,
+                        borderColor: theme.surface,
                         hoverOffset: 10,
                     }],
                 },
@@ -101,17 +274,13 @@ export class FleetDashboard extends Component {
                     responsive: true,
                     maintainAspectRatio: false,
                     cutout: "62%",
-                    plugins: {
-                        legend: {
-                            position: "bottom",
-                            labels: { usePointStyle: true, boxWidth: 8, padding: 14 },
-                        },
-                    },
+                    plugins: { legend },
                 },
             });
         }
+
+        // -- أعلى المركبات تكلفة -------------------------------------------
         const top = this.state.data.top_cost || [];
-        destroy("cost");
         if (this.costChartRef.el) {
             this.charts.cost = new Chart(this.costChartRef.el, {
                 type: "bar",
@@ -119,7 +288,7 @@ export class FleetDashboard extends Component {
                     labels: top.map((r) => r.label),
                     datasets: [{
                         data: top.map((r) => r.value),
-                        backgroundColor: "#2563eb",
+                        backgroundColor: "#3b82f6",
                         hoverBackgroundColor: "#1d4ed8",
                         borderRadius: 8,
                         maxBarThickness: 34,
@@ -129,20 +298,89 @@ export class FleetDashboard extends Component {
                     responsive: true,
                     maintainAspectRatio: false,
                     indexAxis: "y",
-                    plugins: { legend: { display: false } },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: { label: (ctx) => this.money(ctx.parsed.x) },
+                        },
+                    },
                     scales: {
                         x: {
-                            grid: { color: "#eef2f7", drawBorder: false },
-                            ticks: { color: "#94a3b8", font: { size: 11 } },
+                            grid: { color: theme.grid },
+                            border: { display: false },
+                            ticks: { color: theme.muted, font: { size: 11 } },
                         },
                         y: {
-                            grid: { display: false, drawBorder: false },
-                            ticks: { color: "#475569", font: { size: 11 } },
+                            grid: { display: false },
+                            border: { display: false },
+                            ticks: { color: theme.ink, font: { size: 11 } },
                         },
                     },
                 },
             });
         }
+    }
+
+    // ------------------------------------------------------------------
+    // الإجراءات
+    // ------------------------------------------------------------------
+    /** التنبيهات تحمل اسم الإجراء نصاً - ننفّذ المسمى فقط لا أي دالة. */
+    runAction(name) {
+        const allowed = ["openDue", "openIdle", "openCharges", "openAccidents"];
+        if (allowed.includes(name)) {
+            this[name]();
+        }
+    }
+
+    openStage(key) {
+        ({
+            contracts: () => this.openRecords(
+                "fleet.rental.contract", [["state", "=", "active"]], _t("عقود سارية")),
+            accidents: () => this.openRecords(
+                "fleet.accident.report", [["state", "!=", "closed"]],
+                _t("بلاغات حوادث مفتوحة")),
+            unpriced: () => this.openRecords(
+                "fleet.accident.report",
+                [["state", "!=", "closed"], ["actual_cost", "=", 0]],
+                _t("بلاغات بلا تكلفة فعلية")),
+            charges: () => this.openRecords(
+                "fleet.branch.rental.charge", [["state", "in", ["draft", "confirmed"]]],
+                _t("تحميلات غير مرحَّلة")),
+        }[key] || (() => {}))();
+    }
+
+    openRecords(resModel, domain = [], name = "") {
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            name: name || _t("السجلات"),
+            res_model: resModel,
+            domain,
+            view_mode: "list,form",
+            views: [[false, "list"], [false, "form"]],
+            target: "current",
+        });
+    }
+
+    createRecord(resModel, name = "") {
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            name: name || _t("سجل جديد"),
+            res_model: resModel,
+            view_mode: "form",
+            views: [[false, "form"]],
+            target: "current",
+        });
+    }
+
+    openRecord(resModel, resId) {
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: resModel,
+            res_id: resId,
+            view_mode: "form",
+            views: [[false, "form"]],
+            target: "current",
+        });
     }
 
     openIdle() {
@@ -155,6 +393,12 @@ export class FleetDashboard extends Component {
 
     openCharges() {
         this.action.doAction("fleet_branch_rental.action_fleet_branch_rental_charge");
+    }
+
+    openAccidents() {
+        this.openRecords(
+            "fleet.accident.report", [["state", "!=", "closed"]],
+            _t("بلاغات حوادث مفتوحة"));
     }
 
     openFuel() {
@@ -170,21 +414,11 @@ export class FleetDashboard extends Component {
     }
 
     openVehicle(vehicleId) {
-        this.action.doAction({
-            type: "ir.actions.act_window",
-            res_model: "fleet.vehicle",
-            res_id: vehicleId,
-            views: [[false, "form"]],
-        });
+        this.openRecord("fleet.vehicle", vehicleId);
     }
 
     openPlan(planId) {
-        this.action.doAction({
-            type: "ir.actions.act_window",
-            res_model: "fleet.maintenance.plan",
-            res_id: planId,
-            views: [[false, "form"]],
-        });
+        this.openRecord("fleet.maintenance.plan", planId);
     }
 }
 

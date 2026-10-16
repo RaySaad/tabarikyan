@@ -6,15 +6,16 @@
 
             <!-- ============ هيكل التحميل ============ -->
             <div t-if="state.loading">
-                <div class="o_fd_skeleton mb-3" style="height: 150px;"/>
+                <div class="o_fd_skeleton mb-3" style="height: 160px;"/>
+                <div class="o_fd_skeleton mb-3" style="height: 54px;"/>
                 <div class="row g-3 mb-3">
                     <div t-foreach="[1,2,3,4]" t-as="i" t-key="i" class="col-6 col-lg-3">
                         <div class="o_fd_skeleton" style="height: 104px;"/>
                     </div>
                 </div>
                 <div class="row g-3">
-                    <div class="col-12 col-lg-5"><div class="o_fd_skeleton" style="height: 300px;"/></div>
-                    <div class="col-12 col-lg-7"><div class="o_fd_skeleton" style="height: 300px;"/></div>
+                    <div class="col-12 col-lg-8"><div class="o_fd_skeleton" style="height: 320px;"/></div>
+                    <div class="col-12 col-lg-4"><div class="o_fd_skeleton" style="height: 320px;"/></div>
                 </div>
             </div>
 
@@ -43,12 +44,12 @@
                             <div>
                                 <h2 class="mb-1">لوحة مؤشرات الأسطول</h2>
                                 <div class="o_fd_hero_sub">
-                                    <t t-esc="kpi.rented"/> مؤجَّرة · <t t-esc="kpi.idle"/> راكدة
-                                    · <t t-esc="kpi.vehicles"/> مركبة في الأسطول
+                                    نظرة تشغيلية ومالية على التأجير الداخلي، الصيانة، الوقود والحوادث
                                 </div>
                                 <div class="o_fd_hero_sub mt-1">
                                     <i class="fa fa-calendar me-1"/>
                                     دورة <t t-esc="state.data.period.label"/>
+                                    · <t t-esc="kpi.vehicles"/> مركبة في الأسطول
                                 </div>
                             </div>
                         </div>
@@ -70,14 +71,76 @@
                                 <div class="o_fd_pill_label">أجرة متوقَّعة</div>
                             </div>
                         </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <input type="month" class="o_fd_month"
-                                   t-att-value="state.month.slice(0, 7)"
-                                   t-on-change="onMonthChange"/>
-                            <button class="btn btn-light btn-sm rounded-3" t-on-click="() => this.load()">
-                                <i class="fa fa-refresh"/>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <label class="o_fd_control mb-0">
+                                <input type="month"
+                                       t-att-value="state.month.slice(0, 7)"
+                                       t-on-change="onMonthChange"/>
+                            </label>
+                            <label class="o_fd_control mb-0">
+                                <i class="fa fa-building-o"/>
+                                <select t-on-change="onBranchChange">
+                                    <option value="0">كل الفروع</option>
+                                    <t t-foreach="state.data.branches" t-as="b" t-key="b.id">
+                                        <option t-att-value="b.id" t-esc="b.name"
+                                                t-att-selected="state.branchId === b.id or undefined"/>
+                                    </t>
+                                </select>
+                            </label>
+                            <button class="o_fd_control" t-on-click="refresh" title="تحديث البيانات">
+                                <i class="fa fa-refresh"/> تحديث
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- ============ الإجراءات السريعة ============ -->
+                <div class="o_fd_quickbar mb-3">
+                    <span class="o_fd_quick_title">
+                        <i class="fa fa-bolt text-warning me-1"/> إجراءات سريعة:
+                    </span>
+                    <button class="o_fd_quick" style="--fd-tone: var(--fd-blue);"
+                            t-on-click="() => this.createRecord('fleet.rental.contract', 'عقد تأجير جديد')">
+                        <i class="fa fa-plus"/> عقد تأجير
+                    </button>
+                    <button class="o_fd_quick" style="--fd-tone: var(--fd-violet);"
+                            t-on-click="() => this.createRecord('fleet.fuel.log', 'تسجيل تعبئة وقود')">
+                        <i class="fa fa-plus"/> تعبئة وقود
+                    </button>
+                    <button class="o_fd_quick" style="--fd-tone: var(--fd-red);"
+                            t-on-click="() => this.createRecord('fleet.accident.report', 'بلاغ حادث جديد')">
+                        <i class="fa fa-plus"/> بلاغ حادث
+                    </button>
+                    <button class="o_fd_quick" style="--fd-tone: var(--fd-amber);"
+                            t-on-click="() => this.createRecord('fleet.maintenance.plan', 'خطة صيانة جديدة')">
+                        <i class="fa fa-plus"/> خطة صيانة
+                    </button>
+                    <button class="o_fd_quick" style="--fd-tone: var(--fd-green);"
+                            t-on-click="() => this.createRecord('fleet.branch.rental.charge', 'تحميل شهري جديد')">
+                        <i class="fa fa-plus"/> تحميل الشهر
+                    </button>
+                    <button class="o_fd_quick ms-auto" style="--fd-tone: var(--fd-cyan);"
+                            t-on-click="openCostReport">
+                        <i class="fa fa-file-text-o"/> تقرير تكلفة المركبات
+                    </button>
+                </div>
+
+                <!-- ============ التنبيهات ============ -->
+                <div t-if="state.data.alerts.length" class="d-flex flex-column gap-2 mb-3">
+                    <div t-foreach="state.data.alerts" t-as="alert" t-key="alert.key"
+                         class="o_fd_alert" t-attf-style="--fd-tone: var(--fd-{{ alert.tone }});">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="o_fd_alert_icon">
+                                <i t-attf-class="fa {{ alert.icon }}"/>
+                            </div>
+                            <div>
+                                <div class="o_fd_alert_title"><t t-esc="alert.title"/></div>
+                                <div class="o_fd_alert_text"><t t-esc="alert.text"/></div>
+                            </div>
+                        </div>
+                        <button class="o_fd_alert_btn" t-on-click="() => this.runAction(alert.action)">
+                            <t t-esc="alert.button"/>
+                        </button>
                     </div>
                 </div>
 
@@ -159,16 +222,23 @@
                         <div class="o_fd_card o_fd_blue">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
-                                    <div class="o_fd_card_label">تكلفة الورشة</div>
-                                    <div class="o_fd_card_value"><t t-esc="money(kpi.service_cost)"/></div>
-                                    <div class="o_fd_card_sub">على شركة الأسطول</div>
+                                    <div class="o_fd_card_label">تكلفة الشهر على الأسطول</div>
+                                    <div class="o_fd_card_value"><t t-esc="money(kpi.cost_total)"/></div>
+                                    <div class="o_fd_card_sub d-flex align-items-center gap-2">
+                                        <span>ورشة <t t-esc="money(kpi.service_cost)"/></span>
+                                        <span t-if="kpi.growth_rate"
+                                              t-attf-class="o_fd_delta {{ kpi.growth_rate > 0 ? 'o_fd_delta_up' : 'o_fd_delta_down' }}">
+                                            <i t-attf-class="fa {{ kpi.growth_rate > 0 ? 'fa-arrow-up' : 'fa-arrow-down' }}"/>
+                                            <t t-esc="Math.abs(kpi.growth_rate)"/>%
+                                        </span>
+                                    </div>
                                 </div>
                                 <div class="o_fd_icon"><i class="fa fa-cogs"/></div>
                             </div>
                         </div>
                     </div>
                     <div class="col-6 col-lg-3">
-                        <div class="o_fd_card o_fd_red">
+                        <div class="o_fd_card o_fd_red o_fd_clickable" t-on-click="openAccidents">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
                                     <div class="o_fd_card_label">حوادث الشهر</div>
@@ -182,7 +252,7 @@
                         </div>
                     </div>
                     <div class="col-6 col-lg-3">
-                        <div class="o_fd_card o_fd_blue o_fd_clickable" t-on-click="openCostReport">
+                        <div class="o_fd_card o_fd_cyan o_fd_clickable" t-on-click="openCostReport">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
                                     <div class="o_fd_card_label">تقرير التكلفة</div>
@@ -211,19 +281,63 @@
                     </div>
                 </div>
 
+                <!-- ============ العمليات العالقة ============ -->
+                <div class="o_fd_panel mb-3">
+                    <div class="o_fd_panel_head">
+                        <h6><i class="fa fa-tasks"/> العمليات العالقة</h6>
+                        <span class="o_fd_panel_hint">تتطلب إجراءً</span>
+                    </div>
+                    <div class="o_fd_panel_body">
+                        <div class="row g-3">
+                            <div t-foreach="state.data.pipeline" t-as="stage" t-key="stage.key"
+                                 class="col-12 col-sm-6 col-lg-3">
+                                <div class="o_fd_stage" t-attf-style="--fd-tone: var(--fd-{{ stage.tone }});"
+                                     t-on-click="() => this.openStage(stage.key)">
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <span class="o_fd_stage_label"><t t-esc="stage.label"/></span>
+                                        <span class="o_fd_stage_count"><t t-esc="stage.count"/></span>
+                                    </div>
+                                    <div t-if="stage.amount" class="o_fd_stage_amount">
+                                        <t t-esc="money(stage.amount)"/>
+                                    </div>
+                                    <div class="o_fd_stage_hint"><t t-esc="stage.hint"/> ←</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ============ الرسوم ============ -->
                 <div class="row g-3 mb-3">
-                    <div class="col-12 col-lg-5">
+                    <div class="col-12 col-xl-8">
                         <div class="o_fd_panel">
                             <div class="o_fd_panel_head">
-                                <h6>المركبات لدى الفروع</h6>
+                                <h6><i class="fa fa-line-chart"/> تطور التكاليف والأجرة (آخر ٦ أشهر)</h6>
+                                <span class="o_fd_panel_hint">أجرة مرحَّلة · ورشة · وقود · حوادث</span>
+                            </div>
+                            <div class="o_fd_panel_body">
+                                <div t-if="hasTrend" class="o_fd_chart_lg">
+                                    <canvas t-ref="trendChart"/>
+                                </div>
+                                <div t-else="" class="o_fd_chart_empty" style="min-height: 300px;">
+                                    <i class="fa fa-line-chart"/>
+                                    <div>لا حركة مالية في الأشهر الستة الماضية</div>
+                                    <small>تظهر هنا الأجرة والورشة والوقود والحوادث شهراً بشهر</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-xl-4">
+                        <div class="o_fd_panel">
+                            <div class="o_fd_panel_head">
+                                <h6><i class="fa fa-pie-chart"/> المركبات لدى الفروع</h6>
                                 <span class="o_fd_panel_hint">توزيع المؤجَّر</span>
                             </div>
                             <div class="o_fd_panel_body">
-                                <div t-if="state.data.by_branch.length" class="o_fd_chart">
+                                <div t-if="state.data.by_branch.length" class="o_fd_chart_lg">
                                     <canvas t-ref="branchChart"/>
                                 </div>
-                                <div t-else="" class="o_fd_chart_empty">
+                                <div t-else="" class="o_fd_chart_empty" style="min-height: 300px;">
                                     <i class="fa fa-pie-chart"/>
                                     <div>لا مركبة مؤجَّرة بعد</div>
                                     <small>أنشئ عقود التأجير لتظهر التوزيعة</small>
@@ -231,14 +345,18 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-12 col-lg-7">
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-12">
                         <div class="o_fd_panel">
                             <div class="o_fd_panel_head">
-                                <h6>أعلى المركبات تكلفة</h6>
+                                <h6><i class="fa fa-bar-chart"/> أعلى المركبات تكلفة</h6>
                                 <span class="o_fd_panel_hint">ورشة هذا الشهر</span>
                             </div>
                             <div class="o_fd_panel_body">
-                                <div t-if="state.data.top_cost.length" class="o_fd_chart">
+                                <div t-if="state.data.top_cost.length" class="o_fd_chart"
+                                     t-attf-style="height: {{ costChartHeight }};">
                                     <canvas t-ref="costChart"/>
                                 </div>
                                 <div t-else="" class="o_fd_chart_empty">
@@ -252,11 +370,11 @@
                 </div>
 
                 <!-- ============ قوائم تحتاج إجراءً ============ -->
-                <div class="row g-3">
+                <div class="row g-3 mb-3">
                     <div class="col-12 col-lg-6">
                         <div class="o_fd_panel">
                             <div class="o_fd_panel_head">
-                                <h6>مركبات راكدة</h6>
+                                <h6><i class="fa fa-pause-circle"/> مركبات راكدة</h6>
                                 <span class="o_fd_panel_hint">أطولها ركوداً</span>
                             </div>
                             <div class="o_fd_panel_body">
@@ -281,7 +399,7 @@
                                         </tr>
                                         <tr t-if="!state.data.idle_list.length">
                                             <td colspan="3" class="o_fd_empty">
-                                                <i class="fa fa-check-circle text-success me-1"/>
+                                                <i class="fa fa-check-circle text-success"/>
                                                 كل المركبات مؤجَّرة
                                             </td>
                                         </tr>
@@ -293,7 +411,7 @@
                     <div class="col-12 col-lg-6">
                         <div class="o_fd_panel">
                             <div class="o_fd_panel_head">
-                                <h6>صيانة تحتاج موعداً</h6>
+                                <h6><i class="fa fa-wrench"/> صيانة تحتاج موعداً</h6>
                                 <span class="o_fd_panel_hint">بالمسافة أو بالزمن</span>
                             </div>
                             <div class="o_fd_panel_body">
@@ -321,7 +439,7 @@
                                         </tr>
                                         <tr t-if="!state.data.due_list.length">
                                             <td colspan="3" class="o_fd_empty">
-                                                <i class="fa fa-check-circle text-success me-1"/>
+                                                <i class="fa fa-check-circle text-success"/>
                                                 لا صيانة مستحقة
                                             </td>
                                         </tr>
@@ -329,6 +447,54 @@
                                 </table>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- ============ أحدث الحركات ============ -->
+                <div class="o_fd_panel">
+                    <div class="o_fd_panel_head">
+                        <h6><i class="fa fa-history"/> أحدث الحركات</h6>
+                        <span class="o_fd_panel_hint">عقود · حوادث · تحميلات · وقود</span>
+                    </div>
+                    <div class="o_fd_panel_body">
+                        <table class="o_fd_table">
+                            <thead>
+                                <tr>
+                                    <th>النوع</th>
+                                    <th>المرجع</th>
+                                    <th>المركبة / الفرع</th>
+                                    <th>التاريخ</th>
+                                    <th class="text-end">المبلغ</th>
+                                    <th class="text-end">الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="state.data.recent" t-as="row"
+                                    t-key="row.model + '-' + row.id"
+                                    t-on-click="() => this.openRecord(row.model, row.id)">
+                                    <td>
+                                        <span t-attf-class="o_fd_chip o_fd_chip_{{ typeTone(row.type) }}">
+                                            <t t-esc="row.type_label"/>
+                                        </span>
+                                    </td>
+                                    <td><t t-esc="row.name"/></td>
+                                    <td class="o_fd_card_sub"><t t-esc="row.ref"/></td>
+                                    <td><t t-esc="row.date"/></td>
+                                    <td class="text-end"><t t-esc="money(row.amount)"/></td>
+                                    <td class="text-end">
+                                        <span t-attf-class="o_fd_chip o_fd_chip_{{ stateTone(row.state) }}">
+                                            <t t-esc="row.state_label"/>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr t-if="!state.data.recent.length">
+                                    <td colspan="6" class="o_fd_empty">
+                                        <i class="fa fa-inbox"/>
+                                        لا حركات مسجَّلة بعد
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

@@ -1,20 +1,29 @@
 // ==========================================================================
-// لوحة مؤشرات الأسطول - هوية بصرية موحَّدة مع بقية لوحات النظام
-// (خلفية فاتحة، بطاقات بيضاء، أيقونات متدرجة، رفع عند التمرير)
-// مع ترويسة داكنة وحلقة تشغيل تعطيها حضوراً أقوى.
+// لوحة مؤشرات الأسطول - هوية واحدة مع لوحة السداد البنكي
+//
+// الألوان كلها مشتقّة من متغيّرات أودو (--body-bg / --body-color /
+// --border-color) لا من قيم ثابتة: النسخة السابقة كانت تفرض الأبيض
+// فتظهر بيضاء داخل الوضع الداكن بينما بقية النظام داكن.
 // ==========================================================================
 
 .o_fleet_dashboard {
-    --fd-ink: #0f172a;
-    --fd-muted: #64748b;
-    --fd-line: #e8edf3;
-    --fd-blue: #2563eb;
+    // ألوان التمييز ثابتة لأنها دلالية (أزرق = أجرة، أحمر = حوادث...)
+    --fd-blue: #3b82f6;
     --fd-green: #10b981;
     --fd-amber: #f59e0b;
     --fd-red: #ef4444;
-    --fd-violet: #7c3aed;
+    --fd-violet: #8b5cf6;
+    --fd-cyan: #06b6d4;
 
-    background: #f5f7fa;
+    // أسطح مشتقّة من سمة أودو الجارية
+    --fd-ink: var(--body-color, #0f172a);
+    --fd-muted: var(--secondary-color, #64748b);
+    --fd-line: var(--border-color, #e8edf3);
+    --fd-surface: var(--body-bg, #ffffff);
+    --fd-page: color-mix(in srgb, var(--body-bg, #fff) 96%, var(--body-color, #000));
+    --fd-raise: color-mix(in srgb, var(--body-bg, #fff) 92%, var(--body-color, #000));
+
+    background: var(--fd-page);
     color: var(--fd-ink);
 
     // ---------- الترويسة ----------
@@ -42,7 +51,6 @@
 
         .o_fd_hero_sub { color: rgba(226, 232, 240, 0.75); }
 
-        // أقراص إحصائية تملأ وسط الترويسة بدل الفراغ.
         .o_fd_pills { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 
         .o_fd_pill {
@@ -67,18 +75,32 @@
             &.o_fd_pill_bad .o_fd_pill_value { color: #fca5a5; }
         }
 
-        .o_fd_month {
+        // عناصر التحكم (الشهر والتحديث) بأسلوب زجاجي
+        .o_fd_control {
             background: rgba(255, 255, 255, 0.12);
             border: 1px solid rgba(255, 255, 255, 0.22);
             color: #fff;
-            border-radius: 12px;
-            padding: 0.4rem 0.7rem;
+            border-radius: 999px;
+            padding: 0.4rem 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: background 0.15s ease;
 
-            &:focus {
+            &:hover { background: rgba(255, 255, 255, 0.2); }
+            &:focus-within { box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.35); }
+
+            input, select {
+                background: transparent;
+                border: 0;
+                color: #fff;
+                font-weight: 600;
                 outline: none;
-                box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.35);
+
+                option { color: #0f172a; }
             }
-            &::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.8); }
+            &::-webkit-calendar-picker-indicator,
+            input::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.8); }
         }
     }
 
@@ -94,17 +116,87 @@
             stroke: url(#fdRingGradient);
             transition: stroke-dasharray 0.9s cubic-bezier(0.22, 1, 0.36, 1);
         }
-        .o_fd_ring_value {
-            font-size: 1.45rem;
-            font-weight: 700;
-            fill: #fff;
-        }
+        .o_fd_ring_value { font-size: 1.45rem; font-weight: 700; fill: #fff; }
         .o_fd_ring_label { font-size: 0.55rem; fill: rgba(226, 232, 240, 0.8); }
+    }
+
+    // ---------- شريط الإجراءات السريعة ----------
+    .o_fd_quickbar {
+        background: var(--fd-surface);
+        border: 1px solid var(--fd-line);
+        border-radius: 16px;
+        padding: 0.7rem 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+
+        .o_fd_quick_title { color: var(--fd-muted); font-size: 0.8rem; font-weight: 600; }
+
+        .o_fd_quick {
+            border: 1px solid var(--fd-line);
+            background: var(--fd-raise);
+            color: var(--fd-ink);
+            border-radius: 999px;
+            padding: 0.32rem 0.85rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            transition: transform 0.15s ease, border-color 0.15s ease;
+
+            i { color: var(--fd-tone, var(--fd-blue)); }
+
+            &:hover {
+                transform: translateY(-2px);
+                border-color: var(--fd-tone, var(--fd-blue));
+            }
+        }
+    }
+
+    // ---------- التنبيهات ----------
+    .o_fd_alert {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        border: 1px solid var(--fd-line);
+        border-inline-start: 4px solid var(--fd-tone, var(--fd-blue));
+        background: color-mix(in srgb, var(--fd-tone, #3b82f6) 10%, var(--fd-surface));
+        border-radius: 14px;
+        padding: 0.8rem 1rem;
+
+        .o_fd_alert_icon {
+            width: 40px;
+            height: 40px;
+            flex: 0 0 auto;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            background: var(--fd-tone, var(--fd-blue));
+        }
+        .o_fd_alert_title { font-weight: 700; font-size: 0.92rem; }
+        .o_fd_alert_text { color: var(--fd-muted); font-size: 0.8rem; }
+        .o_fd_alert_btn {
+            white-space: nowrap;
+            border: 1px solid var(--fd-tone, var(--fd-blue));
+            color: var(--fd-tone, var(--fd-blue));
+            background: transparent;
+            border-radius: 999px;
+            padding: 0.3rem 0.9rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+
+            &:hover { background: var(--fd-tone, var(--fd-blue)); color: #fff; }
+        }
     }
 
     // ---------- بطاقات المؤشرات ----------
     .o_fd_card {
-        background: #fff;
+        background: var(--fd-surface);
         border: 1px solid var(--fd-line);
         border-radius: 16px;
         padding: 1rem 1.1rem;
@@ -131,11 +223,7 @@
             box-shadow: 0 16px 28px -18px rgba(15, 23, 42, 0.45);
         }
 
-        .o_fd_card_label {
-            color: var(--fd-muted);
-            font-size: 0.78rem;
-            font-weight: 500;
-        }
+        .o_fd_card_label { color: var(--fd-muted); font-size: 0.78rem; font-weight: 500; }
 
         .o_fd_card_value {
             font-size: 1.6rem;
@@ -144,10 +232,7 @@
             font-variant-numeric: tabular-nums;
         }
 
-        .o_fd_card_sub {
-            color: var(--fd-muted);
-            font-size: 0.75rem;
-        }
+        .o_fd_card_sub { color: var(--fd-muted); font-size: 0.75rem; }
 
         .o_fd_icon {
             width: 42px;
@@ -167,14 +252,71 @@
         &.o_fd_amber  { --fd-accent: var(--fd-amber); }
         &.o_fd_red    { --fd-accent: var(--fd-red); }
         &.o_fd_violet { --fd-accent: var(--fd-violet); }
+        &.o_fd_cyan   { --fd-accent: var(--fd-cyan); }
     }
 
-    // ---------- الألواح (رسوم وجداول) ----------
+    // شارة التغير عن الشهر السابق
+    .o_fd_delta {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        border-radius: 999px;
+        padding: 0.1rem 0.5rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+
+        // ارتفاع التكلفة خبر سيئ - لذلك الأحمر للصعود.
+        &.o_fd_delta_up {
+            background: color-mix(in srgb, var(--fd-red) 16%, var(--fd-surface));
+            color: var(--fd-red);
+        }
+        &.o_fd_delta_down {
+            background: color-mix(in srgb, var(--fd-green) 16%, var(--fd-surface));
+            color: var(--fd-green);
+        }
+    }
+
+    // ---------- بطاقات العمليات العالقة ----------
+    .o_fd_stage {
+        background: var(--fd-raise);
+        border: 1px solid var(--fd-line);
+        border-radius: 14px;
+        padding: 0.8rem 0.9rem;
+        height: 100%;
+        cursor: pointer;
+        transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+
+        &:hover {
+            transform: translateY(-2px);
+            background: var(--fd-surface);
+            border-color: var(--fd-tone, var(--fd-blue));
+        }
+
+        .o_fd_stage_label { font-size: 0.8rem; font-weight: 600; }
+        .o_fd_stage_count {
+            background: var(--fd-tone, var(--fd-blue));
+            color: #fff;
+            border-radius: 999px;
+            min-width: 26px;
+            text-align: center;
+            padding: 0.05rem 0.5rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        .o_fd_stage_amount {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--fd-tone, var(--fd-blue));
+            font-variant-numeric: tabular-nums;
+        }
+        .o_fd_stage_hint { font-size: 0.73rem; color: var(--fd-muted); }
+    }
+
+    // ---------- الألواح ----------
     .o_fd_panel {
-        background: #fff;
+        background: var(--fd-surface);
         border: 1px solid var(--fd-line);
         border-radius: 16px;
-        height: 100%;
         display: flex;
         flex-direction: column;
 
@@ -184,39 +326,48 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 0.75rem;
 
-            // لون صريح: ثيم أودو يورّث للعناوين لوناً أبيض داخل
-            // o_action، فكانت عناوين الألواح بيضاء على أبيض (اكتُشف
-            // بفحص اللون المحسوب في المتصفح لا بالنظر).
+            // لون صريح: الثيم يورّث للعناوين لوناً قد يطابق الخلفية.
             h6 {
                 margin: 0;
                 font-weight: 700;
                 font-size: 0.95rem;
                 color: var(--fd-ink);
+                display: flex;
+                align-items: center;
+                gap: 0.45rem;
+
+                i { color: var(--fd-tone, var(--fd-blue)); }
             }
             .o_fd_panel_hint { color: var(--fd-muted); font-size: 0.73rem; }
         }
 
         .o_fd_panel_body { padding: 0.9rem 1.1rem; flex: 1 1 auto; }
         .o_fd_chart { height: 240px; position: relative; }
+        .o_fd_chart_lg { height: 300px; position: relative; }
 
         // رسم بلا بيانات يعرض محاور فارغة تبدو معطوبة - نستبدلها برسالة.
         .o_fd_chart_empty {
-            height: 240px;
+            min-height: 240px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             gap: 0.4rem;
             color: var(--fd-muted);
-            background:
-                repeating-linear-gradient(135deg, #fbfdff 0 12px, #f6f9fc 12px 24px);
+            background: color-mix(in srgb, var(--body-bg, #fff) 94%, var(--body-color, #000));
             border-radius: 12px;
             font-size: 0.85rem;
 
             i { font-size: 1.6rem; opacity: 0.45; }
         }
     }
+
+    // ملء ارتفاع العمود مطلوب للمحاذاة بين لوحين متجاورين، أما اللوح
+    // الممتد على عرض الصفحة فارتفاعه من محتواه.
+    [class*="col-"] > .o_fd_panel,
+    [class*="col-"] > .o_fd_card { height: 100%; }
 
     // ---------- الجداول ----------
     .o_fd_table {
@@ -229,7 +380,6 @@
             color: var(--fd-muted);
             font-weight: 600;
             font-size: 0.73rem;
-            text-transform: none;
             padding: 0.35rem 0.5rem;
             border-bottom: 1px solid var(--fd-line);
         }
@@ -237,28 +387,35 @@
         tbody tr {
             cursor: pointer;
             transition: background 0.15s ease;
-            &:hover { background: #f8fafc; }
+            &:hover { background: var(--fd-raise); }
         }
 
         tbody td {
             padding: 0.55rem 0.5rem;
-            border-bottom: 1px solid #f3f6fa;
+            border-bottom: 1px solid var(--fd-line);
             font-variant-numeric: tabular-nums;
         }
 
         tbody tr:last-child td { border-bottom: 0; }
     }
 
+    // شارات النوع والحالة - تُبنى من لون واحد فتصلح للوضعين
     .o_fd_chip {
         display: inline-block;
         padding: 0.12rem 0.55rem;
         border-radius: 999px;
         font-size: 0.72rem;
         font-weight: 600;
+        background: color-mix(in srgb, var(--fd-tone, #64748b) 18%, var(--fd-surface));
+        color: var(--fd-tone, var(--fd-muted));
 
-        &.o_fd_chip_red { background: #fee2e2; color: #b91c1c; }
-        &.o_fd_chip_amber { background: #fef3c7; color: #92400e; }
-        &.o_fd_chip_grey { background: #f1f5f9; color: #475569; }
+        &.o_fd_chip_blue { --fd-tone: var(--fd-blue); }
+        &.o_fd_chip_green { --fd-tone: var(--fd-green); }
+        &.o_fd_chip_amber { --fd-tone: var(--fd-amber); }
+        &.o_fd_chip_red { --fd-tone: var(--fd-red); }
+        &.o_fd_chip_violet { --fd-tone: var(--fd-violet); }
+        &.o_fd_chip_cyan { --fd-tone: var(--fd-cyan); }
+        &.o_fd_chip_grey { --fd-tone: var(--fd-muted); }
     }
 
     .o_fd_empty {
@@ -266,11 +423,17 @@
         text-align: center;
         padding: 1.5rem 0;
         font-size: 0.85rem;
+
+        i { font-size: 1.5rem; opacity: 0.4; display: block; margin-bottom: 0.4rem; }
     }
 
     // ---------- هيكل التحميل ----------
     .o_fd_skeleton {
-        background: linear-gradient(90deg, #eef2f7 25%, #f7fafc 37%, #eef2f7 63%);
+        background: linear-gradient(
+            90deg,
+            var(--fd-raise) 25%,
+            var(--fd-page) 37%,
+            var(--fd-raise) 63%);
         background-size: 400% 100%;
         animation: fdShimmer 1.3s ease-in-out infinite;
         border-radius: 16px;

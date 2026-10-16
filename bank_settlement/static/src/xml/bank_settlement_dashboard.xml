@@ -12,7 +12,8 @@
             <div class="container-fluid p-4" t-if="!state.isLoading">
 
                 <!-- 1. شريط التحكم والترويسة (Dashboard Header & Controls) -->
-                <div class="row align-items-center mb-4 g-3">
+                <div class="o_bs_hero mb-4">
+                <div class="row align-items-center g-3">
                     <div class="col-12 col-lg-5">
                         <div class="d-flex align-items-center">
                             <div class="o_bs_header_icon me-3">
@@ -66,6 +67,8 @@
                             </button>
                         </div>
                     </div>
+                </div>
+
                 </div>
 
                 <!-- 2. مركز الإجراءات السريعة (Quick Action Bar) -->

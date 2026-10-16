@@ -150,8 +150,24 @@ export class BankSettlementDashboard extends Component {
         });
     }
 
+    /** ألوان النص والشبكة من سمة أودو الجارية - بلا ذلك تبقى الرسوم
+     *  بألوان فاتحة ثابتة فتخفت على الخلفية الداكنة. */
+    get chartTheme() {
+        const styles = getComputedStyle(document.body);
+        return {
+            ink: styles.getPropertyValue("--body-color").trim() || "#334155",
+            muted: styles.getPropertyValue("--secondary-color").trim() || "#94a3b8",
+            grid: styles.getPropertyValue("--border-color").trim() || "#e8edf3",
+            surface: styles.getPropertyValue("--body-bg").trim() || "#ffffff",
+        };
+    }
+
     renderAllCharts() {
         this.destroyAllCharts();
+
+        const theme = this.chartTheme;
+        Chart.defaults.color = theme.muted;
+        Chart.defaults.borderColor = theme.grid;
 
         // 1. الاتجاه الشهري للمصروفات (Monthly Trend)
         if (this.monthlyTrendChartRef.el && this.state.charts.monthly_trend) {
@@ -198,7 +214,7 @@ export class BankSettlementDashboard extends Component {
                             data: hasData ? plt.data : [1],
                             backgroundColor: hasData
                                 ? ["#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6", "#64748B", "#F97316", "#06B6D4", "#84CC16"]
-                                : ["#E2E8F0"],
+                                : [theme.grid],
                             borderWidth: 2,
                         },
                     ],
@@ -241,7 +257,7 @@ export class BankSettlementDashboard extends Component {
                             data: hasData ? cat.data : [1],
                             backgroundColor: hasData
                                 ? ["#6366F1", "#0EA5E9", "#F59E0B", "#10B981", "#EF4444"]
-                                : ["#E2E8F0"],
+                                : [theme.grid],
                             borderWidth: 2,
                         },
                     ],
