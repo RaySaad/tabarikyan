@@ -54,6 +54,13 @@ export class FleetDashboard extends Component {
         await this.load();
     }
 
+    /** محيط الحلقة = 2πr (r=50) - نرسم منه نسبة التشغيل. */
+    get ringDash() {
+        const circumference = 2 * Math.PI * 50;
+        const pct = Math.max(0, Math.min(100, this.kpi.utilisation || 0));
+        return `${(circumference * pct) / 100} ${circumference}`;
+    }
+
     get kpi() {
         return (this.state.data && this.state.data.kpi) || {};
     }
@@ -67,37 +74,75 @@ export class FleetDashboard extends Component {
         if (!Chart) {
             return;
         }
-        const palette = ["#1f77b4", "#2ca02c", "#ff7f0e", "#d62728", "#9467bd", "#8c564b"];
-        const build = (ref, type, labels, values, label) => {
-            if (!ref.el) {
-                return;
+        const palette = ["#2563eb", "#10b981", "#f59e0b", "#7c3aed", "#ef4444", "#0ea5e9"];
+        const destroy = (key) => {
+            if (this.charts[key]) {
+                this.charts[key].destroy();
+                this.charts[key] = null;
             }
-            if (this.charts[label]) {
-                this.charts[label].destroy();
-            }
-            this.charts[label] = new Chart(ref.el, {
-                type: type,
+        };
+        const branch = this.state.data.by_branch || [];
+        // الإتلاف خارج الشرط: حين تصير البيانات فارغة يختفي الـ canvas من
+        // الشجرة بينما يبقى كائن Chart ومستمع تغيير الحجم معلَّقين عليه.
+        destroy("branch");
+        if (this.branchChartRef.el) {
+            this.charts.branch = new Chart(this.branchChartRef.el, {
+                type: "doughnut",
                 data: {
-                    labels: labels,
+                    labels: branch.map((r) => r.label),
                     datasets: [{
-                        label: label,
-                        data: values,
-                        backgroundColor: labels.map((l, i) => palette[i % palette.length]),
+                        data: branch.map((r) => r.value),
+                        backgroundColor: branch.map((l, i) => palette[i % palette.length]),
+                        borderWidth: 0,
+                        hoverOffset: 10,
                     }],
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: type === "doughnut" } },
+                    cutout: "62%",
+                    plugins: {
+                        legend: {
+                            position: "bottom",
+                            labels: { usePointStyle: true, boxWidth: 8, padding: 14 },
+                        },
+                    },
                 },
             });
-        };
-        const branch = this.state.data.by_branch || [];
-        build(this.branchChartRef, "doughnut", branch.map((r) => r.label),
-            branch.map((r) => r.value), "المركبات لدى الفروع");
+        }
         const top = this.state.data.top_cost || [];
-        build(this.costChartRef, "bar", top.map((r) => r.label),
-            top.map((r) => r.value), "أعلى المركبات تكلفة");
+        destroy("cost");
+        if (this.costChartRef.el) {
+            this.charts.cost = new Chart(this.costChartRef.el, {
+                type: "bar",
+                data: {
+                    labels: top.map((r) => r.label),
+                    datasets: [{
+                        data: top.map((r) => r.value),
+                        backgroundColor: "#2563eb",
+                        hoverBackgroundColor: "#1d4ed8",
+                        borderRadius: 8,
+                        maxBarThickness: 34,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: "y",
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            grid: { color: "#eef2f7", drawBorder: false },
+                            ticks: { color: "#94a3b8", font: { size: 11 } },
+                        },
+                        y: {
+                            grid: { display: false, drawBorder: false },
+                            ticks: { color: "#475569", font: { size: 11 } },
+                        },
+                    },
+                },
+            });
+        }
     }
 
     openIdle() {

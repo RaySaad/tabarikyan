@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'صيانة الأسطول ولوحة مؤشراته - Fleet Maintenance & Dashboard',
-    'version': '19.0.1.2.2',
+    'version': '19.0.1.3.0',
     'category': 'Human Resources/Fleet',
     'summary': 'صيانة دورية بالكيلومترات والزمن مع تنبيه مبكر، ولوحة وتقارير للأسطول',
     'description': """
@@ -49,6 +49,7 @@
     ],
     'assets': {
         'web.assets_backend': [
+            'fleet_maintenance/static/src/scss/fleet_dashboard.scss',
             'fleet_maintenance/static/src/js/fleet_dashboard.js',
             'fleet_maintenance/static/src/xml/fleet_dashboard.xml',
         ],

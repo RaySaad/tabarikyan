@@ -4,176 +4,286 @@
     <t t-name="fleet_maintenance.FleetDashboard">
         <div class="o_fleet_dashboard o_action position-relative h-100 overflow-auto p-3" dir="rtl">
 
-            <div t-if="state.loading" class="text-center p-5">
-                <i class="fa fa-spinner fa-spin fa-2x"/>
-                <div class="mt-2">جارٍ تحميل المؤشرات...</div>
+            <!-- ============ هيكل التحميل ============ -->
+            <div t-if="state.loading">
+                <div class="o_fd_skeleton mb-3" style="height: 150px;"/>
+                <div class="row g-3 mb-3">
+                    <div t-foreach="[1,2,3,4]" t-as="i" t-key="i" class="col-6 col-lg-3">
+                        <div class="o_fd_skeleton" style="height: 104px;"/>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-12 col-lg-5"><div class="o_fd_skeleton" style="height: 300px;"/></div>
+                    <div class="col-12 col-lg-7"><div class="o_fd_skeleton" style="height: 300px;"/></div>
+                </div>
             </div>
 
             <div t-else="">
-                <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
-                    <div>
-                        <h2 class="mb-0">لوحة مؤشرات الأسطول</h2>
-                        <small class="text-muted">
-                            تشغيل المركبات، الأجرة، الصيانة المستحقة، والحوادث
-                        </small>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <label class="mb-0">الشهر</label>
-                        <input type="month" class="form-control"
-                               t-att-value="state.month.slice(0, 7)"
-                               t-on-change="onMonthChange"/>
-                    </div>
-                </div>
-
-                <!-- بطاقات المؤشرات -->
-                <div class="row g-3 mb-3">
-                    <div class="col-6 col-lg-3">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <div class="text-muted small">نسبة التشغيل</div>
-                                <div class="h3 mb-0"><t t-esc="kpi.utilisation"/>%</div>
-                                <div class="small text-muted">
-                                    <t t-esc="kpi.rented"/> مؤجَّرة من <t t-esc="kpi.chargeable"/>
+                <!-- ============ الترويسة ============ -->
+                <div class="o_fd_hero mb-3">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-4">
+                        <div class="d-flex align-items-center gap-3">
+                            <svg class="o_fd_ring" viewBox="0 0 120 120">
+                                <defs>
+                                    <linearGradient id="fdRingGradient" x1="0" y1="0" x2="1" y2="1">
+                                        <stop offset="0%" stop-color="#38bdf8"/>
+                                        <stop offset="100%" stop-color="#22c55e"/>
+                                    </linearGradient>
+                                </defs>
+                                <circle class="o_fd_ring_bg" cx="60" cy="60" r="50" stroke-width="11"/>
+                                <circle class="o_fd_ring_fg" cx="60" cy="60" r="50" stroke-width="11"
+                                        transform="rotate(-90 60 60)"
+                                        t-att-stroke-dasharray="ringDash"/>
+                                <text class="o_fd_ring_value" x="60" y="58"
+                                      text-anchor="middle" dominant-baseline="middle">
+                                    <t t-esc="kpi.utilisation"/>%
+                                </text>
+                                <text class="o_fd_ring_label" x="60" y="78" text-anchor="middle">نسبة التشغيل</text>
+                            </svg>
+                            <div>
+                                <h2 class="mb-1">لوحة مؤشرات الأسطول</h2>
+                                <div class="o_fd_hero_sub">
+                                    <t t-esc="kpi.rented"/> مؤجَّرة · <t t-esc="kpi.idle"/> راكدة
+                                    · <t t-esc="kpi.vehicles"/> مركبة في الأسطول
+                                </div>
+                                <div class="o_fd_hero_sub mt-1">
+                                    <i class="fa fa-calendar me-1"/>
+                                    دورة <t t-esc="state.data.period.label"/>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                        <div class="card h-100 cursor-pointer" t-on-click="openIdle">
-                            <div class="card-body">
-                                <div class="text-muted small">مركبات راكدة</div>
-                                <div class="h3 mb-0 text-danger"><t t-esc="kpi.idle"/></div>
-                                <div class="small text-muted">
-                                    مجموع أيام الركود: <t t-esc="kpi.idle_days_total"/>
-                                </div>
+                        <div class="o_fd_pills">
+                            <div class="o_fd_pill">
+                                <div class="o_fd_pill_value"><t t-esc="kpi.rented"/></div>
+                                <div class="o_fd_pill_label">مؤجَّرة</div>
+                            </div>
+                            <div t-attf-class="o_fd_pill {{ kpi.idle ? 'o_fd_pill_bad' : '' }}">
+                                <div class="o_fd_pill_value"><t t-esc="kpi.idle"/></div>
+                                <div class="o_fd_pill_label">راكدة</div>
+                            </div>
+                            <div t-attf-class="o_fd_pill {{ kpi.overdue_maintenance ? 'o_fd_pill_warn' : '' }}">
+                                <div class="o_fd_pill_value"><t t-esc="kpi.overdue_maintenance"/></div>
+                                <div class="o_fd_pill_label">صيانة متأخرة</div>
+                            </div>
+                            <div class="o_fd_pill">
+                                <div class="o_fd_pill_value"><t t-esc="money(kpi.rent_expected)"/></div>
+                                <div class="o_fd_pill_label">أجرة متوقَّعة</div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                        <div class="card h-100 cursor-pointer" t-on-click="openDue">
-                            <div class="card-body">
-                                <div class="text-muted small">صيانة مستحقة</div>
-                                <div class="h3 mb-0">
-                                    <span class="text-danger"><t t-esc="kpi.overdue_maintenance"/></span>
-                                    <span class="text-muted small"> متأخرة</span>
-                                </div>
-                                <div class="small text-warning">
-                                    <t t-esc="kpi.warning_maintenance"/> اقتربت
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                        <div class="card h-100 cursor-pointer" t-on-click="openCharges">
-                            <div class="card-body">
-                                <div class="text-muted small">أجرة الشهر</div>
-                                <div class="h3 mb-0"><t t-esc="money(kpi.rent_posted)"/></div>
-                                <div class="small text-muted">
-                                    متوقَّع: <t t-esc="money(kpi.rent_expected)"/>
-                                    <t t-if="kpi.charges_draft">
-                                        · <t t-esc="kpi.charges_draft"/> تحميل بلا ترحيل
-                                    </t>
-                                </div>
-                            </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="month" class="o_fd_month"
+                                   t-att-value="state.month.slice(0, 7)"
+                                   t-on-change="onMonthChange"/>
+                            <button class="btn btn-light btn-sm rounded-3" t-on-click="() => this.load()">
+                                <i class="fa fa-refresh"/>
+                            </button>
                         </div>
                     </div>
                 </div>
 
+                <!-- ============ بطاقات المؤشرات ============ -->
                 <div class="row g-3 mb-3">
                     <div class="col-6 col-lg-3">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <div class="text-muted small">تكلفة الورشة هذا الشهر</div>
-                                <div class="h4 mb-0"><t t-esc="money(kpi.service_cost)"/></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                        <div class="card h-100 cursor-pointer" t-on-click="openFuel">
-                            <div class="card-body">
-                                <div class="text-muted small">الوقود هذا الشهر (على الفروع)</div>
-                                <div class="h4 mb-0"><t t-esc="money(kpi.fuel_cost)"/></div>
-                                <div class="small text-muted">
-                                    <t t-esc="kpi.fuel_liters"/> لتر
-                                    <t t-if="kpi.avg_consumption">
-                                        · متوسط <t t-esc="kpi.avg_consumption"/> كم/لتر
-                                    </t>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <div class="text-muted small">حوادث الشهر</div>
-                                <div class="h4 mb-0"><t t-esc="kpi.accidents"/></div>
-                                <div class="small text-muted">
-                                    بتكلفة <t t-esc="money(kpi.accidents_cost)"/>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-lg-12">
-                        <div class="card h-100 cursor-pointer" t-on-click="openCostReport">
-                            <div class="card-body d-flex align-items-center justify-content-between">
+                        <div class="o_fd_card o_fd_red o_fd_clickable" t-on-click="openIdle">
+                            <div class="d-flex justify-content-between align-items-start">
                                 <div>
-                                    <div class="text-muted small">تقرير التكلفة</div>
-                                    <div class="h5 mb-0">الأجرة المحصَّلة مقابل التكلفة الفعلية</div>
-                                    <small class="text-muted">لكل مركبة شهراً بشهر - به تُضبَط التعرفة</small>
+                                    <div class="o_fd_card_label">مركبات راكدة</div>
+                                    <div class="o_fd_card_value"><t t-esc="kpi.idle"/></div>
+                                    <div class="o_fd_card_sub">
+                                        <t t-esc="kpi.idle_days_total"/> يوم ركود تراكمي
+                                    </div>
                                 </div>
-                                <i class="fa fa-table fa-2x text-muted"/>
+                                <div class="o_fd_icon"><i class="fa fa-pause"/></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="o_fd_card o_fd_amber o_fd_clickable" t-on-click="openDue">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="o_fd_card_label">صيانة تحتاج موعداً</div>
+                                    <div class="o_fd_card_value">
+                                        <t t-esc="kpi.overdue_maintenance + kpi.warning_maintenance"/>
+                                    </div>
+                                    <div class="o_fd_card_sub">
+                                        <span class="o_fd_chip o_fd_chip_red me-1">
+                                            <t t-esc="kpi.overdue_maintenance"/> متأخرة
+                                        </span>
+                                        <span class="o_fd_chip o_fd_chip_amber">
+                                            <t t-esc="kpi.warning_maintenance"/> اقتربت
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="o_fd_icon"><i class="fa fa-wrench"/></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="o_fd_card o_fd_green o_fd_clickable" t-on-click="openCharges">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="o_fd_card_label">أجرة الشهر المرحَّلة</div>
+                                    <div class="o_fd_card_value"><t t-esc="money(kpi.rent_posted)"/></div>
+                                    <div class="o_fd_card_sub">
+                                        متوقَّع <t t-esc="money(kpi.rent_expected)"/>
+                                        <t t-if="kpi.charges_draft">
+                                            · <t t-esc="kpi.charges_draft"/> بلا ترحيل
+                                        </t>
+                                    </div>
+                                </div>
+                                <div class="o_fd_icon"><i class="fa fa-money"/></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="o_fd_card o_fd_violet o_fd_clickable" t-on-click="openFuel">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="o_fd_card_label">الوقود (على الفروع)</div>
+                                    <div class="o_fd_card_value"><t t-esc="money(kpi.fuel_cost)"/></div>
+                                    <div class="o_fd_card_sub">
+                                        <t t-esc="kpi.fuel_liters"/> لتر
+                                        <t t-if="kpi.avg_consumption">
+                                            · <t t-esc="kpi.avg_consumption"/> كم/لتر
+                                        </t>
+                                    </div>
+                                </div>
+                                <div class="o_fd_icon"><i class="fa fa-tint"/></div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- الرسوم -->
+                <div class="row g-3 mb-3">
+                    <div class="col-6 col-lg-3">
+                        <div class="o_fd_card o_fd_blue">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="o_fd_card_label">تكلفة الورشة</div>
+                                    <div class="o_fd_card_value"><t t-esc="money(kpi.service_cost)"/></div>
+                                    <div class="o_fd_card_sub">على شركة الأسطول</div>
+                                </div>
+                                <div class="o_fd_icon"><i class="fa fa-cogs"/></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="o_fd_card o_fd_red">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="o_fd_card_label">حوادث الشهر</div>
+                                    <div class="o_fd_card_value"><t t-esc="kpi.accidents"/></div>
+                                    <div class="o_fd_card_sub">
+                                        بتكلفة <t t-esc="money(kpi.accidents_cost)"/>
+                                    </div>
+                                </div>
+                                <div class="o_fd_icon"><i class="fa fa-exclamation-triangle"/></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="o_fd_card o_fd_blue o_fd_clickable" t-on-click="openCostReport">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="o_fd_card_label">تقرير التكلفة</div>
+                                    <div class="o_fd_card_value" style="font-size: 1.05rem;">
+                                        الأجرة مقابل التكلفة
+                                    </div>
+                                    <div class="o_fd_card_sub">لكل مركبة شهراً بشهر</div>
+                                </div>
+                                <div class="o_fd_icon"><i class="fa fa-line-chart"/></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="o_fd_card o_fd_green o_fd_clickable" t-on-click="openEmployeeCost">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="o_fd_card_label">تقرير المناديب</div>
+                                    <div class="o_fd_card_value" style="font-size: 1.05rem;">
+                                        تكلفة المندوب
+                                    </div>
+                                    <div class="o_fd_card_sub">وقود · تلفيات · مطالبات</div>
+                                </div>
+                                <div class="o_fd_icon"><i class="fa fa-id-card-o"/></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============ الرسوم ============ -->
                 <div class="row g-3 mb-3">
                     <div class="col-12 col-lg-5">
-                        <div class="card h-100">
-                            <div class="card-body">
+                        <div class="o_fd_panel">
+                            <div class="o_fd_panel_head">
                                 <h6>المركبات لدى الفروع</h6>
-                                <div style="height: 260px;">
+                                <span class="o_fd_panel_hint">توزيع المؤجَّر</span>
+                            </div>
+                            <div class="o_fd_panel_body">
+                                <div t-if="state.data.by_branch.length" class="o_fd_chart">
                                     <canvas t-ref="branchChart"/>
+                                </div>
+                                <div t-else="" class="o_fd_chart_empty">
+                                    <i class="fa fa-pie-chart"/>
+                                    <div>لا مركبة مؤجَّرة بعد</div>
+                                    <small>أنشئ عقود التأجير لتظهر التوزيعة</small>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="col-12 col-lg-7">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h6>أعلى المركبات تكلفة هذا الشهر</h6>
-                                <div style="height: 260px;">
+                        <div class="o_fd_panel">
+                            <div class="o_fd_panel_head">
+                                <h6>أعلى المركبات تكلفة</h6>
+                                <span class="o_fd_panel_hint">ورشة هذا الشهر</span>
+                            </div>
+                            <div class="o_fd_panel_body">
+                                <div t-if="state.data.top_cost.length" class="o_fd_chart">
                                     <canvas t-ref="costChart"/>
+                                </div>
+                                <div t-else="" class="o_fd_chart_empty">
+                                    <i class="fa fa-bar-chart"/>
+                                    <div>لا تكاليف ورشة هذا الشهر</div>
+                                    <small>تظهر هنا أعلى خمس مركبات إنفاقاً</small>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- قوائم تحتاج إجراءً -->
+                <!-- ============ قوائم تحتاج إجراءً ============ -->
                 <div class="row g-3">
                     <div class="col-12 col-lg-6">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h6>مركبات راكدة (أطولها ركوداً)</h6>
-                                <table class="table table-sm mb-0">
+                        <div class="o_fd_panel">
+                            <div class="o_fd_panel_head">
+                                <h6>مركبات راكدة</h6>
+                                <span class="o_fd_panel_hint">أطولها ركوداً</span>
+                            </div>
+                            <div class="o_fd_panel_body">
+                                <table class="o_fd_table">
                                     <thead>
                                         <tr>
                                             <th>المركبة</th>
                                             <th class="text-end">أيام</th>
-                                            <th class="text-end">أجرة ضائعة شهرياً</th>
+                                            <th class="text-end">أجرة ضائعة</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr t-foreach="state.data.idle_list" t-as="row" t-key="row.id"
-                                            class="cursor-pointer" t-on-click="() => this.openVehicle(row.id)">
+                                            t-on-click="() => this.openVehicle(row.id)">
                                             <td><t t-esc="row.name"/></td>
-                                            <td class="text-end"><t t-esc="row.days"/></td>
+                                            <td class="text-end">
+                                                <span t-attf-class="o_fd_chip {{ row.days > 30 ? 'o_fd_chip_red' : 'o_fd_chip_grey' }}">
+                                                    <t t-esc="row.days"/>
+                                                </span>
+                                            </td>
                                             <td class="text-end"><t t-esc="money(row.rate)"/></td>
                                         </tr>
                                         <tr t-if="!state.data.idle_list.length">
-                                            <td colspan="3" class="text-muted text-center">لا مركبة راكدة</td>
+                                            <td colspan="3" class="o_fd_empty">
+                                                <i class="fa fa-check-circle text-success me-1"/>
+                                                كل المركبات مؤجَّرة
+                                            </td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -181,10 +291,13 @@
                         </div>
                     </div>
                     <div class="col-12 col-lg-6">
-                        <div class="card h-100">
-                            <div class="card-body">
+                        <div class="o_fd_panel">
+                            <div class="o_fd_panel_head">
                                 <h6>صيانة تحتاج موعداً</h6>
-                                <table class="table table-sm mb-0">
+                                <span class="o_fd_panel_hint">بالمسافة أو بالزمن</span>
+                            </div>
+                            <div class="o_fd_panel_body">
+                                <table class="o_fd_table">
                                     <thead>
                                         <tr>
                                             <th>الخطة</th>
@@ -194,7 +307,7 @@
                                     </thead>
                                     <tbody>
                                         <tr t-foreach="state.data.due_list" t-as="row" t-key="row.id"
-                                            class="cursor-pointer" t-on-click="() => this.openPlan(row.id)">
+                                            t-on-click="() => this.openPlan(row.id)">
                                             <td><t t-esc="row.name"/></td>
                                             <td class="text-end">
                                                 <t t-if="row.by_km"><t t-esc="row.remaining_km"/> كم</t>
@@ -202,12 +315,15 @@
                                                 <t t-if="row.by_date"><t t-esc="row.remaining_days"/> يوم</t>
                                             </td>
                                             <td class="text-end">
-                                                <span t-if="row.state === 'overdue'" class="badge text-bg-danger">متأخرة</span>
-                                                <span t-else="" class="badge text-bg-warning">اقتربت</span>
+                                                <span t-if="row.state === 'overdue'" class="o_fd_chip o_fd_chip_red">متأخرة</span>
+                                                <span t-else="" class="o_fd_chip o_fd_chip_amber">اقتربت</span>
                                             </td>
                                         </tr>
                                         <tr t-if="!state.data.due_list.length">
-                                            <td colspan="3" class="text-muted text-center">لا صيانة مستحقة</td>
+                                            <td colspan="3" class="o_fd_empty">
+                                                <i class="fa fa-check-circle text-success me-1"/>
+                                                لا صيانة مستحقة
+                                            </td>
                                         </tr>
                                     </tbody>
                                 </table>

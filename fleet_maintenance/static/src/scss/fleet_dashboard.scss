@@ -1,0 +1,283 @@
+// ==========================================================================
+// لوحة مؤشرات الأسطول - هوية بصرية موحَّدة مع بقية لوحات النظام
+// (خلفية فاتحة، بطاقات بيضاء، أيقونات متدرجة، رفع عند التمرير)
+// مع ترويسة داكنة وحلقة تشغيل تعطيها حضوراً أقوى.
+// ==========================================================================
+
+.o_fleet_dashboard {
+    --fd-ink: #0f172a;
+    --fd-muted: #64748b;
+    --fd-line: #e8edf3;
+    --fd-blue: #2563eb;
+    --fd-green: #10b981;
+    --fd-amber: #f59e0b;
+    --fd-red: #ef4444;
+    --fd-violet: #7c3aed;
+
+    background: #f5f7fa;
+    color: var(--fd-ink);
+
+    // ---------- الترويسة ----------
+    .o_fd_hero {
+        background: linear-gradient(120deg, #0f172a 0%, #1e293b 45%, #1d4ed8 140%);
+        border-radius: 20px;
+        color: #fff;
+        padding: 1.5rem 1.75rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 18px 36px -22px rgba(15, 23, 42, 0.8);
+
+        &::after {
+            content: "";
+            position: absolute;
+            inset-inline-start: -60px;
+            top: -90px;
+            width: 260px;
+            height: 260px;
+            background: radial-gradient(circle, rgba(96, 165, 250, 0.28), transparent 65%);
+            pointer-events: none;
+        }
+
+        h2 { font-weight: 700; letter-spacing: -0.3px; }
+
+        .o_fd_hero_sub { color: rgba(226, 232, 240, 0.75); }
+
+        // أقراص إحصائية تملأ وسط الترويسة بدل الفراغ.
+        .o_fd_pills { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+        .o_fd_pill {
+            background: rgba(255, 255, 255, 0.10);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 14px;
+            padding: 0.55rem 0.9rem;
+            min-width: 104px;
+            backdrop-filter: blur(3px);
+
+            .o_fd_pill_value {
+                font-size: 1.25rem;
+                font-weight: 700;
+                line-height: 1.1;
+                font-variant-numeric: tabular-nums;
+            }
+            .o_fd_pill_label {
+                font-size: 0.72rem;
+                color: rgba(226, 232, 240, 0.78);
+            }
+            &.o_fd_pill_warn .o_fd_pill_value { color: #fbbf24; }
+            &.o_fd_pill_bad .o_fd_pill_value { color: #fca5a5; }
+        }
+
+        .o_fd_month {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            color: #fff;
+            border-radius: 12px;
+            padding: 0.4rem 0.7rem;
+
+            &:focus {
+                outline: none;
+                box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.35);
+            }
+            &::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.8); }
+        }
+    }
+
+    // ---------- حلقة نسبة التشغيل ----------
+    .o_fd_ring {
+        width: 108px;
+        height: 108px;
+        flex: 0 0 auto;
+
+        circle { fill: none; stroke-linecap: round; }
+        .o_fd_ring_bg { stroke: rgba(255, 255, 255, 0.16); }
+        .o_fd_ring_fg {
+            stroke: url(#fdRingGradient);
+            transition: stroke-dasharray 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .o_fd_ring_value {
+            font-size: 1.45rem;
+            font-weight: 700;
+            fill: #fff;
+        }
+        .o_fd_ring_label { font-size: 0.55rem; fill: rgba(226, 232, 240, 0.8); }
+    }
+
+    // ---------- بطاقات المؤشرات ----------
+    .o_fd_card {
+        background: #fff;
+        border: 1px solid var(--fd-line);
+        border-radius: 16px;
+        padding: 1rem 1.1rem;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline-start: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--fd-accent, var(--fd-blue));
+            opacity: 0.85;
+        }
+
+        &.o_fd_clickable { cursor: pointer; }
+
+        &:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 16px 28px -18px rgba(15, 23, 42, 0.45);
+        }
+
+        .o_fd_card_label {
+            color: var(--fd-muted);
+            font-size: 0.78rem;
+            font-weight: 500;
+        }
+
+        .o_fd_card_value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            line-height: 1.2;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .o_fd_card_sub {
+            color: var(--fd-muted);
+            font-size: 0.75rem;
+        }
+
+        .o_fd_icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            color: #fff;
+            background: var(--fd-accent, var(--fd-blue));
+            box-shadow: 0 8px 16px -8px var(--fd-accent, var(--fd-blue));
+        }
+
+        &.o_fd_blue   { --fd-accent: var(--fd-blue); }
+        &.o_fd_green  { --fd-accent: var(--fd-green); }
+        &.o_fd_amber  { --fd-accent: var(--fd-amber); }
+        &.o_fd_red    { --fd-accent: var(--fd-red); }
+        &.o_fd_violet { --fd-accent: var(--fd-violet); }
+    }
+
+    // ---------- الألواح (رسوم وجداول) ----------
+    .o_fd_panel {
+        background: #fff;
+        border: 1px solid var(--fd-line);
+        border-radius: 16px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+
+        .o_fd_panel_head {
+            padding: 0.9rem 1.1rem;
+            border-bottom: 1px solid var(--fd-line);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            // لون صريح: ثيم أودو يورّث للعناوين لوناً أبيض داخل
+            // o_action، فكانت عناوين الألواح بيضاء على أبيض (اكتُشف
+            // بفحص اللون المحسوب في المتصفح لا بالنظر).
+            h6 {
+                margin: 0;
+                font-weight: 700;
+                font-size: 0.95rem;
+                color: var(--fd-ink);
+            }
+            .o_fd_panel_hint { color: var(--fd-muted); font-size: 0.73rem; }
+        }
+
+        .o_fd_panel_body { padding: 0.9rem 1.1rem; flex: 1 1 auto; }
+        .o_fd_chart { height: 240px; position: relative; }
+
+        // رسم بلا بيانات يعرض محاور فارغة تبدو معطوبة - نستبدلها برسالة.
+        .o_fd_chart_empty {
+            height: 240px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            color: var(--fd-muted);
+            background:
+                repeating-linear-gradient(135deg, #fbfdff 0 12px, #f6f9fc 12px 24px);
+            border-radius: 12px;
+            font-size: 0.85rem;
+
+            i { font-size: 1.6rem; opacity: 0.45; }
+        }
+    }
+
+    // ---------- الجداول ----------
+    .o_fd_table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.85rem;
+
+        thead th {
+            color: var(--fd-muted);
+            font-weight: 600;
+            font-size: 0.73rem;
+            text-transform: none;
+            padding: 0.35rem 0.5rem;
+            border-bottom: 1px solid var(--fd-line);
+        }
+
+        tbody tr {
+            cursor: pointer;
+            transition: background 0.15s ease;
+            &:hover { background: #f8fafc; }
+        }
+
+        tbody td {
+            padding: 0.55rem 0.5rem;
+            border-bottom: 1px solid #f3f6fa;
+            font-variant-numeric: tabular-nums;
+        }
+
+        tbody tr:last-child td { border-bottom: 0; }
+    }
+
+    .o_fd_chip {
+        display: inline-block;
+        padding: 0.12rem 0.55rem;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 600;
+
+        &.o_fd_chip_red { background: #fee2e2; color: #b91c1c; }
+        &.o_fd_chip_amber { background: #fef3c7; color: #92400e; }
+        &.o_fd_chip_grey { background: #f1f5f9; color: #475569; }
+    }
+
+    .o_fd_empty {
+        color: var(--fd-muted);
+        text-align: center;
+        padding: 1.5rem 0;
+        font-size: 0.85rem;
+    }
+
+    // ---------- هيكل التحميل ----------
+    .o_fd_skeleton {
+        background: linear-gradient(90deg, #eef2f7 25%, #f7fafc 37%, #eef2f7 63%);
+        background-size: 400% 100%;
+        animation: fdShimmer 1.3s ease-in-out infinite;
+        border-radius: 16px;
+    }
+
+    @keyframes fdShimmer {
+        0% { background-position: 100% 50%; }
+        100% { background-position: 0 50%; }
+    }
+}
