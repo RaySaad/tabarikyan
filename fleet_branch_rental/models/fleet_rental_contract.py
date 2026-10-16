@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 class FleetRentalContract(models.Model):
@@ -161,7 +165,15 @@ class FleetRentalContract(models.Model):
         """يُصدر عقداً سارياً عند تخصيص مركبة لفرع - تُستدعى من موافقة
         الأسطول على طلب السيارة ومن تنفيذ طلب تغيير المركبة."""
         owner = self.env['res.company']._get_fleet_owner_company()
-        if not owner or not vehicle or not company or company == owner:
+        if not owner:
+            # خروج صامت كان يعني: الفرع يوافق على طلب السيارة ولا
+            # يُصدَر عقد ولا تُحمَّل أجرة ولا يعرف أحد السبب.
+            _logger.warning(
+                'لم يُصدَر عقد تأجير للمركبة %s: لم تُحدَّد شركة الأسطول '
+                '(is_fleet_owner) على أي شركة.',
+                vehicle.display_name if vehicle else '-')
+            return self.browse()
+        if not vehicle or not company or company == owner:
             return self.browse()
         date_start = date_start or fields.Date.context_today(self)
         existing = self.sudo().search([
