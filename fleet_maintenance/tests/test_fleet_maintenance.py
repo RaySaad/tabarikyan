@@ -260,3 +260,44 @@ class TestFleetFuelLog(TransactionCase):
         self.env.flush_all()
         self.env['fleet.employee.cost.report']._read_group(
             [], ['employee_id'], ['fuel_amount:sum', 'total_cost:sum'])
+
+
+@tagged('post_install', '-at_install')
+class TestMaintenancePlanUniqueness(TransactionCase):
+    """خطة واحدة فعّالة لكل (مركبة، نوع صيانة) - والأرشفة لا تُمنع."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        brand = cls.env['fleet.vehicle.model.brand'].create({'name': 'ماركة التفرّد'})
+        model = cls.env['fleet.vehicle.model'].create({
+            'name': 'موديل التفرّد', 'brand_id': brand.id})
+        cls.vehicle = cls.env['fleet.vehicle'].create({'model_id': model.id})
+        cls.service = cls.env['fleet.service.type'].create({
+            'name': 'فحص دوري اختبار', 'category': 'service'})
+
+    def _plan(self, **vals):
+        return self.env['fleet.maintenance.plan'].create(dict({
+            'vehicle_id': self.vehicle.id,
+            'service_type_id': self.service.id,
+            'interval_km': 10000,
+        }, **vals))
+
+    def test_two_active_plans_of_the_same_type_are_refused(self):
+        self._plan()
+        self.env.flush_all()
+        with self.assertRaises(Exception):
+            self._plan()
+            self.env.flush_all()
+
+    def test_archiving_lets_a_new_plan_replace_the_old_one(self):
+        """القيد على الفعّالة فقط: خطة مؤرشفة لا تمنع إنشاء بديلتها."""
+        first = self._plan()
+        first.active = False
+        self.env.flush_all()
+
+        second = self._plan(interval_km=15000)
+        self.env.flush_all()
+
+        self.assertTrue(second.exists())
+        self.assertNotEqual(first, second)

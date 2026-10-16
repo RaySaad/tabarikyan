@@ -81,11 +81,16 @@ class FleetMaintenancePlan(models.Model):
     )
     note = fields.Text(string='ملاحظات')
 
-    _sql_constraints = [
-        ('unique_vehicle_service',
-         'unique(vehicle_id, service_type_id, active)',
-         'توجد خطة بنفس نوع الصيانة لهذه المركبة.'),
-    ]
+    # فهرس فريد جزئي لا قيد عادي، ولسببين:
+    # ١) _sql_constraints لم تعد مدعومة في أودو 19 - الصيغة المعتمدة
+    #    models.Constraint/UniqueIndex (نبّه سجل الخادم على ذلك).
+    # ٢) التفرّد يجب أن يسري على الخطط **الفعّالة** وحدها: قيد يشمل
+    #    active كعمود عادي كان سيمنع أرشفة خطتين بنفس النوع للمركبة
+    #    نفسها، وهو منع بلا معنى.
+    _unique_active_plan = models.UniqueIndex(
+        '(vehicle_id, service_type_id) WHERE (active IS TRUE)',
+        'توجد خطة فعّالة بنفس نوع الصيانة لهذه المركبة.',
+    )
 
     @api.depends('vehicle_id', 'service_type_id')
     def _compute_name(self):

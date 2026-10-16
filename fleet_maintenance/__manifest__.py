@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'صيانة الأسطول ولوحة مؤشراته - Fleet Maintenance & Dashboard',
-    'version': '19.0.1.2.1',
+    'version': '19.0.1.2.2',
     'category': 'Human Resources/Fleet',
     'summary': 'صيانة دورية بالكيلومترات والزمن مع تنبيه مبكر، ولوحة وتقارير للأسطول',
     'description': """
