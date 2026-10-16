@@ -44,6 +44,12 @@
                   action="action_fleet_vehicle_cost_report"
                   sequence="10"/>
 
+        <menuitem id="menu_fleet_employee_cost"
+                  name="تكلفة المندوب"
+                  parent="menu_fleet_reports_root"
+                  action="action_fleet_employee_cost_report"
+                  sequence="15"/>
+
         <menuitem id="menu_fleet_accident_analysis"
                   name="تحليل الحوادث"
                   parent="menu_fleet_reports_root"

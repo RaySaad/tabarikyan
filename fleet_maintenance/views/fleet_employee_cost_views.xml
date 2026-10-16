@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_fleet_employee_cost_list" model="ir.ui.view">
+            <field name="name">fleet.employee.cost.report.list</field>
+            <field name="model">fleet.employee.cost.report</field>
+            <field name="arch" type="xml">
+                <list string="تكلفة المندوب في الأسطول" create="0" edit="0">
+                    <field name="period"/>
+                    <field name="employee_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="company_id" groups="base.group_multi_company"
+                           options="{'no_create': True, 'no_open': True}"/>
+                    <field name="fuel_amount" sum="الوقود"/>
+                    <field name="fuel_liters" sum="اللترات" optional="hide"/>
+                    <field name="damage_amount" sum="التلفيات"/>
+                    <field name="accident_count" sum="الحوادث" optional="show"/>
+                    <field name="claim_amount" sum="المطالبات"/>
+                    <field name="total_cost" sum="إجمالي ما يخصّه"/>
+                    <field name="rent_amount" sum="أجرة المركبات" optional="show"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_fleet_employee_cost_pivot" model="ir.ui.view">
+            <field name="name">fleet.employee.cost.report.pivot</field>
+            <field name="model">fleet.employee.cost.report</field>
+            <field name="arch" type="xml">
+                <pivot string="تكلفة المندوب" sample="1">
+                    <field name="employee_id" type="row"/>
+                    <field name="period" interval="month" type="col"/>
+                    <field name="fuel_amount" type="measure"/>
+                    <field name="damage_amount" type="measure"/>
+                    <field name="total_cost" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <record id="view_fleet_employee_cost_graph" model="ir.ui.view">
+            <field name="name">fleet.employee.cost.report.graph</field>
+            <field name="model">fleet.employee.cost.report</field>
+            <field name="arch" type="xml">
+                <graph string="تكلفة المندوب" type="bar" sample="1">
+                    <field name="employee_id"/>
+                    <field name="total_cost" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <record id="view_fleet_employee_cost_search" model="ir.ui.view">
+            <field name="name">fleet.employee.cost.report.search</field>
+            <field name="model">fleet.employee.cost.report</field>
+            <field name="arch" type="xml">
+                <search string="تكلفة المندوب">
+                    <field name="employee_id"/>
+                    <field name="company_id"/>
+                    <filter name="with_accidents" string="لديه حوادث"
+                            domain="[('accident_count', '>', 0)]"/>
+                    <group>
+                        <filter name="group_employee" string="المندوب"
+                                context="{'group_by': 'employee_id'}"/>
+                        <filter name="group_period" string="الشهر"
+                                context="{'group_by': 'period'}"/>
+                        <filter name="group_company" string="الفرع"
+                                context="{'group_by': 'company_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_fleet_employee_cost_report" model="ir.actions.act_window">
+            <field name="name">تكلفة المندوب في الأسطول</field>
+            <field name="res_model">fleet.employee.cost.report</field>
+            <field name="view_mode">list,pivot,graph</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">لا بيانات بعد</p>
+                <p>يجمع لكل مندوب شهراً بشهر: وقوده، وما تحمّله من تلفيات بمسؤوليته،
+                   ومطالباته ومخالفاته في السداد البنكي - وأجرة مركبته في عمود مستقل
+                   لأنها على الفرع لا عليه.</p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

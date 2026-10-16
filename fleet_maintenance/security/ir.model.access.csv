@@ -9,3 +9,7 @@ access_fuel_settlement_user,fleet.fuel.log.settlement,model_fleet_fuel_log,bank_
 access_cost_report_fleet,fleet.vehicle.cost.report.fleet,model_fleet_vehicle_cost_report,recruitment_workflow.group_recruitment_workflow_fleet,1,0,0,0
 access_cost_report_manager,fleet.vehicle.cost.report.manager,model_fleet_vehicle_cost_report,recruitment_workflow.group_recruitment_workflow_fleet_manager,1,0,0,0
 access_cost_report_accountant,fleet.vehicle.cost.report.accountant,model_fleet_vehicle_cost_report,account.group_account_manager,1,0,0,0
+access_emp_cost_fleet,fleet.employee.cost.report.fleet,model_fleet_employee_cost_report,recruitment_workflow.group_recruitment_workflow_fleet,1,0,0,0
+access_emp_cost_manager,fleet.employee.cost.report.manager,model_fleet_employee_cost_report,recruitment_workflow.group_recruitment_workflow_fleet_manager,1,0,0,0
+access_emp_cost_hr,fleet.employee.cost.report.hr,model_fleet_employee_cost_report,recruitment_workflow.group_recruitment_workflow_hr,1,0,0,0
+access_emp_cost_accountant,fleet.employee.cost.report.accountant,model_fleet_employee_cost_report,account.group_account_manager,1,0,0,0

@@ -155,8 +155,8 @@ class TestFleetDashboardData(TransactionCase):
     def test_cost_report_is_queryable(self):
         """عرض SQL: نتأكد أنه يُستعلم بلا خطأ (أعمدة وتجميع صحيحة)."""
         self.env['fleet.vehicle.cost.report'].search([], limit=5)
-        self.env['fleet.vehicle.cost.report'].read_group(
-            [], ['rent_amount:sum', 'net_result:sum'], ['vehicle_id'])
+        self.env['fleet.vehicle.cost.report']._read_group(
+            [], ['vehicle_id'], ['rent_amount:sum', 'net_result:sum'])
 
 
 @tagged('post_install', '-at_install')
@@ -224,6 +224,7 @@ class TestFleetFuelLog(TransactionCase):
     def test_fuel_never_enters_the_fleet_cost_of_the_vehicle(self):
         """التقرير يفصل: الوقود على الفرع، وصافي الأسطول لا يتأثر به."""
         self._fuel(10, 20000.0, liters=50.0, amount=450.0)
+        self.env.flush_all()
         rows = self.env['fleet.vehicle.cost.report'].search([
             ('vehicle_id', '=', self.vehicle.id)])
         self.assertTrue(rows, 'لم يظهر الوقود في التقرير')
@@ -236,3 +237,26 @@ class TestFleetFuelLog(TransactionCase):
                 row.net_result,
                 row.rent_amount + row.damage_amount - row.service_amount,
                 places=2, msg='الوقود دخل صافي الأسطول')
+
+    def test_employee_cost_report_gathers_what_concerns_the_delegate(self):
+        """وقوده + تلفياته بمسؤوليته + مطالباته - وأجرة مركبته منفصلة
+        لأنها على الفرع لا عليه."""
+        self._fuel(12, 21000.0, liters=45.0, amount=405.0)
+        # عرض SQL لا يعرف تبعياته، فيلزم دفع كتابات المعاملة أولاً.
+        self.env.flush_all()
+        report = self.env['fleet.employee.cost.report'].search([
+            ('employee_id', '=', self.employee.id)])
+
+        self.assertTrue(report, 'المندوب لم يظهر في التقرير')
+        self.assertAlmostEqual(sum(report.mapped('fuel_amount')), 405.0, places=2)
+        for row in report:
+            self.assertAlmostEqual(
+                row.total_cost,
+                row.fuel_amount + row.damage_amount + row.claim_amount,
+                places=2, msg='أجرة المركبة دخلت ما يخصّ المندوب')
+
+    def test_employee_cost_report_is_groupable(self):
+        self._fuel(12, 21000.0)
+        self.env.flush_all()
+        self.env['fleet.employee.cost.report']._read_group(
+            [], ['employee_id'], ['fuel_amount:sum', 'total_cost:sum'])
