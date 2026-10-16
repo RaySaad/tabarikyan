@@ -112,6 +112,14 @@ export class FleetDashboard extends Component {
         this.action.doAction("fleet_branch_rental.action_fleet_branch_rental_charge");
     }
 
+    openFuel() {
+        this.action.doAction("fleet_maintenance.action_fleet_fuel_log");
+    }
+
+    openEmployeeCost() {
+        this.action.doAction("fleet_maintenance.action_fleet_employee_cost_report");
+    }
+
     openCostReport() {
         this.action.doAction("fleet_maintenance.action_fleet_vehicle_cost_report");
     }
