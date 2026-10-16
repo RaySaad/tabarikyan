@@ -71,6 +71,28 @@ class FleetRentalContract(models.Model):
     end_reason = fields.Char(string='سبب الإنهاء', readonly=True, copy=False)
     note = fields.Text(string='ملاحظات')
 
+    @api.constrains('vehicle_id', 'company_id', 'fleet_company_id')
+    def _check_parties(self):
+        """المؤجِّر مالك المركبة، والمستأجر غيره.
+
+        بلا هذا القيد يستطيع من يملك تعديل المركبات نقل ملكيتها إلى
+        فرعه ثم "تأجيرها" لنفسه: عقد من الشركة إلى نفسها، وقيد محاسبي
+        مدينه ودائنه شركة واحدة، وأجرة لا تصل الأسطول."""
+        for rec in self:
+            owner = rec.vehicle_id.company_id
+            if owner and rec.fleet_company_id and owner != rec.fleet_company_id:
+                raise ValidationError(_(
+                    'المركبة %(vehicle)s مملوكة لـ%(owner)s لا لشركة '
+                    'الأسطول %(fleet)s - لا يصح تأجيرها بهذا العقد.'
+                ) % {'vehicle': rec.vehicle_id.display_name,
+                     'owner': owner.display_name,
+                     'fleet': rec.fleet_company_id.display_name})
+            if rec.company_id == rec.fleet_company_id:
+                raise ValidationError(_(
+                    'المستأجر هو المؤجِّر نفسه (%s) - العقد بلا معنى '
+                    'ويولّد قيداً من الشركة إلى نفسها.'
+                ) % rec.company_id.display_name)
+
     @api.constrains('date_start', 'date_end')
     def _check_dates(self):
         for rec in self:

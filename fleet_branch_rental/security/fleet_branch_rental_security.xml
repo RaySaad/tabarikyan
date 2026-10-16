@@ -62,19 +62,65 @@
              بصمت** - بلا خطأ ولا أثر في السجل (كشفه اختبار الرؤية).
              وwrite لا يخضع لتلك الحماية، ويُعاد تنفيذه عند كل ترقية
              فيستعيد التوسيع لو أعادت أودو ضبط القاعدة. -->
+        <!-- التوسيع **للقراءة وحدها**. قاعدة أودو الواحدة تحكم القراءة
+             والكتابة والإنشاء والحذف معاً، فتوسيعها كما هي كان يفتح
+             للفرع تعديل المركبة: ينقل شركتها إلى فرعه فتخرج من دفاتر
+             الأسطول وتتوقف أجرتها. الكتابة تبقى على المالك في قاعدة
+             مستقلة أدناه. -->
         <function model="ir.rule" name="write"
                   eval="[[ref('fleet.ir_rule_fleet_vehicle')],
-                         {'domain_force': &quot;['|', ('company_id', 'in', company_ids + [False]), ('rental_branch_id', 'in', company_ids)]&quot;}]"/>
+                         {'domain_force': &quot;['|', ('company_id', 'in', company_ids + [False]), ('rental_branch_id', 'in', company_ids)]&quot;,
+                          'perm_read': True, 'perm_write': False,
+                          'perm_create': False, 'perm_unlink': False}]"/>
 
+        <record id="fleet_vehicle_owner_write_rule" model="ir.rule">
+            <field name="name">تعديل المركبة: شركتها المالكة وحدها</field>
+            <field name="model_id" ref="fleet.model_fleet_vehicle"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- العدّاد: الفرع يقرأ **ويُنشئ** قراءة لمركبته، ولا يعدّل
+             قراءة سابقة ولا يحذفها. -->
         <function model="ir.rule" name="write"
                   eval="[[ref('fleet.ir_rule_fleet_odometer')],
-                         {'domain_force': &quot;['|', ('vehicle_id.company_id', 'in', company_ids + [False]), ('vehicle_id.rental_branch_id', 'in', company_ids)]&quot;}]"/>
+                         {'domain_force': &quot;['|', ('vehicle_id.company_id', 'in', company_ids + [False]), ('vehicle_id.rental_branch_id', 'in', company_ids)]&quot;,
+                          'perm_read': True, 'perm_create': True,
+                          'perm_write': False, 'perm_unlink': False}]"/>
 
-        <!-- الفرع يرى تكلفة ورشة مركبته وإن كانت على شركة الأسطول -
-             شفافية طلبها صاحب القرار صراحةً. -->
+        <record id="fleet_odometer_owner_write_rule" model="ir.rule">
+            <field name="name">تعديل قراءة العدّاد: مالك المركبة وحده</field>
+            <field name="model_id" ref="fleet.model_fleet_vehicle_odometer"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('vehicle_id.company_id', 'in', company_ids + [False])]</field>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- الفرع يرى تكلفة ورشة مركبته (شفافية طلبها صاحب القرار)
+             ولا يكتبها: الورشة على الأسطول. -->
         <function model="ir.rule" name="write"
                   eval="[[ref('fleet.ir_rule_fleet_log_services')],
-                         {'domain_force': &quot;['|', ('company_id', 'in', company_ids + [False]), ('vehicle_id.rental_branch_id', 'in', company_ids)]&quot;}]"/>
+                         {'domain_force': &quot;['|', ('company_id', 'in', company_ids + [False]), ('vehicle_id.rental_branch_id', 'in', company_ids)]&quot;,
+                          'perm_read': True, 'perm_write': False,
+                          'perm_create': False, 'perm_unlink': False}]"/>
+
+        <record id="fleet_service_log_owner_write_rule" model="ir.rule">
+            <field name="name">سجل الورشة: الكتابة لشركة المركبة</field>
+            <field name="model_id" ref="fleet.model_fleet_vehicle_log_services"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
 
         <!-- بلاغ الحادث شركته شركة الموظف، فكان يختفي عن شركة الأسطول
              مع أنها مالكة المركبة ومن يتحمّل إصلاحها. -->

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 
 class FleetVehicle(models.Model):
@@ -67,6 +68,31 @@ class FleetVehicle(models.Model):
                 vehicle.rental_idle_days = (today - vehicle.rental_idle_since).days
             else:
                 vehicle.rental_idle_days = 0
+
+    def write(self, vals):
+        """مركبة مؤجَّرة لا تُنقل ملكيتها ولا تُؤرشَف.
+
+        القاعدة الأمنية تمنع الفرع، وهذا الحارس يمنع الجميع - ومنهم
+        الأسطول نفسه: نقل شركة مركبة لها عقد سارٍ يقطع سلسلة الأجرة
+        (التحميل الشهري يقرأ شركة العقد وحسابات الشركتين)، والأرشفة
+        تُخفيها عن الفرع الذي يعمل عليها اليوم. الطريق الصحيح: إنهاء
+        العقد أولاً ثم النقل."""
+        guarded = 'company_id' in vals or vals.get('active') is False
+        if guarded:
+            for vehicle in self:
+                contract = vehicle.rental_contract_id
+                if not contract:
+                    continue
+                if 'company_id' in vals and vals['company_id'] == vehicle.company_id.id:
+                    continue
+                raise UserError(_(
+                    'المركبة %(vehicle)s مؤجَّرة للفرع %(branch)s بالعقد '
+                    '%(contract)s. أنهِ العقد أولاً ثم انقل ملكيتها أو '
+                    'أرشفها.'
+                ) % {'vehicle': vehicle.display_name,
+                     'branch': contract.company_id.display_name,
+                     'contract': contract.name})
+        return super().write(vals)
 
     def action_open_idle_cost(self):
         """تكلفة الركود التقديرية: الأجرة الضائعة منذ آخر إرجاع."""

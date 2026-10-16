@@ -122,6 +122,17 @@ class TestBranchFleetAccess(TransactionCase):
         request.with_user(self.fleet_user).action_accept()
         self.assertEqual(request.state, 'accepted')
 
+    def test_branch_logs_odometer_but_cannot_edit_it(self):
+        """قراءة العدّاد: إنشاء مسموح، وتعديل قراءة سابقة ممنوع."""
+        reading = self.env['fleet.vehicle.odometer'].with_user(
+            self.branch_user).create({
+                'vehicle_id': self.vehicle_a.id,
+                'value': 15000.0, 'date': '2026-03-09',
+            })
+        self.assertTrue(reading.id)
+        with self.assertRaises(AccessError):
+            reading.with_user(self.branch_user).write({'value': 1.0})
+
     def test_branch_sees_workshop_cost_of_its_vehicle(self):
         """قرار صاحب العمل: الشفافية مطلوبة - الفرع يرى كم كلّفت."""
         service_type = self.env['fleet.service.type'].search([], limit=1)
