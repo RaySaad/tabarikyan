@@ -26,6 +26,12 @@
                   action="action_fleet_maintenance_plan_due"
                   sequence="20"/>
 
+        <menuitem id="menu_fleet_fuel_log"
+                  name="تعبئات الوقود"
+                  parent="menu_fleet_maintenance_root"
+                  action="action_fleet_fuel_log"
+                  sequence="30"/>
+
         <menuitem id="menu_fleet_reports_root"
                   name="تقارير الأسطول"
                   parent="fleet.menu_root"

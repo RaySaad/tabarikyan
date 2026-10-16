@@ -58,6 +58,15 @@ class FleetDashboard(models.AbstractModel):
             ('date', '>=', first), ('date', '<=', last)])
         service_cost = sum(services.mapped('amount'))
 
+        # الوقود على الفروع لا على الأسطول - يُعرض للمراقبة لا كتكلفة
+        # على شركة الأسطول.
+        fuel = self.env['fleet.fuel.log'].sudo().search([
+            ('date', '>=', first), ('date', '<=', last)])
+        fuel_liters = sum(fuel.mapped('liters'))
+        measured = fuel.filtered(lambda f: f.consumption > 0)
+        avg_consumption = (
+            sum(measured.mapped('consumption')) / len(measured)) if measured else 0.0
+
         # -- توزيع المركبات على الفروع ------------------------------------
         by_branch = {}
         for vehicle in rented:
@@ -90,6 +99,9 @@ class FleetDashboard(models.AbstractModel):
                 'accidents': len(accidents),
                 'accidents_cost': sum(accidents.mapped('actual_cost')),
                 'service_cost': service_cost,
+                'fuel_cost': sum(fuel.mapped('amount')),
+                'fuel_liters': round(fuel_liters, 1),
+                'avg_consumption': round(avg_consumption, 2),
                 'rent_posted': sum(posted.mapped('amount_total')),
                 'rent_expected': expected_rate,
                 'charges_draft': len(charges) - len(posted),

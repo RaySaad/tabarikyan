@@ -22,9 +22,12 @@ class FleetVehicleCostReport(models.Model):
     company_id = fields.Many2one('res.company', string='الشركة', readonly=True)
     rent_amount = fields.Float(string='الأجرة المحصَّلة', readonly=True)
     service_amount = fields.Float(string='الصيانة والأعطال', readonly=True)
+    fuel_amount = fields.Float(string='الوقود (على الفرع)', readonly=True)
+    fuel_liters = fields.Float(string='اللترات', readonly=True)
     damage_amount = fields.Float(string='الحوادث والتلفيات', readonly=True)
-    total_cost = fields.Float(string='إجمالي التكلفة', readonly=True)
-    net_result = fields.Float(string='الصافي', readonly=True)
+    total_cost = fields.Float(string='تكلفة الأسطول', readonly=True)
+    net_result = fields.Float(string='صافي الأسطول', readonly=True)
+    branch_cost = fields.Float(string='تكلفة الفرع', readonly=True)
 
     @property
     def _table_query(self):
@@ -56,12 +59,24 @@ class FleetVehicleCostReport(models.Model):
                   JOIN fleet_vehicle v ON v.id = s.vehicle_id
                  WHERE s.date IS NOT NULL
                  GROUP BY 1, 2, 3
+            ), fuel AS (
+                -- الوقود يدفعه المستأجر: يُنسب للفرع المتحمِّل ولا يدخل
+                -- تكلفة الأسطول ولا صافيه.
+                SELECT date_trunc('month', f.date)::date AS period,
+                       f.vehicle_id,
+                       f.company_id,
+                       SUM(f.amount) AS fuel_amount,
+                       SUM(f.liters) AS fuel_liters
+                  FROM fleet_fuel_log f
+                 GROUP BY 1, 2, 3
             ), keys AS (
                 SELECT period, vehicle_id, company_id FROM rent
                 UNION
                 SELECT period, vehicle_id, company_id FROM damage
                 UNION
                 SELECT period, vehicle_id, company_id FROM service
+                UNION
+                SELECT period, vehicle_id, company_id FROM fuel
             )
             SELECT row_number() OVER () AS id,
                    k.period,
@@ -70,7 +85,12 @@ class FleetVehicleCostReport(models.Model):
                    COALESCE(r.rent_amount, 0.0) AS rent_amount,
                    COALESCE(s.service_amount, 0.0) AS service_amount,
                    COALESCE(d.damage_amount, 0.0) AS damage_amount,
+                   COALESCE(fu.fuel_amount, 0.0) AS fuel_amount,
+                   COALESCE(fu.fuel_liters, 0.0) AS fuel_liters,
                    COALESCE(s.service_amount, 0.0) AS total_cost,
+                   -- ما يتحمله الفرع: أجرة + تلفيات محمَّلة + وقوده.
+                   COALESCE(r.rent_amount, 0.0) + COALESCE(d.damage_amount, 0.0)
+                       + COALESCE(fu.fuel_amount, 0.0) AS branch_cost,
                    -- صافي الأسطول: ما حصّله (أجرة + ما حمّله من تلفيات)
                    -- ناقص ما أنفقه على الورشة. فالتلفيات تُسترد من الفرع
                    -- بينما تكلفتها ضمن سجلات الخدمة نفسها.
@@ -83,6 +103,9 @@ class FleetVehicleCostReport(models.Model):
               LEFT JOIN damage d ON d.period = k.period
                                AND d.vehicle_id IS NOT DISTINCT FROM k.vehicle_id
                                AND d.company_id IS NOT DISTINCT FROM k.company_id
+              LEFT JOIN fuel fu ON fu.period = k.period
+                               AND fu.vehicle_id IS NOT DISTINCT FROM k.vehicle_id
+                               AND fu.company_id IS NOT DISTINCT FROM k.company_id
               LEFT JOIN service s ON s.period = k.period
                                AND s.vehicle_id IS NOT DISTINCT FROM k.vehicle_id
                                AND s.company_id IS NOT DISTINCT FROM k.company_id
