@@ -111,6 +111,17 @@ class FleetFuelLog(models.Model):
             log.distance = distance if distance > 0 else 0.0
             log.consumption = (log.distance / log.liters) if (log.liters and log.distance) else 0.0
 
+    @api.model
+    def _get_import_templates(self):
+        """قالب جاهز داخل شاشة الاستيراد نفسها.
+
+        مشرف الفرع يرفع تعبئات الشهر دفعةً من إكسل، وأكثر ما يُفسد
+        الاستيراد هو تسمية الأعمدة - فنعطيه الملف بأسمائها الصحيحة."""
+        return [{
+            'label': _('قالب تعبئات الوقود'),
+            'template': '/fleet_maintenance/static/import_templates/fuel_log.csv',
+        }]
+
     @api.constrains('odometer', 'vehicle_id', 'date')
     def _check_odometer(self):
         """قراءة أقل من تعبئة سابقة تُفسد كل حسابات الاستهلاك والصيانة."""

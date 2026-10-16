@@ -25,5 +25,62 @@
             <field name="domain_force">['|', ('company_id', 'in', company_ids), ('fleet_company_id', 'in', company_ids)]</field>
         </record>
 
+        <!-- ============================================================
+             مشرف مركبات الفرع
+             ============================================================
+             دور الفرع لا دور الأسطول: يُدخل ما يقع على المركبة عنده
+             (وقود، عدّاد، حادث، طلب صيانة) ويقرأ تكاليفها، ولا يعدّل
+             شيئاً - التصحيح من الأسطول وحده.
+
+             لا تشمل fleet.fleet_group_user عمداً: تلك تمنح تعديل المركبة
+             وحذفها (1,1,1,1 في أودو)، ومن حقولها الأجرة الشهرية - فيصير
+             بوسع الفرع تخفيض أجرة نفسه. لذلك قوائم الفرع في جذر مستقل
+             وصلاحيته على المركبة قراءة فقط.
+             ============================================================ -->
+        <record id="group_fleet_branch_supervisor" model="res.groups">
+            <field name="name">مشرف مركبات الفرع</field>
+            <field name="sequence">54</field>
+            <field name="privilege_id" ref="recruitment_workflow.privilege_recruitment_workflow"/>
+            <field name="implied_ids" eval="[
+                (4, ref('recruitment_workflow.group_recruitment_workflow_user')),
+            ]"/>
+        </record>
+
+        <!-- ============================================================
+             توسيع قواعد أودو: الرؤية بالعقد لا بالملكية
+             ============================================================
+             القواعد العامة تُجمع بـAND، فإضافة قاعدة جديدة لا توسّع
+             الرؤية أبداً مهما كان نطاقها - ولا توسيع إلا بتعديل نطاق
+             قاعدة أودو نفسها، وهو ما يجري هنا.
+
+             المركبة مملوكة لشركة الأسطول، فنطاق أودو يُخفيها عن الفرع
+             المستأجر، والفرع يحتاج رؤيتها ليسجّل وقودها وحوادثها.
+             rental_branch_id مخزَّن على البطاقة فالفلترة عليه فهرسية.
+             ============================================================ -->
+        <!-- كتابة صريحة لا سجلّ بنفس المعرّف: قواعد أودو هذه مسجَّلة
+             بـnoupdate=True، فإعادة تعريفها في ملف بيانات **تُتجاهَل
+             بصمت** - بلا خطأ ولا أثر في السجل (كشفه اختبار الرؤية).
+             وwrite لا يخضع لتلك الحماية، ويُعاد تنفيذه عند كل ترقية
+             فيستعيد التوسيع لو أعادت أودو ضبط القاعدة. -->
+        <function model="ir.rule" name="write"
+                  eval="[[ref('fleet.ir_rule_fleet_vehicle')],
+                         {'domain_force': &quot;['|', ('company_id', 'in', company_ids + [False]), ('rental_branch_id', 'in', company_ids)]&quot;}]"/>
+
+        <function model="ir.rule" name="write"
+                  eval="[[ref('fleet.ir_rule_fleet_odometer')],
+                         {'domain_force': &quot;['|', ('vehicle_id.company_id', 'in', company_ids + [False]), ('vehicle_id.rental_branch_id', 'in', company_ids)]&quot;}]"/>
+
+        <!-- الفرع يرى تكلفة ورشة مركبته وإن كانت على شركة الأسطول -
+             شفافية طلبها صاحب القرار صراحةً. -->
+        <function model="ir.rule" name="write"
+                  eval="[[ref('fleet.ir_rule_fleet_log_services')],
+                         {'domain_force': &quot;['|', ('company_id', 'in', company_ids + [False]), ('vehicle_id.rental_branch_id', 'in', company_ids)]&quot;}]"/>
+
+        <!-- بلاغ الحادث شركته شركة الموظف، فكان يختفي عن شركة الأسطول
+             مع أنها مالكة المركبة ومن يتحمّل إصلاحها. -->
+        <record id="recruitment_workflow.fleet_accident_report_company_rule" model="ir.rule">
+            <field name="domain_force">['|', '|', ('company_id', '=', False), ('company_id', 'in', company_ids), ('vehicle_id.company_id', 'in', company_ids)]</field>
+        </record>
+
     </data>
 </odoo>

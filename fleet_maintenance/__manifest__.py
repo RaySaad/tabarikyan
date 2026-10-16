@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'صيانة الأسطول ولوحة مؤشراته - Fleet Maintenance & Dashboard',
-    'version': '19.0.1.4.0',
+    'version': '19.0.1.5.0',
     'category': 'Human Resources/Fleet',
     'summary': 'صيانة دورية بالكيلومترات والزمن مع تنبيه مبكر، ولوحة وتقارير للأسطول',
     'description': """
@@ -40,9 +40,11 @@
     'depends': ['fleet_branch_rental'],
     'data': [
         'security/ir.model.access.csv',
+        'security/fleet_maintenance_security.xml',
         'data/maintenance_cron.xml',
         'views/fleet_maintenance_plan_views.xml',
         'views/fleet_fuel_log_views.xml',
+        'views/fleet_service_request_views.xml',
         'views/fleet_reports_views.xml',
         'views/fleet_employee_cost_views.xml',
         'views/menu_views.xml',

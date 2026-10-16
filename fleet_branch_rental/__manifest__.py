@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'أجرة الأسطول للفروع - Fleet Branch Rental',
-    'version': '19.0.1.4.0',
+    'version': '19.0.1.5.0',
     'category': 'Human Resources/Fleet',
     'summary': 'تحميل الفروع أجرة السيارات شهرياً، وتكاليف الحوادث بنسبة التحمل',
     'description': """
@@ -32,8 +32,10 @@
     'license': 'LGPL-3',
     'depends': ['recruitment_workflow', 'bank_settlement', 'account', 'fleet'],
     'data': [
-        'security/ir.model.access.csv',
+        # المجموعات أولاً: ملف الصلاحيات يشير إلى
+        # group_fleet_branch_supervisor، فتحميله قبل تعريفها يفشل.
         'security/fleet_branch_rental_security.xml',
+        'security/ir.model.access.csv',
         'data/sequence_data.xml',
         'views/fleet_vehicle_views.xml',
         'views/fleet_vehicle_idle_views.xml',
@@ -43,6 +45,7 @@
         'views/res_config_settings_views.xml',
         'wizard/fleet_rental_opening_wizard_views.xml',
         'views/menu_views.xml',
+        'views/branch_fleet_views.xml',
     ],
     'installable': True,
     'application': False,

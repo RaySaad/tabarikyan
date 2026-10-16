@@ -32,6 +32,32 @@
                   action="action_fleet_fuel_log"
                   sequence="30"/>
 
+        <menuitem id="menu_fleet_service_request"
+                  name="طلبات الصيانة من الفروع"
+                  parent="menu_fleet_maintenance_root"
+                  action="action_fleet_service_request"
+                  sequence="40"/>
+
+        <!-- بنود الفرع: الإجراءات نفسها، وقواعد السجلات تتكفّل بأن
+             يرى كل فرع ما يخصّه. -->
+        <menuitem id="menu_branch_fuel_log"
+                  name="تعبئات الوقود"
+                  parent="fleet_branch_rental.menu_branch_fleet_operations"
+                  action="action_fleet_fuel_log"
+                  sequence="10"/>
+
+        <menuitem id="menu_branch_service_request"
+                  name="طلبات الصيانة"
+                  parent="fleet_branch_rental.menu_branch_fleet_operations"
+                  action="action_fleet_service_request"
+                  sequence="40"/>
+
+        <menuitem id="menu_branch_vehicle_cost"
+                  name="تكلفة مركبات فرعي"
+                  parent="fleet_branch_rental.menu_branch_fleet_costs"
+                  action="action_fleet_vehicle_cost_report"
+                  sequence="20"/>
+
         <menuitem id="menu_fleet_reports_root"
                   name="تقارير الأسطول"
                   parent="fleet.menu_root"
