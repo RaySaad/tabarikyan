@@ -102,6 +102,16 @@
                             class="btn-primary"
                             groups="recruitment_workflow.group_recruitment_workflow_project_manager"
                             invisible="stage_code != 'car_request' or car_request_state != 'authorized'"/>
+                    <!-- الاستعجال بيد صاحب المنصة لا بيد من ينفّذ الطلب -
+                         وإلا صار ترتيب الطابور بيد الأسطول. -->
+                    <button name="action_mark_car_urgent" type="object" string="رفع إلى عاجل"
+                            class="btn-warning"
+                            groups="recruitment_workflow.group_recruitment_workflow_project_manager"
+                            confirm="سيتقدّم هذا الطلب على الأقدم منه في طابور الأسطول. متابعة؟"
+                            invisible="not car_requested or car_request_urgent or car_request_state == 'authorized'"/>
+                    <button name="action_unmark_car_urgent" type="object" string="إلغاء الاستعجال"
+                            groups="recruitment_workflow.group_recruitment_workflow_project_manager"
+                            invisible="not car_request_urgent or car_request_state == 'authorized'"/>
 
                     <button name="action_reset_to_draft" type="object" string="إعادة للبداية"
                             groups="recruitment_workflow.group_recruitment_workflow_operations"
@@ -301,6 +311,12 @@
                                            groups="recruitment_workflow.group_recruitment_workflow_fleet" options="{'no_create': True, 'no_open': True}"/>
                                     <field name="car_requested"/>
                                     <field name="car_request_state"/>
+                                    <field name="car_request_date" readonly="1"
+                                           invisible="not car_requested"/>
+                                    <field name="car_waiting_days" readonly="1"
+                                           invisible="car_request_state not in ('requested', 'waiting', 'received')"/>
+                                    <field name="car_request_urgent" readonly="1"
+                                           invisible="not car_requested"/>
                                     <!-- يراه مسؤول المشروع للعلم: يفسّر
                                          تفويض الطلب بلا سيارة مخصَّصة. -->
                                     <field name="car_source" readonly="1"/>
@@ -470,14 +486,24 @@
         <field name="name">recruitment.request.list.fleet</field>
         <field name="model">recruitment.request</field>
         <field name="arch" type="xml">
-            <list string="طلبات السيارات - التوظيف" create="0">
+            <!-- ترتيب الطابور هو الترتيب الافتراضي للقائمة: العاجل أولاً
+                 ثم الأقدم - فيرى الأسطول دوره كما هو لا كما يرتّبه هو. -->
+            <list string="طلبات السيارات - التوظيف" create="0"
+                  default_order="car_request_urgent desc, car_request_date asc"
+                  decoration-danger="car_request_urgent"
+                  decoration-warning="car_waiting_days &gt; 3 and car_request_state != 'authorized'">
                 <field name="name"/>
                 <field name="employee_name"/>
+                <field name="company_id" string="الفرع" options="{'no_create': True, 'no_open': True}"/>
                 <field name="project_id" options="{'no_create': True, 'no_open': True}"/>
+                <field name="car_request_date"/>
+                <field name="car_waiting_days" string="أيام الانتظار"/>
+                <field name="car_request_urgent" widget="boolean_toggle" readonly="1"/>
                 <field name="vehicle_id" options="{'no_create': True, 'no_open': True}"/>
                 <field name="car_request_state" widget="badge"
                        decoration-success="car_request_state == 'authorized'"
                        decoration-info="car_request_state == 'requested'"
+                       decoration-danger="car_request_state == 'waiting'"
                        decoration-warning="car_request_state == 'received'"/>
             </list>
         </field>

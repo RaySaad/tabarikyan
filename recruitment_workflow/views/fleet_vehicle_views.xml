@@ -151,12 +151,19 @@
                             class="btn-primary"
                             groups="recruitment_workflow.group_recruitment_workflow_fleet"
                             invisible="car_request_state != 'requested'"/>
+                    <!-- من الانتظار: الزر نفسه يُعيد فحص التوفر، فيخرج
+                         الطلب من الطابور حين تتحرّر مركبة مناسبة. -->
+                    <button name="action_fleet_receive" type="object"
+                            string="إعادة الفحص واستلام الطلب"
+                            class="btn-primary"
+                            groups="recruitment_workflow.group_recruitment_workflow_fleet"
+                            invisible="car_request_state != 'waiting'"/>
                     <button name="action_fleet_authorize" type="object" string="تفويض السيارة (اعتماد نهائي)"
                             class="btn-primary"
                             groups="recruitment_workflow.group_recruitment_workflow_fleet"
                             invisible="car_request_state != 'received'"/>
                     <field name="car_request_state" widget="statusbar"
-                           statusbar_visible="requested,received,authorized"/>
+                           statusbar_visible="requested,waiting,received,authorized"/>
                 </header>
                 <sheet>
                     <!-- غير معروض - يُستخدم فقط ضمن domain حقل vehicle_id

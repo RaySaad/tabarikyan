@@ -162,7 +162,24 @@ class FleetDashboard(models.AbstractModel):
             [('state', '=', 'active')] +
             ([('company_id', '=', branch.id)] if branch else []))
 
+        # طابور طلبات السيارات من التوظيف: كان لا يظهر في اللوحة أصلاً
+        # رغم أنه أكثر ما ينتظر الأسطول فيه قراراً.
+        car_requests = self.env['recruitment.request'].sudo().search([
+            ('car_requested', '=', True),
+            ('car_request_state', 'in', ('requested', 'waiting', 'received')),
+            ('state', 'not in', ('done', 'rejected')),
+        ] + ([('company_id', '=', branch.id)] if branch else []))
+        oldest_wait = max(car_requests.mapped('car_waiting_days') or [0])
+
         pipeline = [{
+            'key': 'car_requests',
+            'label': 'طلبات سيارات من التوظيف',
+            'count': len(car_requests),
+            'amount': 0.0,
+            'hint': ('أقدمها منتظر %s يوماً' % oldest_wait) if car_requests
+                    else 'لا طلبات معلّقة',
+            'tone': 'cyan',
+        }, {
             'key': 'contracts',
             'label': 'عقود سارية',
             'count': len(active_contracts),

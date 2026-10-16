@@ -334,6 +334,8 @@ export class FleetDashboard extends Component {
 
     openStage(key) {
         ({
+            car_requests: () => this.action.doAction(
+                "recruitment_workflow.action_recruitment_request_fleet"),
             contracts: () => this.openRecords(
                 "fleet.rental.contract", [["state", "=", "active"]], _t("عقود سارية")),
             accidents: () => this.openRecords(

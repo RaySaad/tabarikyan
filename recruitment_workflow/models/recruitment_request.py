@@ -270,6 +270,7 @@ class RecruitmentRequest(models.Model):
         selection=[
             ('none', 'لا يوجد طلب'),
             ('requested', 'تم إرسال الطلب للأسطول'),
+            ('waiting', 'في طابور الانتظار'),
             ('received', 'تم استلام الطلب من الأسطول'),
             ('authorized', 'تم التفويض'),
         ],
@@ -278,6 +279,28 @@ class RecruitmentRequest(models.Model):
         tracking=True,
         copy=False,
     )
+    car_request_date = fields.Datetime(
+        string='تاريخ طلب السيارة', readonly=True, copy=False,
+        help='لحظة إرسال الطلب للأسطول - وهي أساس الأقدمية في الطابور.',
+    )
+    car_request_urgent = fields.Boolean(
+        string='طلب سيارة عاجل', readonly=True, copy=False, tracking=True,
+        help='يرفعه مسؤول المشروع وحده - يتقدّم الطلب به على الأقدم منه.',
+    )
+    car_waiting_days = fields.Integer(
+        string='أيام الانتظار', compute='_compute_car_waiting_days',
+        help='منذ إرسال الطلب حتى التفويض.',
+    )
+
+    @api.depends('car_request_date', 'car_request_state')
+    def _compute_car_waiting_days(self):
+        now = fields.Datetime.now()
+        for rec in self:
+            if rec.car_request_date and rec.car_request_state in (
+                    'requested', 'waiting', 'received'):
+                rec.car_waiting_days = (now - rec.car_request_date).days
+            else:
+                rec.car_waiting_days = 0
 
     # العقد
     # ملاحظة: نموذج hr.contract غير موجود في Community (خاص بـ Payroll/Enterprise).
@@ -1458,6 +1481,137 @@ class RecruitmentRequest(models.Model):
                     rec.company_id.display_name,
                 ))
 
+    def _available_vehicle_domain(self):
+        """المركبات التي تصلح لهذا الطلب الآن.
+
+        نطاق واحد يستعمله الإرسال والاستلام ومطابقة الطابور - كان
+        مكرراً في موضعين فاختلّت الرسالة عن الواقع حين تغيّر أحدهما."""
+        self.ensure_one()
+        domain = [('recruitment_state', '=', 'available')]
+        if self.project_id:
+            domain += ['|', ('project_id', '=', self.project_id.id),
+                       ('project_id', '=', False)]
+        # مركبة الأسطول متاحة لكل الفروع، ومركبة الفرع لفرعها وحده.
+        owner = self.env['res.company']._get_fleet_owner_company()
+        companies = [cid for cid in (self.company_id.id, owner.id) if cid]
+        if companies:
+            domain += ['|', ('company_id', 'in', companies),
+                       ('company_id', '=', False)]
+        return domain
+
+    def _has_available_vehicle(self):
+        self.ensure_one()
+        if self.car_source == 'delegate':
+            return True
+        return bool(self.env['fleet.vehicle'].sudo().search_count(
+            self._available_vehicle_domain()))
+
+    def action_mark_car_urgent(self):
+        """رفع الطلب إلى "عاجل" - لمسؤول المشروع وحده.
+
+        الطابور بالأقدمية، والاستعجال هو الاستثناء الوحيد عليها: قرار
+        تشغيلي يملكه صاحب المنصة لا الأسطول، وإلا صار ترتيب الطابور
+        بيد من ينفّذه."""
+        for rec in self:
+            rec._check_group(
+                'recruitment_workflow.group_recruitment_workflow_project_manager')
+            if not rec.car_requested or rec.car_request_state == 'authorized':
+                raise UserError(_(
+                    'لا يُرفع إلى عاجل إلا طلب سيارة قائم لم يُفوَّض بعد.'))
+            if rec.car_request_urgent:
+                raise UserError(_('الطلب مرفوع إلى عاجل مسبقاً.'))
+            rec.car_request_urgent = True
+            rec.message_post(body=_(
+                'رُفع طلب السيارة إلى **عاجل** بواسطة مسؤول المشروع - '
+                'يتقدّم في طابور الأسطول على الأقدم منه.'))
+            rec._schedule_activity_for_group(
+                'recruitment_workflow.group_recruitment_workflow_fleet',
+                _('عاجل: طلب سيارة رُفعت أولويته'),
+                note=_('الطلب: %s - المندوب: %s') % (
+                    rec.name, rec.employee_name or ''),
+            )
+
+    def action_unmark_car_urgent(self):
+        for rec in self:
+            rec._check_group(
+                'recruitment_workflow.group_recruitment_workflow_project_manager')
+            if not rec.car_request_urgent:
+                continue
+            rec.car_request_urgent = False
+            rec.message_post(body=_('أُعيد طلب السيارة إلى الأولوية العادية.'))
+
+    @api.model
+    def _match_waiting_car_requests(self, vehicle, limit=None):
+        """الطلبات المنتظرة التي تصلح لها هذه المركبة - الأقدم أولاً.
+
+        الترتيب: العاجل قبل العادي، ثم تاريخ الطلب. لا وزن للفرع ولا
+        للمنصة: قرار صريح بأن الأقدمية وحدها تحكم."""
+        if not vehicle or vehicle.recruitment_state != 'available':
+            return self.browse()
+        owner = self.env['res.company']._get_fleet_owner_company()
+        requests = self.sudo().search([
+            ('car_requested', '=', True),
+            ('car_request_state', 'in', ('requested', 'waiting')),
+            ('car_source', '!=', 'delegate'),
+            ('state', 'not in', ('done', 'rejected')),
+        ], order='car_request_urgent desc, car_request_date asc, id asc')
+        matching = requests.filtered(lambda r: (
+            (not vehicle.project_id or vehicle.project_id == r.project_id)
+            and (not vehicle.company_id
+                 or vehicle.company_id == r.company_id
+                 or vehicle.company_id == owner)
+        ))
+        return matching[:limit] if limit else matching
+
+    @api.model
+    def _notify_vehicle_available(self, vehicle):
+        """تنبيه الأسطول بأن مركبة تحرّرت وهناك من ينتظرها.
+
+        بلا هذا التنبيه كان الطلب ينام في الطابور إلى أن يتذكره أحد:
+        لا شيء في النظام كان يربط تحرّر مركبة بطلب منتظر."""
+        request = self._match_waiting_car_requests(vehicle, limit=1)
+        if not request:
+            return self.browse()
+        request.message_post(body=_(
+            'توفّرت مركبة مناسبة: %(vehicle)s. الطلب أقدم ما في الطابور '
+            '%(urgent)sمنذ %(days)s يوماً.'
+        ) % {'vehicle': vehicle.display_name,
+             'urgent': _('(عاجل) ') if request.car_request_urgent else '',
+             'days': request.car_waiting_days})
+        request._schedule_activity_for_group(
+            'recruitment_workflow.group_recruitment_workflow_fleet',
+            _('توفّرت سيارة لطلب منتظر: %s') % vehicle.display_name,
+            note=_('الطلب: %s - المندوب: %s') % (
+                request.name, request.employee_name or ''),
+        )
+        return request
+
+    @api.model
+    def _cron_check_car_request_queue(self):
+        """شبكة أمان يومية: مركبة قد تصير متاحة بمسار لا يمر بالكتابة
+        المعتادة (استيراد، تصحيح مباشر)، فيبقى الطابور بلا تنبيه."""
+        waiting = self.sudo().search([
+            ('car_requested', '=', True),
+            ('car_request_state', 'in', ('requested', 'waiting')),
+            ('car_source', '!=', 'delegate'),
+            ('state', 'not in', ('done', 'rejected')),
+        ], order='car_request_urgent desc, car_request_date asc, id asc')
+        notified = 0
+        for request in waiting:
+            # نشاط مفتوح = الأسطول منبَّه أصلاً، فلا نكرّر عليه يومياً.
+            if request.activity_ids:
+                continue
+            if not request._has_available_vehicle():
+                continue
+            request._schedule_activity_for_group(
+                'recruitment_workflow.group_recruitment_workflow_fleet',
+                _('طلب سيارة في الانتظار وتوجد مركبة متاحة'),
+                note=_('الطلب: %s - منتظر منذ %s يوماً') % (
+                    request.name, request.car_waiting_days),
+            )
+            notified += 1
+        return notified
+
     def action_send_car_request(self):
         """إرسال طلب سيارة لقسم الأسطول - مسؤول المشروع يطلب سيارة فقط، ولا
         يختار سيارة محدَّدة؛ اختيار السيارة تحديداً مسؤولية قسم الأسطول عند
@@ -1468,24 +1622,15 @@ class RecruitmentRequest(models.Model):
         مناسبة (بدل حجب الطلب بالكامل حتى تتوفر سيارة سلفاً)."""
         self.ensure_one()
         self._check_group('recruitment_workflow.group_recruitment_workflow_project_manager')
-        domain = [('recruitment_state', '=', 'available')]
-        if self.project_id:
-            domain += ['|', ('project_id', '=', self.project_id.id), ('project_id', '=', False)]
-        # طلب صريح: سيارات فرع آخر عن فرع الطلب لا تُحتسب هنا كمتاحة -
-        # نفس الفلترة المستخدَمة في domain حقل vehicle_id بشاشة الأسطول
-        # (انظر view_recruitment_request_form_fleet)، وإلا يظهر تنبيه
-        # "لا توجد سيارات متاحة" غير دقيق حين توجد سيارات متاحة فعلاً
-        # لكن في فرع آخر فقط.
-        if self.company_id:
-            domain += ['|', ('company_id', '=', self.company_id.id), ('company_id', '=', False)]
-        no_vehicles_available = (
-            self.car_source != 'delegate'
-            and not self.env['fleet.vehicle'].search_count(domain)
-        )
+        # النطاق في _available_vehicle_domain: موحَّد مع الاستلام ومطابقة
+        # الطابور، وإلا ظهر تنبيه "لا توجد سيارات" مخالفاً لما يراه
+        # الأسطول في قائمته.
+        no_vehicles_available = not self._has_available_vehicle()
 
         self.write({
             'car_requested': True,
             'car_request_state': 'requested',
+            'car_request_date': fields.Datetime.now(),
         })
         self.message_post(body=_('تم إرسال طلب سيارة إلى قسم الأسطول.') + (
             _(' تنبيه: لا توجد سيارة متاحة حالياً - سيتابع الأسطول الطلب فور توفرها.')
@@ -1525,11 +1670,24 @@ class RecruitmentRequest(models.Model):
             }
 
     def action_fleet_receive(self):
-        """قسم الأسطول يستلم الطلب."""
+        """قسم الأسطول يستلم الطلب - أو يُدرجه في الطابور إن لم تتوفر
+        مركبة.
+
+        الاستلام يُعاد من حالة الانتظار كذلك: حين تتحرّر مركبة يضغط
+        الأسطول الزر نفسه فيخرج الطلب من الطابور."""
         for rec in self:
             rec._check_group('recruitment_workflow.group_recruitment_workflow_fleet')
-            if rec.car_request_state != 'requested':
+            if rec.car_request_state not in ('requested', 'waiting'):
                 raise UserError(_('لا يوجد طلب سيارة بانتظار الاستلام.'))
+            if not rec._has_available_vehicle():
+                was_waiting = rec.car_request_state == 'waiting'
+                rec.car_request_state = 'waiting'
+                if not was_waiting:
+                    rec.message_post(body=_(
+                        'لا مركبة متاحة تناسب الطلب الآن - أُدرج في طابور '
+                        'الانتظار بترتيب الأقدمية، ويُنبَّه الأسطول فور '
+                        'تحرّر مركبة مناسبة.'))
+                continue
             rec.car_request_state = 'received'
             rec.message_post(body=_('تم استلام طلب السيارة من قسم الأسطول.'))
 
@@ -1568,6 +1726,16 @@ class RecruitmentRequest(models.Model):
             rec.message_post(body=_(
                 'تم تفويض السيارة. الطلب الآن لدى مسؤول المشروع للمتابعة.'
             ))
+            # رسالة في المحادثة وحدها كانت تعني أن مسؤول المشروع يكتشف
+            # التفويض بالصدفة - الطلب ينتظر خطوته هو، فيصله نشاط.
+            if rec.project_manager_id:
+                rec._schedule_activity_for_user(
+                    rec.project_manager_id,
+                    _('تم تفويض السيارة - أنهِ مرحلة طلب السيارة'),
+                    note=_('الطلب: %(name)s - المركبة: %(vehicle)s') % {
+                        'name': rec.name,
+                        'vehicle': rec.vehicle_id.display_name or ''},
+                )
 
     def _get_formatted_employee_name(self):
         """اسم الموظف بالتنسيق الموحّد "الاسم|رقم الهوية" - طلب صريح: يظهر

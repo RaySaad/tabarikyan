@@ -155,6 +155,21 @@ class FleetVehicle(models.Model):
         ) % (company.sudo().display_name, (' — %s' % note) if note else ''))
         return new_line
 
+    def write(self, vals):
+        """تحرّر المركبة يُنبّه أقدم طلب ينتظرها.
+
+        هنا لا في كل مكان يُحرِّر مركبة (انتهاء عقد، رفض طلب، خروج
+        مندوب، تصحيح يدوي): كلها تمر بكتابة recruitment_state، فمسك
+        الحدث عند مصدره يغني عن تتبّعه في كل مستدعٍ - ولا يُنسى واحد."""
+        becoming_available = self.filtered(
+            lambda v: v.recruitment_state != 'available'
+        ) if vals.get('recruitment_state') == 'available' else self.browse()
+        res = super().write(vals)
+        for vehicle in becoming_available:
+            self.env['recruitment.request'].sudo()._notify_vehicle_available(
+                vehicle)
+        return res
+
     def action_open_branch_transfer_wizard(self):
         self.ensure_one()
         return {

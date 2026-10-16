@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- شبكة أمان للطابور: الحدث الأساسي هو تحرّر المركبة (يُمسَك
+             في fleet.vehicle.write)، وهذه المهمة تلتقط ما يفوته - مركبة
+             صارت متاحة باستيراد أو تصحيح مباشر في قاعدة البيانات. -->
+        <record id="cron_recruitment_car_request_queue" model="ir.cron">
+            <field name="name">سير التوظيف: متابعة طابور طلبات السيارات</field>
+            <field name="model_id" ref="model_recruitment_request"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_check_car_request_queue()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>
