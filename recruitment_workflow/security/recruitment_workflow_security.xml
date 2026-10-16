@@ -142,11 +142,19 @@
         </record>
 
         <!-- قاعدة سجلات: عزل حسب الشركة -->
+        <!-- الأسطول شركة مستقلة تخدم كل الفروع: طلب السيارة يخص شركة
+             الفرع، فالعزل بالشركة وحده كان يُخفيه عن الأسطول تماماً -
+             قائمة "طلبات السيارات (توظيف)" تظهر فارغة عنده، فلا استلام
+             ولا تفويض ولا عقد تأجير.
+
+             التوسيع مقيَّد بما يخص عمله: الطلبات التي **طُلبت لها سيارة**
+             فقط، ولمن تكون شركة الأسطول ضمن شركاته الفعّالة. بقية طلبات
+             التوظيف تبقى محجوبة عنه. -->
         <record id="recruitment_request_company_rule" model="ir.rule">
-            <field name="name">طلبات التوظيف: حسب الشركة</field>
+            <field name="name">طلبات التوظيف: الشركة أو الأسطول لطلبات السيارات</field>
             <field name="model_id" ref="model_recruitment_request"/>
             <field name="global" eval="True"/>
-            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="domain_force">['|', '|', ('company_id', '=', False), ('company_id', 'in', company_ids), '&amp;', ('car_requested', '=', True), ('fleet_owner_company_id', 'in', company_ids)]</field>
         </record>
 
         <record id="recruitment_request_attachment_company_rule" model="ir.rule">
@@ -191,11 +199,13 @@
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
         </record>
 
+        <!-- نفس علة طلب السيارة: الطلب على شركة الموظف، والمركبة مملوكة
+             لشركة الأسطول وهي من ينفّذ التغيير - فيراه مالك المركبة. -->
         <record id="fleet_vehicle_change_request_company_rule" model="ir.rule">
-            <field name="name">طلبات تغيير المركبات: حسب الشركة</field>
+            <field name="name">طلبات تغيير المركبات: الشركة أو مالك المركبة</field>
             <field name="model_id" ref="model_fleet_vehicle_change_request"/>
             <field name="global" eval="True"/>
-            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="domain_force">['|', '|', ('company_id', '=', False), ('company_id', 'in', company_ids), ('current_vehicle_id.company_id', 'in', company_ids)]</field>
         </record>
 
         <record id="fleet_vehicle_change_attachment_company_rule" model="ir.rule">

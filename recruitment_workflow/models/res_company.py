@@ -39,3 +39,16 @@ class ResCompany(models.Model):
     @api.model
     def _get_fleet_owner_company(self):
         return self.sudo().search([('is_fleet_owner', '=', True)], limit=1)
+
+    def write(self, vals):
+        """تغيير شركة الأسطول يُعيد حساب الحقل المخزَّن على الطلبات.
+
+        fleet_owner_company_id مخزَّن لأن قاعدة الصلاحيات تستعمله،
+        وقيمته من الإعدادات لا من السجل - فلولا هذا لبقيت الطلبات
+        القديمة تشير إلى الشركة السابقة ولَما رآها الأسطول الجديد."""
+        res = super().write(vals)
+        if 'is_fleet_owner' in vals:
+            Request = self.env['recruitment.request'].sudo()
+            self.env.add_to_compute(
+                Request._fields['fleet_owner_company_id'], Request.search([]))
+        return res

@@ -248,6 +248,10 @@ class RecruitmentRequest(models.Model):
     fleet_owner_company_id = fields.Many2one(
         'res.company', string='شركة الأسطول',
         compute='_compute_fleet_owner_company_id',
+        # مخزَّن لأن قاعدة الصلاحيات تحتاجه: الأسطول شركة مستقلة، وطلب
+        # السيارة يخص شركة الفرع - فبلا هذا الحقل في القاعدة لا يرى
+        # الأسطول الطلب أصلاً ولا يستطيع تفويضه.
+        store=True, precompute=True,
         help='الشركة المالكة للمركبات - مركباتها متاحة لكل الفروع.',
     )
     car_source = fields.Selection(
@@ -1436,6 +1440,10 @@ class RecruitmentRequest(models.Model):
     # ------------------------------------------------------------------
     # منطق طلب السيارة (التكامل مع الأسطول)
     # ------------------------------------------------------------------
+    # القيمة من الإعدادات لا من حقول السجل، و@depends على company_id
+    # يضمن حسابها عند الإنشاء؛ وتغيير شركة الأسطول نفسها يُعيد حسابها
+    # لكل الطلبات (انظر res.company.write).
+    @api.depends('company_id')
     def _compute_fleet_owner_company_id(self):
         owner = self.env['res.company']._get_fleet_owner_company()
         for rec in self:
