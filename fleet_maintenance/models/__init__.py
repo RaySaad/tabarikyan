@@ -1,0 +1,4 @@
+# -*- coding: utf-8 -*-
+from . import fleet_maintenance_plan
+from . import fleet_vehicle_cost_report
+from . import fleet_dashboard

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============ تقرير تكلفة المركبة ============ -->
+        <record id="view_fleet_vehicle_cost_report_list" model="ir.ui.view">
+            <field name="name">fleet.vehicle.cost.report.list</field>
+            <field name="model">fleet.vehicle.cost.report</field>
+            <field name="arch" type="xml">
+                <list string="تكلفة المركبة" create="0" edit="0"
+                      decoration-danger="net_result &lt; 0">
+                    <field name="period"/>
+                    <field name="vehicle_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="company_id" groups="base.group_multi_company"
+                           options="{'no_create': True, 'no_open': True}"/>
+                    <field name="rent_amount" sum="الأجرة المحصَّلة"/>
+                    <field name="damage_amount" sum="التلفيات المحمَّلة"/>
+                    <field name="service_amount" sum="تكلفة الورشة"/>
+                    <field name="net_result" sum="الصافي"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_fleet_vehicle_cost_report_pivot" model="ir.ui.view">
+            <field name="name">fleet.vehicle.cost.report.pivot</field>
+            <field name="model">fleet.vehicle.cost.report</field>
+            <field name="arch" type="xml">
+                <pivot string="تكلفة المركبة" sample="1">
+                    <field name="vehicle_id" type="row"/>
+                    <field name="period" interval="month" type="col"/>
+                    <field name="rent_amount" type="measure"/>
+                    <field name="service_amount" type="measure"/>
+                    <field name="net_result" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <record id="view_fleet_vehicle_cost_report_graph" model="ir.ui.view">
+            <field name="name">fleet.vehicle.cost.report.graph</field>
+            <field name="model">fleet.vehicle.cost.report</field>
+            <field name="arch" type="xml">
+                <graph string="تكلفة المركبة" type="bar" sample="1">
+                    <field name="vehicle_id"/>
+                    <field name="net_result" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <record id="view_fleet_vehicle_cost_report_search" model="ir.ui.view">
+            <field name="name">fleet.vehicle.cost.report.search</field>
+            <field name="model">fleet.vehicle.cost.report</field>
+            <field name="arch" type="xml">
+                <search string="تكلفة المركبة">
+                    <field name="vehicle_id"/>
+                    <filter name="losing" string="مركبات خاسرة"
+                            domain="[('net_result', '&lt;', 0)]"/>
+                    <group>
+                        <filter name="group_vehicle" string="المركبة"
+                                context="{'group_by': 'vehicle_id'}"/>
+                        <filter name="group_period" string="الشهر"
+                                context="{'group_by': 'period'}"/>
+                        <filter name="group_company" string="الشركة"
+                                context="{'group_by': 'company_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_fleet_vehicle_cost_report" model="ir.actions.act_window">
+            <field name="name">الأجرة مقابل التكلفة</field>
+            <field name="res_model">fleet.vehicle.cost.report</field>
+            <field name="view_mode">list,pivot,graph</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">لا بيانات بعد</p>
+                <p>يظهر هنا لكل مركبة شهراً بشهر: ما حُصِّل منها أجرةً وتلفيات،
+                   وما أُنفق عليها في الورشة، والصافي. المركبة ذات الصافي السالب
+                   تحتاج مراجعة تعرفتها أو استبدالها.</p>
+            </field>
+        </record>
+
+        <!-- ============ تقرير الحوادث ============ -->
+        <record id="view_fleet_accident_report_pivot" model="ir.ui.view">
+            <field name="name">fleet.accident.report.pivot</field>
+            <field name="model">fleet.accident.report</field>
+            <field name="arch" type="xml">
+                <pivot string="الحوادث" sample="1">
+                    <field name="vehicle_id" type="row"/>
+                    <field name="accident_date" interval="month" type="col"/>
+                    <field name="actual_cost" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <record id="action_fleet_accident_analysis" model="ir.actions.act_window">
+            <field name="name">تحليل الحوادث</field>
+            <field name="res_model">fleet.accident.report</field>
+            <field name="view_mode">pivot,list,form</field>
+            <field name="context">{'search_default_group_by_vehicle': 1}</field>
+        </record>
+
+        <!-- ============ لوحة المؤشرات ============ -->
+        <record id="action_fleet_dashboard" model="ir.actions.client">
+            <field name="name">لوحة مؤشرات الأسطول</field>
+            <field name="tag">fleet_dashboard</field>
+        </record>
+
+    </data>
+</odoo>

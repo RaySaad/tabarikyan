@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_fleet_maintenance_plan_list" model="ir.ui.view">
+            <field name="name">fleet.maintenance.plan.list</field>
+            <field name="model">fleet.maintenance.plan</field>
+            <field name="arch" type="xml">
+                <list string="خطط الصيانة"
+                      decoration-danger="state == 'overdue'"
+                      decoration-warning="state == 'warning'"
+                      decoration-muted="state == 'unplanned'">
+                    <field name="vehicle_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="service_type_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="interval_km" optional="show"/>
+                    <field name="interval_days" optional="show"/>
+                    <field name="last_service_date" optional="show"/>
+                    <field name="current_odometer" optional="hide"/>
+                    <field name="next_due_odometer" optional="show"/>
+                    <field name="next_due_date" optional="show"/>
+                    <field name="remaining_km" optional="show"/>
+                    <field name="remaining_days" optional="show"/>
+                    <field name="state" widget="badge"
+                           decoration-danger="state == 'overdue'"
+                           decoration-warning="state == 'warning'"
+                           decoration-success="state == 'ok'"/>
+                    <button name="action_register_service" type="object"
+                            string="تنفيذ الصيانة" icon="fa-wrench"
+                            invisible="state == 'unplanned'"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_fleet_maintenance_plan_form" model="ir.ui.view">
+            <field name="name">fleet.maintenance.plan.form</field>
+            <field name="model">fleet.maintenance.plan</field>
+            <field name="arch" type="xml">
+                <form string="خطة صيانة">
+                    <header>
+                        <button name="action_register_service" type="object"
+                                string="تسجيل تنفيذ الصيانة" class="btn-primary"/>
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="ok,warning,overdue"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1><field name="name" readonly="1"/></h1>
+                        </div>
+                        <group>
+                            <group string="المركبة والنوع">
+                                <field name="vehicle_id"
+                                       options="{'no_create': True, 'no_open': True}"/>
+                                <field name="service_type_id"
+                                       options="{'no_create': True, 'no_open': True}"/>
+                                <field name="company_id" groups="base.group_multi_company"
+                                       readonly="1"
+                                       options="{'no_create': True, 'no_open': True}"/>
+                                <field name="active" invisible="1"/>
+                            </group>
+                            <group string="الدورة">
+                                <label for="interval_km"/>
+                                <div class="o_row">
+                                    <field name="interval_km"/>
+                                    <span class="ms-1">كم</span>
+                                </div>
+                                <label for="interval_days"/>
+                                <div class="o_row">
+                                    <field name="interval_days"/>
+                                    <span class="ms-1">يوم</span>
+                                </div>
+                                <label for="warning_km"/>
+                                <div class="o_row">
+                                    <field name="warning_km"/>
+                                    <span class="ms-1">كم قبل الاستحقاق</span>
+                                </div>
+                                <label for="warning_days"/>
+                                <div class="o_row">
+                                    <field name="warning_days"/>
+                                    <span class="ms-1">يوم قبل الاستحقاق</span>
+                                </div>
+                            </group>
+                        </group>
+                        <group>
+                            <group string="آخر تنفيذ">
+                                <field name="last_service_date"/>
+                                <field name="last_service_odometer"/>
+                                <field name="service_count" readonly="1"/>
+                            </group>
+                            <group string="الاستحقاق التالي">
+                                <field name="current_odometer" readonly="1"/>
+                                <field name="next_due_odometer" readonly="1"
+                                       invisible="not interval_km"/>
+                                <field name="next_due_date" readonly="1"
+                                       invisible="not interval_days"/>
+                                <field name="remaining_km" readonly="1"
+                                       invisible="not interval_km"/>
+                                <field name="remaining_days" readonly="1"
+                                       invisible="not interval_days"/>
+                            </group>
+                        </group>
+                        <group string="ملاحظات">
+                            <field name="note" nolabel="1"/>
+                        </group>
+                        <div class="alert alert-info" role="alert">
+                            تُحتسب الدورة من آخر تنفيذ: بالمسافة أو بالزمن أو بهما معاً -
+                            وأيهما يسبق يحدد الاستحقاق. والتنبيه يصل قبل الاستحقاق بالمسافة
+                            أو المدة المحدَّدتين أعلاه، فيُحجز موعد الورشة قبل تجاوزه.
+                        </div>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_fleet_maintenance_plan_search" model="ir.ui.view">
+            <field name="name">fleet.maintenance.plan.search</field>
+            <field name="model">fleet.maintenance.plan</field>
+            <field name="arch" type="xml">
+                <search string="خطط الصيانة">
+                    <field name="vehicle_id"/>
+                    <field name="service_type_id"/>
+                    <filter name="overdue" string="متأخرة" domain="[('state', '=', 'overdue')]"/>
+                    <filter name="warning" string="اقترب الاستحقاق" domain="[('state', '=', 'warning')]"/>
+                    <filter name="due" string="تحتاج موعداً"
+                            domain="[('state', 'in', ['overdue', 'warning'])]"/>
+                    <separator/>
+                    <filter name="by_km" string="مجدولة بالمسافة" domain="[('interval_km', '>', 0)]"/>
+                    <filter name="by_days" string="مجدولة بالزمن" domain="[('interval_days', '>', 0)]"/>
+                    <group>
+                        <filter name="group_state" string="الحالة" context="{'group_by': 'state'}"/>
+                        <filter name="group_vehicle" string="المركبة" context="{'group_by': 'vehicle_id'}"/>
+                        <filter name="group_type" string="نوع الصيانة"
+                                context="{'group_by': 'service_type_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_fleet_maintenance_plan" model="ir.actions.act_window">
+            <field name="name">خطط الصيانة</field>
+            <field name="res_model">fleet.maintenance.plan</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">أضف خطة صيانة لمركبة</p>
+                <p>حدّد الدورة بالكيلومترات أو بالأيام (أو بهما)، وسيصلك تنبيه مبكر
+                   قبل الاستحقاق.</p>
+            </field>
+        </record>
+
+        <record id="action_fleet_maintenance_plan_due" model="ir.actions.act_window">
+            <field name="name">صيانة مستحقة</field>
+            <field name="res_model">fleet.maintenance.plan</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('state', 'in', ['overdue', 'warning'])]</field>
+            <field name="context">{'search_default_group_state': 1}</field>
+        </record>
+
+        <!-- معالج تنفيذ الصيانة -->
+        <record id="view_fleet_maintenance_execute_wizard_form" model="ir.ui.view">
+            <field name="name">fleet.maintenance.execute.wizard.form</field>
+            <field name="model">fleet.maintenance.execute.wizard</field>
+            <field name="arch" type="xml">
+                <form string="تسجيل تنفيذ الصيانة">
+                    <group>
+                        <field name="plan_id" invisible="1"/>
+                        <field name="vehicle_id" readonly="1"
+                               options="{'no_create': True, 'no_open': True}"/>
+                        <field name="date"/>
+                        <field name="odometer"/>
+                        <field name="amount"/>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="note"/>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        يُسجَّل تنفيذ الصيانة في سجل خدمات المركبة، وتبدأ الدورة التالية
+                        من هذا التاريخ وقراءة العداد تلقائياً.
+                    </div>
+                    <footer>
+                        <button name="action_confirm" type="object"
+                                string="تسجيل" class="btn-primary"/>
+                        <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+    </data>
+</odoo>

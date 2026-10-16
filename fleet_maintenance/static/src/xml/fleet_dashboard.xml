@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="fleet_maintenance.FleetDashboard">
+        <div class="o_fleet_dashboard o_action position-relative h-100 overflow-auto p-3" dir="rtl">
+
+            <div t-if="state.loading" class="text-center p-5">
+                <i class="fa fa-spinner fa-spin fa-2x"/>
+                <div class="mt-2">جارٍ تحميل المؤشرات...</div>
+            </div>
+
+            <div t-else="">
+                <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+                    <div>
+                        <h2 class="mb-0">لوحة مؤشرات الأسطول</h2>
+                        <small class="text-muted">
+                            تشغيل المركبات، الأجرة، الصيانة المستحقة، والحوادث
+                        </small>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="mb-0">الشهر</label>
+                        <input type="month" class="form-control"
+                               t-att-value="state.month.slice(0, 7)"
+                               t-on-change="onMonthChange"/>
+                    </div>
+                </div>
+
+                <!-- بطاقات المؤشرات -->
+                <div class="row g-3 mb-3">
+                    <div class="col-6 col-lg-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">نسبة التشغيل</div>
+                                <div class="h3 mb-0"><t t-esc="kpi.utilisation"/>%</div>
+                                <div class="small text-muted">
+                                    <t t-esc="kpi.rented"/> مؤجَّرة من <t t-esc="kpi.chargeable"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card h-100 cursor-pointer" t-on-click="openIdle">
+                            <div class="card-body">
+                                <div class="text-muted small">مركبات راكدة</div>
+                                <div class="h3 mb-0 text-danger"><t t-esc="kpi.idle"/></div>
+                                <div class="small text-muted">
+                                    مجموع أيام الركود: <t t-esc="kpi.idle_days_total"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card h-100 cursor-pointer" t-on-click="openDue">
+                            <div class="card-body">
+                                <div class="text-muted small">صيانة مستحقة</div>
+                                <div class="h3 mb-0">
+                                    <span class="text-danger"><t t-esc="kpi.overdue_maintenance"/></span>
+                                    <span class="text-muted small"> متأخرة</span>
+                                </div>
+                                <div class="small text-warning">
+                                    <t t-esc="kpi.warning_maintenance"/> اقتربت
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card h-100 cursor-pointer" t-on-click="openCharges">
+                            <div class="card-body">
+                                <div class="text-muted small">أجرة الشهر</div>
+                                <div class="h3 mb-0"><t t-esc="money(kpi.rent_posted)"/></div>
+                                <div class="small text-muted">
+                                    متوقَّع: <t t-esc="money(kpi.rent_expected)"/>
+                                    <t t-if="kpi.charges_draft">
+                                        · <t t-esc="kpi.charges_draft"/> تحميل بلا ترحيل
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-6 col-lg-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">تكلفة الورشة هذا الشهر</div>
+                                <div class="h4 mb-0"><t t-esc="money(kpi.service_cost)"/></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">حوادث الشهر</div>
+                                <div class="h4 mb-0"><t t-esc="kpi.accidents"/></div>
+                                <div class="small text-muted">
+                                    بتكلفة <t t-esc="money(kpi.accidents_cost)"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <div class="card h-100 cursor-pointer" t-on-click="openCostReport">
+                            <div class="card-body d-flex align-items-center justify-content-between">
+                                <div>
+                                    <div class="text-muted small">تقرير التكلفة</div>
+                                    <div class="h5 mb-0">الأجرة المحصَّلة مقابل التكلفة الفعلية</div>
+                                    <small class="text-muted">لكل مركبة شهراً بشهر - به تُضبَط التعرفة</small>
+                                </div>
+                                <i class="fa fa-table fa-2x text-muted"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- الرسوم -->
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-lg-5">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6>المركبات لدى الفروع</h6>
+                                <div style="height: 260px;">
+                                    <canvas t-ref="branchChart"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-7">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6>أعلى المركبات تكلفة هذا الشهر</h6>
+                                <div style="height: 260px;">
+                                    <canvas t-ref="costChart"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- قوائم تحتاج إجراءً -->
+                <div class="row g-3">
+                    <div class="col-12 col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6>مركبات راكدة (أطولها ركوداً)</h6>
+                                <table class="table table-sm mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>المركبة</th>
+                                            <th class="text-end">أيام</th>
+                                            <th class="text-end">أجرة ضائعة شهرياً</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.data.idle_list" t-as="row" t-key="row.id"
+                                            class="cursor-pointer" t-on-click="() => this.openVehicle(row.id)">
+                                            <td><t t-esc="row.name"/></td>
+                                            <td class="text-end"><t t-esc="row.days"/></td>
+                                            <td class="text-end"><t t-esc="money(row.rate)"/></td>
+                                        </tr>
+                                        <tr t-if="!state.data.idle_list.length">
+                                            <td colspan="3" class="text-muted text-center">لا مركبة راكدة</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6>صيانة تحتاج موعداً</h6>
+                                <table class="table table-sm mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>الخطة</th>
+                                            <th class="text-end">المتبقي</th>
+                                            <th class="text-end">الحالة</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.data.due_list" t-as="row" t-key="row.id"
+                                            class="cursor-pointer" t-on-click="() => this.openPlan(row.id)">
+                                            <td><t t-esc="row.name"/></td>
+                                            <td class="text-end">
+                                                <t t-if="row.by_km"><t t-esc="row.remaining_km"/> كم</t>
+                                                <t t-if="row.by_km and row.by_date"> · </t>
+                                                <t t-if="row.by_date"><t t-esc="row.remaining_days"/> يوم</t>
+                                            </td>
+                                            <td class="text-end">
+                                                <span t-if="row.state === 'overdue'" class="badge text-bg-danger">متأخرة</span>
+                                                <span t-else="" class="badge text-bg-warning">اقتربت</span>
+                                            </td>
+                                        </tr>
+                                        <tr t-if="!state.data.due_list.length">
+                                            <td colspan="3" class="text-muted text-center">لا صيانة مستحقة</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

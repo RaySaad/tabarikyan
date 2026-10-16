@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <menuitem id="menu_fleet_dashboard"
+                  name="لوحة المؤشرات"
+                  parent="fleet.menu_root"
+                  action="action_fleet_dashboard"
+                  sequence="1"
+                  groups="recruitment_workflow.group_recruitment_workflow_fleet"/>
+
+        <menuitem id="menu_fleet_maintenance_root"
+                  name="الصيانة الدورية"
+                  parent="fleet.menu_root"
+                  sequence="55"
+                  groups="recruitment_workflow.group_recruitment_workflow_fleet"/>
+
+        <menuitem id="menu_fleet_maintenance_plan"
+                  name="خطط الصيانة"
+                  parent="menu_fleet_maintenance_root"
+                  action="action_fleet_maintenance_plan"
+                  sequence="10"/>
+
+        <menuitem id="menu_fleet_maintenance_due"
+                  name="صيانة مستحقة"
+                  parent="menu_fleet_maintenance_root"
+                  action="action_fleet_maintenance_plan_due"
+                  sequence="20"/>
+
+        <menuitem id="menu_fleet_reports_root"
+                  name="تقارير الأسطول"
+                  parent="fleet.menu_root"
+                  sequence="70"
+                  groups="recruitment_workflow.group_recruitment_workflow_fleet"/>
+
+        <menuitem id="menu_fleet_cost_report"
+                  name="الأجرة مقابل التكلفة"
+                  parent="menu_fleet_reports_root"
+                  action="action_fleet_vehicle_cost_report"
+                  sequence="10"/>
+
+        <menuitem id="menu_fleet_accident_analysis"
+                  name="تحليل الحوادث"
+                  parent="menu_fleet_reports_root"
+                  action="action_fleet_accident_analysis"
+                  sequence="20"/>
+    </data>
+</odoo>
