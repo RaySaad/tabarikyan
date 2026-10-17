@@ -155,12 +155,41 @@ class FleetVehicle(models.Model):
         ) % (company.sudo().display_name, (' — %s' % note) if note else ''))
         return new_line
 
+    _DRIVER_FIELDS = ('driver_id', 'future_driver_id')
+
+    def _share_driver_partners(self, vals):
+        """سائق المركبة جهة اتصال مشتركة لا مملوكة لفرع.
+
+        أودو (hr) تُنشئ جهة اتصال العمل بشركة الموظف، أي الفرع. والمركبة
+        مملوكة لشركة الأسطول، فأي شاشة تعرض سائقها لمستخدم الأسطول كانت
+        تسقط بـ"سجلات سرية للغاية" على جهة الاتصال - قاعدة أودو
+        res_partner_rule تحجب جهة اتصال شركة أخرى.
+
+        تفريغ الشركة يجعلها مرئية للجميع، وهو المطلوب: السائق نفسه يعمل
+        على مركبة الأسطول عند الفرع، ولا عزل مالياً في جهة الاتصال ذاتها
+        (الفواتير والقيود تحتفظ بشركاتها)."""
+        partner_ids = [
+            vals[field] for field in self._DRIVER_FIELDS if vals.get(field)]
+        if not partner_ids:
+            return
+        owned = self.env['res.partner'].sudo().browse(partner_ids).filtered(
+            'company_id')
+        if owned:
+            owned.write({'company_id': False})
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            self._share_driver_partners(vals)
+        return super().create(vals_list)
+
     def write(self, vals):
         """تحرّر المركبة يُنبّه أقدم طلب ينتظرها.
 
         هنا لا في كل مكان يُحرِّر مركبة (انتهاء عقد، رفض طلب، خروج
         مندوب، تصحيح يدوي): كلها تمر بكتابة recruitment_state، فمسك
         الحدث عند مصدره يغني عن تتبّعه في كل مستدعٍ - ولا يُنسى واحد."""
+        self._share_driver_partners(vals)
         becoming_available = self.filtered(
             lambda v: v.recruitment_state != 'available'
         ) if vals.get('recruitment_state') == 'available' else self.browse()

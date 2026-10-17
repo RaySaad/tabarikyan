@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from odoo.exceptions import AccessError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -70,6 +71,40 @@ class TestCarRequestReachesFleetCompany(TransactionCase):
             self.fleet_user).search([('id', '=', self.other_request.id)])
         self.assertFalse(
             seen, 'الأسطول يرى طلبات توظيف لا علاقة له بها')
+
+    def test_fleet_reads_vehicle_whose_driver_belongs_to_branch(self):
+        """سائق المركبة جهة اتصال أُنشئت في سياق الفرع، فحملت شركته.
+
+        الأسطول مالك المركبة ويفتح بطاقتها، فيسقط بـ"سجلات سرية
+        للغاية" على جهة الاتصال - وهو الخطأ الذي أبلغ عنه المستخدم."""
+        driver = self.env['res.partner'].create({
+            'name': 'سائق المركبة|2300000009', 'company_id': self.branch.id})
+        # الضابط: قبل الربط جهة الاتصال محجوبة فعلاً عن الأسطول.
+        with self.assertRaises(AccessError):
+            self.env['res.partner'].with_user(
+                self.fleet_user).browse(driver.id).read(['name'])
+
+        self.vehicle.sudo().write({'driver_id': driver.id})
+        self.assertFalse(
+            driver.company_id,
+            'ربط السائق بمركبة لم يحرّر جهة اتصاله من ملكية الفرع')
+        # وبعد الربط يقرؤها مالك المركبة - وهو ما يقع عند فتح بطاقتها.
+        self.assertTrue(self.env['res.partner'].with_user(
+            self.fleet_user).browse(driver.id).read(['name']))
+
+    def test_authorize_when_candidate_partner_belongs_to_branch(self):
+        """جهة اتصال المندوب تُنشأ بشركة الفرع، ومستخدم الأسطول يقرؤها
+        أثناء التفويض - فيسقط بـ"سجلات سرية للغاية"."""
+        partner = self.env['res.partner'].create({
+            'name': 'سائق الفرع|2300000001', 'company_id': self.branch.id})
+        self.request.sudo().candidate_partner_id = partner.id
+        request = self.request.with_user(self.fleet_user)
+        request.action_fleet_receive()
+        request.write({'vehicle_id': self.vehicle.id})
+        request.action_fleet_authorize()
+        self.assertEqual(request.car_request_state, 'authorized')
+        self.assertEqual(self.vehicle.future_driver_id, partner,
+                         'لم يُربط المندوب سائقاً مستقبلياً للمركبة')
 
     def test_fleet_authorizes_and_contract_is_issued(self):
         request = self.request.with_user(self.fleet_user)
