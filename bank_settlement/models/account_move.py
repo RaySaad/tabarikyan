@@ -70,4 +70,11 @@ class AccountMove(models.Model):
         """يُفتح الحارسان أعلاه لعملية نظامية واحدة فقط: مسار "إلغاء
         التنفيذ وتصحيح" في bank.settlement.mixin، وهو المسار الوحيد الذي
         يُلغي/يعكس قيد سداد بطريقة متّسقة مع حالة سجله."""
-        return is_internal(self.env, 'bank_settlement_internal_move_write')
+        if is_internal(self.env, 'bank_settlement_internal_move_write'):
+            return True
+        # مسار ثانٍ مضبوط: مطابقة البنك عبر إجراء خادم (نقل سطر البنك 111201
+        # إلى الحساب المعلق 118003 ثم إعادة الاعتماد فوراً في نفس العملية).
+        # مفتاح السياق وحده لا يكفي لأن أي مستخدم يقدر يرسله من الواجهة،
+        # لذلك يُشترط أن يكون المستخدم مدير النظام.
+        return bool(self.env.context.get('bank_settlement_allow_reset')) \
+            and self.env.user.has_group('base.group_system')
