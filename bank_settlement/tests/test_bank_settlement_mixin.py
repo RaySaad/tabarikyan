@@ -348,14 +348,18 @@ class TestBankSettlementMixin(TransactionCase):
         fee_b = self._create_gov_fee()
         fee_b.company_id = branch_b.id
 
-        user_group = self.env.ref('bank_settlement.group_bank_settlement_user')
+        # مجموعة القسم لا "مستخدم" وحدها: الاختبار يقيس عزل الشركات،
+        # وصلاحية النموذج شرط للوصول إليه أصلاً.
+        user_group = (
+            self.env.ref('bank_settlement.group_bank_settlement_user')
+            | self.env.ref('bank_settlement.group_section_government_fee'))
         branch_a_user = self.env['res.users'].create({
             'name': 'مستخدم فرع أ - سداد بنكي',
             'login': 'branch_a_bank_settlement_user',
             'email': 'branch_a_bank_settlement_user@example.com',
             'company_ids': [(6, 0, [branch_a.id])],
             'company_id': branch_a.id,
-            'group_ids': [(6, 0, [user_group.id, self.env.ref('base.group_user').id])],
+            'group_ids': [(6, 0, user_group.ids + [self.env.ref('base.group_user').id])],
         })
 
         visible = self.GovFee.with_user(branch_a_user).search([
@@ -1383,13 +1387,18 @@ class TestSettlementDirectApproval(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         base = cls.env.ref('base.group_user')
-        bs_user = cls.env.ref('bank_settlement.group_bank_settlement_user')
+        bs_user = (
+            cls.env.ref('bank_settlement.group_bank_settlement_user')
+            | cls.env.ref('bank_settlement.group_section_advance')
+            | cls.env.ref('bank_settlement.group_section_government_fee'))
         override = cls.env.ref('recruitment_workflow.group_approval_override')
 
         def user(login, groups):
             return cls.env['res.users'].create({
                 'name': login, 'login': login,
-                'group_ids': [(6, 0, [g.id for g in groups])],
+                # تسطيح: بعض العناصر صارت مجموعاتٍ متعددة (صلاحية
+                # القسم مع مجموعة الدخول) لا مجموعة واحدة.
+                'group_ids': [(6, 0, [gid for g in groups for gid in g.ids])],
             })
 
         cls.override_user = user('bs_da_override', [base, bs_user, override])
@@ -1449,8 +1458,10 @@ class TestSettlementDirectApproval(TransactionCase):
         fee.action_submit_review()
         plain = self.env['res.users'].create({
             'name': 'مستخدم عادي', 'login': 'bs_da_plain',
-            'group_ids': [(6, 0, [self.env.ref('base.group_user').id,
-                                  self.env.ref('bank_settlement.group_bank_settlement_user').id])],
+            'group_ids': [(6, 0, [
+                self.env.ref('base.group_user').id,
+                self.env.ref('bank_settlement.group_bank_settlement_user').id,
+                self.env.ref('bank_settlement.group_section_government_fee').id])],
         })
         with self.assertRaises(UserError):
             fee.with_user(plain).with_context(

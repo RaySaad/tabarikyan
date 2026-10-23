@@ -20,6 +20,10 @@ class TestRpcBypass(TransactionCase):
             'group_ids': [(6, 0, [
                 cls.env.ref('base.group_user').id,
                 cls.env.ref('bank_settlement.group_bank_settlement_user').id,
+                # صلاحية الأقسام صارت في مجموعات مستقلة؛ هذا الاختبار
+                # يخص تجاوز الحالات لا تركيبة المجموعات.
+                cls.env.ref('bank_settlement.group_section_advance').id,
+                cls.env.ref('bank_settlement.group_section_government_fee').id,
             ])],
         })
         cls.employee = cls.env['hr.employee'].create({'name': 'موظف فحص التجاوز'})
