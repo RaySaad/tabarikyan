@@ -53,10 +53,9 @@
                             <small>راجع مدير النظام لمنحك صلاحية القسم الذي تعمل عليه</small>
                         </div>
                     </div>
-                </div>
 
-                <!-- أدوات عامة -->
-                <div t-if="state.data.extras.length" class="row g-3 mt-1">
+                    <!-- الأدوات العامة في الشبكة نفسها: صفٌّ مستقل كان
+                         يترك فراغاً كبيراً حين لا تكتمل أعمدته. -->
                     <div t-foreach="state.data.extras" t-as="extra" t-key="extra.key"
                          class="col-6 col-md-4 col-xl-3">
                         <div class="o_bs_tile o_bs_tile_plain"

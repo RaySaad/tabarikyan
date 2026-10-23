@@ -34,29 +34,11 @@
                   groups="bank_settlement.group_bank_settlement_user"
                   sequence="5"/>
 
-        <menuitem id="menu_bank_settlement_dashboard" name="لوحة المؤشرات"
-                  parent="menu_bank_settlement_root"
-                  action="action_bank_settlement_dashboard" sequence="1"/>
 
-        <menuitem id="menu_bank_settlement_advance" name="السلف"
-                  parent="menu_bank_settlement_root"
-                  action="action_section_advance" sequence="10"/>
 
-        <menuitem id="menu_bank_settlement_government_fee" name="الرسوم الحكومية"
-                  parent="menu_bank_settlement_root"
-                  action="action_section_government_fee" sequence="20"/>
 
-        <menuitem id="menu_bank_settlement_vehicle_transfer" name="تحويلات المركبات"
-                  parent="menu_bank_settlement_root"
-                  action="action_section_vehicle_transfer" sequence="30"/>
 
-        <menuitem id="menu_bank_settlement_medical_insurance" name="التأمين الطبي"
-                  parent="menu_bank_settlement_root"
-                  action="action_section_medical_insurance" sequence="40"/>
 
-        <menuitem id="menu_bank_settlement_representative" name="تصفيات المناديب"
-                  parent="menu_bank_settlement_root"
-                  action="action_section_representative" sequence="50"/>
 
         <!-- كشف حساب الموظف - انتقل من تطبيق الموظفين إلى هنا (طلب صريح)،
              ثم أصبح معالجاً يختار فيه المستخدم الموظف وفترة الكشف (من
@@ -64,10 +46,12 @@
              انظر wizard/employee_statement_wizard.py. متاح لمن يملك
              صلاحية "مستخدم" السداد البنكي فما فوق - كشف مالي، وليس
              للعرض العام. -->
-        <menuitem id="menu_bank_settlement_employee_statement" name="كشف حساب الموظف"
-                  parent="menu_bank_settlement_root"
-                  action="action_bank_settlement_employee_statement_wizard" sequence="60"/>
 
+        <!-- قوائم الأقسام حُذفت عمداً: صار لكل قسم أيقونة في الصفحة
+             الرئيسية (action_bank_settlement_home) تفتح لوحته، فبقاء
+             القائمة العلوية يعني طريقين لنفس المكان. "الإعدادات" تبقى
+             قائمةً: لا أيقونة لها، ومكانها المعتاد في أودو هو القائمة.
+             الرجوع من أي لوحة قسم بزر "الأقسام" داخلها. -->
         <!-- الإعدادات: قوائم أنواع/أسباب الرسوم القابلة للتعديل والإضافة
              من المستخدم نفسه (بدل قوائم ثابتة بالكود) - مقصورة على مدير
              عام السداد البنكي، مثل بقية شاشات الإعدادات المعتادة. -->
