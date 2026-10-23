@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="bank_settlement.Home">
+        <div class="o_bank_settlement_dashboard o_bs_home o_action position-relative h-100 overflow-auto p-3" dir="rtl">
+
+            <div t-if="state.loading" class="d-flex flex-column align-items-center justify-content-center py-5">
+                <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"/>
+                <h6 class="text-muted">جارٍ فتح مركز السداد...</h6>
+            </div>
+
+            <div t-else="">
+                <div class="o_bs_hero mb-4">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="o_bs_header_icon">
+                                <i class="fa fa-university fa-2x"/>
+                            </div>
+                            <div>
+                                <h3 class="fw-bold mb-1">مركز السداد البنكي</h3>
+                                <p class="mb-0 small">
+                                    أهلاً <t t-esc="state.data.user_name"/> - اختر القسم الذي تعمل عليه
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- أقسام العمل -->
+                <div class="row g-3">
+                    <div t-foreach="state.data.sections" t-as="section" t-key="section.key"
+                         class="col-6 col-md-4 col-xl-3">
+                        <div class="o_bs_tile" t-attf-style="--bs-tile-tone: var(--bs-dash-{{ section.tone }});"
+                             t-on-click="() => this.openSection(section.key)">
+                            <div class="o_bs_tile_icon"><i t-attf-class="fa {{ section.icon }}"/></div>
+                            <div class="o_bs_tile_name"><t t-esc="section.name"/></div>
+                            <div class="o_bs_tile_sub">
+                                <t t-if="section.pending_count">
+                                    <span class="o_bs_tile_badge"><t t-esc="section.pending_count"/></span>
+                                    بانتظار إجراء · <t t-esc="money(section.pending_amount)"/>
+                                </t>
+                                <t t-else="">
+                                    <t t-esc="section.total_count"/> معاملة · لا شيء معلّق
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div t-if="!state.data.sections.length" class="col-12">
+                        <div class="o_bs_empty_access">
+                            <i class="fa fa-lock"/>
+                            <div>لا تملك صلاحية على أي قسم من أقسام السداد</div>
+                            <small>راجع مدير النظام لمنحك صلاحية القسم الذي تعمل عليه</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- أدوات عامة -->
+                <div t-if="state.data.extras.length" class="row g-3 mt-1">
+                    <div t-foreach="state.data.extras" t-as="extra" t-key="extra.key"
+                         class="col-6 col-md-4 col-xl-3">
+                        <div class="o_bs_tile o_bs_tile_plain"
+                             t-attf-style="--bs-tile-tone: var(--bs-dash-{{ extra.tone }});"
+                             t-on-click="() => this.openExtra(extra.action)">
+                            <div class="o_bs_tile_icon"><i t-attf-class="fa {{ extra.icon }}"/></div>
+                            <div class="o_bs_tile_name"><t t-esc="extra.name"/></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="bank_settlement.SectionDashboard">
+        <div class="o_bank_settlement_dashboard o_action position-relative h-100 overflow-auto p-3" dir="rtl">
+
+            <div t-if="state.loading" class="d-flex flex-column align-items-center justify-content-center py-5">
+                <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"/>
+                <h6 class="text-muted">جارٍ تحميل لوحة القسم...</h6>
+            </div>
+
+            <div t-else="">
+                <!-- ترويسة القسم -->
+                <div class="o_bs_hero mb-3">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="o_bs_header_icon">
+                                <i t-attf-class="fa {{ state.data.icon }} fa-2x"/>
+                            </div>
+                            <div>
+                                <h3 class="fw-bold mb-1"><t t-esc="state.data.name"/></h3>
+                                <p class="mb-0 small">
+                                    <t t-esc="kpi.total_count"/> معاملة في هذا القسم
+                                </p>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <label class="o_bs_filter d-flex align-items-center px-3 py-1">
+                                <i class="fa fa-calendar-o me-2"/>
+                                <select class="form-select form-select-sm border-0 bg-transparent fw-bold"
+                                        style="width: auto;" t-on-change="onPeriodChange">
+                                    <option value="this_month" t-att-selected="state.period === 'this_month' ? 'selected' : false">هذا الشهر</option>
+                                    <option value="last_month" t-att-selected="state.period === 'last_month' ? 'selected' : false">الشهر الماضي</option>
+                                    <option value="this_year" t-att-selected="state.period === 'this_year' ? 'selected' : false">هذه السنة</option>
+                                    <option value="all" t-att-selected="state.period === 'all' ? 'selected' : false">كل الأوقات</option>
+                                </select>
+                            </label>
+                            <button class="btn btn-outline-primary btn-sm rounded-pill px-3"
+                                    t-on-click="openFullList">
+                                <i class="fa fa-list me-1"/> القائمة الكاملة
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm rounded-pill px-3"
+                                    t-on-click="backToHome">
+                                <i class="fa fa-th me-1"/> الأقسام
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- المؤشرات -->
+                <div class="row g-3 mb-3">
+                    <div class="col-6 col-lg-3">
+                        <div class="card o_bs_kpi_card o_bs_card_total p-3 h-100">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <span class="text-muted small fw-bold">المنفَّذ في الفترة</span>
+                                    <h4 class="fw-bold mb-1 mt-1"><t t-esc="money(kpi.done_amount)"/></h4>
+                                    <span class="small text-muted">
+                                        <t t-esc="kpi.done_count"/> معاملة
+                                        <span t-if="kpi.growth"
+                                              t-attf-class="badge rounded-pill ms-1 {{ kpi.growth > 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' }}">
+                                            <t t-esc="Math.abs(kpi.growth)"/>%
+                                        </span>
+                                    </span>
+                                </div>
+                                <div class="o_bs_card_icon"><i class="fa fa-money fa-lg"/></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card o_bs_kpi_card o_bs_card_veh p-3 h-100" role="button"
+                             t-on-click="() => this.openList([['state', 'not in', ['done', 'paid', 'rejected', 'cancel']]], 'معاملات معلّقة')">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <span class="text-muted small fw-bold">بانتظار إجراء</span>
+                                    <h4 class="fw-bold mb-1 mt-1"><t t-esc="kpi.pending_count"/></h4>
+                                    <span class="small text-muted"><t t-esc="money(kpi.pending_amount)"/></span>
+                                </div>
+                                <div class="o_bs_card_icon"><i class="fa fa-clock-o fa-lg"/></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card o_bs_kpi_card o_bs_card_adv p-3 h-100" role="button"
+                             t-on-click="() => this.openList([['returned_for_correction', '=', true]], 'أُرجعت للتصحيح')">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <span class="text-muted small fw-bold">أُرجعت للتصحيح</span>
+                                    <h4 class="fw-bold mb-1 mt-1"><t t-esc="kpi.returned_count"/></h4>
+                                    <span class="small text-muted">تنتظر تعديل مُقدّمها</span>
+                                </div>
+                                <div class="o_bs_card_icon"><i class="fa fa-undo fa-lg"/></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card o_bs_kpi_card o_bs_card_gov p-3 h-100" role="button"
+                             t-on-click="openFullList">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <span class="text-muted small fw-bold">إجمالي المعاملات</span>
+                                    <h4 class="fw-bold mb-1 mt-1"><t t-esc="kpi.total_count"/></h4>
+                                    <span class="small text-muted">منذ بداية التشغيل</span>
+                                </div>
+                                <div class="o_bs_card_icon"><i class="fa fa-database fa-lg"/></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- الرسوم -->
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-xl-8">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="fw-bold mb-0">
+                                    <i class="fa fa-bar-chart text-primary me-2"/> المنفَّذ شهراً بشهر (آخر ٦ أشهر)
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div t-if="hasTrend" style="position: relative; height: 280px;">
+                                    <canvas t-ref="trendChart"/>
+                                </div>
+                                <div t-else="" class="o_bs_chart_empty">
+                                    <i class="fa fa-bar-chart"/>
+                                    <div>لا معاملات منفَّذة في الأشهر الستة الماضية</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-xl-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="fw-bold mb-0">
+                                    <i class="fa fa-pie-chart text-info me-2"/> التوزيع حسب الحالة
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div t-if="state.data.by_state.length" style="position: relative; height: 280px;">
+                                    <canvas t-ref="stateChart"/>
+                                </div>
+                                <div t-else="" class="o_bs_chart_empty">
+                                    <i class="fa fa-pie-chart"/>
+                                    <div>لا معاملات بعد</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- الجداول -->
+                <div class="row g-3">
+                    <div class="col-12 col-xl-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="fw-bold mb-0">
+                                    <i class="fa fa-tasks text-warning me-2"/> بانتظار إجراء
+                                </h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>الرقم</th><th>الطرف</th>
+                                            <th class="text-end">المبلغ</th><th class="text-end">الحالة</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.data.pending_list" t-as="row" t-key="row.id"
+                                            role="button" t-on-click="() => this.openRecord(row.model, row.id)">
+                                            <td><t t-esc="row.name"/></td>
+                                            <td class="text-muted small"><t t-esc="row.party"/></td>
+                                            <td class="text-end"><t t-esc="money(row.amount)"/></td>
+                                            <td class="text-end">
+                                                <span t-attf-class="o_bs_state_badge badge o_bs_state_{{ row.state }}">
+                                                    <t t-esc="row.state_label"/>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr t-if="!state.data.pending_list.length">
+                                            <td colspan="4" class="text-center text-muted py-4">
+                                                <i class="fa fa-check-circle text-success me-1"/>
+                                                لا شيء معلّق في هذا القسم
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-xl-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="fw-bold mb-0">
+                                    <i class="fa fa-history text-secondary me-2"/> أحدث المعاملات
+                                </h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>الرقم</th><th>الطرف</th><th>التاريخ</th>
+                                            <th class="text-end">المبلغ</th><th class="text-end">الحالة</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.data.recent" t-as="row" t-key="row.id"
+                                            role="button" t-on-click="() => this.openRecord(row.model, row.id)">
+                                            <td><t t-esc="row.name"/></td>
+                                            <td class="text-muted small"><t t-esc="row.party"/></td>
+                                            <td><t t-esc="row.date"/></td>
+                                            <td class="text-end"><t t-esc="money(row.amount)"/></td>
+                                            <td class="text-end">
+                                                <span t-attf-class="o_bs_state_badge badge o_bs_state_{{ row.state }}">
+                                                    <t t-esc="row.state_label"/>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr t-if="!state.data.recent.length">
+                                            <td colspan="5" class="text-center text-muted py-4">
+                                                <i class="fa fa-inbox d-block mb-2" style="font-size: 1.5rem; opacity: .4;"/>
+                                                لا معاملات مسجَّلة بعد
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

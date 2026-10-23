@@ -83,7 +83,7 @@
                                     <option value="0">كل الفروع</option>
                                     <t t-foreach="state.data.branches" t-as="b" t-key="b.id">
                                         <option t-att-value="b.id" t-esc="b.name"
-                                                t-att-selected="state.branchId === b.id or undefined"/>
+                                                t-att-selected="state.branchId === b.id ? 'selected' : false"/>
                                     </t>
                                 </select>
                             </label>

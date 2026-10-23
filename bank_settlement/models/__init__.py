@@ -17,3 +17,4 @@ from . import recruitment_request
 from . import recruitment_import_request
 from . import hr_employee_exit_request
 from . import dashboard
+from . import section_dashboard

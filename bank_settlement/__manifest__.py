@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'السداد البنكي - Bank Settlement',
-    'version': '19.0.1.30.0',
+    'version': '19.0.1.31.0',
     'category': 'Accounting/Accounting',
     'summary': 'إدارة السلف، الرسوم الحكومية، تحويلات المركبات، التأمين الطبي، وتصفيات المناديب',
     'description': """
@@ -67,6 +67,10 @@ recruitment_workflow لبيانات المناديب (hr.employee) والمنص�
             'bank_settlement/static/src/scss/bank_settlement_dashboard.scss',
             'bank_settlement/static/src/xml/bank_settlement_dashboard.xml',
             'bank_settlement/static/src/js/bank_settlement_dashboard.js',
+            'bank_settlement/static/src/xml/bank_settlement_home.xml',
+            'bank_settlement/static/src/js/bank_settlement_home.js',
+            'bank_settlement/static/src/xml/bank_settlement_section.xml',
+            'bank_settlement/static/src/js/bank_settlement_section.js',
         ],
     },
     'installable': True,

@@ -8,6 +8,45 @@
             <field name="tag">bank_settlement_dashboard</field>
         </record>
 
+        <!-- الصفحة الرئيسية للتطبيق: أقسامه أيقوناتٍ - تُفتح عند الدخول
+             على التطبيق (مربوطة بالقائمة الجذرية). -->
+        <record id="action_bank_settlement_home" model="ir.actions.client">
+            <field name="name">مركز السداد البنكي</field>
+            <field name="tag">bank_settlement_home</field>
+        </record>
+
+        <!-- لوحة كل قسم: إجراء واحد لكل قسم بنفس المكوّن، والقسم يُمرَّر
+             في السياق. -->
+        <record id="action_section_advance" model="ir.actions.client">
+            <field name="name">لوحة السلف</field>
+            <field name="tag">bank_settlement_section</field>
+            <field name="context">{'section': 'advance'}</field>
+        </record>
+
+        <record id="action_section_government_fee" model="ir.actions.client">
+            <field name="name">لوحة الرسوم الحكومية</field>
+            <field name="tag">bank_settlement_section</field>
+            <field name="context">{'section': 'government_fee'}</field>
+        </record>
+
+        <record id="action_section_vehicle_transfer" model="ir.actions.client">
+            <field name="name">لوحة تحويلات المركبات</field>
+            <field name="tag">bank_settlement_section</field>
+            <field name="context">{'section': 'vehicle_transfer'}</field>
+        </record>
+
+        <record id="action_section_medical_insurance" model="ir.actions.client">
+            <field name="name">لوحة التأمين الطبي</field>
+            <field name="tag">bank_settlement_section</field>
+            <field name="context">{'section': 'medical_insurance'}</field>
+        </record>
+
+        <record id="action_section_representative" model="ir.actions.client">
+            <field name="name">لوحة تصفيات المناديب</field>
+            <field name="tag">bank_settlement_section</field>
+            <field name="context">{'section': 'representative'}</field>
+        </record>
+
     </data>
 </odoo>
 

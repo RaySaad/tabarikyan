@@ -9,7 +9,10 @@
              مضاف إليها أيضاً مسؤولي المشاريع (سير التوظيف) - يحتاجون
              الدخول لموافقة السلف فقط (القوائم الأخرى تبقى مخفية عنهم
              تلقائياً لعدم امتلاكهم صلاحية تلك النماذج). -->
+        <!-- action على الجذر: بلا إجراء كان أودو يفتح أول بند (لوحة
+             المؤشرات). الآن تُفتح صفحة الأقسام بالأيقونات. -->
         <menuitem id="menu_bank_settlement_root" name="السداد البنكي"
+                  action="action_bank_settlement_home"
                   web_icon="bank_settlement,static/description/icon.png"
                   groups="bank_settlement.group_bank_settlement_user,recruitment_workflow.group_recruitment_workflow_project_manager"
                   sequence="15"/>
@@ -37,23 +40,23 @@
 
         <menuitem id="menu_bank_settlement_advance" name="السلف"
                   parent="menu_bank_settlement_root"
-                  action="action_bank_settlement_advance" sequence="10"/>
+                  action="action_section_advance" sequence="10"/>
 
         <menuitem id="menu_bank_settlement_government_fee" name="الرسوم الحكومية"
                   parent="menu_bank_settlement_root"
-                  action="action_bank_settlement_government_fee" sequence="20"/>
+                  action="action_section_government_fee" sequence="20"/>
 
         <menuitem id="menu_bank_settlement_vehicle_transfer" name="تحويلات المركبات"
                   parent="menu_bank_settlement_root"
-                  action="action_bank_settlement_vehicle_transfer" sequence="30"/>
+                  action="action_section_vehicle_transfer" sequence="30"/>
 
         <menuitem id="menu_bank_settlement_medical_insurance" name="التأمين الطبي"
                   parent="menu_bank_settlement_root"
-                  action="action_bank_settlement_medical_insurance" sequence="40"/>
+                  action="action_section_medical_insurance" sequence="40"/>
 
         <menuitem id="menu_bank_settlement_representative" name="تصفيات المناديب"
                   parent="menu_bank_settlement_root"
-                  action="action_bank_settlement_representative" sequence="50"/>
+                  action="action_section_representative" sequence="50"/>
 
         <!-- كشف حساب الموظف - انتقل من تطبيق الموظفين إلى هنا (طلب صريح)،
              ثم أصبح معالجاً يختار فيه المستخدم الموظف وفترة الكشف (من
