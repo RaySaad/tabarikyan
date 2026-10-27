@@ -139,10 +139,35 @@ class HrEmployee(models.Model):
     # - رسوم رخصة قيادة: مدين (عليه - تُخصم منه)
     # - قيود حساب "ذمم الموظفين" (212003): كما هي مسجَّلة فعلاً في
     #   المحاسبة (مدين/دائن مباشرة من القيد نفسه، بلا إعادة تفسير)
+    # سجل مرفوض أو ملغى لا يُطالَب به الموظف. كان الكشف يحسبها
+    # جميعاً لأن البحث لا يشترط حالة - فتظهر سلفة رُفضت ديناً عليه.
+    # (قسم القيود المحاسبية كان يستبعد الملغاة أصلاً، فكان المعيار
+    # غير موحَّد داخل الكشف نفسه.)
+    _STATEMENT_EXCLUDED_STATES = ('rejected', 'cancel')
+
     _VEHICLE_TRANSFER_STATEMENT_TYPES = (
         'bank_settlement.vehicle_transfer_type_traffic_violation',
         'bank_settlement.vehicle_transfer_type_driving_license',
     )
+
+    def _statement_dues_accounts(self, code):
+        """حسابات ذمم الموظفين بهذا الرقم في **كل** الشركات.
+
+        في أودو 19 حقل code محسوب من code_store وهو company_dependent،
+        فـ search([('code','=',X)]) لا يرى إلا رقم الشركة الجارية
+        ويُسقط حساب الفرع الآخر وإن حمل الرقم نفسه - أسقط هذا اختباراً
+        قبل أن يصل إلى كشف حقيقي. فنكرّر البحث بسياق كل شركة.
+        """
+        Account = self.env['account.account'].sudo()
+        accounts = Account.browse()
+        if code:
+            for company in self.env['res.company'].sudo().search([]):
+                accounts |= Account.with_company(company).search(
+                    [('code', '=', code)])
+        if not accounts:
+            # الاسم ليس company_dependent، فبحث واحد يكفي.
+            accounts = Account.search([('name', 'ilike', 'ذمم الموظفين')])
+        return accounts
 
     def _get_employee_statement_data(self, date_from=False, date_to=False):
         """يبني كشف حساب موحّد (سطر واحد لكل حركة، مرتّب بالتاريخ) -
@@ -156,6 +181,7 @@ class HrEmployee(models.Model):
         (السلوك الأصلي، محفوظ للتوافق الخلفي مع أي استدعاء مباشر)."""
         self.ensure_one()
         lines = []
+        warnings = []
         # كل الحسابات المحاسبية المرتبطة بسجلات السداد البنكي الخاصة بهذا
         # الموظف (بكل نماذجه الخمسة، حتى المستبعدة من العرض هنا كالرسوم
         # الحكومية) - تُستبعد صراحة من بحث حساب "ذمم الموظفين" أدناه،
@@ -179,7 +205,9 @@ class HrEmployee(models.Model):
             return domain
 
         advances = self.env['bank.settlement.advance'].sudo().search(
-            [('employee_id', '=', self.id)] + _date_domain('create_date'),
+            [('employee_id', '=', self.id),
+             ('state', 'not in', list(self._STATEMENT_EXCLUDED_STATES)),
+             ] + _date_domain('create_date'),
         )
         for adv in advances:
             lines.append({
@@ -190,7 +218,9 @@ class HrEmployee(models.Model):
             })
 
         settlements = self.env['bank.settlement.representative'].sudo().search(
-            [('employee_id', '=', self.id)] + _date_domain('date'),
+            [('employee_id', '=', self.id),
+             ('state', 'not in', list(self._STATEMENT_EXCLUDED_STATES)),
+             ] + _date_domain('date'),
         )
         for settlement in settlements:
             lines.append({
@@ -210,6 +240,7 @@ class HrEmployee(models.Model):
             [
                 ('employee_id', '=', self.id),
                 ('transfer_type_id', 'in', statement_type_ids),
+                ('state', 'not in', list(self._STATEMENT_EXCLUDED_STATES)),
             ] + _date_domain('create_date'),
         )
         for transfer in vehicle_transfers:
@@ -231,21 +262,33 @@ class HrEmployee(models.Model):
         # الحساب المشترك لكل الموظفين - انظر أيضاً ثغرة سابقة مشابهة
         # اكتُشفت من كشف تجريبي حقيقي (فواتير غير مرتبطة بالموظف ظهرت
         # عند الاعتماد على سلسلة شريك احتياطية أوسع بدل هذا الحقل تحديداً).
-        dues_account = self.env['account.account'].sudo().search(
-            [('code', '=', '212003')], limit=1,
-        )
-        if not dues_account:
-            dues_account = self.env['account.account'].sudo().search(
-                [('name', 'ilike', 'ذمم الموظفين')], limit=1,
-            )
+        # رقم الحساب من إعدادات الشركة لا من الكود (كان مثبَّتاً
+        # '212003' والحساب الفعلي 211201، فيخرج القسم فارغاً بلا تنبيه).
+        # وبلا limit: لكل شركة حسابها بالرقم نفسه، وأخذ الأول اعتباطاً
+        # كان يُسقط ذمم بقية الفروع - عيب ظهر بتحوّل الأسطول إلى شركة
+        # مستقلة.
+        code = (self.env.company.settlement_dues_account_code or '').strip()
+        dues_accounts = self._statement_dues_accounts(code)
         partner = self.sudo().work_contact_id
+
+        # الكشف الناقص الصامت أخطر من الخطأ الظاهر: يُذكر السبب في وجهه.
+        if not dues_accounts:
+            warnings.append(_(
+                'لم يُعثر على حساب ذمم الموظفين برقم "%s" - قسم الرواتب '
+                'والعمولات والذمم غير معروض. صحّح الرقم من: الإعدادات ← '
+                'الإعدادات العامة ← السداد البنكي.'
+            ) % (code or '-'))
+        elif not partner:
+            warnings.append(_(
+                'الموظف بلا "جهة اتصال العمل"، وقيود حساب الذمم تُربط بها '
+                '- قسم الرواتب والعمولات غير معروض.'))
         # طلب صريح: يجب أن يفحص الكشف حتى القيود غير المرحّلة (لا يزال
         # مسودة) - وليس المرحّلة فقط - على حساب "ذمم الموظفين"، بنفس
         # مبدأ باقي أقسام الكشف أعلاه (سلفة/تصفية/مخالفة) التي أصلاً لا
         # تشترط أي حالة معينة. يُستبعد "ملغاة" فقط (cancel) - قيد أُلغي
         # فعلياً لا معنى لعرضه ضمن ذمم الموظف.
         dues_domain = [
-            ('account_id', '=', dues_account.id if dues_account else False),
+            ('account_id', 'in', dues_accounts.ids),
             ('partner_id', '=', partner.id if partner else False),
             ('move_id.is_bank_settlement_move', '=', False),
             ('move_id.state', '!=', 'cancel'),
@@ -254,7 +297,7 @@ class HrEmployee(models.Model):
             dues_domain.append(('move_id', 'not in', list(bank_settlement_move_ids)))
         dues_lines = self.env['account.move.line'].sudo().search(
             dues_domain,
-        ) if (dues_account and partner) else self.env['account.move.line']
+        ) if (dues_accounts and partner) else self.env['account.move.line']
         for line in dues_lines:
             lines.append({
                 'date': line.date,
@@ -274,6 +317,7 @@ class HrEmployee(models.Model):
         # موجب ومن له مستحقات برصيد سالب - عكس ما يفهمه قارئ الكشف.
         return {
             'lines': lines,
+            'warnings': warnings,
             'total_debit': total_debit,
             'total_credit': total_credit,
             'net_total': total_debit - total_credit,

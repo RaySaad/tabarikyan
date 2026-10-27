@@ -38,6 +38,17 @@
                             </tr>
                         </table>
 
+                        <!-- تنبيه مصدر ناقص: الكشف الذي يخرج ناقصاً وهو
+                             يبدو سليماً أخطر من الذي يخرج بخطأ ظاهر. -->
+                        <div t-if="data.get('warnings')"
+                             style="border:1px solid #d9534f; border-right:4px solid #d9534f;
+                                    padding:8px 12px; margin-top:12px; font-size:12px;">
+                            <strong>تنبيه:</strong>
+                            <t t-foreach="data['warnings']" t-as="warning" t-key="warning_index">
+                                <div t-out="warning"/>
+                            </t>
+                        </div>
+
                         <table class="table table-sm mt-4" t-if="data['lines']">
                             <thead>
                                 <tr>
