@@ -129,6 +129,43 @@ class TestAdvanceRepayment(TransactionCase):
         self.assertEqual(debit_line.debit, 400.0)
         self.assertEqual(credit_line.credit, 400.0)
 
+    def test_mixed_methods_on_one_advance(self):
+        """سلفة 2000: 500 خصماً من الراتب و1500 تحويلاً - الحالة التي
+        سألت عنها. الطريقة خاصية كل دفعة لا خاصية السلفة، فيُمزَج."""
+        advance = self._paid_advance(amount=2000.0)
+        deduction = self._repay(advance, 500.0, method='salary_deduction')
+        transfer = self._repay(advance, 1500.0, method='bank_transfer')
+
+        self.assertFalse(deduction.move_id,
+                         'الخصم من الراتب أنشأ قيداً - يُحتسب مرتين')
+        self.assertTrue(transfer.move_id, 'التحويل بلا قيد محاسبي')
+        # القيد يحمل 1500 وحدها - لا مبلغ السلفة ولا المجموع.
+        credit_line = transfer.move_id.line_ids.filtered(lambda l: l.credit)
+        self.assertEqual(credit_line.credit, 1500.0,
+                         'قيد التحويل لا يحمل مبلغ دفعته وحدها')
+        self.assertEqual(credit_line.account_id, self.dues_account)
+
+        self.assertEqual(advance.repaid_amount, 2000.0)
+        self.assertEqual(advance.remaining_amount, 0.0)
+        self.assertEqual(advance.repayment_state, 'settled',
+                         'السلفة لم تُقفل رغم سداد كامل مبلغها بطريقتين')
+
+        # الكشف يعرض الدفعتين منفصلتين، والصافي صفر.
+        data = self.employee._get_employee_statement_data()
+        credits = sorted(l['credit'] for l in data['lines'] if l['credit'])
+        self.assertEqual(credits, [500.0, 1500.0],
+                         'الدفعتان لا تظهران منفصلتين في كشف الحساب')
+        self.assertEqual(data['net_total'], 0.0,
+                         'صافي الكشف لم يصل صفراً بعد السداد الكامل')
+
+    def test_mixed_methods_cannot_exceed_total(self):
+        """الضابط المقابل: الخلط لا يفتح باباً لتجاوز مبلغ السلفة."""
+        advance = self._paid_advance(amount=2000.0)
+        self._repay(advance, 500.0, method='salary_deduction')
+        self._repay(advance, 1500.0, method='bank_transfer')
+        with self.assertRaises(ValidationError):
+            self._repay(advance, 1.0, method='salary_deduction')
+
     # ------------------------------------------------------------------
     def test_exact_remaining_is_allowed(self):
         """الضابط المقابل لمنع التجاوز: المبلغ المساوي للمتبقي يمر."""
