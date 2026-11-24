@@ -2,9 +2,13 @@
 import calendar
 from datetime import timedelta
 
+import logging
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 from odoo.addons.recruitment_workflow.models.internal_context import INTERNAL, is_internal
+
+_logger = logging.getLogger(__name__)
 
 
 class BankSettlementMixin(models.AbstractModel):
@@ -113,7 +117,13 @@ class BankSettlementMixin(models.AbstractModel):
 
     # -- المبالغ والعملة -------------------------------------------------
     amount = fields.Monetary(string='المبلغ', tracking=True)
-    tax_amount = fields.Monetary(string='مبلغ الضريبة')
+    # يُحسب من ضريبة المشتريات الافتراضية للشركة ويبقى قابلاً للتعديل:
+    # سجلات معفاة (رسوم حكومية غالباً) يُصفِّرها المحاسب بيده، وعندها
+    # تُبنى الفاتورة بالإجمالي بلا ضريبة كما كانت.
+    tax_amount = fields.Monetary(
+        string='مبلغ الضريبة', compute='_compute_tax_amount',
+        store=True, readonly=False,
+    )
     total_amount = fields.Monetary(
         string='الإجمالي', compute='_compute_total_amount', store=True,
     )
@@ -223,6 +233,30 @@ class BankSettlementMixin(models.AbstractModel):
         help='تُضبَط تلقائياً عند "إرجاع للتصحيح" - تسمح مؤقتاً بتعديل '
              'الحقول الحساسة (الموظف/المبلغ...) حتى إعادة الاعتماد.',
     )
+
+    def _get_settlement_taxes(self):
+        """ضريبة المشتريات الافتراضية للشركة - مصدر واحد لكل السجلات
+        (قرار صريح: الأبسط بدل ضريبة لكل نوع)."""
+        self.ensure_one()
+        company = self.company_id or self.env.company
+        return company.account_purchase_tax_id
+
+    @api.depends('amount', 'company_id')
+    def _compute_tax_amount(self):
+        """الضريبة كانت تُكتب يدوياً، فتختلف عن حساب أودو ويختلف القيد
+        عن السجل. صارت تُحسب من الضريبة نفسها بـcompute_all - وهي التي
+        تحسب بها أودو فاتورة المورد حرفياً، فلا فرق في الهللات."""
+        for rec in self:
+            taxes = rec._get_settlement_taxes()
+            if not taxes or not rec.amount:
+                rec.tax_amount = 0.0
+                continue
+            currency = rec.currency_id or rec.company_id.currency_id
+            result = taxes.compute_all(
+                rec.amount, currency=currency, quantity=1.0,
+                partner=rec._get_settlement_vendor() or None,
+            )
+            rec.tax_amount = result['total_included'] - result['total_excluded']
 
     @api.depends('amount', 'tax_amount')
     def _compute_total_amount(self):
@@ -928,7 +962,7 @@ class BankSettlementMixin(models.AbstractModel):
                 }),
                 (0, 0, {
                     'name': self.name,
-                    'account_id': self.journal_id.default_account_id.id,
+                    'account_id': self._get_outstanding_payment_account().id,
                     'debit': 0.0,
                     'credit': self.total_amount,
                     'analytic_distribution': False,
@@ -1369,6 +1403,9 @@ class BankSettlementMixin(models.AbstractModel):
                 '(حساب المصروف الذي تُسجَّل عليه) - أو ضبط حساب مصروف '
                 'افتراضي على نوع السجل.'
             ))
+        # سجل معفى (المحاسب صفّر ضريبته): يُبنى بالإجمالي بلا ضريبة
+        # كما كان - فلا تُفرض ضريبة على رسوم حكومية معفاة.
+        taxes = self._get_settlement_taxes() if self.tax_amount else             self.env['account.tax']
         vals = {
             'move_type': 'in_invoice',
             'partner_id': vendor.id,
@@ -1380,7 +1417,13 @@ class BankSettlementMixin(models.AbstractModel):
             'invoice_line_ids': [(0, 0, {
                 'name': self.name,
                 'quantity': 1,
-                'price_unit': self.total_amount,
+                # الضريبة كانت تذوب داخل حساب المصروف: السطر كان
+                # يُبنى بالإجمالي بلا أي ضريبة، فلا ضريبة مدخلات
+                # تُسجَّل ولا تظهر في الإقرار. صار السطر بالمبلغ
+                # الصافي وضريبته، فتبنيها أودو سطر ضريبة مستقلاً
+                # ويبقى الإجمالي كما هو.
+                'price_unit': self.amount if taxes else self.total_amount,
+                'tax_ids': [(6, 0, taxes.ids)] if taxes else [(5, 0, 0)],
                 'account_id': account.id,
                 # الدفعة المقدمة: لا توزيع تحليلي على الفاتورة - هي حركة
                 # بين حسابَي ميزانية (أصل مقابل التزام) ولا مصروف بعد؛
@@ -1487,6 +1530,47 @@ class BankSettlementMixin(models.AbstractModel):
         return move.id
 
 
+    def _get_outstanding_payment_account(self):
+        """حساب المدفوعات المعلقة - لا حساب البنك.
+
+        كان الدائن يقيَّد على حساب الدفتر البنكي مباشرة، فينقص رصيد
+        البنك في الدفاتر قبل أن يظهر الخصم في كشف البنك، ولا يبقى شيء
+        تُطابَق به حركة الكشف لاحقاً.
+
+        الترتيب هو نفسه الذي تستعمله أودو في مدفوعاتها
+        (account.payment._get_outstanding_account) حتى تُطابِق هذه
+        القيودَ أداةُ المطابقة البنكية كما تُطابق مدفوعات أودو."""
+        self.ensure_one()
+        journal = self.journal_id
+        for line in journal.outbound_payment_method_line_ids:
+            if line.payment_account_id:
+                return line.payment_account_id
+        company = self.company_id or self.env.company
+        chart = self.env['account.chart.template'].with_context(
+            allowed_company_ids=company.root_id.ids)
+        account = chart.ref(
+            'account_journal_payment_credit_account_id', raise_if_not_found=False)
+        account = account or company.transfer_account_id
+        if account:
+            return account
+
+        # لا حساب معلّق مضبوطاً: لا نوقف الصرف (أودو نفسها تفشل هنا في
+        # قاعدة بلا شجرة حسابات)، ولا نرجع للبنك بصمت - نرجع إليه
+        # ونكتب السبب في محادثة السجل، فيراه المحاسب على السجل نفسه لا
+        # في سجل خادم لا يفتحه أحد.
+        self.sudo().message_post(body=_(
+            'تنبيه: لم يُعثر على حساب "المدفوعات المعلقة" لشركة %(company)s، '
+            'فقُيِّد الطرف الدائن على حساب البنك مباشرة. لتفعيل المطابقة '
+            'البنكية حدّد الحساب من: المحاسبة ← الإعدادات ← حسابات '
+            'المدفوعات المعلقة، أو على طريقة الدفع الصادرة في دفتر '
+            '%(journal)s.'
+        ) % {'company': company.display_name,
+             'journal': journal.display_name})
+        _logger.warning(
+            'السداد البنكي %s: لا حساب مدفوعات معلقة لشركة %s - قُيِّد على '
+            'حساب البنك مباشرة.', self.name, company.display_name)
+        return journal.default_account_id
+
     def _get_settlement_move_vals(self):
         """قيم قيد السداد مشتقةً من قيم السجل *الحالية* - فُصلت عن
         الإنشاء لأنها تُستخدَم أيضاً لتحديث قيد مسودة عاد من "إرجاع
@@ -1519,7 +1603,7 @@ class BankSettlementMixin(models.AbstractModel):
                 }),
                 (0, 0, {
                     'name': self.name,
-                    'account_id': self.journal_id.default_account_id.id,
+                    'account_id': self._get_outstanding_payment_account().id,
                     'debit': 0.0,
                     'credit': self.total_amount,
                 }),
