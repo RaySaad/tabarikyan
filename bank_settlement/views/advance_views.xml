@@ -15,11 +15,6 @@
                     <field name="employee_category"/>
                     <field name="advance_reason_id" options="{'no_create': True, 'no_open': True}"/>
                     <field name="amount" sum="الإجمالي"/>
-                    <field name="repaid_amount" sum="المسدَّد" optional="hide"/>
-                    <field name="remaining_amount" sum="المتبقي" optional="show"/>
-                    <field name="repayment_state" widget="badge" optional="show"
-                           decoration-success="repayment_state == 'settled'"
-                           decoration-warning="repayment_state == 'partial'"/>
                     <field name="state" widget="badge"
                            decoration-success="state == 'paid'"
                            decoration-info="state == 'waiting_approval'"
@@ -38,13 +33,7 @@
                     <field name="employee_id" options="{'no_create': True, 'no_open': True}"/>
                     <field name="advance_reason_id" options="{'no_create': True, 'no_open': True}"/>
                     <filter name="inactive" string="مؤرشف" domain="[('active', '=', False)]"/>
-                    <separator/>
-                    <filter name="unsettled" string="غير مسدَّدة"
-                            domain="[('state', '=', 'paid'), ('repayment_state', '!=', 'settled')]"/>
-                    <filter name="settled" string="مسدَّدة بالكامل"
-                            domain="[('repayment_state', '=', 'settled')]"/>
                     <group>
-                        <filter name="group_by_repayment_state" string="حالة السداد" context="{'group_by': 'repayment_state'}"/>
                         <filter name="group_by_state" string="الحالة" context="{'group_by': 'state'}"/>
                         <filter name="group_by_employee" string="الموظف" context="{'group_by': 'employee_id'}"/>
                     </group>
@@ -122,25 +111,9 @@
                                     <span class="o_stat_text">المصروف فعلاً</span>
                                 </div>
                             </button>
-                            <button name="action_open_repayments" type="object"
-                                    class="oe_stat_button" icon="fa-money"
-                                    invisible="state != 'paid'">
-                                <div class="o_stat_info">
-                                    <field name="remaining_amount" widget="monetary"
-                                           class="o_stat_value"/>
-                                    <span class="o_stat_text">المتبقي على الموظف</span>
-                                </div>
-                            </button>
                         </div>
                         <div class="oe_title">
                             <h1><field name="name" readonly="1"/></h1>
-                        </div>
-                        <!-- تحذير لا منع: القرار إداري، والرقم يُعرض
-                             لمسؤول المشروع والمدير العام وقت الاعتماد. -->
-                        <div class="alert alert-warning" role="alert"
-                             invisible="employee_open_advance_amount &lt;= 0 or state in ('paid', 'rejected', 'cancel')">
-                            على هذا الموظف سلف سابقة لم تُسدَّد بعد بمبلغ
-                            <field name="employee_open_advance_amount" readonly="1" class="oe_inline"/>.
                         </div>
                         <div class="alert alert-info" role="alert"
                              invisible="not is_partially_disbursed">
@@ -175,12 +148,6 @@
                                 <field name="undisbursed_amount"
                                        invisible="not is_partially_disbursed"/>
                                 <field name="is_partially_disbursed" invisible="1"/>
-                                <field name="repaid_amount" invisible="state != 'paid'"/>
-                                <field name="remaining_amount" invisible="state != 'paid'"/>
-                                <field name="repayment_state" widget="badge"
-                                       invisible="state != 'paid'"
-                                       decoration-success="repayment_state == 'settled'"
-                                       decoration-warning="repayment_state == 'partial'"/>
                             </group>
                         </group>
                         <group string="طريقة الاستلام">
@@ -220,16 +187,6 @@
                                 <field name="linked_account_id" readonly="state != 'approved' and not returned_for_correction"
                                        invisible="state not in ('approved', 'paid') and not returned_for_correction" options="{'no_create': True, 'no_open': True}"/>
                             </group>
-                        </group>
-                        <group string="استرداد السلفة" invisible="state != 'paid'"
-                               name="advance_repayments">
-                            <!-- لا يظهر قبل "تم الصرف": لا دين قبل أن
-                                 يخرج المال فعلاً. وموضعه هنا لا في آخر
-                                 الشاشة: المحاسب يسجّل السداد كثيراً،
-                                 و"الدفعة المقدمة" أسفله حالة نادرة. -->
-                            <field name="repayment_ids" nolabel="1"
-                                   context="{'default_advance_id': id}"
-                                   readonly="state != 'paid'"/>
                         </group>
                         <group string="ملاحظات">
                             <field name="notes" nolabel="1"/>

@@ -228,100 +228,7 @@ class BankSettlementAdvance(models.Model):
                 bank_settlement_disbursement_internal=True).unlink()
         return super()._unpost_settlement_move()
 
-    # -- استرداد السلفة ---------------------------------------------------
-    # لم يكن للاسترداد أي أثر في الموديول: السلفة تنتهي عند "تم الصرف"
-    # وتبقى ديناً كاملاً في كشف حساب الموظف إلى الأبد. انظر
-    # advance_repayment.py لتفصيل الطريقتين (خصم من الراتب بلا قيد،
-    # ونقدي/تحويل بقيد).
-    repayment_ids = fields.One2many(
-        'bank.settlement.advance.repayment', 'advance_id',
-        string='دفعات السداد',
-    )
-    repaid_amount = fields.Monetary(
-        string='المسدَّد', compute='_compute_repayment_amounts', store=True,
-        help='مجموع دفعات السداد المسجَّلة (لا تُحتسب المسودة ولا الملغاة).',
-    )
-    remaining_amount = fields.Monetary(
-        string='المتبقي', compute='_compute_repayment_amounts', store=True,
-    )
-    repayment_state = fields.Selection(
-        selection=[
-            ('open', 'قائمة'),
-            ('partial', 'مسدَّدة جزئياً'),
-            ('settled', 'مسدَّدة بالكامل'),
-        ],
-        string='حالة السداد', compute='_compute_repayment_amounts', store=True,
-    )
-    # تحذير لا منع (قرار صريح): المنع قرار إداري لا تقني - يُعرض المتبقي
-    # لمسؤول المشروع والمدير العام وقت الاعتماد، والقرار لهما.
-    employee_open_advance_amount = fields.Monetary(
-        string='سلف سابقة غير مسدَّدة',
-        compute='_compute_employee_open_advance_amount',
-    )
-
-    @api.depends('total_amount', 'repayment_ids.amount', 'repayment_ids.state')
-    def _compute_repayment_amounts(self):
-        for rec in self:
-            repaid = sum(
-                line.amount for line in rec.repayment_ids
-                if line.state == 'posted'
-            )
-            rec.repaid_amount = repaid
-            rec.remaining_amount = (rec.total_amount or 0.0) - repaid
-            currency = rec.currency_id or rec.company_id.currency_id
-            if not repaid:
-                rec.repayment_state = 'open'
-            elif currency and currency.is_zero(rec.remaining_amount):
-                rec.repayment_state = 'settled'
-            elif not currency and not rec.remaining_amount:
-                rec.repayment_state = 'settled'
-            else:
-                rec.repayment_state = 'partial'
-
-    def _compute_employee_open_advance_amount(self):
-        """متبقي سلف الموظف *الأخرى* المصروفة - لا يشمل هذه السلفة."""
-        for rec in self:
-            if not rec.employee_id:
-                rec.employee_open_advance_amount = 0.0
-                continue
-            others = self.search([
-                ('employee_id', '=', rec.employee_id.id),
-                ('state', '=', 'paid'),
-                # _origin لا rec.id: على سجل جديد في الشاشة يكون المعرّف
-                # NewId فيكسر النطاق.
-                ('id', '!=', rec._origin.id or 0),
-            ])
-            rec.employee_open_advance_amount = sum(
-                o.remaining_amount for o in others if o.remaining_amount > 0)
-
-    def action_open_repayments(self):
-        self.ensure_one()
-        return {
-            'name': _('دفعات سداد %s') % self.name,
-            'type': 'ir.actions.act_window',
-            'res_model': 'bank.settlement.advance.repayment',
-            'view_mode': 'list,form',
-            'domain': [('advance_id', '=', self.id)],
-            'context': {'default_advance_id': self.id},
-        }
-
-    def _check_no_posted_repayments(self, action_label):
-        """يمنع عكس/رفض سلفة سُدِّد منها شيء فعلاً.
-
-        عكس قيد الصرف وحده يترك قيود الاسترداد قائمة في الدفاتر بلا
-        أصل - رصيد دائن على ذمة الموظف بلا مقابل."""
-        for rec in self:
-            posted = rec.repayment_ids.filtered(lambda l: l.state == 'posted')
-            if posted:
-                raise UserError(_(
-                    'لا يمكن %(action)s سلفة سُجِّل عليها سداد بمبلغ '
-                    '%(amount)s - ألغِ دفعات السداد أولاً (يُعكس قيدها) '
-                    'ثم أعد المحاولة.'
-                ) % {'action': action_label,
-                     'amount': sum(posted.mapped('amount'))})
-
     def action_reverse_and_correct(self, reason=False):
-        self._check_no_posted_repayments(_('إلغاء تنفيذ'))
         # القيد الأول يعكسه المِكسِن (move_id)؛ ودفعات الصرف الإضافية لها
         # قيودها الخاصة فتُعكس هنا - وإلا بقي جزء من المال مصروفاً في
         # الدفاتر لسلفة أُلغي تنفيذها.
@@ -588,7 +495,6 @@ class BankSettlementAdvance(models.Model):
         فعلياً بدونه."""
         if not reason:
             raise UserError('يجب إدخال سبب الرفض.')
-        self._check_no_posted_repayments(_('رفض'))
         for rec in self:
             if rec.state in ('paid', 'cancel', 'rejected'):
                 raise UserError(

@@ -123,7 +123,7 @@ class TestSettlementTaxAndOutstanding(TransactionCase):
             'company_ids': [(6, 0, [self.company.id])],
         })
         # أعلى مصدر في الترتيب (طريقة الدفع الصادرة على الدفتر) - انظر
-        # نفس الشرح في test_advance_repayment: الاكتفاء بحساب التحويلات
+        # الاكتفاء بحساب التحويلات
         # يجعل الاختبار يمر بلا شجرة حسابات ويفشل بوجودها.
         self.company.transfer_account_id = outstanding_account.id
         for line in self.bank_journal.outbound_payment_method_line_ids:

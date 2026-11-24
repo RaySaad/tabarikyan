@@ -195,12 +195,6 @@ class HrEmployee(models.Model):
                 [('employee_id', '=', self.id), ('move_id', '!=', False)],
             ):
                 bank_settlement_move_ids.add(rec.move_id.id)
-        # قيود استرداد السلف أيضاً - تظهر في قسم السلف أدناه، فلو بقيت
-        # ضمن قسم حساب الذمم لظهر السداد مرتين.
-        for repayment in self.env['bank.settlement.advance.repayment'].sudo().search(
-            [('employee_id', '=', self.id), ('move_id', '!=', False)],
-        ):
-            bank_settlement_move_ids.add(repayment.move_id.id)
 
         def _date_domain(field_name):
             domain = []
@@ -221,27 +215,6 @@ class HrEmployee(models.Model):
                 'description': _('سلفة - %s') % (adv.advance_reason_id.name or adv.name),
                 'debit': adv.amount,
                 'credit': 0.0,
-            })
-
-        # استرداد السلف - دائن يُنقص ذمة الموظف. يُعرض هنا لا من حساب
-        # الذمم: دفعات "خصم من الراتب" بلا قيد أصلاً (مسير الرواتب
-        # يقيّدها)، ودفعات النقد/التحويل قيودها مستثناة أدناه كبقية
-        # قيود السداد البنكي، فبدون هذا القسم يبقى الكشف يعرض السلفة
-        # كاملةً وكأن شيئاً لم يُسدَّد.
-        repayments = self.env['bank.settlement.advance.repayment'].sudo().search(
-            [('employee_id', '=', self.id), ('state', '=', 'posted'),
-             ] + _date_domain('date'),
-        )
-        for repayment in repayments:
-            lines.append({
-                'date': repayment.date,
-                'description': _('سداد سلفة %(advance)s - %(method)s') % {
-                    'advance': repayment.advance_id.name,
-                    'method': dict(
-                        repayment._fields['method'].selection).get(repayment.method),
-                },
-                'debit': 0.0,
-                'credit': repayment.amount,
             })
 
         settlements = self.env['bank.settlement.representative'].sudo().search(

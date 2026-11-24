@@ -155,13 +155,6 @@
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
         </record>
 
-        <record id="bank_settlement_advance_repayment_company_rule" model="ir.rule">
-            <field name="name">سداد السلف: حسب الشركة</field>
-            <field name="model_id" ref="model_bank_settlement_advance_repayment"/>
-            <field name="global" eval="True"/>
-            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
-        </record>
-
         <record id="bank_settlement_government_fee_company_rule" model="ir.rule">
             <field name="name">الرسوم الحكومية: حسب الشركة</field>
             <field name="model_id" ref="model_bank_settlement_government_fee"/>
