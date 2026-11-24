@@ -109,6 +109,15 @@
                                     <span class="o_stat_text">القيد المحاسبي</span>
                                 </div>
                             </button>
+                            <button name="action_open_repayments" type="object"
+                                    class="oe_stat_button" icon="fa-money"
+                                    invisible="state != 'paid'">
+                                <div class="o_stat_info">
+                                    <field name="remaining_amount" widget="monetary"
+                                           class="o_stat_value"/>
+                                    <span class="o_stat_text">المتبقي على الموظف</span>
+                                </div>
+                            </button>
                         </div>
                         <div class="oe_title">
                             <h1><field name="name" readonly="1"/></h1>
@@ -184,6 +193,16 @@
                                        invisible="state not in ('approved', 'paid') and not returned_for_correction" options="{'no_create': True, 'no_open': True}"/>
                             </group>
                         </group>
+                        <group string="استرداد السلفة" invisible="state != 'paid'"
+                               name="advance_repayments">
+                            <!-- لا يظهر قبل "تم الصرف": لا دين قبل أن
+                                 يخرج المال فعلاً. وموضعه هنا لا في آخر
+                                 الشاشة: المحاسب يسجّل السداد كثيراً،
+                                 و"الدفعة المقدمة" أسفله حالة نادرة. -->
+                            <field name="repayment_ids" nolabel="1"
+                                   context="{'default_advance_id': id}"
+                                   readonly="state != 'paid'"/>
+                        </group>
                         <group string="ملاحظات">
                             <field name="notes" nolabel="1"/>
                         </group>
@@ -215,13 +234,6 @@
                                     إيقاف ما تبقّى من الجدول
                                 </button>
                             </group>
-                        </group>
-                        <group string="استرداد السلفة" invisible="state != 'paid'">
-                            <!-- لا يظهر قبل "تم الصرف": لا دين قبل أن
-                                 يخرج المال فعلاً. -->
-                            <field name="repayment_ids" nolabel="1"
-                                   context="{'default_advance_id': id}"
-                                   readonly="state != 'paid'"/>
                         </group>
                     </sheet>
                     <chatter/>
