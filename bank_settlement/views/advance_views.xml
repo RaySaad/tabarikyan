@@ -102,13 +102,18 @@
                                     <span class="o_stat_text">القيد المحاسبي</span>
                                 </div>
                             </button>
+                            <!-- يظهر كلما تعدّدت الدفعات، لا أثناء الصرف
+                                 الجزئي وحده: سلفة اكتمل صرفها على دفعتين
+                                 لها قيدان، وإخفاء الزر بعد اكتمالها كان
+                                 يترك المحاسب أمام قيد الدفعة الأولى فقط. -->
+                            <field name="disbursement_count" invisible="1"/>
                             <button name="action_view_disbursements" type="object"
                                     class="oe_stat_button" icon="fa-list-ul"
-                                    invisible="not is_partially_disbursed">
+                                    invisible="disbursement_count &lt; 2 and not is_partially_disbursed">
                                 <div class="o_stat_info">
                                     <field name="disbursed_amount" widget="monetary"
                                            class="o_stat_value"/>
-                                    <span class="o_stat_text">المصروف فعلاً</span>
+                                    <span class="o_stat_text">المصروف على دفعات</span>
                                 </div>
                             </button>
                         </div>
@@ -124,6 +129,12 @@
                             — المتبقي للصرف
                             <field name="undisbursed_amount" readonly="1" class="oe_inline"/>.
                             اضغط "تم الصرف" مرة أخرى لصرف البقية.
+                        </div>
+                        <div class="alert alert-info" role="alert"
+                             invisible="disbursement_count &lt; 2 or is_partially_disbursed">
+                            صُرفت هذه السلفة على
+                            <field name="disbursement_count" readonly="1" class="oe_inline"/>
+                            دفعات، ولكل دفعة قيدها — زر "القيد المحاسبي" يفتحها كلها.
                         </div>
                         <div class="alert alert-warning" role="alert" invisible="not returned_for_correction">
                             تم إرجاع هذا السجل للتصحيح - يمكن تعديل المبلغ وبيانات السداد
@@ -144,7 +155,7 @@
                                 <field name="currency_id" invisible="1"/>
                                 <field name="amount" readonly="state != 'draft' and not returned_for_correction"/>
                                 <field name="disbursed_amount"
-                                       invisible="not is_partially_disbursed"/>
+                                       invisible="disbursement_count &lt; 2 and not is_partially_disbursed"/>
                                 <field name="undisbursed_amount"
                                        invisible="not is_partially_disbursed"/>
                                 <field name="is_partially_disbursed" invisible="1"/>

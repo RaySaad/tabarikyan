@@ -104,6 +104,36 @@ class TestAdvanceDisbursement(TransactionCase):
             for move in lines.mapped('move_id'))
         self.assertEqual(total, 1500.0, 'مجموع القيود لا يساوي مبلغ السلفة')
 
+    def test_view_move_opens_every_entry_after_several_payments(self):
+        """سلفة 2000 صُرفت 500 ثم 1500: زر "القيد المحاسبي" كان يفتح
+        قيد الـ500 وحده، فتبدو السلفة مصروفة بـ500 لا بـ2000."""
+        advance = self._approved_advance(amount=2000.0)
+        self._wizard(advance, 'partial', 500.0)
+        self._wizard(advance, 'full')
+        self.assertEqual(advance.state, 'paid')
+        self.assertEqual(advance.disbursement_count, 2)
+
+        action = advance.action_view_move()
+        self.assertEqual(
+            action.get('res_model'), 'account.move',
+            'الزر لا يفتح القيود')
+        self.assertNotIn(
+            'res_id', action,
+            'الزر ما زال يفتح قيداً واحداً من قيدين')
+        opened = self.env['account.move'].search(action['domain'])
+        self.assertEqual(len(opened), 2, 'لم تُفتح قيود الدفعتين معاً')
+        self.assertEqual(
+            sum(opened.mapped(lambda m: sum(
+                m.line_ids.filtered(lambda l: l.debit).mapped('debit')))),
+            2000.0, 'مجموع القيود المفتوحة لا يساوي مبلغ السلفة')
+
+    def test_view_move_still_opens_the_single_entry(self):
+        """الضابط المقابل: الصرف بدفعة واحدة يفتح قيده مباشرةً كما كان."""
+        advance = self._approved_advance()
+        advance.action_done()
+        action = advance.action_view_move()
+        self.assertEqual(action.get('res_id'), advance.move_id.id)
+
     def test_two_partials_on_the_same_day(self):
         """جزء كراتب وجزء كسلفة في اليوم نفسه - حالة صرّح بها المستخدم."""
         advance = self._approved_advance()

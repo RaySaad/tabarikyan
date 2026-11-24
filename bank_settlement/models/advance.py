@@ -83,6 +83,12 @@ class BankSettlementAdvance(models.Model):
     is_partially_disbursed = fields.Boolean(
         string='مصروفة جزئياً', compute='_compute_disbursement_amounts', store=True,
     )
+    # عدد الدفعات لا "هل هي جزئية": سلفة اكتمل صرفها على دفعتين لم تعد
+    # جزئية، ومع ذلك قيودها متعددة ويجب أن يصل إليها المحاسب.
+    disbursement_count = fields.Integer(
+        string='عدد دفعات الصرف', compute='_compute_disbursement_amounts',
+        store=True,
+    )
 
     @api.depends('total_amount', 'disbursement_ids.amount',
                  'disbursement_ids.state')
@@ -96,6 +102,8 @@ class BankSettlementAdvance(models.Model):
             rec.undisbursed_amount = (rec.total_amount or 0.0) - done
             rec.is_partially_disbursed = bool(done) and bool(
                 rec.undisbursed_amount)
+            rec.disbursement_count = len(rec.disbursement_ids.filtered(
+                lambda line: line.state == 'posted'))
 
     def _get_settlement_move_vals(self):
         """يحترم مبلغ الدفعة الجارية بدل كامل مبلغ السلفة.
@@ -206,6 +214,24 @@ class BankSettlementAdvance(models.Model):
             'view_mode': 'list,form',
             'domain': [('advance_id', '=', self.id)],
         }
+
+    def action_view_move(self):
+        """سلفة صُرفت على دفعات لها قيد لكل دفعة، وmove_id هو الأول
+        وحده - ففتحه يُظهر 500 من سلفة 2000 ويوحي بأن الباقي لم يُصرف.
+        تُفتح القيود كلها حين تتعدّد."""
+        self.ensure_one()
+        moves = self.disbursement_ids.filtered(
+            lambda line: line.state == 'posted' and line.move_id
+        ).mapped('move_id')
+        if len(moves) > 1:
+            return {
+                'name': _('قيود صرف %s') % self.name,
+                'type': 'ir.actions.act_window',
+                'res_model': 'account.move',
+                'view_mode': 'list,form',
+                'domain': [('id', 'in', moves.ids)],
+            }
+        return super().action_view_move()
 
     def _unpost_settlement_move(self):
         """الإرجاع للتصحيح من "تم الصرف" يعيد قيداً واحداً لمسودة - ولا
