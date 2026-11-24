@@ -73,7 +73,11 @@
                                 type="object" class="btn-primary"
                                 groups="bank_settlement.group_bank_settlement_manager"
                                 invisible="state != 'pm_approved'"/>
-                        <button name="action_done" string="تم الصرف"
+                        <!-- يفتح نافذة "كامل/جزئي" بدل الصرف الفوري بكامل
+                             المبلغ - action_done نفسها لم تتغيّر وتبقى
+                             للاستدعاء المباشر والاستيراد. -->
+                        <button name="action_open_disbursement_wizard"
+                                string="تم الصرف"
                                 type="object" class="btn-primary"
                                 groups="bank_settlement.group_bank_settlement_reviewer"
                                 invisible="state != 'approved'"/>
@@ -109,6 +113,15 @@
                                     <span class="o_stat_text">القيد المحاسبي</span>
                                 </div>
                             </button>
+                            <button name="action_view_disbursements" type="object"
+                                    class="oe_stat_button" icon="fa-list-ul"
+                                    invisible="not is_partially_disbursed">
+                                <div class="o_stat_info">
+                                    <field name="disbursed_amount" widget="monetary"
+                                           class="o_stat_value"/>
+                                    <span class="o_stat_text">المصروف فعلاً</span>
+                                </div>
+                            </button>
                             <button name="action_open_repayments" type="object"
                                     class="oe_stat_button" icon="fa-money"
                                     invisible="state != 'paid'">
@@ -129,6 +142,16 @@
                             على هذا الموظف سلف سابقة لم تُسدَّد بعد بمبلغ
                             <field name="employee_open_advance_amount" readonly="1" class="oe_inline"/>.
                         </div>
+                        <div class="alert alert-info" role="alert"
+                             invisible="not is_partially_disbursed">
+                            صُرف من هذه السلفة
+                            <field name="disbursed_amount" readonly="1" class="oe_inline"/>
+                            من
+                            <field name="total_amount" readonly="1" class="oe_inline"/>
+                            — المتبقي للصرف
+                            <field name="undisbursed_amount" readonly="1" class="oe_inline"/>.
+                            اضغط "تم الصرف" مرة أخرى لصرف البقية.
+                        </div>
                         <div class="alert alert-warning" role="alert" invisible="not returned_for_correction">
                             تم إرجاع هذا السجل للتصحيح - يمكن تعديل المبلغ وبيانات السداد
                             البنكي (الحساب/دفتر اليومية/رقم السداد) مؤقتاً حتى إعادة الاعتماد.
@@ -147,6 +170,11 @@
                                        readonly="state != 'draft'" options="{'no_create': True, 'no_open': True}"/>
                                 <field name="currency_id" invisible="1"/>
                                 <field name="amount" readonly="state != 'draft' and not returned_for_correction"/>
+                                <field name="disbursed_amount"
+                                       invisible="not is_partially_disbursed"/>
+                                <field name="undisbursed_amount"
+                                       invisible="not is_partially_disbursed"/>
+                                <field name="is_partially_disbursed" invisible="1"/>
                                 <field name="repaid_amount" invisible="state != 'paid'"/>
                                 <field name="remaining_amount" invisible="state != 'paid'"/>
                                 <field name="repayment_state" widget="badge"

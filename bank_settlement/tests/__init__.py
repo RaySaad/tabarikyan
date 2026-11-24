@@ -13,3 +13,4 @@ from . import test_section_groups
 from . import test_employee_statement
 from . import test_tax_and_outstanding
 from . import test_advance_repayment
+from . import test_advance_disbursement

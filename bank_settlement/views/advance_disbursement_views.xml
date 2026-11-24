@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_bank_settlement_advance_disbursement_list" model="ir.ui.view">
+            <field name="name">bank.settlement.advance.disbursement.list</field>
+            <field name="model">bank.settlement.advance.disbursement</field>
+            <field name="arch" type="xml">
+                <list string="دفعات الصرف" create="false"
+                      decoration-muted="state == 'cancel'">
+                    <field name="currency_id" column_invisible="1"/>
+                    <field name="date"/>
+                    <field name="amount" sum="المصروف"/>
+                    <field name="bank_reference"/>
+                    <field name="move_id" options="{'no_create': True}"/>
+                    <field name="state" widget="badge"
+                           decoration-success="state == 'posted'"
+                           decoration-muted="state == 'cancel'"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_bank_settlement_advance_disbursement_form" model="ir.ui.view">
+            <field name="name">bank.settlement.advance.disbursement.form</field>
+            <field name="model">bank.settlement.advance.disbursement</field>
+            <field name="arch" type="xml">
+                <form string="دفعة صرف" create="false">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="advance_id" readonly="1"
+                                       options="{'no_create': True}"/>
+                                <field name="employee_id" readonly="1"
+                                       options="{'no_create': True, 'no_open': True}"/>
+                                <field name="currency_id" invisible="1"/>
+                            </group>
+                            <group>
+                                <field name="date" readonly="1"/>
+                                <field name="amount" readonly="1"/>
+                                <field name="bank_reference" readonly="1"/>
+                                <field name="move_id" readonly="1"
+                                       options="{'no_create': True}"/>
+                                <field name="state" readonly="1"/>
+                            </group>
+                        </group>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+    </data>
+</odoo>

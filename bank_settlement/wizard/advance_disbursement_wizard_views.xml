@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_bank_settlement_advance_disbursement_wizard_form" model="ir.ui.view">
+            <field name="name">bank.settlement.advance.disbursement.wizard.form</field>
+            <field name="model">bank.settlement.advance.disbursement.wizard</field>
+            <field name="arch" type="xml">
+                <form string="صرف السلفة">
+                    <field name="advance_id" invisible="1"/>
+                    <field name="currency_id" invisible="1"/>
+                    <group>
+                        <group string="السلفة">
+                            <field name="total_amount"/>
+                            <field name="disbursed_amount"
+                                   invisible="not disbursed_amount"/>
+                            <field name="undisbursed_amount"/>
+                        </group>
+                        <group string="هذه الدفعة">
+                            <field name="mode" widget="radio"/>
+                            <field name="amount" readonly="mode == 'full'"/>
+                            <field name="date"/>
+                            <field name="bank_reference"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info" role="alert"
+                         invisible="mode != 'partial'">
+                        الصرف الجزئي يُنشئ قيداً بمبلغ هذه الدفعة وحدها، وتبقى
+                        السلفة في "تمت الموافقة" ليبقى زر الصرف متاحاً للدفعة
+                        التالية. تُقفل السلفة تلقائياً عند صرف كامل المبلغ.
+                    </div>
+                    <footer>
+                        <button name="action_confirm" type="object"
+                                string="صرف" class="btn-primary"/>
+                        <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+    </data>
+</odoo>

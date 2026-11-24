@@ -7,6 +7,7 @@ from . import prepaid_schedule
 from . import bank_settlement_mixin
 from . import advance_reason
 from . import advance
+from . import advance_disbursement
 from . import advance_repayment
 from . import government_fee_type
 from . import government_fee

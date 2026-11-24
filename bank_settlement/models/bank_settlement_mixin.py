@@ -1377,12 +1377,16 @@ class BankSettlementMixin(models.AbstractModel):
             # فصل القيد الأصلي: الإتمام التالي ينشئ قيداً صحيحاً جديداً
             # (action_done تتخطى الإنشاء إن كان move_id موجوداً). الأصل
             # والعكسي يبقيان في الدفاتر ومسجَّلين في المحادثة أعلاه.
+            # الحالة من الخطّاف لا نصاً حرفياً: سلسلة السلفة تسمّي حالة
+            # اعتماد المدير العام "approved" لا "confirmed"، وقيد
+            # _check_state_values يرفض "confirmed" عليها - فكان الزر
+            # يفشل دائماً على السلف بخطأ "حالة مؤكدة غير صالحة".
             rec.with_context(
                 bank_settlement_skip_approval_lock=INTERNAL,
                 **{rec._STATE_WRITE_KEY: INTERNAL}
             ).write({
                 'move_id': False,
-                'state': 'confirmed',
+                'state': rec._get_bank_fields_editable_state(),
                 'returned_for_correction': True,
             })
 

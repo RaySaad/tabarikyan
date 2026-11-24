@@ -65,6 +65,169 @@ class BankSettlementAdvance(models.Model):
         },
     )
 
+    # -- الصرف على دفعات --------------------------------------------------
+    # كان الصرف حدثاً واحداً لا يتجزأ: ضغطة "تم الصرف" تُنشئ قيداً واحداً
+    # بكامل المبلغ وتُقفل السلفة. والواقع أن المعتمد قد يُحوَّل على دفعات
+    # (جزء اليوم وجزء لاحقاً، أو جزء مع الراتب وجزء منفصلاً في اليوم
+    # نفسه). انظر advance_disbursement.py.
+    disbursement_ids = fields.One2many(
+        'bank.settlement.advance.disbursement', 'advance_id',
+        string='دفعات الصرف',
+    )
+    disbursed_amount = fields.Monetary(
+        string='المصروف', compute='_compute_disbursement_amounts', store=True,
+    )
+    undisbursed_amount = fields.Monetary(
+        string='المتاح للصرف', compute='_compute_disbursement_amounts', store=True,
+    )
+    is_partially_disbursed = fields.Boolean(
+        string='مصروفة جزئياً', compute='_compute_disbursement_amounts', store=True,
+    )
+
+    @api.depends('total_amount', 'disbursement_ids.amount',
+                 'disbursement_ids.state')
+    def _compute_disbursement_amounts(self):
+        for rec in self:
+            done = sum(
+                line.amount for line in rec.disbursement_ids
+                if line.state == 'posted'
+            )
+            rec.disbursed_amount = done
+            rec.undisbursed_amount = (rec.total_amount or 0.0) - done
+            rec.is_partially_disbursed = bool(done) and bool(
+                rec.undisbursed_amount)
+
+    def _get_settlement_move_vals(self):
+        """يحترم مبلغ الدفعة الجارية بدل كامل مبلغ السلفة.
+
+        الطرفان معاً: القيد يبقى متوازناً، ويحمل ما حُوِّل فعلاً في هذه
+        الدفعة لا ما اعتُمد - فتُطابَق كل حوالة بنكية على حدة."""
+        vals = super()._get_settlement_move_vals()
+        amount = self.env.context.get('bank_settlement_disbursement_amount')
+        if amount:
+            for command in vals['line_ids']:
+                line = command[2]
+                if line.get('debit'):
+                    line['debit'] = amount
+                if line.get('credit'):
+                    line['credit'] = amount
+        return vals
+
+    def _disburse(self, amount, date=False, reference=False):
+        """يصرف دفعة واحدة بقيدها الخاص ويسجّلها سطراً تحت السلفة.
+
+        الدفعة الأولى تمر بالمسار الأصلي (_ensure_settlement_move_posted)
+        لتضبط move_id كما كان تماماً - فيبقى كل ما بُني عليه (الإرجاع
+        للتصحيح، إلغاء التنفيذ، زر القيد، استثناء كشف الحساب) عاملاً بلا
+        تغيير في الحالة الشائعة: صرف كامل بدفعة واحدة."""
+        self.ensure_one()
+        date = date or self.transfer_date or fields.Date.context_today(self)
+        scoped = self.with_context(bank_settlement_disbursement_amount=amount)
+        if not self.move_id:
+            scoped._ensure_settlement_move_posted()
+            move = self.move_id
+        else:
+            move_vals = scoped._get_settlement_move_vals()
+            move_vals['date'] = date
+            move = self.env['account.move'].sudo().create(move_vals)
+            move.action_post()
+        return self.env['bank.settlement.advance.disbursement'].create({
+            'advance_id': self.id,
+            'date': date,
+            'amount': amount,
+            'bank_reference': reference or self.bank_reference,
+            'move_id': move.id,
+        })
+
+    def action_disburse(self, amount, date=False, reference=False):
+        """صرف دفعة - يستدعيه معالج "تم الصرف"."""
+        self.ensure_one()
+        if self.state != 'approved':
+            raise UserError(_('يجب الموافقة على السلفة أولاً قبل صرفها.'))
+        self._check_group(
+            'bank_settlement.group_bank_settlement_reviewer',
+            'bank_settlement.group_bank_settlement_manager',
+        )
+        # الدفعة المقدمة تبني جدول استحقاق من كامل المبلغ وقت الصرف،
+        # فصرفها على دفعات يجعل الجدول يستهلك ما لم يُصرف بعد.
+        if self.is_prepaid:
+            raise UserError(_(
+                'الدفعة المقدمة تُصرف كاملةً - جدول الاستحقاق يُبنى من '
+                'كامل المبلغ وقت الصرف.'))
+        currency = self.currency_id or self.company_id.currency_id
+        if currency.compare_amounts(amount, 0) <= 0:
+            raise UserError(_('مبلغ الصرف يجب أن يكون أكبر من صفر.'))
+        if currency.compare_amounts(amount, self.undisbursed_amount) > 0:
+            raise UserError(_(
+                'المبلغ المطلوب صرفه (%(amount)s) أكبر من المتاح '
+                '(%(left)s) - صُرف من هذه السلفة %(done)s من %(total)s.'
+            ) % {
+                'amount': amount, 'left': self.undisbursed_amount,
+                'done': self.disbursed_amount, 'total': self.total_amount,
+            })
+        self._disburse(amount, date=date, reference=reference)
+        if currency.is_zero(self.undisbursed_amount):
+            self._write_state({'state': 'paid'})
+            self._save_iban_to_employee()
+            self.message_post(body=_(
+                'اكتمل صرف السلفة: %(total)s.') % {'total': self.total_amount})
+        else:
+            self.message_post(body=_(
+                'صُرفت دفعة بمبلغ %(amount)s - المصروف %(done)s من '
+                '%(total)s، والمتبقي للصرف %(left)s.'
+            ) % {
+                'amount': amount, 'done': self.disbursed_amount,
+                'total': self.total_amount, 'left': self.undisbursed_amount,
+            })
+
+    def action_open_disbursement_wizard(self):
+        """زر "تم الصرف" في الشاشة - يفتح نافذة اختيار كامل/جزئي.
+
+        action_done تبقى كما هي (صرف كامل المتاح) للاستدعاء المباشر
+        والاستيراد: التغيير في الشاشة لا في الواجهة البرمجية."""
+        self.ensure_one()
+        if self.state != 'approved':
+            raise UserError(_('يجب الموافقة على السلفة أولاً قبل صرفها.'))
+        return {
+            'name': _('صرف السلفة'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'bank.settlement.advance.disbursement.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_advance_id': self.id},
+        }
+
+    def action_view_disbursements(self):
+        self.ensure_one()
+        return {
+            'name': _('دفعات صرف %s') % self.name,
+            'type': 'ir.actions.act_window',
+            'res_model': 'bank.settlement.advance.disbursement',
+            'view_mode': 'list,form',
+            'domain': [('advance_id', '=', self.id)],
+        }
+
+    def _unpost_settlement_move(self):
+        """الإرجاع للتصحيح من "تم الصرف" يعيد قيداً واحداً لمسودة - ولا
+        معنى له حين تكون السلفة صُرفت على عدة دفعات بعدة قيود: ستبقى
+        البقية مرحَّلة بينما السجل يقول إنه عاد للتصحيح."""
+        for rec in self:
+            posted = rec.disbursement_ids.filtered(lambda d: d.state == 'posted')
+            if len(posted) > 1:
+                raise UserError(_(
+                    'هذه السلفة صُرفت على %(count)s دفعات بقيود منفصلة - '
+                    'استخدم "إلغاء التنفيذ وتصحيح" (يعكس كل الدفعات) بدل '
+                    '"إرجاع للتصحيح".'
+                ) % {'count': len(posted)})
+            # دفعة واحدة: يُحذف سطرها ليُعاد إنشاؤه عند الصرف من جديد،
+            # تماماً كما كان السلوك قبل الصرف على دفعات.
+            posted.with_context(
+                bank_settlement_disbursement_internal=True,
+            ).write({'state': 'cancel'})
+            posted.with_context(
+                bank_settlement_disbursement_internal=True).unlink()
+        return super()._unpost_settlement_move()
+
     # -- استرداد السلفة ---------------------------------------------------
     # لم يكن للاسترداد أي أثر في الموديول: السلفة تنتهي عند "تم الصرف"
     # وتبقى ديناً كاملاً في كشف حساب الموظف إلى الأبد. انظر
@@ -159,7 +322,20 @@ class BankSettlementAdvance(models.Model):
 
     def action_reverse_and_correct(self, reason=False):
         self._check_no_posted_repayments(_('إلغاء تنفيذ'))
-        return super().action_reverse_and_correct(reason=reason)
+        # القيد الأول يعكسه المِكسِن (move_id)؛ ودفعات الصرف الإضافية لها
+        # قيودها الخاصة فتُعكس هنا - وإلا بقي جزء من المال مصروفاً في
+        # الدفاتر لسلفة أُلغي تنفيذها.
+        extra = self.disbursement_ids.filtered(
+            lambda d: d.state == 'posted' and d.move_id != d.advance_id.move_id)
+        result = super().action_reverse_and_correct(reason=reason)
+        if extra:
+            extra._reverse(reason or '')
+        self.disbursement_ids.filtered(
+            lambda d: d.state == 'posted'
+        ).with_context(
+            bank_settlement_disbursement_internal=True,
+        ).write({'state': 'cancel'})
+        return result
 
     _INVALID_STATES = ('under_review', 'confirmed', 'done')
 
@@ -385,6 +561,11 @@ class BankSettlementAdvance(models.Model):
         self._write_state({'state': 'approved', 'returned_for_correction': False})
 
     def action_done(self):
+        """صرف كامل المتاح من السلفة - السلوك الأصلي حرفياً حين لا يكون
+        صُرف منها شيء بعد (قيد واحد بكامل المبلغ). تبقى كما هي للاستدعاء
+        المباشر والاستيراد؛ والشاشة تمر بالمعالج
+        (action_open_disbursement_wizard) ليختار المحاسب كاملاً أو
+        جزئياً."""
         for rec in self:
             if rec.state != 'approved':
                 raise UserError('يجب الموافقة على السلفة أولاً قبل صرفها.')
@@ -392,10 +573,13 @@ class BankSettlementAdvance(models.Model):
                 'bank_settlement.group_bank_settlement_reviewer',
                 'bank_settlement.group_bank_settlement_manager',
             )
-            rec._ensure_settlement_move_posted()
-        self._write_state({'state': 'paid'})
-        for rec in self:
-            rec._save_iban_to_employee()
+            if rec.is_prepaid:
+                # الدفعة المقدمة تحتفظ بمسارها الأصلي كاملاً.
+                rec._ensure_settlement_move_posted()
+                rec._write_state({'state': 'paid'})
+                rec._save_iban_to_employee()
+                continue
+            rec.action_disburse(rec.undisbursed_amount)
 
     def action_reject(self, reason=False):
         """تجاوز - حالة "منفّذة" في السلفة اسمها "paid" (تم الصرف) بدل
