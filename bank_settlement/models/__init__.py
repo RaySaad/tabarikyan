@@ -1,3 +1,4 @@
+from . import account_journal
 from . import account_move
 from . import hr_employee
 from . import ir_cron
@@ -6,6 +7,7 @@ from . import prepaid_schedule
 from . import bank_settlement_mixin
 from . import advance_reason
 from . import advance
+from . import advance_repayment
 from . import government_fee_type
 from . import government_fee
 from . import vehicle_transfer_type

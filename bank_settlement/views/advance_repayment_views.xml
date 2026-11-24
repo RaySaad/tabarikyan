@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_bank_settlement_advance_repayment_list" model="ir.ui.view">
+            <field name="name">bank.settlement.advance.repayment.list</field>
+            <field name="model">bank.settlement.advance.repayment</field>
+            <field name="arch" type="xml">
+                <list string="دفعات السداد" editable="bottom"
+                      decoration-muted="state == 'cancel'"
+                      decoration-success="state == 'posted'">
+                    <field name="currency_id" column_invisible="1"/>
+                    <field name="company_id" column_invisible="1"/>
+                    <field name="date" readonly="state != 'draft'"/>
+                    <field name="amount" readonly="state != 'draft'"/>
+                    <field name="method" readonly="state != 'draft'"/>
+                    <!-- دفتر اليومية للنقدي/التحويل فقط: "خصم من الراتب"
+                         بلا قيد محاسبي هنا (مسير الرواتب يقيّده). -->
+                    <field name="journal_id" readonly="state != 'draft'"
+                           required="method != 'salary_deduction'"
+                           invisible="method == 'salary_deduction'"
+                           options="{'no_create': True, 'no_open': True}"/>
+                    <field name="note" readonly="state != 'draft'"/>
+                    <field name="move_id" readonly="1" optional="show"
+                           options="{'no_create': True}"/>
+                    <field name="state" widget="badge"
+                           decoration-success="state == 'posted'"
+                           decoration-warning="state == 'draft'"/>
+                    <button name="action_post" type="object" icon="fa-check"
+                            title="تسجيل الدفعة" invisible="state != 'draft'"
+                            groups="bank_settlement.group_bank_settlement_reviewer,bank_settlement.group_bank_settlement_manager"/>
+                    <button name="action_cancel" type="object" icon="fa-times"
+                            title="إلغاء الدفعة" invisible="state == 'cancel'"
+                            confirm="سيُلغى أثر هذه الدفعة، ويُعكس قيدها إن كان لها قيد. هل تريد المتابعة؟"
+                            groups="bank_settlement.group_bank_settlement_reviewer,bank_settlement.group_bank_settlement_manager"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_bank_settlement_advance_repayment_form" model="ir.ui.view">
+            <field name="name">bank.settlement.advance.repayment.form</field>
+            <field name="model">bank.settlement.advance.repayment</field>
+            <field name="arch" type="xml">
+                <form string="سداد سلفة">
+                    <header>
+                        <button name="action_post" type="object" string="تسجيل"
+                                class="btn-primary" invisible="state != 'draft'"
+                                groups="bank_settlement.group_bank_settlement_reviewer,bank_settlement.group_bank_settlement_manager"/>
+                        <button name="action_cancel" type="object" string="إلغاء"
+                                invisible="state == 'cancel'"
+                                confirm="سيُلغى أثر هذه الدفعة، ويُعكس قيدها إن كان لها قيد. هل تريد المتابعة؟"
+                                groups="bank_settlement.group_bank_settlement_reviewer,bank_settlement.group_bank_settlement_manager"/>
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="draft,posted"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1><field name="name" readonly="1"/></h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="advance_id" readonly="state != 'draft'"
+                                       options="{'no_create': True}"/>
+                                <field name="employee_id" readonly="1"
+                                       options="{'no_create': True, 'no_open': True}"/>
+                                <field name="company_id" groups="base.group_multi_company"
+                                       readonly="1" options="{'no_create': True, 'no_open': True}"/>
+                                <field name="currency_id" invisible="1"/>
+                            </group>
+                            <group>
+                                <field name="date" readonly="state != 'draft'"/>
+                                <field name="amount" readonly="state != 'draft'"/>
+                                <field name="method" readonly="state != 'draft'"/>
+                                <field name="journal_id" readonly="state != 'draft'"
+                                       required="method != 'salary_deduction'"
+                                       invisible="method == 'salary_deduction'"
+                                       options="{'no_create': True, 'no_open': True}"/>
+                                <field name="move_id" readonly="1"
+                                       invisible="not move_id"
+                                       options="{'no_create': True}"/>
+                            </group>
+                        </group>
+                        <div class="alert alert-info" role="alert"
+                             invisible="method != 'salary_deduction'">
+                            الخصم من الراتب لا يُنشئ قيداً محاسبياً هنا — مسير
+                            الرواتب يقيّد الخصم أصلاً على حساب ذمم الموظفين، وأي
+                            قيد ثانٍ يحتسبه مرتين. هذا السطر للمتابعة وحساب
+                            المتبقي.
+                        </div>
+                        <group string="ملاحظة">
+                            <field name="note" nolabel="1"/>
+                        </group>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_bank_settlement_advance_repayment" model="ir.actions.act_window">
+            <field name="name">سداد السلف</field>
+            <field name="res_model">bank.settlement.advance.repayment</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+    </data>
+</odoo>

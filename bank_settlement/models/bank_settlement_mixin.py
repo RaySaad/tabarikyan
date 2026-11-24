@@ -1547,7 +1547,11 @@ class BankSettlementMixin(models.AbstractModel):
 
 
     def _get_outstanding_payment_account(self):
-        """حساب المدفوعات المعلقة - لا حساب البنك.
+        """حساب المدفوعات المعلقة للصرف - لا حساب البنك."""
+        return self._get_outstanding_account(inbound=False)
+
+    def _get_outstanding_account(self, inbound=False):
+        """حساب المدفوعات/المقبوضات المعلقة - لا حساب البنك.
 
         كان الدائن يقيَّد على حساب الدفتر البنكي مباشرة، فينقص رصيد
         البنك في الدفاتر قبل أن يظهر الخصم في كشف البنك، ولا يبقى شيء
@@ -1555,18 +1559,15 @@ class BankSettlementMixin(models.AbstractModel):
 
         الترتيب هو نفسه الذي تستعمله أودو في مدفوعاتها
         (account.payment._get_outstanding_account) حتى تُطابِق هذه
-        القيودَ أداةُ المطابقة البنكية كما تُطابق مدفوعات أودو."""
+        القيودَ أداةُ المطابقة البنكية كما تُطابق مدفوعات أودو.
+
+        inbound=True للاتجاه المعاكس (المقبوضات المعلقة) - يستعمله
+        استرداد السلفة: نقد يدخل لا يخرج."""
         self.ensure_one()
         journal = self.journal_id
-        for line in journal.outbound_payment_method_line_ids:
-            if line.payment_account_id:
-                return line.payment_account_id
         company = self.company_id or self.env.company
-        chart = self.env['account.chart.template'].with_context(
-            allowed_company_ids=company.root_id.ids)
-        account = chart.ref(
-            'account_journal_payment_credit_account_id', raise_if_not_found=False)
-        account = account or company.transfer_account_id
+        account = journal._bank_settlement_outstanding_account(
+            inbound=inbound, company=company)
         if account:
             return account
 
@@ -1574,17 +1575,17 @@ class BankSettlementMixin(models.AbstractModel):
         # قاعدة بلا شجرة حسابات)، ولا نرجع للبنك بصمت - نرجع إليه
         # ونكتب السبب في محادثة السجل، فيراه المحاسب على السجل نفسه لا
         # في سجل خادم لا يفتحه أحد.
+        label = _('المقبوضات المعلقة') if inbound else _('المدفوعات المعلقة')
         self.sudo().message_post(body=_(
-            'تنبيه: لم يُعثر على حساب "المدفوعات المعلقة" لشركة %(company)s، '
-            'فقُيِّد الطرف الدائن على حساب البنك مباشرة. لتفعيل المطابقة '
+            'تنبيه: لم يُعثر على حساب "%(label)s" لشركة %(company)s، '
+            'فقُيِّد الطرف المقابل على حساب البنك مباشرة. لتفعيل المطابقة '
             'البنكية حدّد الحساب من: المحاسبة ← الإعدادات ← حسابات '
-            'المدفوعات المعلقة، أو على طريقة الدفع الصادرة في دفتر '
-            '%(journal)s.'
-        ) % {'company': company.display_name,
+            'المدفوعات المعلقة، أو على طريقة الدفع في دفتر %(journal)s.'
+        ) % {'label': label, 'company': company.display_name,
              'journal': journal.display_name})
         _logger.warning(
-            'السداد البنكي %s: لا حساب مدفوعات معلقة لشركة %s - قُيِّد على '
-            'حساب البنك مباشرة.', self.name, company.display_name)
+            'السداد البنكي %s: لا حساب %s لشركة %s - قُيِّد على حساب البنك '
+            'مباشرة.', self.name, label, company.display_name)
         return journal.default_account_id
 
     def _get_settlement_move_vals(self):
