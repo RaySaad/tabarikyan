@@ -236,8 +236,16 @@ class BankSettlementMixin(models.AbstractModel):
 
     def _get_settlement_taxes(self):
         """ضريبة المشتريات الافتراضية للشركة - مصدر واحد لكل السجلات
-        (قرار صريح: الأبسط بدل ضريبة لكل نوع)."""
+        (قرار صريح: الأبسط بدل ضريبة لكل نوع).
+
+        لكن للمشتريات وحدها: السجلات التي تُنفَّذ بفاتورة مورد (التأمين
+        الطبي، والرسوم الحكومية حين تُصدَر كفاتورة). أما صرف النقد
+        لموظف - السلفة قرض يُسترد، وتصفية المندوب صرف مستحق له - فليس
+        شراءً من مورد ولا ضريبة عليه. تعميم ضريبة المشتريات عليها كان
+        يضخّم سلفة 1000 إلى 1150 ويقيّد الـ150 ذمةً على الموظف."""
         self.ensure_one()
+        if not self._uses_vendor_bill():
+            return self.env['account.tax']
         company = self.company_id or self.env.company
         return company.account_purchase_tax_id
 
@@ -248,7 +256,15 @@ class BankSettlementMixin(models.AbstractModel):
         تحسب بها أودو فاتورة المورد حرفياً، فلا فرق في الهللات."""
         for rec in self:
             taxes = rec._get_settlement_taxes()
-            if not taxes or not rec.amount:
+            if not taxes:
+                # خارج مسار فاتورة المورد لا حساب تلقائي إطلاقاً -
+                # تبقى القيمة كما أدخلها المحاسب (صفر افتراضاً)، وهو
+                # السلوك الذي كان قائماً قبل الحساب التلقائي. التصفير
+                # هنا كان يمسح ضريبةً مُدخَلة يدوياً (تحويلات المركبات)
+                # بمجرد تعديل المبلغ.
+                rec.tax_amount = rec.tax_amount or 0.0
+                continue
+            if not rec.amount:
                 rec.tax_amount = 0.0
                 continue
             currency = rec.currency_id or rec.company_id.currency_id

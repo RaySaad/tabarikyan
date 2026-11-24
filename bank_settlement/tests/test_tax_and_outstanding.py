@@ -82,6 +82,27 @@ class TestSettlementTaxAndOutstanding(TransactionCase):
         self.assertEqual(line['tax_ids'], [(5, 0, 0)],
                          'فُرضت ضريبة على سجل صفّر المحاسب ضريبته')
 
+    def test_advance_carries_no_tax(self):
+        """السلفة قرض للموظف لا شراء من مورد - تعميم ضريبة المشتريات
+        عليها كان يضخّم 1000 إلى 1150 ويقيّد الفارق ذمةً عليه."""
+        advance = self.env['bank.settlement.advance'].create({
+            'employee_id': self.employee.id,
+            'advance_reason_id': self.env.ref(
+                'bank_settlement.advance_reason_salary_advance').id,
+            'amount': 1000.0,
+        })
+        self.assertEqual(advance.tax_amount, 0.0,
+                         'فُرضت ضريبة مشتريات على سلفة موظف')
+        self.assertEqual(advance.total_amount, 1000.0,
+                         'مبلغ السلفة المقيَّد على الموظف أكبر مما صُرف له')
+
+    def test_representative_settlement_carries_no_tax(self):
+        self.assertFalse(
+            self.env['bank.settlement.representative']._get_settlement_taxes
+            and self.env['bank.settlement.representative'].new(
+                {'employee_id': self.employee.id})._get_settlement_taxes(),
+            'فُرضت ضريبة مشتريات على تصفية مندوب')
+
     # ------------------------------------------------------------------
     def test_direct_settlement_credits_outstanding_not_bank(self):
         advance = self.env['bank.settlement.advance'].create({
