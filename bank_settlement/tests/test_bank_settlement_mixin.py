@@ -1190,11 +1190,21 @@ class TestVendorBillSettlement(TransactionCase):
         self.assertTrue(bill.is_bank_settlement_move)
         expense_lines = bill.line_ids.filtered(lambda l: l.account_id == self.expense)
         self.assertTrue(expense_lines, 'لم يُستخدم "الحساب المرتبط" على بند الفاتورة')
-        self.assertEqual(sum(expense_lines.mapped('debit')), 900.0)
+        # الصافي على حساب المصروف، والإجمالي على ذمم المورد: الفرق هو
+        # الضريبة حين تكون مضبوطة على الشركة (سطر مستقل منذ إصلاح
+        # "التأمينات لا تنعكس الضريبة"). كان الاختبار يفترض 900 في
+        # الطرفين، فيمر على قاعدة بلا ضريبة ويفشل على قاعدة بشجرة
+        # حسابات فيها ضريبة مشتريات افتراضية.
+        self.assertEqual(sum(expense_lines.mapped('debit')), fee.amount)
         payable = bill.line_ids.filtered(
             lambda l: l.account_id.account_type == 'liability_payable')
         self.assertTrue(payable, 'لا يوجد سطر ذمم دائنة - ليست فاتورة حقيقية')
-        self.assertEqual(sum(payable.mapped('credit')), 900.0)
+        self.assertEqual(sum(payable.mapped('credit')), fee.total_amount)
+        if fee.tax_amount:
+            tax_lines = bill.line_ids.filtered(lambda l: l.tax_line_id)
+            self.assertAlmostEqual(
+                sum(tax_lines.mapped('debit')), fee.tax_amount, places=2,
+                msg='الضريبة لم تُسجَّل في سطر مستقل')
 
     def test_default_mode_is_still_a_direct_entry(self):
         """السلوك الافتراضي لم يتغيّر: قيد مباشر ما لم يُختَر غير ذلك."""

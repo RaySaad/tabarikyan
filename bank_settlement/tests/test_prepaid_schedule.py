@@ -384,17 +384,26 @@ class TestPrepaidSchedule(TransactionCase):
         self.assertEqual(doc.state, 'posted')
         prepaid_lines = doc.line_ids.filtered(
             lambda l: l.account_id == self.prepaid_account)
-        self.assertEqual(sum(prepaid_lines.mapped('debit')), 9000.0,
+        # الصافي يدخل حساب المصروفات المدفوعة مقدماً، والإجمالي على ذمم
+        # المورد - والضريبة سطر مستقل بينهما (ضريبة مدخلات تُسترد، لا
+        # أصل يُستهلك شهرياً).
+        self.assertEqual(sum(prepaid_lines.mapped('debit')), fee.amount,
                          'الطرف المدين ليس حساب المصروفات المدفوعة مقدماً')
         self.assertEqual(
             sum(doc.line_ids.filtered(lambda l: l.account_id == payable).mapped('credit')),
-            9000.0, 'الطرف الدائن ليس ذمم المورد')
+            fee.total_amount, 'الطرف الدائن ليس ذمم المورد')
         self.assertFalse(prepaid_lines.analytic_distribution,
                          'حركة بين حسابَي ميزانية - لا يصح توزيعها تحليلياً')
         # الجدول يُبنى كالمعتاد تماماً
         lines = self._lines(fee)
         self.assertTrue(lines)
-        self.assertAlmostEqual(sum(lines.mapped('amount')), 9000.0, places=2)
+        # الجدول يستهلك ما دخل الحساب فعلاً (الصافي) لا الإجمالي - وإلا
+        # خرج رصيد "المصروفات المدفوعة مقدماً" سالباً بقيمة الضريبة.
+        self.assertAlmostEqual(sum(lines.mapped('amount')), fee.amount, places=2)
+        self.assertAlmostEqual(
+            sum(lines.mapped('amount')), sum(prepaid_lines.mapped('debit')),
+            places=2,
+            msg='الجدول يستهلك مبلغاً غير الذي دخل حساب المصروفات المدفوعة مقدماً')
 
     def test_prepaid_bill_periods_post_to_the_expense_account(self):
         """قيود الاستهلاك لا تتأثر بطريقة إنشاء المستند الأولي."""

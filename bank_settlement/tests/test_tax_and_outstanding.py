@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from unittest.mock import patch
+
 from odoo.tests import TransactionCase, tagged
 
 
@@ -120,7 +122,12 @@ class TestSettlementTaxAndOutstanding(TransactionCase):
             'account_type': 'asset_current', 'reconcile': True,
             'company_ids': [(6, 0, [self.company.id])],
         })
+        # أعلى مصدر في الترتيب (طريقة الدفع الصادرة على الدفتر) - انظر
+        # نفس الشرح في test_advance_repayment: الاكتفاء بحساب التحويلات
+        # يجعل الاختبار يمر بلا شجرة حسابات ويفشل بوجودها.
         self.company.transfer_account_id = outstanding_account.id
+        for line in self.bank_journal.outbound_payment_method_line_ids:
+            line.payment_account_id = outstanding_account.id
 
         outstanding = advance._get_outstanding_payment_account()
         self.assertEqual(outstanding, outstanding_account,
@@ -141,8 +148,14 @@ class TestSettlementTaxAndOutstanding(TransactionCase):
             'رصيد البنك يُخصم قبل ظهور الحركة في كشف البنك')
 
     def test_missing_outstanding_falls_back_but_says_so(self):
-        """بلا حساب معلّق: لا يتوقف العمل، ولا يسكت النظام."""
+        """بلا حساب معلّق: لا يتوقف العمل، ولا يسكت النظام.
+
+        تُغلَق المصادر الثلاثة صراحةً (طريقة الدفع، شجرة الحسابات، حساب
+        التحويلات) - وإلا كانت "القاعدة بلا شجرة حسابات" هي ما يصنع
+        الحالة، فيختلف الاختبار باختلاف القاعدة."""
         self.company.transfer_account_id = False
+        for line in self.bank_journal.outbound_payment_method_line_ids:
+            line.payment_account_id = False
         advance = self.env['bank.settlement.advance'].create({
             'employee_id': self.employee.id,
             'advance_reason_id': self.env.ref(
@@ -151,7 +164,9 @@ class TestSettlementTaxAndOutstanding(TransactionCase):
             'journal_id': self.bank_journal.id,
         })
         before = len(advance.message_ids)
-        account = advance._get_outstanding_payment_account()
+        ChartTemplate = type(self.env['account.chart.template'])
+        with patch.object(ChartTemplate, 'ref', return_value=False):
+            account = advance._get_outstanding_payment_account()
         self.assertEqual(account, self.bank_journal.default_account_id,
                          'لم يرجع إلى حساب البنك عند غياب المعلّق')
         self.assertGreater(len(advance.message_ids), before,

@@ -151,6 +151,16 @@
                                        invisible="state not in ('confirmed', 'done') and not returned_for_correction" options="{'no_create': True, 'no_open': True}"/>
                                 <field name="currency_id" invisible="1"/>
                                 <field name="amount" readonly="state != 'draft' and not returned_for_correction"/>
+                                <!-- في وضع الفاتورة فقط: تُحسب تلقائياً من
+                                     ضريبة مشتريات الشركة، ويصفّرها المحاسب
+                                     على الرسوم المعفاة (وأكثر الرسوم
+                                     الحكومية معفاة). بدون إظهارها كان
+                                     الرقم يُفرَض بلا أي وسيلة لتعديله. -->
+                                <field name="tax_amount"
+                                       invisible="settlement_mode != 'bill'"
+                                       readonly="state != 'draft'"/>
+                                <field name="total_amount"
+                                       invisible="settlement_mode != 'bill'"/>
                             </group>
                             <group>
                                 <field name="project_id"

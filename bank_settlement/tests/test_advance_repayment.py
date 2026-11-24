@@ -37,7 +37,14 @@ class TestAdvanceRepayment(TransactionCase):
             'account_type': 'asset_current', 'reconcile': True,
             'company_ids': [(6, 0, [cls.company.id])],
         })
+        # على *طريقة الدفع في الدفتر* لا على حساب التحويلات وحده: هو
+        # أعلى مصدر في ترتيب أودو، فيصير الاختبار واحداً في قاعدة بلا
+        # شجرة حسابات وفي قاعدة بشجرة. الاعتماد على transfer_account_id
+        # وحده كان يمر محلياً ويفشل على قاعدة فيها شجرة (حيث يسبقه
+        # حساب الشجرة) - وهو ما حمّر بناء Odoo.sh فعلياً.
         cls.company.transfer_account_id = cls.outstanding.id
+        for line in cls.journal.inbound_payment_method_line_ids:
+            line.payment_account_id = cls.outstanding.id
 
     # ------------------------------------------------------------------
     def _paid_advance(self, amount=1000.0):
@@ -132,6 +139,7 @@ class TestAdvanceRepayment(TransactionCase):
     def test_mixed_methods_on_one_advance(self):
         """سلفة 2000: 500 خصماً من الراتب و1500 تحويلاً - الحالة التي
         سألت عنها. الطريقة خاصية كل دفعة لا خاصية السلفة، فيُمزَج."""
+        baseline_net = self.employee._get_employee_statement_data()['net_total']
         advance = self._paid_advance(amount=2000.0)
         deduction = self._repay(advance, 500.0, method='salary_deduction')
         transfer = self._repay(advance, 1500.0, method='bank_transfer')
@@ -150,13 +158,17 @@ class TestAdvanceRepayment(TransactionCase):
         self.assertEqual(advance.repayment_state, 'settled',
                          'السلفة لم تُقفل رغم سداد كامل مبلغها بطريقتين')
 
-        # الكشف يعرض الدفعتين منفصلتين، والصافي صفر.
+        # الكشف يعرض الدفعتين منفصلتين، وصافيه ينقص بمجموعهما.
+        # فرقاً عن خط أساس لا قيمةً مطلقة: للموظف في قاعدة حقيقية حركة
+        # أخرى على حساب الذمم، فتُفشل أي مقارنة برقم ثابت بلا عيب في
+        # المنتج - وهذا بالضبط صنف الهشاشة الذي حمّر البناء.
         data = self.employee._get_employee_statement_data()
-        credits = sorted(l['credit'] for l in data['lines'] if l['credit'])
-        self.assertEqual(credits, [500.0, 1500.0],
-                         'الدفعتان لا تظهران منفصلتين في كشف الحساب')
-        self.assertEqual(data['net_total'], 0.0,
-                         'صافي الكشف لم يصل صفراً بعد السداد الكامل')
+        credits = [l['credit'] for l in data['lines'] if l['credit']]
+        self.assertIn(500.0, credits, 'دفعة الخصم من الراتب لا تظهر في الكشف')
+        self.assertIn(1500.0, credits, 'دفعة التحويل لا تظهر في الكشف')
+        self.assertAlmostEqual(
+            data['net_total'], baseline_net, places=2,
+            msg='صافي الكشف لم يعد لما كان عليه بعد سداد السلفة كاملةً')
 
     def test_mixed_methods_cannot_exceed_total(self):
         """الضابط المقابل: الخلط لا يفتح باباً لتجاوز مبلغ السلفة."""
@@ -229,12 +241,13 @@ class TestAdvanceRepayment(TransactionCase):
 
     # ------------------------------------------------------------------
     def test_statement_shows_repayment_as_credit(self):
+        baseline_net = self.employee._get_employee_statement_data()['net_total']
         advance = self._paid_advance()
         self._repay(advance, 350.0)
         data = self.employee._get_employee_statement_data()
         credits = [l for l in data['lines'] if l['credit'] == 350.0]
         self.assertTrue(credits, 'السداد لا يظهر في كشف حساب الموظف')
         self.assertIn('سداد سلفة', credits[0]['description'])
-        self.assertEqual(
-            data['net_total'], 650.0,
-            'صافي الكشف لم ينقص بقيمة السداد')
+        self.assertAlmostEqual(
+            data['net_total'], baseline_net + 1000.0 - 350.0, places=2,
+            msg='صافي الكشف لم ينقص بقيمة السداد')

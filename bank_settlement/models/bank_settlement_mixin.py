@@ -833,6 +833,21 @@ class BankSettlementMixin(models.AbstractModel):
                 rec._ensure_settlement_move_posted()
         self._write_state({'state': 'done'})
 
+    def _prepaid_schedule_base(self):
+        """المبلغ الذي يُستهلك على الفترات = ما دخل حساب "المصروفات
+        المدفوعة مقدماً" فعلاً.
+
+        في مسار فاتورة المورد مع ضريبة، يدخل الحساب *الصافي* وحده
+        (الضريبة سطر مستقل: ضريبة مدخلات تُسترد، لا أصل يُستهلك شهرياً)،
+        بينما القيد المباشر يُدخل الإجمالي كاملاً. استهلاك الإجمالي في
+        الحالة الأولى كان يُخرج رصيد الحساب سالباً بقيمة الضريبة بالضبط
+        عند آخر فترة - عيب أدخلَته إضافةُ الضريبة، كشفه تشغيل
+        الاختبارات على قاعدة فيها شجرة حسابات."""
+        self.ensure_one()
+        if self._uses_vendor_bill() and self.tax_amount and self._get_settlement_taxes():
+            return self.amount
+        return self.total_amount
+
     def _compute_prepaid_schedule_lines(self, start_date, end_date, total_amount):
         """يبني جدول استهلاك دقيق بالأيام (وليس بتقريب شهري) - لكل شهر
         تقويمي يتقاطع مع [start_date, end_date]، يُحسَب مبلغه بنسبة عدد
@@ -901,7 +916,8 @@ class BankSettlementMixin(models.AbstractModel):
             })
         start_date = self._resolve_prepaid_start_date()
         end_date = start_date + timedelta(days=self.prepaid_days - 1)
-        schedule = self._compute_prepaid_schedule_lines(start_date, end_date, self.total_amount)
+        schedule = self._compute_prepaid_schedule_lines(
+            start_date, end_date, self._prepaid_schedule_base())
 
         # المستند الأولي (قيد مباشر أو فاتورة مورد) يُرحَّل فوراً: المبلغ
         # التزم به فعلاً بمجرد "تم"، ويجب أن يظهر في رصيد "المصروفات
@@ -1212,7 +1228,7 @@ class BankSettlementMixin(models.AbstractModel):
         start_date = self._resolve_prepaid_start_date()
         end_date = start_date + timedelta(days=self.prepaid_days - 1)
         schedule = self._compute_prepaid_schedule_lines(
-            start_date, end_date, self.total_amount)
+            start_date, end_date, self._prepaid_schedule_base())
         if self._uses_vendor_bill():
             self._refresh_and_post_settlement_bill(
                 expense_account=self.prepaid_category_id.prepaid_account_id,
