@@ -70,10 +70,15 @@ class BankSettlementMixin(models.AbstractModel):
         string='رقم الإقامة', related='employee_id.identification_id',
         store=True, readonly=True, groups='',
     )
+    # "متعاون" للفريلانسر: يحتاج سلفاً كغيره، لكنه ليس موظفاً رسمياً -
+    # لا عقد ولا مسير رواتب، واسترداد سلفته يكون بخصمها من مستحقاته عن
+    # عمله لا من راتب. الحقل وصفي بحت (لا منطق يتفرّع عليه)، فالتمييز
+    # هنا للفرز والتقارير وللمحاسب حين يختار "الحساب المرتبط".
     employee_category = fields.Selection(
         selection=[
             ('full_time_rep', 'Full Time مندوب'),
             ('foreign_admin', 'موظف إداري أجنبي'),
+            ('freelancer', 'متعاون (فريلانسر)'),
         ],
         string='نوع الموظف', tracking=True,
     )

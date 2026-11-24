@@ -33,7 +33,11 @@
                     <field name="employee_id" options="{'no_create': True, 'no_open': True}"/>
                     <field name="advance_reason_id" options="{'no_create': True, 'no_open': True}"/>
                     <filter name="inactive" string="مؤرشف" domain="[('active', '=', False)]"/>
+                    <separator/>
+                    <filter name="freelancers" string="المتعاونون"
+                            domain="[('employee_category', '=', 'freelancer')]"/>
                     <group>
+                        <filter name="group_by_category" string="نوع الموظف" context="{'group_by': 'employee_category'}"/>
                         <filter name="group_by_state" string="الحالة" context="{'group_by': 'state'}"/>
                         <filter name="group_by_employee" string="الموظف" context="{'group_by': 'employee_id'}"/>
                     </group>
