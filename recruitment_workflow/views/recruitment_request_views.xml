@@ -97,7 +97,7 @@
                     <button name="action_send_car_request" type="object" string="طلب سيارة"
                             class="btn-primary"
                             groups="recruitment_workflow.group_recruitment_workflow_project_manager"
-                            invisible="state in ('done','rejected') or stage_code != 'car_request' or car_requested"/>
+                            invisible="state in ('done','rejected') or car_requested or (not is_freelancer and stage_code != 'car_request')"/>
                     <button name="action_next_stage" type="object" string="إنهاء طلب السيارة والمتابعة"
                             class="btn-primary"
                             groups="recruitment_workflow.group_recruitment_workflow_project_manager"
@@ -171,8 +171,20 @@
                         <h1><field name="name" readonly="1"/></h1>
                     </div>
 
+                    <div class="alert alert-info" role="alert" invisible="not is_freelancer">
+                        <b>مسار متعاون مبسّط:</b> خطوتان — رفع البيانات (الاسم
+                        والجوال ورقم الهوية) ثم موافقة مدير العمليات التي تُنشئ
+                        سجله. بلا مرفقات إجبارية، وبلا مراحل نقل الكفالة
+                        والرسوم، وبلا عقد. وزر "طلب سيارة" متاح في أي مرحلة.
+                    </div>
+
                     <group>
                         <group string="بيانات الموظف">
+                            <!-- يُحدَّد في "طلب جديد" وحده: تغييره لاحقاً
+                                 يبدّل المراحل المتخطّاة تحت قدمي الطلب
+                                 (قيد خادم في _check_freelancer_locked_after_new). -->
+                            <field name="is_freelancer"
+                                   readonly="stage_code != 'new' or state != 'in_progress'"/>
                             <!-- طلب استقدام: الاسم/رقم الهوية ثابتان هنا - أُدخلا
                                  وربطا فعلياً بسجل موظف حقيقي في "طلب استقدام" قبل
                                  إنشاء هذا الطلب، فتعديلهما هنا لن يُحدِّث السجل
@@ -217,7 +229,7 @@
                     <!-- رسوم نقل الكفالة الحكومية - المبلغ الإجمالي فقط،
                          يُسدَّد للجهة الحكومية خارج هذا النظام. -->
                     <group string="الرسوم الحكومية (نقل الكفالة)"
-                           invisible="not stage_code or stage_code not in ('gm_approval','paid','sponsorship_transfer','sponsorship_done','car_request','started')">
+                           invisible="is_freelancer or not stage_code or stage_code not in ('gm_approval','paid','sponsorship_transfer','sponsorship_done','car_request','started')">
                         <field name="gov_fee_amount" readonly="gov_fee_settled"/>
                         <field name="currency_id" invisible="1"/>
                     </group>
@@ -244,7 +256,9 @@
                                    options="{'no_create': True, 'no_open': True}"/>
                             <field name="main_application"/>
                         </group>
-                        <group string="العقد">
+                        <!-- المتعاون بلا عقد: "تاريخ البدء" يبقى للمرجع،
+                             و"الراتب" يصير "المبلغ المتفق عليه". -->
+                        <group string="العقد" invisible="is_freelancer">
                             <field name="contract_start_date"/>
                             <field name="wage"/>
                             <field name="currency_id" invisible="1"/>

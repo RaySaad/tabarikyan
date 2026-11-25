@@ -352,6 +352,18 @@ class RecruitmentRequest(models.Model):
     is_import_request = fields.Boolean(
         string='طلب استقدام', default=False, copy=False, readonly=True,
     )
+    # المتعاون (فريلانسر): لا كفالة تُنقل ولا رسوم حكومية تُسدَّد ولا عقد
+    # ولا مسير رواتب - فمسار التوظيف الكامل (تسع مراحل مبنية حول نقل
+    # الكفالة) لا ينطبق عليه. بنفس آلية is_import_request أعلاه تماماً:
+    # علَم يتخطّى المراحل غير المنطبقة بدل مسار موازٍ أو نموذج جديد.
+    # النتيجة خطوتان: رفع البيانات (اسم/جوال/هوية) ثم موافقة العمليات
+    # التي تُنشئ سجل الموظف وتُغلق الطلب.
+    is_freelancer = fields.Boolean(
+        string='متعاون (فريلانسر)', default=False, copy=False, tracking=True,
+        help='مسار مبسّط: بلا مرفقات إجبارية، وبلا مراحل نقل الكفالة '
+             'والرسوم، وبلا عقد. يُنشأ سجل الموظف عند الموافقة ليمكن '
+             'صرف سلفته فوراً.',
+    )
     candidate_partner_id = fields.Many2one(
         'res.partner', string='جهة اتصال المرشّح', readonly=True, copy=False,
         help='جهة اتصال خفيفة تمثّل المرشّح قبل إنشاء سجل الموظف الرسمي - '
@@ -677,14 +689,32 @@ class RecruitmentRequest(models.Model):
     # منشأ مسبقاً في "طلب استقدام" قبل وجود طلب التوظيف هذا أصلاً.
     _IMPORT_SKIPPED_STAGE_CODES = ('paid', 'sponsorship_transfer', 'sponsorship_done')
 
+    # المتعاون: يبقى له "طلب جديد" ثم "مراجعة مدير العمليات" ثم الإغلاق.
+    # تُتخطّى مراجعة مسؤول المشروع واعتماد المدير العام (قرار صريح:
+    # خطوتان)، ومراحل السداد ونقل الكفالة (لا وجود لها أصلاً)، ومرحلة
+    # طلب السيارة (تمنع الانتقال بلا سيارة مخصَّصة - والمتعاون قد يعمل
+    # بمركبته؛ ويبقى زر "طلب سيارة" متاحاً له في أي مرحلة).
+    _FREELANCER_SKIPPED_STAGE_CODES = (
+        'project_review', 'gm_approval', 'paid',
+        'sponsorship_transfer', 'sponsorship_done', 'car_request',
+    )
+
+    def _skipped_stage_codes(self):
+        self.ensure_one()
+        if self.is_freelancer:
+            return self._FREELANCER_SKIPPED_STAGE_CODES
+        if self.is_import_request:
+            return self._IMPORT_SKIPPED_STAGE_CODES
+        return ()
+
     def _next_stage(self):
         self.ensure_one()
         stages = self.env['recruitment.stage'].search([], order='sequence')
         stage_ids = stages.ids
+        skipped = self._skipped_stage_codes()
         if self.stage_id.id in stage_ids:
             idx = stage_ids.index(self.stage_id.id) + 1
-            while idx < len(stage_ids) and self.is_import_request \
-                    and stages[idx].code in self._IMPORT_SKIPPED_STAGE_CODES:
+            while idx < len(stage_ids) and stages[idx].code in skipped:
                 idx += 1
             if idx < len(stage_ids):
                 return stages[idx]
@@ -693,7 +723,10 @@ class RecruitmentRequest(models.Model):
     def _validate_stage_exit(self, current_stage):
         """التحقق من شروط الخروج من المرحلة الحالية قبل الانتقال."""
         self.ensure_one()
-        if current_stage.require_attachments and not self.attachments_complete:
+        # المتعاون بلا مرفقات إجبارية (قرار صريح): يُرفع له الاسم والجوال
+        # ورقم الهوية فقط. ويبقى رفع أي مرفق اختيارياً كالمعتاد.
+        if current_stage.require_attachments and not self.is_freelancer \
+                and not self.attachments_complete:
             missing = self.attachment_line_ids.filtered(
                 lambda l: l.required and not l.file
             ).mapped('attachment_type_id.name')
@@ -710,7 +743,10 @@ class RecruitmentRequest(models.Model):
 
         # طلب الاستقدام: اختيار المشروع/المنصة مؤجَّل عمداً عن "طلب جديد"
         # إلى مرحلة "مراجعة مسؤول المشروع" (الشرط أدناه) بدلاً من هنا.
+        # المشروع غير مشروط على المتعاون: قد يعمل بلا منصة محدَّدة. وإن
+        # حُدِّد فهو الذي يحدد مسؤول المشروع المعتمِد لسلفه لاحقاً.
         if current_stage.require_project and not self.project_id \
+                and not self.is_freelancer \
                 and not (self.is_import_request and current_stage.code == 'new'):
             raise UserError(_(
                 'لا يمكن الانتقال للمرحلة التالية. يجب تحديد المشروع/المنصة '
@@ -915,11 +951,20 @@ class RecruitmentRequest(models.Model):
             # لا يمكن ربطها بمرشّح لم يُنشأ سجله الرسمي بعد.
             self._create_employee()
         elif code == 'started':
-            # تم مباشرة العمل => إنشاء عقد أوتوماتيك (سجل الموظف نفسه غالباً
-            # موجود مسبقاً من "sponsorship_done" أعلاه - _create_contract
-            # يستدعي _create_employee داخلياً وهي دالة متكررة الاستدعاء
-            # بأمان (idempotent)، فتُعيد نفس السجل دون تكرار).
-            self._create_contract()
+            if self.is_freelancer:
+                # المتعاون ليس على مسير الرواتب، فلا عقد له (قرار صريح) -
+                # يُنشأ سجل الموظف وحده ليصحّ صرف سلفته وتسجيل حركته.
+                employee = self._create_employee()
+                self.message_post(body=_(
+                    'تمت الموافقة وأُنشئ سجل المتعاون %s. لا عقد ولا مسير '
+                    'رواتب - مستحقاته تُصرف من السداد البنكي.'
+                ) % employee.display_name)
+            else:
+                # تم مباشرة العمل => إنشاء عقد أوتوماتيك (سجل الموظف نفسه
+                # غالباً موجود مسبقاً من "sponsorship_done" أعلاه -
+                # _create_contract يستدعي _create_employee داخلياً وهي
+                # متكررة الاستدعاء بأمان، فتُعيد نفس السجل دون تكرار).
+                self._create_contract()
             self.state = 'done'
         elif self.stage_id.is_closing_stage:
             self.state = 'done'
@@ -1860,6 +1905,7 @@ class RecruitmentRequest(models.Model):
             if self.candidate_partner_id.name != employee_name:
                 self.candidate_partner_id.sudo().name = employee_name
 
+        set_if('is_freelancer', self.is_freelancer)
         set_if('mobile_phone', self.mobile)
         set_if('work_email', self.email)
         set_if('job_id', self.job_id.id)
@@ -1929,6 +1975,17 @@ class RecruitmentRequest(models.Model):
     # حلاً هنا: يُمنع تماماً إن كانت الرسوم الحكومية سُدِّدت فعلاً
     # (bank_settlement._unlock_gov_fee_for_correction) - عن قصد، لحماية
     # قيد محاسبي منفَّذ فعلاً، وليس عائقاً يجب الالتفاف عليه.
+    @api.constrains('is_freelancer')
+    def _check_freelancer_locked_after_new(self):
+        """تحويل طلب قائم إلى "متعاون" (أو العكس) بعد مغادرة "طلب جديد"
+        يغيّر المراحل المتخطّاة تحت قدميه، فيقفز أو يعود بلا معنى."""
+        for rec in self:
+            if rec.stage_id.code != 'new' and rec.state == 'in_progress' \
+                    and not self.env.context.get('recruitment_skip_freelancer_lock'):
+                raise UserError(_(
+                    'لا يمكن تغيير "متعاون" بعد مغادرة مرحلة "طلب جديد" - '
+                    'المسار يختلف بالكامل. أنشئ طلباً جديداً بالنوع الصحيح.'))
+
     _EMPLOYEE_CREATABLE_STAGE_CODES = ('sponsorship_done', 'car_request', 'started')
 
     def action_create_employee_now(self):

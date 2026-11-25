@@ -12,3 +12,4 @@ from . import test_dashboard
 from . import test_rpc_bypass
 from . import test_employee_company
 from . import test_car_request_queue
+from . import test_freelancer_request

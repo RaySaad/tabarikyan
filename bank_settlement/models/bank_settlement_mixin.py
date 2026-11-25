@@ -112,6 +112,11 @@ class BankSettlementMixin(models.AbstractModel):
         # داخلية بحتة (اشتقاق حقل آخر) ولا تعرض بيانات الموظف الخاصة
         # للمستخدم مباشرة - ثغرة حقيقية مكتشفة بالاختبار الفعلي.
         employee = self.employee_id.sudo()
+        # المتعاون يُعلَّم على سجله في الموارد البشرية عند إنشائه من مسار
+        # التوظيف المبسّط - فيُملأ "نوع الموظف" تلقائياً بدل أن يتذكّره
+        # المحاسب في كل سلفة (والنوع هو ما يُبنى عليه الفرز والتقارير).
+        if employee and 'is_freelancer' in employee._fields and employee.is_freelancer:
+            self.employee_category = 'freelancer'
         if employee and employee.project_id:
             self.project_id = employee.project_id
         # الشركة تُشتق من فرع الموظف نفسه - بدل تركها على الشركة النشطة
@@ -248,6 +253,14 @@ class BankSettlementMixin(models.AbstractModel):
         لموظف - السلفة قرض يُسترد، وتصفية المندوب صرف مستحق له - فليس
         شراءً من مورد ولا ضريبة عليه. تعميم ضريبة المشتريات عليها كان
         يضخّم سلفة 1000 إلى 1150 ويقيّد الـ150 ذمةً على الموظف."""
+
+        # المتعاون يُعلَّم على سجله في الموارد البشرية عند إنشائه من مسار
+        # التوظيف المبسّط - فيُملأ "نوع الموظف" تلقائياً بدل أن يتذكّره
+        # المحاسب في كل سلفة (والنوع هو ما يُبنى عليه الفرز والتقارير).
+        employee_record = self.employee_id.sudo()
+        if employee_record and 'is_freelancer' in employee_record._fields \
+                and employee_record.is_freelancer:
+            self.employee_category = 'freelancer'
         self.ensure_one()
         if not self._uses_vendor_bill():
             return self.env['account.tax']

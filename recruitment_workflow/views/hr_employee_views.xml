@@ -33,6 +33,7 @@
                 </button>
             </xpath>
             <xpath expr="//field[@name='job_id']" position="after">
+                <field name="is_freelancer" readonly="1"/>
                 <field name="project_id" string="المنصة الحالية" readonly="1"
                        options="{'no_create': True, 'no_open': True}"/>
                 <button name="action_open_platform_transfer_request" type="object"

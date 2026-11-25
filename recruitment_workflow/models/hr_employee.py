@@ -10,6 +10,13 @@ class HrEmployee(models.Model):
     _name = 'hr.employee'
     _inherit = ['hr.employee', 'recruitment.workflow.analytic.mixin']
 
+
+    # متعاون (فريلانسر): ليس على مسير الرواتب ولا عقد له - يُضبط عند
+    # إنشائه من مسار المتعاون المبسّط في سير التوظيف. يُستعمل لتمييزه في
+    # القوائم ولملء "نوع الموظف" تلقائياً في سلف السداد البنكي.
+    is_freelancer = fields.Boolean(
+        string='متعاون (فريلانسر)', default=False, tracking=True,
+    )
     project_id = fields.Many2one(
         'project.project',
         string='المنصة الحالية',
