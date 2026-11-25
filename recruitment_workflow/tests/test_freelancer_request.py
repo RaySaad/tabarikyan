@@ -118,6 +118,39 @@ class TestFreelancerRequest(TransactionCase):
         self.assertEqual(advance.employee_category, 'freelancer')
 
     # ------------------------------------------------------------------
+    def test_request_type_classifies_every_kind(self):
+        """التصنيف الظاهر في القوائم يطابق العلَمين، لا يخالفهما."""
+        self.assertEqual(self._request(freelancer=True).request_type,
+                         'freelancer')
+        self.assertEqual(self._request(freelancer=False).request_type,
+                         'regular')
+        imported = self._request(freelancer=False, identification_id='2998877103')
+        imported.sudo().write({'is_import_request': True})
+        self.assertEqual(imported.request_type, 'import',
+                         'طلب الاستقدام لم يُصنَّف - التصنيف لا يتبع العلَم')
+
+    def test_request_type_follows_the_flag_when_it_changes(self):
+        """مخزَّن ومحسوب: التخزين بلا إعادة حساب يُجمِّد تصنيفاً خاطئاً."""
+        request = self._request(freelancer=False)
+        self.assertEqual(request.request_type, 'regular')
+        request.is_freelancer = True
+        self.assertEqual(request.request_type, 'freelancer')
+
+    # ------------------------------------------------------------------
+    def test_freelancer_is_refused_by_payroll(self):
+        freelancer = self._request(freelancer=True)
+        freelancer.action_next_stage()
+        freelancer.action_next_stage()
+        with self.assertRaises(UserError):
+            freelancer.employee_id._check_payroll_eligible()
+
+    def test_regular_employee_passes_payroll_check(self):
+        """الضابط المقابل: الحارس لا يمنع الموظفين الرسميين."""
+        employee = self.env['hr.employee'].create({'name': 'موظف رسمي للفحص'})
+        self.assertFalse(employee.is_freelancer)
+        employee._check_payroll_eligible()   # لا يرفع
+
+    # ------------------------------------------------------------------
     def test_type_is_locked_after_leaving_the_first_stage(self):
         """تبديل النوع لاحقاً يبدّل المراحل المتخطّاة تحت قدمي الطلب."""
         freelancer = self._request(freelancer=True)

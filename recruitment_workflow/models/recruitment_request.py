@@ -364,6 +364,22 @@ class RecruitmentRequest(models.Model):
              'والرسوم، وبلا عقد. يُنشأ سجل الموظف عند الموافقة ليمكن '
              'صرف سلفته فوراً.',
     )
+    # تصنيف الطلب: حقل عرض محسوب من العلَمين أعلاه - وهما يبقيان المصدر
+    # الوحيد للمنطق (لا شيء في سير العمل يقرأ هذا الحقل). الغرض أن يكون
+    # النوع ظاهراً بخانة واحدة في القائمة والكانبان والبحث والتجميع، بدل
+    # أن يُستنتج من خانتي تأشير لا تظهران في القوائم إطلاقاً. مخزَّن
+    # ليُفرز ويُجمَّع عليه في قاعدة البيانات بلا حساب في كل عرض.
+    request_type = fields.Selection(
+        selection=[
+            ('regular', 'توظيف عادي'),
+            ('import', 'استقدام'),
+            ('freelancer', 'متعاون (فريلانسر)'),
+        ],
+        string='نوع الطلب',
+        compute='_compute_request_type', store=True, readonly=True,
+        help='يُحسب تلقائياً: "متعاون" إن كان الطلب لمتعاون، و"استقدام" '
+             'إن كان طلب استقدام، وإلا "توظيف عادي".',
+    )
     candidate_partner_id = fields.Many2one(
         'res.partner', string='جهة اتصال المرشّح', readonly=True, copy=False,
         help='جهة اتصال خفيفة تمثّل المرشّح قبل إنشاء سجل الموظف الرسمي - '
@@ -2322,3 +2338,17 @@ class RecruitmentRequest(models.Model):
     def _compute_has_contract(self):
         for rec in self:
             rec.has_contract = bool(rec.contract_ref)
+
+    @api.depends('is_freelancer', 'is_import_request')
+    def _compute_request_type(self):
+        """ترتيب الأولوية هنا هو نفسه في _skipped_stage_codes() بالضبط:
+        المتعاون أولاً - فلو حمل طلبٌ العلَمين (لا يحدث عملياً: علَم
+        الاستقدام يُضبط من bank_settlement وحده) لظهر التصنيف مطابقاً
+        للمسار الذي يسلكه الطلب فعلاً، لا مخالفاً له."""
+        for rec in self:
+            if rec.is_freelancer:
+                rec.request_type = 'freelancer'
+            elif rec.is_import_request:
+                rec.request_type = 'import'
+            else:
+                rec.request_type = 'regular'

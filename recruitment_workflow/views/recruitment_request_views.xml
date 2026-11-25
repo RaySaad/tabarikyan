@@ -367,6 +367,9 @@
                   decoration-muted="state == 'rejected'">
                 <field name="name"/>
                 <field name="employee_name"/>
+                <field name="request_type" widget="badge"
+                       decoration-warning="request_type == 'freelancer'"
+                       decoration-info="request_type == 'import'"/>
                 <field name="identification_id"/>
                 <field name="mobile"/>
                 <field name="job_id" options="{'no_create': True, 'no_open': True}"/>
@@ -399,6 +402,7 @@
                 <field name="mobile"/>
                 <field name="job_id" options="{'no_create': True, 'no_open': True}"/>
                 <field name="project_id" options="{'no_create': True, 'no_open': True}"/>
+                <field name="request_type"/>
                 <field name="attachment_progress"/>
                 <templates>
                     <t t-name="card">
@@ -414,6 +418,13 @@
                                 </div>
                                 <span class="badge text-bg-info" t-if="record.project_id.value">
                                     <field name="project_id" options="{'no_create': True, 'no_open': True}"/>
+                                </span>
+                            </div>
+                            <!-- وسم النوع للطلبات غير العادية وحدها: وسمٌ على
+                                 كل كرت لا يميّز شيئاً، والغالب عادي. -->
+                            <div t-if="record.request_type.raw_value != 'regular'" class="mb-1">
+                                <span class="badge text-bg-warning">
+                                    <field name="request_type"/>
                                 </span>
                             </div>
                             <div>
@@ -459,6 +470,14 @@
                 <field name="state"/>
                 <field name="project_manager_id" options="{'no_create': True, 'no_open': True}"/>
                 <field name="project_id" options="{'no_create': True, 'no_open': True}"/>
+                <field name="request_type"/>
+                <separator/>
+                <filter name="filter_freelancer" string="المتعاونون"
+                        domain="[('request_type', '=', 'freelancer')]"/>
+                <filter name="filter_import" string="طلبات الاستقدام"
+                        domain="[('request_type', '=', 'import')]"/>
+                <filter name="filter_regular" string="التوظيف العادي"
+                        domain="[('request_type', '=', 'regular')]"/>
                 <separator/>
                 <filter name="filter_in_progress" string="قيد التنفيذ" domain="[('state', '=', 'in_progress')]"/>
                 <filter name="filter_done" string="مكتمل" domain="[('state', '=', 'done')]"/>
@@ -470,6 +489,8 @@
                 <separator/>
                 <filter name="filter_my" string="مشاريعي" domain="[('project_manager_id', '=', uid)]"/>
                 <separator/>
+                <filter name="group_request_type" string="نوع الطلب"
+                        context="{'group_by': 'request_type'}"/>
                 <filter name="group_stage" string="المرحلة" context="{'group_by': 'stage_id'}"/>
                 <filter name="group_state" string="الحالة" context="{'group_by': 'state'}"/>
                 <filter name="group_job" string="الوظيفة" context="{'group_by': 'job_id'}"/>

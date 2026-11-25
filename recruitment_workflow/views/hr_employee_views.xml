@@ -81,6 +81,21 @@
             <filter name="group_department" position="after">
                 <filter name="group_recruitment_platform" string="المنصة"
                         domain="[]" context="{'group_by': 'project_id'}"/>
+                <filter name="group_is_freelancer" string="متعاون / موظف"
+                        domain="[]" context="{'group_by': 'is_freelancer'}"/>
+            </filter>
+            <!-- فلترا فصل المتعاونين: لا نُخفيهم افتراضياً (سجل "يختفي"
+                 يُربك من يبحث عنه، والقائمة نفسها تُستعمل في شاشات أخرى) -
+                 بل نجعل فصلهم بضغطة. والحماية الفعلية من دخولهم المسير
+                 قيدُ خادم في _check_payroll_eligible()، لا الفلتر.
+                 المرساة فلتر نطاق (newly_hired) وليست فلتر تجميع، وإلا
+                 ظهر الفلتران في قائمة "تجميع حسب". -->
+            <filter name="newly_hired" position="after">
+                <separator/>
+                <filter name="filter_freelancer" string="المتعاونون"
+                        domain="[('is_freelancer', '=', True)]"/>
+                <filter name="filter_not_freelancer" string="الموظفون الرسميون"
+                        domain="[('is_freelancer', '=', False)]"/>
             </filter>
         </field>
     </record>
