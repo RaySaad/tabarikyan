@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- الربط في بطاقة المندوب -->
+    <record id="view_qd_driver_form_hr_fleet" model="ir.ui.view">
+        <field name="name">quick.delivery.driver.form.hr.fleet</field>
+        <field name="model">quick.delivery.driver</field>
+        <field name="inherit_id" ref="quick_delivery.view_quick_delivery_driver_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='vehicle_plate']" position="before">
+                <field name="employee_id"/>
+                <field name="employee_department_id"/>
+                <field name="vehicle_id"/>
+            </xpath>
+            <xpath expr="//header" position="inside">
+                <button name="action_open_employee" type="object"
+                        string="ملف الموظف" class="btn-link"
+                        invisible="not employee_id"/>
+                <button name="action_open_vehicle" type="object"
+                        string="المركبة" class="btn-link"
+                        invisible="not vehicle_id"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_qd_driver_list_hr_fleet" model="ir.ui.view">
+        <field name="name">quick.delivery.driver.list.hr.fleet</field>
+        <field name="model">quick.delivery.driver</field>
+        <field name="inherit_id" ref="quick_delivery.view_quick_delivery_driver_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='vehicle_plate']" position="after">
+                <field name="employee_id" optional="show"/>
+                <field name="vehicle_id" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_qd_driver_search_hr_fleet" model="ir.ui.view">
+        <field name="name">quick.delivery.driver.search.hr.fleet</field>
+        <field name="model">quick.delivery.driver</field>
+        <field name="inherit_id" ref="quick_delivery.view_quick_delivery_driver_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='vehicle_plate']" position="after">
+                <field name="employee_id"/>
+                <field name="vehicle_id"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- زر في بطاقة الموظف -->
+    <record id="view_hr_employee_form_qd" model="ir.ui.view">
+        <field name="name">hr.employee.form.quick.delivery</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_qd_driver" type="object"
+                        class="oe_stat_button" icon="fa-motorcycle"
+                        invisible="not qd_is_driver">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">مندوب</span>
+                        <span class="o_stat_text">توصيل فوري</span>
+                    </div>
+                </button>
+                <field name="qd_is_driver" invisible="1"/>
+                <field name="qd_driver_id" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- مندوبو المركبة في بطاقة الأسطول -->
+    <record id="view_fleet_vehicle_form_qd" model="ir.ui.view">
+        <field name="name">fleet.vehicle.form.quick.delivery</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="مندوبو التوصيل الفوري"
+                      invisible="qd_driver_count == 0">
+                    <field name="qd_driver_count" invisible="1"/>
+                    <field name="qd_driver_ids" readonly="1">
+                        <list>
+                            <field name="name"/>
+                            <field name="phone"/>
+                            <field name="driver_status" widget="badge"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -214,7 +214,21 @@
                             <field name="qd_inbox_count" invisible="1"/>
                         </group>
                         <group string="الإبلاغ والرسوم">
-                            <field name="api_key" password="True"/>
+                            <!-- المفتاح يُعرض فارغاً دائماً: المخزَّن
+                                 بصمته لا نصّه. يُولَّد بالزر ويُنسخ
+                                 حينها، أو يُكتب يدوياً (24 حرفاً فأكثر). -->
+                            <field name="has_api_key"/>
+                            <button name="action_qd_generate_api_key"
+                                    type="object" class="btn-primary"
+                                    string="توليد مفتاح API"
+                                    invisible="has_api_key"/>
+                            <button name="action_qd_generate_api_key"
+                                    type="object" class="btn-link"
+                                    string="تدوير المفتاح (يُبطل القديم)"
+                                    confirm="سيتوقف مفتاح التاجر الحالي فوراً، ولن يستطيع نظامه الإرسال حتى تعطيه الجديد. متأكد؟"
+                                    invisible="not has_api_key"/>
+                            <field name="api_key" password="True"
+                                   placeholder="أو اكتبه يدوياً (24 حرفاً فأكثر)"/>
                             <field name="webhook_url"
                                    placeholder="https://erp.example.com/webhook/delivery"/>
                             <field name="webhook_secret" password="True"/>

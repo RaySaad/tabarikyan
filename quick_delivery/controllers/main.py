@@ -55,7 +55,11 @@ def api_endpoint(func):
             payload = {'status': 'error', 'error': str(error)}
             if error.code:
                 payload['code'] = error.code
-            return _json_response(payload, error.status)
+            response = _json_response(payload, error.status)
+            retry_after = getattr(error, 'retry_after', 0)
+            if retry_after:
+                response.headers['Retry-After'] = str(retry_after)
+            return response
         except (UserError, ValidationError) as error:
             return _json_response(
                 {'status': 'error', 'error': error.args[0] if error.args
@@ -80,6 +84,22 @@ def api_endpoint(func):
             return _json_response({'status': 'error',
                                    'error': 'Internal error'}, 500)
     return wrapper
+
+
+def _throttle(scope, ident):
+    """يرفع 429 عند تجاوز الحدّ، مع ترويسة Retry-After.
+
+    الترويسة ليست تجميلاً: أنظمة التجّار تقرأها فتهدأ، وبدونها
+    تُعيد المحاولة فوراً فتُضاعف الضغط الذي نحاول تخفيفه.
+    """
+    allowed, retry_after = request.env[
+        'quick.delivery.throttle'].sudo()._qd_hit(scope, ident)
+    if not allowed:
+        error = BadRequest(
+            'تجاوزت حدّ عدد الطلبات. أعد المحاولة بعد %d ثانية.'
+            % retry_after, 429)
+        error.retry_after = retry_after
+        raise error
 
 
 def _body_json():
@@ -184,12 +204,14 @@ class QuickCommerceController(http.Controller):
         api_key = (request.httprequest.headers.get('X-API-Key') or '').strip()
         if not api_key:
             raise BadRequest('Invalid API Key', 401)
-        client = request.env['res.partner'].sudo().search([
-            ('api_key', '=', api_key),
-            ('is_qcommerce_client', '=', True),
-        ], limit=1)
+        # الحدّ على العنوان قبل التحقّق من المفتاح: وإلا صار تخمين
+        # المفاتيح بلا حدّ، وكل محاولة تُنفّذ بصمة.
+        _throttle('orders', request.httprequest.remote_addr)
+        client = request.env['res.partner'].sudo()._qd_client_from_api_key(
+            api_key)
         if not client:
             raise BadRequest('Invalid API Key', 401)
+        _throttle('orders', 'client-%s' % client.id)
 
         data = _body_json()
         store = data.get('store') or {}
@@ -265,6 +287,7 @@ class QuickCommerceController(http.Controller):
         ], limit=1)
         if not client:
             raise BadRequest('Unknown endpoint', 404)
+        _throttle('intake', 'client-%s' % client.id)
 
         length = request.httprequest.content_length or 0
         if length > MAX_BODY_BYTES:
@@ -598,11 +621,17 @@ class QuickCommerceController(http.Controller):
         الرمز السري مُعمّى في قاعدة البيانات، والمحاولات الفاشلة تُقفل
         الحساب: أربعة إلى ستة أرقام تُخمَّن في دقائق بلا قفل.
         """
+        # حدّان: على العنوان وعلى الرقم. القفل بعد خمس محاولات يحمي
+        # مندوباً بعينه، وهذا يحمي من تجريب رقم سرّي واحد على ألف رقم -
+        # ولا يُحتسب فشلٌ على رقم غير مسجَّل أصلاً.
+        _throttle('login', request.httprequest.remote_addr)
         data = _body_json()
         phone = str(data.get('phone') or '').strip()
         pin = str(data.get('pin') or '').strip()
         if not phone or not pin:
             raise BadRequest('يُرجى إدخال رقم الجوال ورمز الدخول', 400)
+        _throttle('login', 'phone-%s' % request.env[
+            'quick.delivery.driver'].sudo()._phone_key(phone))
 
         Driver = request.env['quick.delivery.driver'].sudo()
         locked_minutes = Driver._qd_login_lock_minutes(phone)
@@ -654,6 +683,7 @@ class QuickCommerceController(http.Controller):
         jsonrpc للويب) - أي رحلات متعددة على شبكة الجوال كل ثماني ثوان.
         """
         driver = _session_driver()
+        _throttle('driver', 'driver-%s' % driver.id)
         data = _body_json()
         return _json_response(self._driver_state(
             driver, data.get('lat'), data.get('lng'),

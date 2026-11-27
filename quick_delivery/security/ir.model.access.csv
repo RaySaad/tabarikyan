@@ -10,3 +10,4 @@ access_quick_delivery_inbox_manager,quick.delivery.inbox.manager,model_quick_del
 access_quick_delivery_channel_manager,quick.delivery.channel.manager,model_quick_delivery_channel,quick_delivery.group_qd_manager,1,1,1,1
 access_quick_delivery_message_dispatcher,quick.delivery.message.dispatcher,model_quick_delivery_message,quick_delivery.group_qd_dispatcher,1,1,0,0
 access_quick_delivery_message_manager,quick.delivery.message.manager,model_quick_delivery_message,quick_delivery.group_qd_manager,1,1,1,1
+access_quick_delivery_throttle_manager,quick.delivery.throttle.manager,model_quick_delivery_throttle,quick_delivery.group_qd_manager,1,0,0,1

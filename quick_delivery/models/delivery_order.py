@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 import base64
 import logging
+import re
 import math
 import secrets
 from datetime import timedelta
 
 import pytz
+from passlib.context import CryptContext
 
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
@@ -18,6 +20,14 @@ DEFAULT_DISPATCH_RADIUS_KM = 6.0
 
 # حدّ محاولات رمز التسليم على الطلب الواحد. بعده لا يُغلق إلا بصورة.
 MAX_OTP_ATTEMPTS = 5
+
+# بصمة مفاتيح الـAPI. دورات مخفّضة عمداً: المفتاح عشوائي بإنتروبيا
+# عالية (32 بايت) فلا يُهاجَم بالقاموس، وهذه الدالة تُنفَّذ في **كل**
+# طلب يصل من التاجر - التكلفة الكاملة تُضيف عشرات الأجزاء من الثانية
+# إلى كل طلب بلا فائدة أمنية. وهو نفس ما تفعله أودو لمفاتيح واجهتها.
+API_KEY_CRYPT = CryptContext(['pbkdf2_sha512'], pbkdf2_sha512__rounds=6000)
+API_KEY_INDEX_SIZE = 10
+API_KEY_MIN_LENGTH = 24
 
 # المنطقة الزمنية التي تُحسب عليها "أيام" العمل (عهدة اليوم، أرباح اليوم).
 # الافتراضي الرياض: الخطأ هنا خطأ مالي، لا تجميلي - يوم الرياض يبدأ
@@ -68,8 +78,24 @@ class ResPartner(models.Model):
     # الحقل مقروءاً ومكتوباً عبر RPC أو الاستيراد أو التعديل الجماعي -
     # ورابط الـWebhook المكتوب من أي مستخدم داخلي يحوّل بيانات كل
     # الطلبات (اسم العميل وجواله وموقعه) إلى أي سيرفر يختاره.
+    # المفتاح يُخزَّن مُعمّى لا نصّاً: نسخة من قاعدة البيانات أو من
+    # نسخة احتياطية كانت تعطي مفاتيح العثيم وبندة جاهزةً لإرسال طلبات
+    # باسمهم. والبحث بالبادئة ثم تحقّق البصمة - كما تفعل أودو
+    # لمفاتيح واجهتها (res.users.apikeys).
     api_key = fields.Char(
-        string='API Key', copy=False, groups='quick_delivery.group_qd_manager')
+        string='API Key', compute='_compute_api_key',
+        inverse='_inverse_api_key', groups='quick_delivery.group_qd_manager',
+        help='يُعرض فارغاً دائماً: المخزَّن بصمته لا نصّه. '
+             'اضغط "توليد مفتاح جديد" وانسخه حينها - لن يُعرض ثانيةً.')
+    api_key_index = fields.Char(
+        string='بادئة المفتاح', copy=False, index=True,
+        groups='quick_delivery.group_qd_manager')
+    api_key_hash = fields.Char(
+        string='بصمة المفتاح', copy=False,
+        groups='quick_delivery.group_qd_manager')
+    has_api_key = fields.Boolean(
+        string='له مفتاح API', compute='_compute_has_api_key',
+        compute_sudo=True, search='_search_has_api_key')
     webhook_url = fields.Char(
         string='Webhook URL', groups='quick_delivery.group_qd_manager')
     webhook_secret = fields.Char(
@@ -109,16 +135,95 @@ class ResPartner(models.Model):
         help='له مفتاح API ورابط إبلاغ - أي يستطيع إرسال الطلبات '
              'واستقبال تغيّر الحالة.')
 
-    _qd_api_key_uniq = models.Constraint(
-        'unique(api_key)',
-        'مفتاح الـAPI مستخدم لعميل آخر بالفعل - لكل سوبرماركت مفتاحه.',
-    )
+    def _compute_api_key(self):
+        """لا يُقرأ أبداً: المخزَّن بصمةٌ لا نصّ."""
+        for rec in self:
+            rec.api_key = ''
 
-    @api.depends('api_key', 'webhook_url')
+    def _inverse_api_key(self):
+        for rec in self:
+            value = (rec.api_key or '').strip()
+            if not value:
+                continue
+            if len(value) < API_KEY_MIN_LENGTH:
+                raise ValidationError(_(
+                    'مفتاح الـAPI قصير (%(len)d حرفاً). الحدّ الأدنى '
+                    '%(min)d - أو اضغط "توليد مفتاح جديد".'
+                ) % {'len': len(value), 'min': API_KEY_MIN_LENGTH})
+            rec.sudo().write({
+                'api_key_index': self._qd_api_key_index(value),
+                'api_key_hash': self._qd_api_key_hash(value),
+            })
+
+    @api.depends('api_key_hash')
+    def _compute_has_api_key(self):
+        for rec in self:
+            rec.has_api_key = bool(rec.sudo().api_key_hash)
+
+    def _search_has_api_key(self, operator, value):
+        if operator not in ('in', 'not in'):
+            raise NotImplementedError(operator)
+        wanted = True in value
+        if operator == 'not in':
+            wanted = not wanted
+        return [('api_key_hash', '!=' if wanted else '=', False)]
+
+    @api.model
+    def _qd_api_key_index(self, key):
+        return (key or '').strip()[:API_KEY_INDEX_SIZE]
+
+    @api.model
+    def _qd_api_key_hash(self, key):
+        return API_KEY_CRYPT.hash((key or '').strip())
+
+    @api.model
+    def _qd_client_from_api_key(self, key):
+        """التاجر من مفتاحه - بالبادئة ثم تحقّق البصمة.
+
+        البحث بالبادئة يُضيّق المرشّحين إلى واحد عملياً، فلا نتحقّق من
+        بصمة كل عميل في كل طلب.
+        """
+        key = (key or '').strip()
+        if len(key) < API_KEY_MIN_LENGTH:
+            return self.browse()
+        candidates = self.sudo().search([
+            ('api_key_index', '=', key[:API_KEY_INDEX_SIZE]),
+            ('is_qcommerce_client', '=', True),
+        ])
+        for client in candidates:
+            stored = client.api_key_hash
+            if stored and API_KEY_CRYPT.verify(key, stored):
+                return client
+        return self.browse()
+
+    def action_qd_generate_api_key(self):
+        """مفتاح جديد يُعرض مرة واحدة - والقديم يبطل فوراً."""
+        self.ensure_one()
+        new_key = secrets.token_urlsafe(32)
+        self.api_key = new_key
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('مفتاح API جديد لـ%s') % self.name,
+                'message': _(
+                    '%(key)s\n\nانسخه الآن وأعطه للتاجر: لن يُعرض مرة '
+                    'أخرى، والمخزَّن بصمته لا نصّه. والمفتاح القديم '
+                    'بطل - نظامهم سيُرفض حتى تعطيهم الجديد.'
+                ) % {'key': new_key},
+                'sticky': True,
+                'type': 'warning',
+            },
+        }
+
+    @api.depends('api_key_hash', 'webhook_url')
     def _compute_qd_is_configured(self):
+        # على البصمة لا على المفتاح: المفتاح صار حقلاً محسوباً يُقرأ
+        # فارغاً دائماً، فالاعتماد عليه كان يجعل كل تاجر "ربطه ناقص".
         for rec in self:
             data = rec.sudo()
-            rec.qd_is_configured = bool(data.api_key and data.webhook_url)
+            rec.qd_is_configured = bool(data.api_key_hash
+                                        and data.webhook_url)
 
     def _search_qd_is_configured(self, operator, value):
         """محسوب غير مخزَّن لا يُبحث فيه بلا هذه الدالة - والفلتر
@@ -128,7 +233,8 @@ class ResPartner(models.Model):
         wanted = True in value
         if operator == 'not in':
             wanted = not wanted
-        ready = ['&', ('api_key', '!=', False), ('webhook_url', '!=', False)]
+        ready = ['&', ('api_key_hash', '!=', False),
+                 ('webhook_url', '!=', False)]
         if wanted:
             return ready
         return ['!'] + ready

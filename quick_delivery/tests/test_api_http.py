@@ -25,7 +25,7 @@ class TestMerchantApi(HttpCase):
         cls.client = cls.env['res.partner'].create({
             'name': 'سوبرماركت الـAPI',
             'is_qcommerce_client': True,
-            'api_key': 'HTTPKEY-1',
+            'api_key': 'HTTPKEY-1-0123456789abcdefghij',
         })
         cls.env['quick.delivery.driver'].create({
             'name': 'مندوب الـAPI', 'phone': '0552220001', 'pin': '7391',
@@ -60,15 +60,13 @@ class TestMerchantApi(HttpCase):
         يفصل "الحقل لم يُحفظ" عن "طلب HTTP في معاملة لا تراه" - وبدونه
         يبدو فشل اختبارات HTTP كخلل في الكود وهو ليس كذلك.
         """
-        found = self.env['res.partner'].sudo().search([
-            ('api_key', '=', 'HTTPKEY-1'),
-            ('is_qcommerce_client', '=', True),
-        ], limit=1)
-        self.assertTrue(found, 'مفتاح الـAPI غير قابل للبحث داخل المعاملة')
+        found = self.env['res.partner'].sudo()._qd_client_from_api_key(
+            'HTTPKEY-1-0123456789abcdefghij')
+        self.assertTrue(found, 'المفتاح لا يُطابق بصمته داخل المعاملة')
 
     def test_valid_order_is_created(self):
         response = self._post(API_URL, self._order_body(),
-                              {'X-API-Key': 'HTTPKEY-1'})
+                              {'X-API-Key': 'HTTPKEY-1-0123456789abcdefghij'})
         self.assertEqual(response.status_code, 201, response.text)
         data = response.json()
         self.assertEqual(data['status'], 'success')
@@ -77,9 +75,9 @@ class TestMerchantApi(HttpCase):
 
     def test_duplicate_order_returns_the_same_tracking_number(self):
         first = self._post(API_URL, self._order_body('IDEM-1'),
-                           {'X-API-Key': 'HTTPKEY-1'})
+                           {'X-API-Key': 'HTTPKEY-1-0123456789abcdefghij'})
         second = self._post(API_URL, self._order_body('IDEM-1'),
-                            {'X-API-Key': 'HTTPKEY-1'})
+                            {'X-API-Key': 'HTTPKEY-1-0123456789abcdefghij'})
         self.assertEqual(first.status_code, 201)
         self.assertEqual(second.status_code, 200)
         self.assertEqual(first.json()['tracking_number'],
@@ -99,41 +97,41 @@ class TestMerchantApi(HttpCase):
     # ------------------------------------------------------------------
     def test_malformed_json_returns_400_not_500(self):
         response = self._post(API_URL, '{ليس JSON',
-                              {'X-API-Key': 'HTTPKEY-1'}, raw=True)
+                              {'X-API-Key': 'HTTPKEY-1-0123456789abcdefghij'}, raw=True)
         self.assertEqual(response.status_code, 400)
         self.assertIn('JSON', response.json()['error'])
 
     def test_missing_required_fields_returns_400(self):
         response = self._post(API_URL, {'order_id': 'X-1'},
-                              {'X-API-Key': 'HTTPKEY-1'})
+                              {'X-API-Key': 'HTTPKEY-1-0123456789abcdefghij'})
         self.assertEqual(response.status_code, 400)
         self.assertIn('store_name', response.json()['error'])
 
     def test_missing_coordinates_returns_400(self):
         body = self._order_body('NOGEO-1')
         body['store'].pop('lat')
-        response = self._post(API_URL, body, {'X-API-Key': 'HTTPKEY-1'})
+        response = self._post(API_URL, body, {'X-API-Key': 'HTTPKEY-1-0123456789abcdefghij'})
         self.assertEqual(response.status_code, 400)
 
     def test_non_numeric_coordinates_returns_400(self):
         body = self._order_body('BADGEO-1')
         body['store']['lat'] = 'شمال'
-        response = self._post(API_URL, body, {'X-API-Key': 'HTTPKEY-1'})
+        response = self._post(API_URL, body, {'X-API-Key': 'HTTPKEY-1-0123456789abcdefghij'})
         self.assertEqual(response.status_code, 400)
 
     def test_unknown_payment_method_returns_400(self):
         body = self._order_body('PAY-1', payment={'method': 'BITCOIN'})
-        response = self._post(API_URL, body, {'X-API-Key': 'HTTPKEY-1'})
+        response = self._post(API_URL, body, {'X-API-Key': 'HTTPKEY-1-0123456789abcdefghij'})
         self.assertEqual(response.status_code, 400)
 
     def test_cod_without_amount_returns_400_not_500(self):
         body = self._order_body('COD-1', payment={'method': 'COD'})
-        response = self._post(API_URL, body, {'X-API-Key': 'HTTPKEY-1'})
+        response = self._post(API_URL, body, {'X-API-Key': 'HTTPKEY-1-0123456789abcdefghij'})
         self.assertEqual(response.status_code, 400)
 
     def test_no_python_traceback_leaks_to_the_merchant(self):
         """ما كان يصل العثيم/بندة عند أي حقل ناقص."""
-        response = self._post(API_URL, '{', {'X-API-Key': 'HTTPKEY-1'},
+        response = self._post(API_URL, '{', {'X-API-Key': 'HTTPKEY-1-0123456789abcdefghij'},
                               raw=True)
         body = response.text
         for leak in ('Traceback', 'odoo.exceptions', 'File "',
@@ -158,7 +156,7 @@ class TestDriverApi(HttpCase):
             []).write({'driver_status': 'offline'})
         cls.client_partner = cls.env['res.partner'].create({
             'name': 'سوبرماركت المندوب', 'is_qcommerce_client': True,
-            'api_key': 'HTTPKEY-D'})
+            'api_key': 'HTTPKEY-D-0123456789abcdefghij'})
         cls.driver = cls.Driver.create({
             'name': 'مندوب HTTP', 'phone': '0553330001', 'pin': '8264',
             'driver_status': 'online',
@@ -467,7 +465,7 @@ class TestMerchantIntake(HttpCase):
             active_test=False).search([]).write({'driver_status': 'offline'})
         cls.client = cls.env['res.partner'].create({
             'name': 'العثيم للاختبار', 'is_qcommerce_client': True,
-            'api_key': 'INTAKE-KEY-1'})
+            'api_key': 'INTAKE-KEY-1-0123456789abcdefghij'})
         cls.client.action_qd_generate_intake_code()
         cls.code = cls.client.qd_intake_code
         cls.env.cr.flush()
@@ -620,7 +618,7 @@ class TestCustomerTracking(HttpCase):
             'current_lat': 24.7136, 'current_lng': 46.6753})
         cls.client = cls.env['res.partner'].create({
             'name': 'سوبرماركت التتبع', 'is_qcommerce_client': True,
-            'api_key': 'TRACK-KEY-1'})
+            'api_key': 'TRACK-KEY-1-0123456789abcdefghij'})
         cls.order = cls.env['quick.delivery.order'].create({
             'client_id': cls.client.id, 'merchant_order_id': 'TRK-1',
             'store_name': 'فرع العليا', 'store_lat': 24.71, 'store_lng': 46.67,
@@ -738,10 +736,10 @@ class TestScopedOperationsRoom(HttpCase):
             active_test=False).search([]).write({'driver_status': 'offline'})
         cls.othaim = cls.env['res.partner'].create({
             'name': 'العثيم - غرفة', 'is_qcommerce_client': True,
-            'api_key': 'ROOM-KEY-1'})
+            'api_key': 'ROOM-KEY-1-0123456789abcdefghij'})
         cls.panda = cls.env['res.partner'].create({
             'name': 'بندة - غرفة', 'is_qcommerce_client': True,
-            'api_key': 'ROOM-KEY-2'})
+            'api_key': 'ROOM-KEY-2-0123456789abcdefghij'})
         cls.driver = cls.env['quick.delivery.driver'].create({
             'name': 'مندوب مشترك', 'phone': '0556660001',
             'driver_status': 'online',
@@ -935,7 +933,7 @@ class TestOtpAttempts(HttpCase):
             'current_lat': 24.7136, 'current_lng': 46.6753})
         cls.client_partner = cls.env['res.partner'].create({
             'name': 'سوبرماركت الرمز', 'is_qcommerce_client': True,
-            'api_key': 'OTP-KEY-1'})
+            'api_key': 'OTP-KEY-1-0123456789abcdefghij'})
         cls.env.cr.flush()
 
     def _token(self):

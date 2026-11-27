@@ -52,7 +52,7 @@ class QuickDeliveryCommon(TransactionCase):
         cls.client = cls.env['res.partner'].create({
             'name': 'سوبرماركت الاختبار',
             'is_qcommerce_client': True,
-            'api_key': 'UNITKEY-1',
+            'api_key': 'UNITKEY-1-0123456789abcdefghij',
             'webhook_url': 'http://merchant.invalid/hook',
         })
         # المندوب كيان مستقل - لا مستخدم أودو، ولا رخصة، ولا مجموعة.
@@ -118,7 +118,7 @@ class TestOrderValidation(QuickDeliveryCommon):
         """الضابط المقابل: القيد مركّب على (العميل، رقم الطلب)."""
         other = self.env['res.partner'].create({
             'name': 'سوبرماركت آخر', 'is_qcommerce_client': True,
-            'api_key': 'UNITKEY-2'})
+            'api_key': 'UNITKEY-2-0123456789abcdefghij'})
         self._order(merchant_order_id='SHARED-1')
         order = self._order(client_id=other.id,
                             merchant_order_id='SHARED-1')
@@ -352,7 +352,7 @@ class TestWebhookOutbox(QuickDeliveryCommon):
         """الضابط المقابل: لا نكدّس صادراً لعميل بلا رابط."""
         silent = self.env['res.partner'].create({
             'name': 'عميل بلا رابط', 'is_qcommerce_client': True,
-            'api_key': 'UNITKEY-3'})
+            'api_key': 'UNITKEY-3-0123456789abcdefghij'})
         order = self._order(client_id=silent.id,
                             merchant_order_id='NOHOOK-1')
         self.assertFalse(self.env['quick.delivery.webhook'].search(
@@ -607,7 +607,7 @@ class TestMultiMerchant(QuickDeliveryCommon):
         cls.client.write({'delivery_fee_per_order': 12.0})
         cls.other_client = cls.env['res.partner'].create({
             'name': 'سوبرماركت ثانٍ', 'is_qcommerce_client': True,
-            'api_key': 'UNITKEY-MM', 'delivery_fee_per_order': 20.0,
+            'api_key': 'UNITKEY-MM-0123456789abcdefghij', 'delivery_fee_per_order': 20.0,
             'webhook_url': 'http://merchant.invalid/hook',
         })
 
@@ -725,7 +725,7 @@ class TestHomeScreen(QuickDeliveryCommon):
         cls.Home = cls.env['quick.delivery.home']
         cls.second = cls.env['res.partner'].create({
             'name': 'سوبرماركت الكروت', 'is_qcommerce_client': True,
-            'api_key': 'HOME-KEY-2'})
+            'api_key': 'HOME-KEY-2-0123456789abcdefghij'})
         cls.dispatcher = cls.env['res.users'].create({
             'name': 'غرفة عمليات الرئيسية', 'login': 'home_dispatcher',
             'group_ids': [(6, 0, [
@@ -794,7 +794,7 @@ class TestOthaimAdapter(QuickDeliveryCommon):
         cls.Inbox = cls.env['quick.delivery.inbox']
         cls.othaim = cls.env['res.partner'].create({
             'name': 'شركة العثيم', 'is_qcommerce_client': True,
-            'api_key': 'OTHAIM-ADAPTER-1', 'qd_payload_format': 'othaim'})
+            'api_key': 'OTHAIM-ADAPTER-1-0123456789abcdefghij', 'qd_payload_format': 'othaim'})
 
     def _body(self, **over):
         body = {
@@ -987,7 +987,7 @@ class TestOthaimAdapter(QuickDeliveryCommon):
         """الضابط المقابل: إضافة صيغة تاجر لم تكسر صيغتنا."""
         native_client = self.env['res.partner'].create({
             'name': 'عميل بالصيغة الأصلية', 'is_qcommerce_client': True,
-            'api_key': 'NATIVE-STILL-1'})
+            'api_key': 'NATIVE-STILL-1-0123456789abcdefghij'})
         record = self.Inbox.create({
             'client_id': native_client.id,
             'raw_body': json.dumps({
@@ -1025,7 +1025,7 @@ class TestCustomerMessaging(QuickDeliveryCommon):
         cls.sms = cls.Channel.create({
             'name': 'رسالة نصية', 'kind': 'taqnyat', 'sequence': 20,
             'endpoint_url': 'http://sms-provider.invalid/send',
-            'api_key': 'SMS-KEY', 'sender_name': 'DELIVERY',
+            'api_key': 'SMS-KEY-0123456789abcdefghij', 'sender_name': 'DELIVERY',
             'headers_json': '{"Content-Type": "application/json"}',
             'body_template': '{"recipients": ["{phone}"],'
                              ' "body": "{message}"}',
@@ -1332,3 +1332,157 @@ class TestHardening(QuickDeliveryCommon):
         order.auto_assign_nearest_driver()
         self.assertEqual(order.driver_id, self.driver)
         self.assertFalse(order.dispatch_note)
+
+
+@tagged('post_install', '-at_install')
+class TestApiKeySecurity(QuickDeliveryCommon):
+    """مفاتيح التجّار مُعمّاة ومُدوَّرة.
+
+    نسخة من قاعدة البيانات أو من نسخة احتياطية كانت تعطي مفاتيح
+    العثيم وبندة جاهزةً لإرسال طلبات باسمهم.
+    """
+
+    def test_the_key_is_never_stored_in_clear_text(self):
+        key = 'OTHAIM-LIVE-KEY-0123456789abc'
+        self.client.api_key = key
+        stored = self.client.sudo().api_key_hash
+        self.assertTrue(stored)
+        self.assertNotIn(key, stored)
+        # القراءة بعد تفريغ الذاكرة: القيمة تبقى في ذاكرة المعاملة بعد
+        # كتابتها مباشرةً، والمقصود أنها لا تُقرأ من قاعدة البيانات.
+        self.client.invalidate_recordset()
+        self.assertEqual(self.client.sudo().api_key, '',
+                         'المفتاح يُقرأ من قاعدة البيانات')
+        self.env.cr.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'res_partner' AND column_name = 'api_key'")
+        self.assertFalse(self.env.cr.fetchone(),
+                         'عمود المفتاح النصّي ما زال في الجدول')
+
+    def test_the_key_still_authenticates(self):
+        """الضابط المقابل: التعمية لم تقطع التاجر."""
+        key = 'OTHAIM-LIVE-KEY-0123456789abc'
+        self.client.api_key = key
+        Partner = self.env['res.partner'].sudo()
+        self.assertEqual(Partner._qd_client_from_api_key(key), self.client)
+
+    def test_a_wrong_key_is_refused(self):
+        self.client.api_key = 'OTHAIM-LIVE-KEY-0123456789abc'
+        Partner = self.env['res.partner'].sudo()
+        self.assertFalse(Partner._qd_client_from_api_key(
+            'OTHAIM-LIVE-KEY-0123456789abd'))
+
+    def test_a_short_key_is_refused(self):
+        """مفتاح بتسعة أحرف يُخمَّن."""
+        with self.assertRaises(ValidationError):
+            self.client.api_key = 'SHORT-1'
+
+    def test_rotating_invalidates_the_old_key(self):
+        old = 'OTHAIM-OLD-KEY-0123456789abcd'
+        self.client.api_key = old
+        self.client.action_qd_generate_api_key()
+        Partner = self.env['res.partner'].sudo()
+        self.assertFalse(Partner._qd_client_from_api_key(old),
+                         'المفتاح القديم ما زال يعمل بعد التدوير')
+        self.assertTrue(self.client.has_api_key)
+
+    def test_two_merchants_with_the_same_prefix_are_told_apart(self):
+        """البحث بالبادئة ثم تحقّق البصمة: التشابه لا يخلط بينهما."""
+        shared = 'SAMEPREFIX'
+        self.client.api_key = shared + '-FIRST-0123456789'
+        other = self.env['res.partner'].create({
+            'name': 'تاجر ببادئة مشابهة', 'is_qcommerce_client': True,
+            'api_key': shared + '-SECOND-012345678'})
+        Partner = self.env['res.partner'].sudo()
+        self.assertEqual(
+            Partner._qd_client_from_api_key(shared + '-FIRST-0123456789'),
+            self.client)
+        self.assertEqual(
+            Partner._qd_client_from_api_key(shared + '-SECOND-012345678'),
+            other)
+
+
+@tagged('post_install', '-at_install')
+class TestRateLimit(QuickDeliveryCommon):
+    """حدّ معدّل الطلبات.
+
+    المسارات المفتوحة كانت تُستدعى بلا حدّ: حلقةٌ بسيطة تملأ القاعدة
+    أو تُجرّب الأرقام السرية بلا توقّف - ولا يلزم خصمٌ ماهر، يكفي نظام
+    تاجرٍ معطوب يُعيد المحاولة.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Throttle = cls.env['quick.delivery.throttle']
+        cls.env['ir.config_parameter'].sudo().set_param(
+            'quick_delivery.rate_unit', '3/60')
+
+    def _shift_window(self, ident, **delta):
+        self.env.cr.execute(
+            'UPDATE quick_delivery_throttle SET window_start = %s '
+            'WHERE scope = %s AND ident = %s',
+            (fields.Datetime.subtract(fields.Datetime.now(), **delta),
+             'unit', ident))
+        self.Throttle.invalidate_model(['window_start'])
+
+    def test_calls_under_the_limit_pass(self):
+        for _unused in range(3):
+            allowed, retry = self.Throttle._qd_hit('unit', 'ident-A')
+            self.assertTrue(allowed)
+            self.assertEqual(retry, 0)
+
+    def test_the_limit_blocks_and_says_when_to_retry(self):
+        for _unused in range(3):
+            self.Throttle._qd_hit('unit', 'ident-B')
+        allowed, retry = self.Throttle._qd_hit('unit', 'ident-B')
+        self.assertFalse(allowed)
+        self.assertGreater(retry, 0, 'بلا Retry-After يُعيد النظام '
+                                     'المحاولة فوراً فيُضاعف الضغط')
+
+    def test_each_identity_has_its_own_counter(self):
+        """تاجرٌ يتجاوز حدّه لا يُوقف غيره."""
+        for _unused in range(4):
+            self.Throttle._qd_hit('unit', 'ident-C')
+        allowed, _retry = self.Throttle._qd_hit('unit', 'ident-D')
+        self.assertTrue(allowed)
+
+    def test_each_scope_has_its_own_counter(self):
+        for _unused in range(4):
+            self.Throttle._qd_hit('unit', 'ident-E')
+        allowed, _retry = self.Throttle._qd_hit('login', 'ident-E')
+        self.assertTrue(allowed)
+
+    def test_an_expired_window_resets(self):
+        for _unused in range(4):
+            self.Throttle._qd_hit('unit', 'ident-F')
+        # العدّاد غير قابل للكتابة من المستخدم عمداً - نُزحزح النافذة
+        # في قاعدة البيانات كما يفعل مرور الوقت.
+        self._shift_window('ident-F', minutes=5)
+        allowed, _retry = self.Throttle._qd_hit('unit', 'ident-F')
+        self.assertTrue(allowed, 'النافذة لم تُصفَّر بعد انقضائها')
+
+    def test_blocked_calls_are_counted_for_review(self):
+        for _unused in range(5):
+            self.Throttle._qd_hit('unit', 'ident-G')
+        counter = self.Throttle.search([('scope', '=', 'unit'),
+                                        ('ident', '=', 'ident-G')])
+        self.assertGreater(counter.blocked_hits, 0)
+
+    def test_a_bad_configuration_falls_back_to_the_default(self):
+        """إعدادٌ مكتوب خطأً لا يفتح الباب ولا يُغلقه."""
+        self.env['ir.config_parameter'].sudo().set_param(
+            'quick_delivery.rate_unit', 'كلام')
+        limit, window = self.Throttle._qd_limit_for('unit')
+        self.assertGreater(limit, 0)
+        self.assertGreater(window, 0)
+        self.env['ir.config_parameter'].sudo().set_param(
+            'quick_delivery.rate_unit', '3/60')
+
+    def test_old_counters_are_purged(self):
+        self.Throttle._qd_hit('unit', 'ident-OLD')
+        counter = self.Throttle.search([('scope', '=', 'unit'),
+                                        ('ident', '=', 'ident-OLD')])
+        self._shift_window('ident-OLD', days=3)
+        self.Throttle.cron_purge()
+        self.assertFalse(counter.exists())
