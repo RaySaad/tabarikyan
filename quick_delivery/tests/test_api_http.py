@@ -8,7 +8,7 @@
 import json
 
 from odoo.tests import HttpCase, tagged
-from odoo.tools import mute_logger
+from odoo.tools import file_open, mute_logger
 
 API_URL = '/api/v1/qcommerce/orders'
 LOGIN_URL = '/api/v1/driver/login'
@@ -853,3 +853,62 @@ class TestScopedOperationsRoom(HttpCase):
         plain = self.env['res.partner'].create({'name': 'شريك عادي'})
         self.env.cr.flush()
         self.assertIn('error', self._room(plain.id))
+
+
+@tagged('post_install', '-at_install')
+class TestNoExternalLibraries(HttpCase):
+    """الموديول يعمل بلا إنترنت خارجي.
+
+    كانت الخريطة تُجلب من unpkg وتنسيق تطبيق المندوب من jsdelivr وصوت
+    التنبيه من actions.google.com: حجب أي نطاق منها يُعطّل شاشة
+    كاملة - غرفة العمليات أو التطبيق.
+    """
+
+    LEAFLET = '/quick_delivery/static/lib/leaflet'
+
+    def test_leaflet_is_served_from_this_server(self):
+        response = self.url_open('%s/leaflet.js' % self.LEAFLET)
+        self.assertEqual(response.status_code, 200)
+        self.assertGreater(len(response.content), 100000,
+                           'ملف Leaflet ناقص أو بديل')
+        self.assertIn('javascript', response.headers.get('Content-Type', ''))
+
+    def test_the_leaflet_stylesheet_and_its_images_are_served(self):
+        """الـCSS يشير إلى images/layers.png: غيابها أخطاء 404 في كل فتح."""
+        self.assertEqual(
+            self.url_open('%s/leaflet.css' % self.LEAFLET).status_code, 200)
+        for image in ('layers.png', 'layers-2x.png', 'marker-icon.png'):
+            self.assertEqual(
+                self.url_open('%s/images/%s' % (self.LEAFLET, image))
+                .status_code, 200, image)
+
+    def test_no_source_file_loads_a_remote_script_or_style(self):
+        """حارس ضد العودة: أي ملف يُحمَّل وقت التشغيل من نطاق خارجي."""
+        suspects = ('unpkg.com', 'jsdelivr.net', 'cdnjs.cloudflare.com',
+                    'ajax.googleapis.com', 'code.jquery.com',
+                    'actions.google.com', 'fonts.googleapis.com')
+        files = (
+            'quick_delivery/static/src/js/sla_dashboard.js',
+            'quick_delivery/static/src/js/quick_delivery_home.js',
+            'quick_delivery/static/src/driver_app/app.js',
+            'quick_delivery/static/src/driver_app/track.js',
+            'quick_delivery/static/src/driver_app/sw.js',
+            'quick_delivery/static/src/driver_app/app.css',
+            'quick_delivery/static/src/driver_app/track.css',
+            'quick_delivery/views/driver_app_template.xml',
+            'quick_delivery/views/tracking_page_template.xml',
+        )
+        for path in files:
+            with file_open(path, 'r') as handle:
+                content = handle.read()
+            for host in suspects:
+                # الذكر في تعليق مسموح؛ المقصود تحميلٌ فعليّ.
+                for marker in ('src="https://%s' % host,
+                               "src='https://%s" % host,
+                               'href="https://%s' % host,
+                               "href='https://%s" % host,
+                               '= "https://%s' % host,
+                               "= 'https://%s" % host):
+                    self.assertNotIn(
+                        marker, content,
+                        '%s ما زال يُحمّل من %s' % (path, host))

@@ -48,19 +48,30 @@ export class QuickSlaDashboard extends Component {
         });
     }
 
+    /**
+     * Leaflet من هذا الخادم لا من unpkg: حجب النطاق أو انقطاعه كان
+     * يُعطّل غرفة العمليات كاملةً. والملفات في static/lib/leaflet،
+     * نُزّلت من مصدرين وقُورنت بصماتها.
+     *
+     * تُحمَّل عند فتح الشاشة لا مع حزمة الواجهة الخلفية: 150 كيلوبايت
+     * لا تُفرض على كل مستخدم أودو لأجل شاشة واحدة.
+     */
     async _loadLeafletAssets() {
         if (!document.getElementById("leaflet-css")) {
             const link = document.createElement("link");
             link.id = "leaflet-css";
             link.rel = "stylesheet";
-            link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+            link.href = "/quick_delivery/static/lib/leaflet/leaflet.css";
             document.head.appendChild(link);
         }
         if (!window.L) {
             await new Promise((resolve) => {
                 const script = document.createElement("script");
-                script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+                script.src = "/quick_delivery/static/lib/leaflet/leaflet.js";
+                // الشاشة تعمل بلا خريطة إن تعذّر التحميل، ولا تتجمّد
+                // على انتظار لا ينتهي.
                 script.onload = resolve;
+                script.onerror = resolve;
                 document.body.appendChild(script);
             });
         }
