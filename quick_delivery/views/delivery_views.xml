@@ -405,7 +405,7 @@
         <field name="arch" type="xml">
             <!-- كرت لكل سوبرماركت: حالته من نظرة، وأزراره تدخل إلى
                  طلباته وحدها. مع عميل واحد كانت القائمة تكفي. -->
-            <kanban class="o_kanban_dashboard" create="1">
+            <kanban create="1">
                 <field name="qd_active_orders"/>
                 <field name="qd_late_orders"/>
                 <field name="qd_today_delivered"/>
@@ -506,6 +506,10 @@
             <list string="الوارد" create="0"
                   decoration-danger="state == 'failed'"
                   decoration-muted="state in ('mapped', 'ignored')">
+                <header>
+                    <button name="action_replay" type="object"
+                            string="إعادة معالجة المحدَّد" class="btn-primary"/>
+                </header>
                 <field name="received_at"/>
                 <field name="client_id"/>
                 <field name="remote_addr" optional="show"/>
