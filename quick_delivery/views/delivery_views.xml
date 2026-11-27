@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_quick_sla_dashboard" model="ir.actions.client">
+        <field name="name">لوحة مراقبة 30 دقيقة + الخريطة</field>
+        <field name="tag">quick_delivery.sla_dashboard</field>
+    </record>
+
+    <record id="view_quick_delivery_order_list" model="ir.ui.view">
+        <field name="name">quick.delivery.order.list</field>
+        <field name="model">quick.delivery.order</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="state in ('searching_driver', 'failed')" decoration-success="state == 'delivered'">
+                <field name="name"/>
+                <field name="merchant_order_id"/>
+                <field name="client_id"/>
+                <field name="store_name"/>
+                <field name="customer_name"/>
+                <field name="driver_id"/>
+                <field name="delivery_otp"/>
+                <field name="cod_amount"/>
+                <field name="is_cod_settled"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_quick_delivery_order_form" model="ir.ui.view">
+        <field name="name">quick.delivery.order.form</field>
+        <field name="model">quick.delivery.order</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="auto_assign_nearest_driver" string="إسناد آلي لأقرب مندوب" type="object" class="btn-primary" invisible="state != 'searching_driver'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="searching_driver,driver_assigned,arrived_at_store,picked_up,delivered,failed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="بيانات السوبرماركت والفرع">
+                            <field name="client_id"/>
+                            <field name="merchant_order_id"/>
+                            <field name="store_code"/>
+                            <field name="store_name"/>
+                            <field name="store_lat"/>
+                            <field name="store_lng"/>
+                        </group>
+                        <group string="بيانات العميل والتوصيل">
+                            <field name="customer_name"/>
+                            <field name="customer_phone"/>
+                            <field name="customer_lat"/>
+                            <field name="customer_lng"/>
+                            <field name="address_notes"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="التنفيذ والمؤقت وإثبات التسليم">
+                            <field name="driver_id"/>
+                            <field name="delivery_otp"/>
+                            <field name="sla_minutes"/>
+                            <field name="sla_deadline"/>
+                            <field name="delivered_at"/>
+                            <field name="pod_photo" widget="image" class="oe_avatar"/>
+                        </group>
+                        <group string="التحصيل والعهدة والتعذر">
+                            <field name="bags_count"/>
+                            <field name="payment_method"/>
+                            <field name="cod_amount"/>
+                            <field name="is_cod_settled"/>
+                            <field name="cod_settled_at"/>
+                            <field name="failure_reason"/>
+                            <field name="failure_notes"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quick_delivery_orders" model="ir.actions.act_window">
+        <field name="name">جميع طلبات التوصيل</field>
+        <field name="res_model">quick.delivery.order</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_partner_form_qcommerce" model="ir.ui.view">
+        <field name="name">res.partner.form.qcommerce</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <!-- الصفحة كلها لمجموعة المدير: الحقول نفسها محصورة على
+                     مستوى الحقل في بايثون (groups=)، وهذا يمنع ظهور صفحة
+                     فارغة لمن لا يملك الصلاحية. -->
+                <page string="ربط التوصيل السريع (API)"
+                      groups="quick_delivery.group_qd_manager">
+                    <group>
+                        <field name="is_qcommerce_client"/>
+                        <field name="api_key" password="True"/>
+                        <field name="webhook_url"
+                               placeholder="https://erp.example.com/webhook/delivery"/>
+                        <field name="webhook_secret" password="True"/>
+                        <field name="delivery_fee_per_order"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+
+    <!-- ============ المندوبون (كيان مستقل لا مستخدمو أودو) ============ -->
+    <record id="view_quick_delivery_driver_list" model="ir.ui.view">
+        <field name="name">quick.delivery.driver.list</field>
+        <field name="model">quick.delivery.driver</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="driver_status == 'offline'"
+                  decoration-success="driver_status == 'online'"
+                  decoration-warning="not has_pin">
+                <field name="name"/>
+                <field name="phone"/>
+                <field name="vehicle_plate" optional="show"/>
+                <field name="driver_status" widget="badge"
+                       decoration-success="driver_status == 'online'"
+                       decoration-warning="driver_status == 'busy'"/>
+                <field name="has_pin" string="له رمز دخول"/>
+                <field name="today_delivered_count"/>
+                <field name="cod_custody_balance" sum="إجمالي العهدة"/>
+                <field name="last_ping" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_quick_delivery_driver_form" model="ir.ui.view">
+        <field name="name">quick.delivery.driver.form</field>
+        <field name="model">quick.delivery.driver</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_generate_pin" type="object"
+                            string="توليد رمز دخول" class="btn-primary"
+                            groups="quick_delivery.group_qd_manager"
+                            help="يُعرض الرمز مرة واحدة ثم يُخزَّن مُعمّى."/>
+                    <button name="action_revoke_sessions" type="object"
+                            string="إنهاء جلسات الأجهزة"
+                            groups="quick_delivery.group_qd_manager"
+                            help="لجوال مفقود أو مندوب أُوقف: يخرج من التطبيق فوراً."/>
+                    <button name="action_settle_driver_cod" type="object"
+                            string="تسوية عهدة التحصيل (COD)" class="btn-success"
+                            groups="quick_delivery.group_qd_manager"
+                            invisible="cod_custody_balance == 0"/>
+                    <field name="driver_status" widget="statusbar"
+                           statusbar_visible="offline,online,busy"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="موقوف"
+                            bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="اسم المندوب"/></h1>
+                    </div>
+                    <group>
+                        <group string="البيانات ودخول التطبيق">
+                            <field name="phone" placeholder="05XXXXXXXX"/>
+                            <field name="vehicle_plate"/>
+                            <field name="active" widget="boolean_toggle"/>
+                            <field name="has_pin"/>
+                            <!-- يُكتب يدوياً أو يُولَّد بالزر. لا يُقرأ
+                                 بعد الحفظ: المخزَّن بصمة لا نصّ. -->
+                            <field name="pin" password="True"
+                                   placeholder="4 إلى 6 أرقام"
+                                   groups="quick_delivery.group_qd_manager"/>
+                        </group>
+                        <group string="الجلسة الحالية"
+                               groups="quick_delivery.group_qd_manager">
+                            <field name="session_expiry"/>
+                            <field name="session_device"/>
+                            <field name="login_locked_until"/>
+                            <field name="login_fail_count"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="الموقع والحالة">
+                            <field name="current_lat"/>
+                            <field name="current_lng"/>
+                            <field name="last_ping"/>
+                        </group>
+                        <group string="المحفظة والعهدة">
+                            <field name="commission_per_order"/>
+                            <field name="cod_custody_balance"/>
+                            <field name="today_delivered_count"/>
+                            <field name="today_earnings"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="طلبات المندوب">
+                            <field name="order_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="client_id"/>
+                                    <field name="customer_name"/>
+                                    <field name="cod_amount"/>
+                                    <field name="is_cod_settled"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="ملاحظات">
+                            <field name="notes" placeholder="..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_quick_delivery_driver_search" model="ir.ui.view">
+        <field name="name">quick.delivery.driver.search</field>
+        <field name="model">quick.delivery.driver</field>
+        <field name="arch" type="xml">
+            <search string="بحث المندوبين">
+                <field name="name"/>
+                <field name="phone"/>
+                <field name="vehicle_plate"/>
+                <filter name="filter_online" string="متاح الآن"
+                        domain="[('driver_status', '=', 'online')]"/>
+                <filter name="filter_busy" string="في مهمة"
+                        domain="[('driver_status', '=', 'busy')]"/>
+                <filter name="filter_no_pin" string="بلا رمز دخول"
+                        domain="[('has_pin', '=', False)]"/>
+                <filter name="filter_archived" string="الموقوفون"
+                        domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter name="group_status" string="الحالة"
+                        context="{'group_by': 'driver_status'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_quick_delivery_drivers" model="ir.actions.act_window">
+        <field name="name">المندوبون</field>
+        <field name="res_model">quick.delivery.driver</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">سجّل أول مندوب</p>
+            <p>المندوب هنا ليس مستخدم أودو ولا يحتاج رخصة. أضفه، ولّد له
+               رمز دخول، وأعطه رابط التطبيق: <b>/driver</b></p>
+        </field>
+    </record>
+
+    <!-- ============ صادر إبلاغ التاجر (Webhook) ============ -->
+    <record id="view_quick_delivery_webhook_list" model="ir.ui.view">
+        <field name="name">quick.delivery.webhook.list</field>
+        <field name="model">quick.delivery.webhook</field>
+        <field name="arch" type="xml">
+            <list string="إبلاغات التاجر" create="0"
+                  decoration-danger="state == 'failed'"
+                  decoration-muted="state == 'sent'">
+                <field name="create_date" string="وقت الحدث"/>
+                <field name="order_id"/>
+                <field name="client_id"/>
+                <field name="attempts"/>
+                <field name="response_code" optional="show"/>
+                <field name="next_attempt_at" optional="hide"/>
+                <field name="sent_at" optional="hide"/>
+                <field name="last_error" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'sent'"
+                       decoration-danger="state == 'failed'"/>
+                <button name="action_retry" type="object" icon="fa-repeat"
+                        title="إعادة المحاولة" invisible="state == 'sent'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_quick_delivery_webhooks" model="ir.actions.act_window">
+        <field name="name">إبلاغات التاجر (Webhook)</field>
+        <field name="res_model">quick.delivery.webhook</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_filter_not_sent': 1}</field>
+    </record>
+
+    <record id="view_quick_delivery_webhook_search" model="ir.ui.view">
+        <field name="name">quick.delivery.webhook.search</field>
+        <field name="model">quick.delivery.webhook</field>
+        <field name="arch" type="xml">
+            <search string="بحث الإبلاغات">
+                <field name="order_id"/>
+                <field name="client_id"/>
+                <filter name="filter_not_sent" string="لم يُرسل بعد"
+                        domain="[('state', '!=', 'sent')]"/>
+                <filter name="filter_failed" string="فشل نهائياً"
+                        domain="[('state', '=', 'failed')]"/>
+                <separator/>
+                <filter name="group_client" string="السوبرماركت"
+                        context="{'group_by': 'client_id'}"/>
+                <filter name="group_state" string="الحالة"
+                        context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- القوائم محصورة بمجموعات التوصيل: كانت ظاهرة لكل مستخدم داخلي. -->
+    <menuitem id="menu_quick_delivery_root" name="التوصيل الفوري (30m)" sequence="10"
+              groups="quick_delivery.group_qd_dispatcher"/>
+    <menuitem id="menu_quick_dashboard" name="غرفة العمليات والخريطة الحية" parent="menu_quick_delivery_root" action="action_quick_sla_dashboard" sequence="1"
+              groups="quick_delivery.group_qd_dispatcher"/>
+    <menuitem id="menu_quick_orders" name="سجل الطلبات" parent="menu_quick_delivery_root" action="action_quick_delivery_orders" sequence="2"
+              groups="quick_delivery.group_qd_dispatcher"/>
+    <menuitem id="menu_quick_drivers" name="المندوبون" parent="menu_quick_delivery_root" action="action_quick_delivery_drivers" sequence="3"
+              groups="quick_delivery.group_qd_dispatcher"/>
+    <menuitem id="menu_quick_webhooks" name="إبلاغات التاجر (Webhook)" parent="menu_quick_delivery_root" action="action_quick_delivery_webhooks" sequence="4"
+              groups="quick_delivery.group_qd_manager"/>
+</odoo>

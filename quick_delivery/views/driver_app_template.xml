@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- هيكل تطبيق المندوب: صفحة واحدة عامة لا تحمل أي بيان.
+
+         النسخة السابقة كانت تُرسل اسم المندوب من الخادم في القالب
+         (t-esc) وتعمل بـauth='user' - أي أن كل مندوب مستخدم أودو
+         مدفوع. هنا الصفحة فارغة تماماً، والدخول والبيانات عبر الـAPI
+         برمز جلسة ينتهي. -->
+    <template id="driver_app_template" name="Driver Web App">&lt;!DOCTYPE html&gt;
+        <html lang="ar" dir="rtl">
+        <head>
+            <meta charset="utf-8"/>
+            <meta name="viewport"
+                  content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+            <meta name="theme-color" content="#0f172a"/>
+            <meta name="mobile-web-app-capable" content="yes"/>
+            <meta name="apple-mobile-web-app-capable" content="yes"/>
+            <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+            <meta name="apple-mobile-web-app-title" content="المندوب"/>
+            <meta name="robots" content="noindex, nofollow"/>
+            <title>مندوب التوصيل السريع</title>
+            <link rel="manifest" href="/driver/manifest.json"/>
+            <link rel="apple-touch-icon"
+                  href="/quick_delivery/static/src/driver_app/icon-192.png"/>
+            <link rel="icon" type="image/png"
+                  href="/quick_delivery/static/src/driver_app/icon-192.png"/>
+            <!-- بلا CDN: الملفان من هذا الخادم، فلا يتعطّل شكل التطبيق
+                 بانقطاع نطاق خارجي. رقم النسخة لتجاوز ذاكرة المتصفح. -->
+            <link rel="stylesheet"
+                  href="/quick_delivery/static/src/driver_app/app.css?v=4.0.0"/>
+        </head>
+        <body>
+            <!-- ================= شاشة الدخول ================= -->
+            <div id="screen-login" class="qd-login hidden">
+                <div class="qd-login__brand">
+                    <div class="qd-login__logo">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff"
+                             stroke-width="1.8" stroke-linecap="round"
+                             stroke-linejoin="round" aria-hidden="true">
+                            <path d="M3 7h10v8H3z"/>
+                            <path d="M13 10h4l3 3v2h-7z"/>
+                            <circle cx="7" cy="18" r="2"/>
+                            <circle cx="17" cy="18" r="2"/>
+                        </svg>
+                    </div>
+                    <h1>تطبيق مندوب التوصيل</h1>
+                    <p>ادخل برقم جوالك ورمز الدخول من غرفة العمليات</p>
+                </div>
+
+                <label class="qd-label" for="loginPhone">رقم الجوال</label>
+                <input id="loginPhone" class="qd-field" type="tel"
+                       inputmode="tel" autocomplete="username"
+                       placeholder="05XXXXXXXX" dir="ltr"/>
+
+                <label class="qd-label" for="loginPin">رمز الدخول</label>
+                <input id="loginPin" class="qd-field" type="password"
+                       inputmode="numeric" autocomplete="current-password"
+                       maxlength="6" placeholder="••••" dir="ltr"/>
+
+                <p id="loginError" class="qd-cod hidden"></p>
+
+                <button id="loginBtn" class="qd-btn qd-btn--primary"
+                        type="button">دخول</button>
+                <p class="qd-empty" style="padding:14px 0 0">
+                    نسيت الرمز؟ غرفة العمليات تُولّد لك رمزاً جديداً.
+                </p>
+            </div>
+
+            <!-- ================= التطبيق ================= -->
+            <div id="screen-app" class="hidden">
+                <div id="topBar" class="qd-top">
+                    <div>
+                        <div id="driverName" class="qd-top__name">مندوب التوصيل</div>
+                        <div id="statusLabel" class="qd-top__status">غير متصل</div>
+                    </div>
+                    <div class="qd-top__right">
+                        <label class="qd-switch" aria-label="تفعيل الوردية">
+                            <input id="onlineSwitch" type="checkbox"/>
+                            <span class="qd-switch__track"></span>
+                            <span class="qd-switch__dot"></span>
+                        </label>
+                        <button id="logoutBtn" class="qd-icon-btn" type="button"
+                                title="خروج" aria-label="خروج">⏻</button>
+                    </div>
+                </div>
+
+                <div id="networkBar" class="qd-offline-bar hidden">
+                    لا يوجد اتصال - التطبيق يعيد المحاولة تلقائياً
+                </div>
+
+                <div class="qd-wallet">
+                    <div>
+                        <span>عهدة التحصيل</span>
+                        <strong id="walletCod">0.00 ر.س</strong>
+                    </div>
+                    <div>
+                        <span>طلبات اليوم</span>
+                        <strong id="walletOrders">0</strong>
+                    </div>
+                    <div>
+                        <span>أرباح اليوم</span>
+                        <strong id="walletEarnings">0.00 ر.س</strong>
+                    </div>
+                </div>
+
+                <div class="qd-main">
+                    <div id="installBox" class="qd-install hidden">
+                        <span>ثبّت التطبيق على الشاشة الرئيسية ليعمل كتطبيق
+                              مستقل.</span>
+                        <button id="installBtn" type="button">تثبيت</button>
+                    </div>
+
+                    <!-- لا وردية -->
+                    <div id="stateOffline" class="qd-empty">
+                        <h2>أنت غير متصل</h2>
+                        <p>فعّل المفتاح بالأعلى لبدء الوردية واستقبال الطلبات.</p>
+                    </div>
+
+                    <!-- وردية بلا طلب -->
+                    <div id="stateWaiting" class="qd-empty hidden">
+                        <div class="qd-pulse"></div>
+                        <h2>متاح وبانتظار أقرب طلب</h2>
+                        <p>أبقِ التطبيق مفتوحاً، وسيصلك تنبيه صوتي عند وصول
+                           طلب قريب منك.</p>
+                    </div>
+
+                    <!-- طلب حيّ -->
+                    <div id="orderBox" class="hidden">
+                        <div id="slaBox" class="qd-sla">
+                            <div id="slaLabel" class="qd-sla__label">
+                                الوقت المتبقي للتسليم
+                            </div>
+                            <div id="slaValue" class="qd-sla__value">--:--</div>
+                        </div>
+
+                        <div class="qd-card">
+                            <div class="qd-card__head">
+                                <span id="clientChip" class="qd-chip">السوبرماركت</span>
+                                <span id="orderRef" class="qd-ref">#0000</span>
+                            </div>
+
+                            <div class="qd-leg qd-leg--store">
+                                <div class="qd-leg__num">1</div>
+                                <div class="qd-leg__body">
+                                    <div class="qd-leg__title">الاستلام من الفرع</div>
+                                    <div id="storeName" class="qd-leg__name">-</div>
+                                    <div id="storeMeta" class="qd-leg__meta">-</div>
+                                </div>
+                            </div>
+
+                            <div class="qd-leg qd-leg--customer">
+                                <div class="qd-leg__num">2</div>
+                                <div class="qd-leg__body">
+                                    <div class="qd-leg__title">التسليم إلى العميل</div>
+                                    <div id="customerName" class="qd-leg__name">-</div>
+                                    <div id="customerMeta" class="qd-leg__meta">-</div>
+                                </div>
+                            </div>
+
+                            <div id="codBox" class="qd-cod hidden"></div>
+                        </div>
+
+                        <div class="qd-btn-row">
+                            <a id="navBtn" class="qd-btn qd-btn--nav" href="#"
+                               target="_blank" rel="noopener">التوجّه</a>
+                            <a id="callBtn" class="qd-btn qd-btn--ghost" href="#"
+                               style="max-width:140px">اتصال</a>
+                        </div>
+
+                        <div id="podBox" class="qd-card qd-pod hidden">
+                            <h3 class="qd-pod__title">إثبات التسليم</h3>
+                            <p class="qd-pod__hint">
+                                اطلب من العميل رمز التحقق المرسل له، أو صوّر
+                                الطلب عند الباب. لا يُغلق الطلب بلا إثبات.
+                            </p>
+                            <input id="otpInput" class="qd-otp" type="text"
+                                   inputmode="numeric" maxlength="6"
+                                   placeholder="------" dir="ltr"/>
+                            <div class="qd-or">أو</div>
+                            <label id="photoLabel" class="qd-photo-label">
+                                <span id="photoLabelText">صوّر الطلب عند الباب</span>
+                                <input id="photoInput" type="file"
+                                       accept="image/*" capture="environment"/>
+                            </label>
+                        </div>
+
+                        <button id="stepBtn" class="qd-btn qd-btn--step"
+                                type="button">تحديث الحالة</button>
+
+                        <button id="failToggle" class="qd-btn qd-btn--danger-ghost"
+                                type="button">تعذّر التسليم / مشكلة</button>
+
+                        <div id="failBox" class="qd-card hidden">
+                            <label class="qd-label" for="failReason">
+                                سبب تعذّر التسليم
+                            </label>
+                            <select id="failReason" class="qd-field">
+                                <option value="customer_no_answer">العميل لا يرد على الاتصال</option>
+                                <option value="wrong_address">العنوان أو الموقع غير صحيح</option>
+                                <option value="customer_refused">العميل رفض استلام الطلب</option>
+                                <option value="store_delayed">تأخر تجهيز الطلب في الفرع</option>
+                            </select>
+                            <input id="failNotes" class="qd-field" type="text"
+                                   placeholder="ملاحظات إضافية (اختياري)"/>
+                            <button id="failSubmit" class="qd-btn qd-btn--danger"
+                                    type="button">تأكيد تعذّر التسليم</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="toast" class="qd-toast hidden"></div>
+
+            <script type="text/javascript"
+                    src="/quick_delivery/static/src/driver_app/app.js?v=4.0.0"></script>
+        </body>
+        </html>
+    </template>
+</odoo>

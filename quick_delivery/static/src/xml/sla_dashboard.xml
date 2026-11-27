@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="quick_delivery.SlaDashboardTemplate">
+        <div class="p-4 bg-light h-100 overflow-auto" dir="rtl">
+            <h2 class="mb-4 fw-bold text-primary">غرفة عمليات التوصيل السريع (SLA 30 دقيقة)</h2>
+            
+            <div class="row g-3 mb-4">
+                <div class="col-md-2">
+                    <div class="card border-0 shadow-sm p-3 bg-white">
+                        <span class="text-muted small">طلبات نشطة</span>
+                        <h3 class="fw-bold text-dark mt-1"><t t-esc="state.kpis.active_count"/></h3>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card border-0 shadow-sm p-3 bg-danger text-white">
+                        <span class="small">بانتظار مندوب</span>
+                        <h3 class="fw-bold mt-1"><t t-esc="state.kpis.unassigned_count"/></h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm p-3 bg-success text-white">
+                        <span class="small">مناديب متاحون / في مهمة</span>
+                        <h3 class="fw-bold mt-1"><t t-esc="state.kpis.online_drivers"/> / <t t-esc="state.kpis.busy_drivers"/></h3>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card border-0 shadow-sm p-3 bg-primary text-white">
+                        <span class="small">مسلّم اليوم</span>
+                        <h3 class="fw-bold mt-1"><t t-esc="state.kpis.delivered_today"/></h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm p-3 bg-dark text-white">
+                        <span class="small">تحصيل COD اليوم</span>
+                        <h3 class="fw-bold mt-1"><t t-esc="state.kpis.total_cod_today"/> ر.س</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <!-- الخريطة الحية -->
+                <div class="col-lg-5">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white fw-bold d-flex justify-content-between">
+                            <span>خريطة العمليات الحية</span>
+                            <span class="small text-muted">🟢 متاح | 🔵 مشغول | 🟠 فرع | 🔴 عميل</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div t-ref="liveMapContainer" style="height: 440px; width: 100%; z-index: 1;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- جدول الطلبات مع الإسناد اليدوي الفوري -->
+                <div class="col-lg-7">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white fw-bold">الطلبات الجارية والتوزيع السريع (30 دقيقة)</div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>الطلب</th>
+                                        <th>السوبرماركت / الفرع</th>
+                                        <th>إسناد / تغيير المندوب</th>
+                                        <th>الحالة</th>
+                                        <th>المتبقي</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="state.orders" t-as="ord" t-key="ord.id">
+                                        <tr t-att-class="ord.is_urgent ? 'table-danger' : ''">
+                                            <td class="fw-bold"><t t-esc="ord.name"/></td>
+                                            <td>
+                                                <div class="fw-bold"><t t-esc="ord.client_name"/></div>
+                                                <small class="text-muted"><t t-esc="ord.store_name"/></small>
+                                            </td>
+                                            <td>
+                                                <select class="form-select form-select-sm" t-on-change="(ev) => this.onManualAssignChange(ord.id, ev)">
+                                                    <option value="">-- اختر مندوب --</option>
+                                                    <t t-foreach="state.drivers" t-as="drv" t-key="drv.id">
+                                                        <option t-att-value="drv.id" t-att-selected="ord.driver_id === drv.id">
+                                                            <t t-esc="drv.name"/> (<t t-esc="drv.status"/>)
+                                                        </option>
+                                                    </t>
+                                                </select>
+                                            </td>
+                                            <td><span class="badge bg-info text-dark"><t t-esc="ord.state"/></span></td>
+                                            <td class="fw-bold">
+                                                <span t-att-class="ord.remaining_minutes &lt; 10 ? 'text-danger' : 'text-success'">
+                                                    <t t-esc="ord.remaining_minutes"/> د
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- جدول محافظ وعهدة المناديب -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white fw-bold">ملخص حالة المناديب وعهدة التحصيل (COD Custody)</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>اسم المندوب</th>
+                                <th>الحالة</th>
+                                <th>طلبات اليوم المنجزة</th>
+                                <th>عهدة مبالغ COD (SAR)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="state.drivers" t-as="d" t-key="d.id">
+                                <tr>
+                                    <td class="fw-bold"><t t-esc="d.name"/></td>
+                                    <td>
+                                        <span t-att-class="d.status === 'online' ? 'badge bg-success' : (d.status === 'busy' ? 'badge bg-primary' : 'badge bg-secondary')">
+                                            <t t-esc="d.status"/>
+                                        </span>
+                                    </td>
+                                    <td><t t-esc="d.today_orders"/></td>
+                                    <td class="fw-bold text-danger"><t t-esc="d.cod_balance"/> ريال</td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

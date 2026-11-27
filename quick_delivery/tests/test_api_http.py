@@ -1,0 +1,455 @@
+# -*- coding: utf-8 -*-
+"""اختبارات الـAPI وتطبيق المندوب عبر HTTP حقيقي - لا باستدعاء الدوال.
+
+السبب: أخطر ما في مسارات الويب لا يظهر إلا عبر HTTP - رمز الحالة
+المُعاد (500 بدل 400)، وتتبّع الكود الذي كان يُسلَّم للعثيم وبندة،
+وفحوص الصلاحية على المسارات، وترويسة العامل الخدمي.
+"""
+import json
+
+from odoo.tests import HttpCase, tagged
+from odoo.tools import mute_logger
+
+API_URL = '/api/v1/qcommerce/orders'
+LOGIN_URL = '/api/v1/driver/login'
+STATE_URL = '/api/v1/driver/state'
+LOGOUT_URL = '/api/v1/driver/logout'
+
+
+@tagged('post_install', '-at_install')
+class TestMerchantApi(HttpCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.client = cls.env['res.partner'].create({
+            'name': 'سوبرماركت الـAPI',
+            'is_qcommerce_client': True,
+            'api_key': 'HTTPKEY-1',
+        })
+        cls.env['quick.delivery.driver'].create({
+            'name': 'مندوب الـAPI', 'phone': '0552220001', 'pin': '1234',
+            'driver_status': 'online',
+            'current_lat': 24.7136, 'current_lng': 46.6753,
+        })
+        cls.env.cr.flush()
+
+    def _post(self, url, body, headers=None, raw=False):
+        payload = body if raw else json.dumps(body)
+        return self.url_open(
+            url, data=payload.encode('utf-8'),
+            headers={'Content-Type': 'application/json',
+                     **(headers or {})})
+
+    def _order_body(self, order_id='API-1', **over):
+        body = {
+            'order_id': order_id,
+            'store': {'store_name': 'فرع العليا', 'store_code': 'OL',
+                      'lat': 24.7100, 'lng': 46.6700},
+            'customer': {'name': 'عميل', 'phone': '0550000000',
+                         'lat': 24.7200, 'lng': 46.6800},
+            'payment': {'method': 'PREPAID'},
+        }
+        body.update(over)
+        return body
+
+    # ------------------------------------------------------------------
+    def test_fixture_is_visible_in_process(self):
+        """تشخيص: هل مفتاح الـAPI مكتوب فعلاً وقابلاً للبحث؟
+
+        يفصل "الحقل لم يُحفظ" عن "طلب HTTP في معاملة لا تراه" - وبدونه
+        يبدو فشل اختبارات HTTP كخلل في الكود وهو ليس كذلك.
+        """
+        found = self.env['res.partner'].sudo().search([
+            ('api_key', '=', 'HTTPKEY-1'),
+            ('is_qcommerce_client', '=', True),
+        ], limit=1)
+        self.assertTrue(found, 'مفتاح الـAPI غير قابل للبحث داخل المعاملة')
+
+    def test_valid_order_is_created(self):
+        response = self._post(API_URL, self._order_body(),
+                              {'X-API-Key': 'HTTPKEY-1'})
+        self.assertEqual(response.status_code, 201, response.text)
+        data = response.json()
+        self.assertEqual(data['status'], 'success')
+        self.assertTrue(data['tracking_number'])
+        self.assertRegex(data['delivery_otp'], r'^\d{6}$')
+
+    def test_duplicate_order_returns_the_same_tracking_number(self):
+        first = self._post(API_URL, self._order_body('IDEM-1'),
+                           {'X-API-Key': 'HTTPKEY-1'})
+        second = self._post(API_URL, self._order_body('IDEM-1'),
+                            {'X-API-Key': 'HTTPKEY-1'})
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(first.json()['tracking_number'],
+                         second.json()['tracking_number'])
+
+    def test_bad_api_key_is_rejected(self):
+        response = self._post(API_URL, self._order_body(),
+                              {'X-API-Key': 'WRONG'})
+        self.assertEqual(response.status_code, 401)
+
+    def test_missing_api_key_is_rejected(self):
+        response = self._post(API_URL, self._order_body())
+        self.assertEqual(response.status_code, 401)
+
+    # ------------------------------------------------------------------
+    # الأهم: خطأ في المدخلات = 400 مفهوم، لا 500 بتتبّع كود
+    # ------------------------------------------------------------------
+    def test_malformed_json_returns_400_not_500(self):
+        response = self._post(API_URL, '{ليس JSON',
+                              {'X-API-Key': 'HTTPKEY-1'}, raw=True)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('JSON', response.json()['error'])
+
+    def test_missing_required_fields_returns_400(self):
+        response = self._post(API_URL, {'order_id': 'X-1'},
+                              {'X-API-Key': 'HTTPKEY-1'})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('store_name', response.json()['error'])
+
+    def test_missing_coordinates_returns_400(self):
+        body = self._order_body('NOGEO-1')
+        body['store'].pop('lat')
+        response = self._post(API_URL, body, {'X-API-Key': 'HTTPKEY-1'})
+        self.assertEqual(response.status_code, 400)
+
+    def test_non_numeric_coordinates_returns_400(self):
+        body = self._order_body('BADGEO-1')
+        body['store']['lat'] = 'شمال'
+        response = self._post(API_URL, body, {'X-API-Key': 'HTTPKEY-1'})
+        self.assertEqual(response.status_code, 400)
+
+    def test_unknown_payment_method_returns_400(self):
+        body = self._order_body('PAY-1', payment={'method': 'BITCOIN'})
+        response = self._post(API_URL, body, {'X-API-Key': 'HTTPKEY-1'})
+        self.assertEqual(response.status_code, 400)
+
+    def test_cod_without_amount_returns_400_not_500(self):
+        body = self._order_body('COD-1', payment={'method': 'COD'})
+        response = self._post(API_URL, body, {'X-API-Key': 'HTTPKEY-1'})
+        self.assertEqual(response.status_code, 400)
+
+    def test_no_python_traceback_leaks_to_the_merchant(self):
+        """ما كان يصل العثيم/بندة عند أي حقل ناقص."""
+        response = self._post(API_URL, '{', {'X-API-Key': 'HTTPKEY-1'},
+                              raw=True)
+        body = response.text
+        for leak in ('Traceback', 'odoo.exceptions', 'File "',
+                     'quick_delivery/'):
+            self.assertNotIn(leak, body,
+                             'الرد يسرّب تفاصيل الكود: %s' % leak)
+
+
+@tagged('post_install', '-at_install')
+class TestDriverApi(HttpCase):
+    """تطبيق المندوب: دخول بجوال ورمز سري، وجلسة تنتهي.
+
+    القديم كان رمزاً نصّياً أبدياً في ترويسة Bearer، على مستخدم أودو
+    داخلي مدفوع الرخصة.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Driver = cls.env['quick.delivery.driver']
+        cls.Driver.sudo().with_context(active_test=False).search(
+            []).write({'driver_status': 'offline'})
+        cls.client_partner = cls.env['res.partner'].create({
+            'name': 'سوبرماركت المندوب', 'is_qcommerce_client': True,
+            'api_key': 'HTTPKEY-D'})
+        cls.driver = cls.Driver.create({
+            'name': 'مندوب HTTP', 'phone': '0553330001', 'pin': '4321',
+            'driver_status': 'online',
+            'current_lat': 24.7136, 'current_lng': 46.6753,
+        })
+        cls.other = cls.Driver.create({
+            'name': 'مندوب آخر', 'phone': '0553330002', 'pin': '4321',
+            'driver_status': 'offline'})
+        cls.env.cr.flush()
+
+    # ------------------------------------------------------------------
+    def _post(self, url, body=None, token=None):
+        headers = {'Content-Type': 'application/json'}
+        if token is not None:
+            headers['Authorization'] = 'Bearer %s' % token
+        return self.url_open(url, data=json.dumps(body or {}).encode('utf-8'),
+                             headers=headers)
+
+    def _login(self, phone='0553330001', pin='4321'):
+        return self._post(LOGIN_URL, {'phone': phone, 'pin': pin})
+
+    def _token(self):
+        response = self._login()
+        self.assertEqual(response.status_code, 200, response.text)
+        return response.json()['token']
+
+    def _make_order(self, merchant_order_id, driver):
+        order = self.env['quick.delivery.order'].create({
+            'client_id': self.client_partner.id,
+            'merchant_order_id': merchant_order_id,
+            'store_name': 'فرع', 'store_lat': 24.71, 'store_lng': 46.67,
+            'customer_name': 'عميل', 'customer_phone': '0550000000',
+            'customer_lat': 24.72, 'customer_lng': 46.68,
+            'driver_id': driver.id, 'state': 'driver_assigned',
+        })
+        self.env.cr.flush()
+        return order
+
+    # ---------------------------------------------------------- الدخول
+    def test_login_with_correct_pin_returns_a_session(self):
+        response = self._login()
+        self.assertEqual(response.status_code, 200, response.text)
+        data = response.json()
+        self.assertTrue(data['token'])
+        self.assertGreaterEqual(len(data['token']), 32)
+        self.assertEqual(data['driver']['name'], 'مندوب HTTP')
+        self.assertTrue(data['expires_at'], 'الجلسة بلا انتهاء = رمز أبدي')
+
+    def test_login_with_wrong_pin_is_rejected(self):
+        self.assertEqual(self._login(pin='0000').status_code, 401)
+
+    def test_login_with_an_unknown_phone_is_rejected(self):
+        self.assertEqual(self._login(phone='0569999999').status_code, 401)
+
+    def test_the_two_failures_look_identical(self):
+        """التمييز بين "رقم غير مسجّل" و"رمز خاطئ" يُفشي من هو مندوب."""
+        unknown = self._login(phone='0569999999').json()
+        wrong_pin = self._login(pin='0000').json()
+        self.assertEqual(unknown['error'], wrong_pin['error'])
+
+    def test_empty_body_is_rejected_not_crashed(self):
+        self.assertEqual(self._post(LOGIN_URL, {}).status_code, 400)
+
+    def test_five_wrong_attempts_lock_the_login(self):
+        for _unused in range(5):
+            self._login(pin='0000')
+        locked = self._login()
+        self.assertEqual(locked.status_code, 429, locked.text)
+
+    def test_login_with_an_international_phone_format(self):
+        """الضابط العملي: المندوب يكتب رقمه كما يحفظه."""
+        self.assertEqual(self._login(phone='+966553330001').status_code, 200)
+
+    # --------------------------------------------------------- الجلسة
+    def test_state_without_a_token_is_rejected(self):
+        response = self._post(STATE_URL)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json().get('code'), 'session_expired')
+
+    def test_state_with_a_bogus_token_is_rejected(self):
+        self.assertEqual(self._post(STATE_URL, token='not-a-real-token').status_code,
+                         401)
+
+    def test_state_for_a_logged_in_driver_works(self):
+        """الضابط المقابل: المندوب الحقيقي يُخدَم."""
+        response = self._post(STATE_URL, token=self._token())
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertIn('wallet', body)
+        self.assertEqual(body['driver_name'], 'مندوب HTTP')
+
+    def test_state_writes_the_position(self):
+        token = self._token()
+        response = self._post(STATE_URL,
+                              {'lat': 24.72, 'lng': 46.68}, token=token)
+        self.assertEqual(response.status_code, 200)
+        self.driver.invalidate_recordset()
+        self.assertAlmostEqual(self.driver.current_lat, 24.72, places=4)
+
+    def test_an_invalid_status_is_refused(self):
+        """الحالة كانت تُكتب كما وصلت - قيمة خارج القائمة = 500."""
+        response = self._post(STATE_URL, {'set_status': 'teleporting'},
+                              token=self._token())
+        self.assertEqual(response.status_code, 400)
+
+    def test_going_offline_and_online_works(self):
+        token = self._token()
+        self.assertEqual(
+            self._post(STATE_URL, {'set_status': 'offline'},
+                       token=token).json()['driver_status'], 'offline')
+        self.assertEqual(
+            self._post(STATE_URL, {'set_status': 'online'},
+                       token=token).json()['driver_status'], 'online')
+
+    def test_going_online_with_a_live_order_reports_busy(self):
+        """عاد من انقطاع وعليه طلب: غرفة العمليات كانت تراه شاغراً في
+        العدّاد والخريطة فتنتظر منه ما لا يستطيع."""
+        self._make_order('BUSY-HTTP-1', self.driver)
+        body = self._post(STATE_URL, {'set_status': 'online'},
+                          token=self._token()).json()
+        self.assertEqual(body['driver_status'], 'busy')
+
+    def test_going_online_without_an_order_reports_online(self):
+        """الضابط المقابل: من لا طلب عليه يصير متاحاً فعلاً."""
+        body = self._post(STATE_URL, {'set_status': 'online'},
+                          token=self._token()).json()
+        self.assertEqual(body['driver_status'], 'online')
+
+    def test_cannot_go_offline_with_a_live_order(self):
+        self._make_order('OFF-HTTP-1', self.driver)
+        response = self._post(STATE_URL, {'set_status': 'offline'},
+                              token=self._token())
+        self.assertEqual(response.status_code, 400)
+
+    def test_logout_kills_the_session(self):
+        token = self._token()
+        self.assertEqual(self._post(LOGOUT_URL, token=token).status_code, 200)
+        after = self._post(STATE_URL, token=token)
+        self.assertEqual(after.status_code, 401,
+                         'الرمز ما زال يعمل بعد الخروج')
+
+    def test_revoking_from_odoo_kills_the_live_session(self):
+        token = self._token()
+        self.driver.action_revoke_sessions()
+        self.env.cr.flush()
+        self.assertEqual(self._post(STATE_URL, token=token).status_code, 401)
+
+    # ---------------------------------------------------------- الطلبات
+    def test_the_assigned_order_reaches_the_driver(self):
+        order = self._make_order('MINE-HTTP-1', self.driver)
+        body = self._post(STATE_URL, token=self._token()).json()
+        self.assertTrue(body['has_order'])
+        self.assertEqual(body['order']['id'], order.id)
+        self.assertEqual(body['order']['customer_phone'], '0550000000')
+
+    def test_driver_cannot_touch_another_drivers_order(self):
+        order = self._make_order('OTHER-HTTP-1', self.other)
+        response = self._post(
+            '/api/v1/driver/order/%d/status' % order.id,
+            {'state': 'delivered', 'otp_code': '000000'},
+            token=self._token())
+        self.assertEqual(response.status_code, 403)
+
+    def test_the_full_delivery_path_over_http(self):
+        order = self._make_order('PATH-HTTP-1', self.driver)
+        token = self._token()
+        url = '/api/v1/driver/order/%d/status' % order.id
+
+        self.assertEqual(
+            self._post(url, {'state': 'arrived_at_store'},
+                       token=token).status_code, 200)
+        self.assertEqual(
+            self._post(url, {'state': 'picked_up'}, token=token).status_code,
+            200)
+        order.invalidate_recordset()
+        otp = order.sudo().delivery_otp
+        done = self._post(url, {'state': 'delivered', 'otp_code': otp},
+                          token=token)
+        self.assertEqual(done.status_code, 200, done.text)
+        order.invalidate_recordset()
+        self.assertEqual(order.state, 'delivered')
+        self.assertEqual(order.pod_method, 'otp')
+
+    def test_skipping_the_pickup_is_refused_with_400(self):
+        order = self._make_order('SKIP-HTTP-1', self.driver)
+        response = self._post(
+            '/api/v1/driver/order/%d/status' % order.id,
+            {'state': 'delivered', 'otp_code': order.sudo().delivery_otp},
+            token=self._token())
+        self.assertEqual(response.status_code, 400, response.text)
+
+    def test_a_wrong_otp_is_refused_with_400(self):
+        order = self._make_order('OTP-HTTP-1', self.driver)
+        token = self._token()
+        url = '/api/v1/driver/order/%d/status' % order.id
+        self._post(url, {'state': 'arrived_at_store'}, token=token)
+        self._post(url, {'state': 'picked_up'}, token=token)
+        response = self._post(url, {'state': 'delivered',
+                                    'otp_code': '000000'}, token=token)
+        self.assertEqual(response.status_code, 400)
+        order.invalidate_recordset()
+        self.assertEqual(order.state, 'picked_up')
+
+
+@tagged('post_install', '-at_install')
+class TestDriverWebApp(HttpCase):
+    """الصفحة نفسها: عامة، وبلا أي بيان، وقابلة للتثبيت."""
+
+    def test_the_app_page_is_public(self):
+        """لا auth='user': المندوب ليس مستخدم أودو، ولو كان لطُلب منه
+        تسجيل دخول أودو كامل على جواله."""
+        response = self.url_open('/driver')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('تطبيق مندوب التوصيل', response.text)
+
+    def test_the_page_carries_no_data(self):
+        """الصفحة عامة، فلا يجوز أن تحمل اسم مندوب ولا طلباً."""
+        self.env['quick.delivery.driver'].create({
+            'name': 'مندوب سرّي جداً', 'phone': '0554440001'})
+        self.env.cr.flush()
+        body = self.url_open('/driver').text
+        self.assertNotIn('مندوب سرّي جداً', body)
+
+    def test_the_manifest_is_served(self):
+        response = self.url_open('/driver/manifest.json')
+        self.assertEqual(response.status_code, 200)
+        manifest = response.json()
+        self.assertEqual(manifest['start_url'], '/driver')
+        self.assertTrue(manifest['icons'])
+
+    def test_the_service_worker_carries_its_scope_header(self):
+        """بلا هذه الترويسة لا يتحكم العامل بـ/driver، فلا يفتح
+        التطبيق على شبكة متقطعة."""
+        response = self.url_open('/driver/sw.js')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get('Service-Worker-Allowed'),
+                         '/driver')
+        self.assertIn('javascript', response.headers.get('Content-Type', ''))
+
+    def test_the_app_assets_are_served_and_have_no_cdn(self):
+        """النسخة السابقة كانت تجلب Bootstrap وصوت التنبيه من الإنترنت:
+        حجب النطاق أو انقطاعه يُفقد التطبيق شكله وصوته."""
+        page = self.url_open('/driver').text
+        for cdn in ('jsdelivr', 'unpkg', 'cdnjs', 'googleapis',
+                    'actions.google.com', 'bootstrap'):
+            self.assertNotIn(cdn, page, 'الصفحة ما زالت تعتمد على %s' % cdn)
+        for asset in ('app.css', 'app.js'):
+            url = '/quick_delivery/static/src/driver_app/%s' % asset
+            self.assertEqual(self.url_open(url).status_code, 200, asset)
+
+
+@tagged('post_install', '-at_install')
+class TestDashboardAccess(HttpCase):
+    """الداش بورد والتوزيع كانا auth='user' بلا فحص مجموعة: أي مستخدم
+    داخلي يقرأ جوال كل عميل وموقعه، ويعيد إسناد أي طلب."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.plain_password = 'plainpass123'
+        cls.plain = cls.env['res.users'].create({
+            'name': 'مستخدم عادي HTTP', 'login': 'http_plain',
+            'password': cls.plain_password,
+            'group_ids': [(6, 0, [cls.env.ref('base.group_user').id])],
+        })
+        cls.dispatcher_password = 'disppass123'
+        cls.dispatcher = cls.env['res.users'].create({
+            'name': 'غرفة العمليات HTTP', 'login': 'http_dispatcher',
+            'password': cls.dispatcher_password,
+            'group_ids': [(6, 0, [
+                cls.env.ref('quick_delivery.group_qd_dispatcher').id])],
+        })
+        cls.env.cr.flush()
+
+    def _call_dashboard(self):
+        return self.url_open(
+            '/api/v1/qcommerce/dashboard',
+            data=json.dumps({'jsonrpc': '2.0', 'method': 'call',
+                             'params': {}}).encode('utf-8'),
+            headers={'Content-Type': 'application/json'})
+
+    @mute_logger('odoo.http')
+    def test_plain_user_is_denied_the_dashboard(self):
+        self.authenticate('http_plain', self.plain_password)
+        payload = self._call_dashboard().json()
+        self.assertIn('error', payload,
+                      'مستخدم عادي قرأ غرفة العمليات')
+
+    def test_dispatcher_is_allowed_the_dashboard(self):
+        """الضابط المقابل: الفحص لم يُغلق الشاشة على أصحابها."""
+        self.authenticate('http_dispatcher', self.dispatcher_password)
+        payload = self._call_dashboard().json()
+        self.assertNotIn('error', payload)
+        self.assertIn('kpis', payload['result'])

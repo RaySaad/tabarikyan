@@ -1,0 +1,280 @@
+/* تطبيق المندوب - بلا أي مكتبة خارجية.
+ *
+ * النسخة السابقة كانت تجلب Bootstrap من jsdelivr وصوت التنبيه من
+ * actions.google.com: انقطاع الإنترنت أو حجب النطاق يُفقد التطبيق
+ * شكله وصوته - وهو تطبيق ميداني يعمل على شبكة جوال متقطعة.
+ */
+
+:root {
+    --ink: #0f172a;
+    --ink-soft: #1e293b;
+    --line: #e2e8f0;
+    --page: #f1f5f9;
+    --card: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --green: #15803d;
+    --green-soft: #dcfce7;
+    --amber: #b45309;
+    --amber-soft: #fef3c7;
+    --red: #b91c1c;
+    --red-soft: #fee2e2;
+    --blue: #1d4ed8;
+    --blue-soft: #dbeafe;
+    --radius: 14px;
+    --tap: 56px;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--page);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+    font-size: 16px;
+    /* منع التحديد: ضغطة طويلة على زر في الجوال كانت تُظهر قائمة النسخ */
+    -webkit-user-select: none;
+    user-select: none;
+    overscroll-behavior-y: contain;
+}
+
+body { padding-bottom: env(safe-area-inset-bottom, 0); }
+
+.hidden { display: none !important; }
+
+/* ===================== الترويسة ===================== */
+.qd-top {
+    background: var(--ink);
+    color: #fff;
+    padding: calc(12px + env(safe-area-inset-top, 0)) 16px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+.qd-top.is-online { background: var(--green); }
+.qd-top__name { font-weight: 700; font-size: 1.05rem; }
+.qd-top__status { font-size: .8rem; opacity: .85; margin-top: 2px; }
+.qd-top__right { display: flex; align-items: center; gap: 10px; }
+
+/* مفتاح الاتصال: مساحة ضغط كبيرة - يُستعمل بيد واحدة وفي الحركة */
+.qd-switch { position: relative; width: 62px; height: 34px; flex: none; }
+.qd-switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; }
+.qd-switch__track {
+    position: absolute; inset: 0; border-radius: 999px;
+    background: rgba(255, 255, 255, .3); transition: background .15s;
+    pointer-events: none;
+}
+.qd-switch__dot {
+    position: absolute; top: 3px; inset-inline-start: 3px;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #fff; transition: inset-inline-start .15s;
+    pointer-events: none;
+}
+.qd-switch input:checked ~ .qd-switch__track { background: rgba(255, 255, 255, .55); }
+.qd-switch input:checked ~ .qd-switch__dot { inset-inline-start: 31px; }
+
+.qd-icon-btn {
+    background: rgba(255, 255, 255, .14);
+    border: 0; color: #fff; border-radius: 10px;
+    width: 40px; height: 40px; font-size: 1.1rem; cursor: pointer;
+}
+
+/* ===================== شريط المحفظة ===================== */
+.qd-wallet {
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    text-align: center;
+}
+.qd-wallet > div { flex: 1; padding: 10px 6px; }
+.qd-wallet > div + div { border-inline-start: 1px solid var(--line); }
+.qd-wallet span { display: block; font-size: .72rem; color: var(--muted); }
+.qd-wallet strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+
+/* ===================== المحتوى ===================== */
+.qd-main { padding: 16px; max-width: 560px; margin: 0 auto; }
+
+.qd-empty { text-align: center; padding: 48px 16px; color: var(--muted); }
+.qd-empty h2 { font-size: 1.1rem; color: var(--text); margin: 0 0 8px; }
+.qd-empty p { margin: 0; font-size: .9rem; line-height: 1.7; }
+
+.qd-pulse {
+    width: 54px; height: 54px; margin: 0 auto 18px; border-radius: 50%;
+    background: var(--green-soft); border: 3px solid var(--green);
+    animation: qd-pulse 1.6s ease-out infinite;
+}
+@keyframes qd-pulse {
+    0% { transform: scale(.85); opacity: 1; }
+    70% { transform: scale(1.1); opacity: .35; }
+    100% { transform: scale(.85); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .qd-pulse { animation: none; }
+}
+
+/* ===================== مؤقّت الـSLA ===================== */
+.qd-sla {
+    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px;
+    background: var(--amber-soft); color: var(--amber);
+    display: flex; align-items: center; justify-content: space-between;
+}
+.qd-sla.is-late { background: var(--red-soft); color: var(--red); }
+.qd-sla__label { font-size: .85rem; font-weight: 600; }
+.qd-sla__value {
+    font-size: 2.1rem; font-weight: 800; line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ===================== بطاقة الطلب ===================== */
+.qd-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 14px;
+}
+.qd-card__head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+}
+.qd-ref { font-weight: 800; font-size: 1.05rem; }
+.qd-chip {
+    background: var(--ink-soft); color: #fff; border-radius: 999px;
+    padding: 4px 12px; font-size: .78rem;
+}
+
+.qd-leg { display: flex; gap: 12px; padding: 10px 0; }
+.qd-leg + .qd-leg { border-top: 1px dashed var(--line); }
+.qd-leg__num {
+    flex: none; width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center; font-weight: 700; font-size: .85rem;
+}
+.qd-leg--store .qd-leg__num { background: var(--blue-soft); color: var(--blue); }
+.qd-leg--customer .qd-leg__num { background: var(--green-soft); color: var(--green); }
+.qd-leg__body { min-width: 0; }
+.qd-leg__title { font-size: .72rem; color: var(--muted); }
+.qd-leg__name { font-weight: 700; font-size: 1.02rem; margin: 2px 0; }
+.qd-leg__meta { font-size: .88rem; color: var(--muted); line-height: 1.6; word-break: break-word; }
+
+.qd-cod {
+    margin-top: 12px; background: var(--red-soft); color: var(--red);
+    border-radius: 10px; padding: 12px; font-weight: 700; text-align: center;
+}
+
+/* ===================== الأزرار ===================== */
+.qd-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; min-height: var(--tap); border: 0; border-radius: var(--radius);
+    font-family: inherit; font-size: 1.05rem; font-weight: 700;
+    cursor: pointer; text-decoration: none; margin-bottom: 10px;
+    padding: 12px 16px;
+}
+.qd-btn:active { transform: scale(.985); }
+.qd-btn[disabled] { opacity: .55; cursor: default; }
+.qd-btn--primary { background: var(--green); color: #fff; }
+.qd-btn--nav { background: var(--blue); color: #fff; }
+.qd-btn--step { background: var(--amber); color: #fff; }
+.qd-btn--ghost {
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--line); font-weight: 600; font-size: .95rem;
+    min-height: 46px;
+}
+.qd-btn--danger-ghost {
+    background: transparent; color: var(--red);
+    border: 1px solid var(--red); font-weight: 600; min-height: 46px;
+}
+.qd-btn--danger { background: var(--red); color: #fff; }
+
+.qd-btn-row { display: flex; gap: 10px; }
+.qd-btn-row .qd-btn { margin-bottom: 10px; }
+
+/* ===================== إثبات التسليم ===================== */
+.qd-pod { border: 2px solid var(--green); }
+.qd-pod__title { font-weight: 700; color: var(--green); margin: 0 0 4px; font-size: 1rem; }
+.qd-pod__hint { font-size: .82rem; color: var(--muted); margin: 0 0 12px; line-height: 1.6; }
+
+.qd-otp {
+    width: 100%; min-height: var(--tap); border: 2px solid var(--line);
+    border-radius: 12px; text-align: center; font-size: 1.8rem;
+    font-weight: 700; letter-spacing: .4rem; font-family: inherit;
+    font-variant-numeric: tabular-nums;
+    -webkit-user-select: text; user-select: text;
+}
+.qd-otp:focus { outline: 0; border-color: var(--green); }
+
+.qd-or {
+    display: flex; align-items: center; gap: 10px;
+    color: var(--muted); font-size: .8rem; margin: 12px 0;
+}
+.qd-or::before, .qd-or::after {
+    content: ""; flex: 1; height: 1px; background: var(--line);
+}
+
+.qd-photo-label {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: var(--tap); border: 2px dashed var(--line);
+    border-radius: 12px; color: var(--muted); font-weight: 600;
+    cursor: pointer;
+}
+.qd-photo-label.is-set {
+    border-style: solid; border-color: var(--green);
+    background: var(--green-soft); color: var(--green);
+}
+.qd-photo-label input { display: none; }
+
+.qd-field {
+    width: 100%; min-height: 48px; border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 12px; font-family: inherit;
+    font-size: 1rem; background: #fff; margin-bottom: 10px;
+    -webkit-user-select: text; user-select: text;
+}
+.qd-field:focus { outline: 0; border-color: var(--blue); }
+label.qd-label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 6px; }
+
+/* ===================== شاشة الدخول ===================== */
+.qd-login { max-width: 420px; margin: 0 auto; padding: 32px 20px; }
+.qd-login__brand { text-align: center; margin-bottom: 28px; }
+.qd-login__logo {
+    width: 76px; height: 76px; border-radius: 20px; margin: 0 auto 14px;
+    background: var(--green); display: grid; place-items: center;
+}
+.qd-login__logo svg { width: 42px; height: 42px; }
+.qd-login__brand h1 { font-size: 1.25rem; margin: 0 0 6px; }
+.qd-login__brand p { color: var(--muted); font-size: .9rem; margin: 0; }
+
+/* ===================== التنبيهات ===================== */
+.qd-toast {
+    position: fixed; inset-inline: 16px; bottom: calc(18px + env(safe-area-inset-bottom, 0));
+    background: var(--ink); color: #fff; border-radius: 12px;
+    padding: 14px 16px; font-size: .95rem; line-height: 1.6;
+    z-index: 60; box-shadow: 0 10px 30px rgba(15, 23, 42, .35);
+}
+.qd-toast--error { background: var(--red); }
+.qd-toast--ok { background: var(--green); }
+
+.qd-offline-bar {
+    background: var(--amber); color: #fff; text-align: center;
+    padding: 8px 12px; font-size: .85rem; font-weight: 600;
+}
+
+.qd-install {
+    background: var(--blue-soft); color: var(--blue);
+    border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px;
+    font-size: .88rem; line-height: 1.7;
+    display: flex; align-items: center; gap: 10px;
+}
+.qd-install button {
+    margin-inline-start: auto; flex: none; background: var(--blue);
+    color: #fff; border: 0; border-radius: 8px; padding: 8px 14px;
+    font-family: inherit; font-weight: 700; cursor: pointer;
+}
+
+/* أجهزة صغيرة جداً: المؤقّت لا يُزحزح البطاقة */
+@media (max-width: 340px) {
+    .qd-sla__value { font-size: 1.7rem; }
+    .qd-wallet strong { font-size: .95rem; }
+}

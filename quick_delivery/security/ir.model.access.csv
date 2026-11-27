@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_quick_delivery_order_dispatcher,quick.delivery.order.dispatcher,model_quick_delivery_order,quick_delivery.group_qd_dispatcher,1,1,1,0
+access_quick_delivery_order_manager,quick.delivery.order.manager,model_quick_delivery_order,quick_delivery.group_qd_manager,1,1,1,1
+access_quick_delivery_driver_dispatcher,quick.delivery.driver.dispatcher,model_quick_delivery_driver,quick_delivery.group_qd_dispatcher,1,1,0,0
+access_quick_delivery_driver_manager,quick.delivery.driver.manager,model_quick_delivery_driver,quick_delivery.group_qd_manager,1,1,1,1
+access_quick_delivery_webhook_dispatcher,quick.delivery.webhook.dispatcher,model_quick_delivery_webhook,quick_delivery.group_qd_dispatcher,1,1,0,0
+access_quick_delivery_webhook_manager,quick.delivery.webhook.manager,model_quick_delivery_webhook,quick_delivery.group_qd_manager,1,1,1,1

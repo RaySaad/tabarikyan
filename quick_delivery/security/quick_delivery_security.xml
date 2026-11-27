@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!-- ================================================================
+             النسخة السابقة لم تُعرّف أي مجموعة: الصلاحية كانت
+             base.group_user بقراءة وكتابة وإنشاء وحذف على كل الطلبات،
+             بلا قاعدة سجلات واحدة. أي مستخدم داخلي - محاسب، موارد
+             بشرية، مندوب - كان يقرأ اسم كل عميل وجواله وموقعه ورمز
+             تحقّقه، ويحذف الطلبات.
+             ================================================================ -->
+
+        <record id="res_groups_privilege_quick_delivery" model="res.groups.privilege">
+            <field name="name">التوصيل الفوري</field>
+            <field name="sequence">40</field>
+        </record>
+
+        <!-- لا مجموعة للمندوب: المندوب لم يعد مستخدم أودو إطلاقاً.
+             كان كل مندوب مستخدماً داخلياً - أي رخصة مدفوعة على Odoo.sh
+             ودخولاً إلى /web من جهاز ميداني. صار كياناً في
+             quick.delivery.driver، يدخل تطبيقه برمز جلسة ينتهي، ولا
+             يملك حساباً في أودو ولا قاعدة سجلات تحميه لأنه لا يقرأ
+             النماذج أصلاً. -->
+
+        <!-- غرفة العمليات: كل الطلبات، التوزيع، الداش بورد. -->
+        <record id="group_qd_dispatcher" model="res.groups">
+            <field name="name">غرفة العمليات</field>
+            <field name="privilege_id" ref="res_groups_privilege_quick_delivery"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        </record>
+
+        <!-- المدير: زيادةً على ما سبق - مفاتيح الـAPI وأسرار الـWebhook
+             ورموز المندوبين ورموز التحقق والحذف وتسوية العهدة. -->
+        <record id="group_qd_manager" model="res.groups">
+            <field name="name">مدير التوصيل الفوري</field>
+            <field name="privilege_id" ref="res_groups_privilege_quick_delivery"/>
+            <field name="implied_ids" eval="[(4, ref('group_qd_dispatcher'))]"/>
+        </record>
+
+        <!-- مدير النظام يرث مجموعة مدير التوصيل: بلا هذا يُثبَّت
+             الموديول ولا يستطيع *أحد* قراءة مفتاح الـAPI أو توليد رمز
+             مندوب - ولا حتى المسؤول - لأن حصر الحقول (groups=) يُطبَّق
+             على مدير النظام أيضاً. -->
+        <record id="base.group_system" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_qd_manager'))]"/>
+        </record>
+
+        <!-- ============================ قواعد السجلات ============================ -->
+
+
+        <!-- حصر طلبات المندوب في جواله كان يتم بقاعدة سجلات على
+             driver_id = user.id. لم يعد لها معنى: المندوب لا يفتح أودو.
+             ما يحمي بياناته الآن هو مسار الـAPI نفسه - كل نداء يتحقّق
+             أن الطلب لصاحب رمز الجلسة (_order_of_driver). -->
+
+        <record id="rule_qd_order_dispatcher_all" model="ir.rule">
+            <field name="name">طلبات التوصيل: غرفة العمليات ترى الكل</field>
+            <field name="model_id" ref="model_quick_delivery_order"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_qd_dispatcher'))]"/>
+        </record>
+
+        <record id="rule_qd_webhook_dispatcher" model="ir.rule">
+            <field name="name">صادر الإبلاغ: غرفة العمليات ترى الكل</field>
+            <field name="model_id" ref="model_quick_delivery_webhook"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_qd_dispatcher'))]"/>
+        </record>
+
+    </data>
+</odoo>
