@@ -1,0 +1,202 @@
+// ==========================================================================
+// الصفحة الرئيسية للتوصيل الفوري - نفس هوية مركز السداد البنكي.
+//
+// الأسطح والحدود مشتقّة من متغيّرات أودو (--body-bg / --body-color /
+// --border-color) فتتبع الوضع الداكن والفاتح، والألوان الدلالية ثابتة
+// لأنها تعني شيئاً (أحمر = متأخر، أخضر = سُلّم).
+// ==========================================================================
+
+.o_qd_home {
+    --qd-blue: #3b82f6;
+    --qd-green: #10b981;
+    --qd-amber: #f59e0b;
+    --qd-red: #ef4444;
+    --qd-violet: #8b5cf6;
+    --qd-cyan: #06b6d4;
+
+    --qd-ink: var(--body-color, #0f172a);
+    --qd-muted: var(--secondary-color, #64748b);
+    --qd-line: var(--border-color, #e8edf3);
+    --qd-surface: var(--body-bg, #ffffff);
+    --qd-page: color-mix(in srgb, var(--body-bg, #fff) 96%, var(--body-color, #000));
+
+    background: var(--qd-page);
+    color: var(--qd-ink);
+    font-family: inherit;
+
+    // ---------- الترويسة ----------
+    .o_qd_hero {
+        background: linear-gradient(120deg, #0f172a 0%, #1e293b 45%, #15803d 140%);
+        border-radius: 20px;
+        color: #fff;
+        padding: 1.5rem 1.75rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 18px 36px -22px rgba(15, 23, 42, 0.8);
+
+        &::after {
+            content: "";
+            position: absolute;
+            inset-inline-start: -60px;
+            top: -90px;
+            width: 260px;
+            height: 260px;
+            background: radial-gradient(circle, rgba(74, 222, 128, 0.26), transparent 65%);
+            pointer-events: none;
+        }
+
+        > .row { margin-inline: 0; }
+
+        h3 { font-weight: 700; letter-spacing: -0.3px; color: #fff !important; }
+        p { color: rgba(226, 232, 240, 0.75) !important; }
+    }
+
+    .o_qd_hero_icon {
+        width: 54px;
+        height: 54px;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        i { color: #fff !important; }
+    }
+
+    // مؤشّرات سريعة داخل الترويسة
+    .o_qd_kpi {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 14px;
+        padding: 0.6rem 1rem;
+        text-align: center;
+        min-width: 104px;
+
+        .o_qd_kpi_value { font-size: 1.45rem; font-weight: 800; line-height: 1.1; }
+        .o_qd_kpi_label { font-size: 0.72rem; color: rgba(226, 232, 240, 0.8); }
+        &.is-alert .o_qd_kpi_value { color: #fca5a5; }
+    }
+
+    // ---------- مربّع السوبرماركت ----------
+    .o_qd_tile {
+        background: var(--qd-surface);
+        border: 1px solid var(--qd-line);
+        border-radius: 18px;
+        padding: 1.4rem 1.1rem;
+        height: 100%;
+        cursor: pointer;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline-start: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--qd-tile-tone, var(--qd-blue));
+        }
+
+        &:hover {
+            transform: translateY(-4px);
+            border-color: var(--qd-tile-tone, var(--qd-blue));
+            box-shadow: 0 18px 30px -20px rgba(15, 23, 42, 0.55);
+        }
+
+        .o_qd_tile_icon {
+            width: 62px;
+            height: 62px;
+            margin: 0.2rem auto 0.8rem;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            color: #fff;
+            background: var(--qd-tile-tone, var(--qd-blue));
+            box-shadow: 0 10px 20px -10px var(--qd-tile-tone, var(--qd-blue));
+            overflow: hidden;
+
+            // شعار الشركة إن رُفع: يُميّز العثيم من بندة أسرع من الاسم
+            img { width: 100%; height: 100%; object-fit: cover; }
+        }
+
+        .o_qd_tile_name {
+            font-weight: 700;
+            font-size: 1rem;
+            line-height: 1.4;
+            // اسم طويل لا يكسر ارتفاع المربّع فيختلّ الصف
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .o_qd_tile_sub {
+            margin-top: 0.35rem;
+            font-size: 0.76rem;
+            color: var(--qd-muted);
+        }
+
+        .o_qd_tile_badge {
+            display: inline-block;
+            min-width: 22px;
+            padding: 0.05rem 0.45rem;
+            border-radius: 999px;
+            background: var(--qd-tile-tone, var(--qd-blue));
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.72rem;
+        }
+        .o_qd_tile_badge.is-late { background: var(--qd-red); }
+
+        // علامة حالة الربط أعلى المربّع
+        .o_qd_tile_flag {
+            position: absolute;
+            inset-block-start: 10px;
+            inset-inline-end: 10px;
+            font-size: 0.66rem;
+            font-weight: 700;
+            border-radius: 999px;
+            padding: 0.1rem 0.5rem;
+        }
+        .o_qd_tile_flag.is-warn {
+            background: color-mix(in srgb, var(--qd-amber) 18%, var(--qd-surface));
+            color: var(--qd-amber);
+        }
+        .o_qd_tile_flag.is-info {
+            background: color-mix(in srgb, var(--qd-cyan) 18%, var(--qd-surface));
+            color: var(--qd-cyan);
+        }
+
+        &.o_qd_tile_plain .o_qd_tile_icon {
+            width: 48px;
+            height: 48px;
+            font-size: 1.2rem;
+            border-radius: 15px;
+        }
+    }
+
+    .o_qd_section_title {
+        font-weight: 700;
+        font-size: 0.86rem;
+        color: var(--qd-muted);
+        letter-spacing: 0.3px;
+        margin: 1.6rem 0 0.4rem;
+    }
+
+    .o_qd_empty {
+        background: var(--qd-surface);
+        border: 1px dashed var(--qd-line);
+        border-radius: 18px;
+        padding: 2.4rem 1rem;
+        text-align: center;
+        color: var(--qd-muted);
+
+        i { font-size: 2rem; display: block; margin-bottom: 0.6rem; opacity: 0.6; }
+    }
+}

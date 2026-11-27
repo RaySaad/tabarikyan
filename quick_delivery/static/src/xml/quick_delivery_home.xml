@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="quick_delivery.Home">
+        <div class="o_qd_home o_action position-relative h-100 overflow-auto p-3" dir="rtl">
+
+            <div t-if="state.loading"
+                 class="d-flex flex-column align-items-center justify-content-center py-5">
+                <div class="spinner-border text-success mb-3"
+                     style="width: 3rem; height: 3rem;" role="status"/>
+                <h6 class="text-muted">جارٍ فتح مركز التوصيل...</h6>
+            </div>
+
+            <div t-else="">
+                <!-- الترويسة والمؤشّرات -->
+                <div class="o_qd_hero mb-4">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="o_qd_hero_icon">
+                                <i class="fa fa-motorcycle fa-2x"/>
+                            </div>
+                            <div>
+                                <h3 class="fw-bold mb-1">مركز التوصيل الفوري</h3>
+                                <p class="mb-0 small">
+                                    أهلاً <t t-esc="state.data.user_name"/> —
+                                    اختر السوبرماركت الذي تتابعه
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2">
+                            <div class="o_qd_kpi">
+                                <div class="o_qd_kpi_value">
+                                    <t t-esc="state.data.kpis.active"/>
+                                </div>
+                                <div class="o_qd_kpi_label">طلبات جارية</div>
+                            </div>
+                            <div t-attf-class="o_qd_kpi #{state.data.kpis.late ? 'is-alert' : ''}">
+                                <div class="o_qd_kpi_value">
+                                    <t t-esc="state.data.kpis.late"/>
+                                </div>
+                                <div class="o_qd_kpi_label">متأخرة</div>
+                            </div>
+                            <div t-attf-class="o_qd_kpi #{state.data.kpis.unassigned ? 'is-alert' : ''}">
+                                <div class="o_qd_kpi_value">
+                                    <t t-esc="state.data.kpis.unassigned"/>
+                                </div>
+                                <div class="o_qd_kpi_label">بلا مندوب</div>
+                            </div>
+                            <div class="o_qd_kpi">
+                                <div class="o_qd_kpi_value">
+                                    <t t-esc="state.data.kpis.online_drivers"/>
+                                </div>
+                                <div class="o_qd_kpi_label">مندوب متاح</div>
+                            </div>
+                            <div class="o_qd_kpi">
+                                <div class="o_qd_kpi_value">
+                                    <t t-esc="state.data.kpis.delivered_today"/>
+                                </div>
+                                <div class="o_qd_kpi_label">سُلّم اليوم</div>
+                            </div>
+                            <div class="o_qd_kpi">
+                                <div class="o_qd_kpi_value">
+                                    <t t-esc="money(state.data.kpis.cod_today)"/>
+                                </div>
+                                <div class="o_qd_kpi_label">تحصيل اليوم</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- السوبرماركتات: مربّع لكل شركة -->
+                <div class="o_qd_section_title">السوبرماركتات</div>
+                <div class="row g-3">
+                    <div t-foreach="state.data.merchants" t-as="merchant"
+                         t-key="merchant.id" class="col-6 col-md-4 col-xl-3">
+                        <div class="o_qd_tile"
+                             t-attf-style="--qd-tile-tone: var(--qd-{{ merchant.tone }});"
+                             t-on-click="() => this.openMerchant(merchant)">
+
+                            <span t-if="!merchant.configured"
+                                  class="o_qd_tile_flag is-warn">ربطه ناقص</span>
+                            <span t-elif="merchant.capture_mode"
+                                  class="o_qd_tile_flag is-info">التقاط</span>
+
+                            <div class="o_qd_tile_icon">
+                                <img t-if="merchant.has_logo"
+                                     t-attf-src="/web/image/res.partner/{{ merchant.id }}/image_128"
+                                     t-att-alt="merchant.name"/>
+                                <i t-else="" class="fa fa-shopping-basket"/>
+                            </div>
+
+                            <div class="o_qd_tile_name">
+                                <t t-esc="merchant.name"/>
+                            </div>
+
+                            <div class="o_qd_tile_sub">
+                                <t t-if="merchant.late_count">
+                                    <span class="o_qd_tile_badge is-late">
+                                        <t t-esc="merchant.late_count"/>
+                                    </span>
+                                    متأخرة ·
+                                </t>
+                                <t t-if="merchant.active_count">
+                                    <span class="o_qd_tile_badge">
+                                        <t t-esc="merchant.active_count"/>
+                                    </span>
+                                    جارية
+                                </t>
+                                <t t-else="">
+                                    <t t-esc="merchant.today_count"/> سُلّم اليوم
+                                </t>
+                            </div>
+
+                            <div t-if="merchant.inbox_pending"
+                                 class="o_qd_tile_sub text-danger fw-bold">
+                                <t t-esc="merchant.inbox_pending"/> وارد لم يُحوَّل
+                            </div>
+                        </div>
+                    </div>
+
+                    <div t-if="!state.data.merchants.length" class="col-12">
+                        <div class="o_qd_empty">
+                            <i class="fa fa-shopping-basket"/>
+                            <div class="fw-bold">لا سوبرماركت مسجَّلاً بعد</div>
+                            <small>
+                                افتح «إدارة السوبرماركتات» أدناه وأضف أول
+                                عميل، ثم ولّد له رابط استقبال.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- الأدوات -->
+                <div class="o_qd_section_title">الأدوات</div>
+                <div class="row g-3">
+                    <div t-foreach="state.data.extras" t-as="extra"
+                         t-key="extra.key" class="col-6 col-md-4 col-xl-3">
+                        <div class="o_qd_tile o_qd_tile_plain"
+                             t-attf-style="--qd-tile-tone: var(--qd-{{ extra.tone }});"
+                             t-on-click="() => this.openExtra(extra.action)">
+                            <div class="o_qd_tile_icon">
+                                <i t-attf-class="fa {{ extra.icon }}"/>
+                            </div>
+                            <div class="o_qd_tile_name"><t t-esc="extra.name"/></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

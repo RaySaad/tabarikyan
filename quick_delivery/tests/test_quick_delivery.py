@@ -698,3 +698,69 @@ class TestMultiMerchant(QuickDeliveryCommon):
         action = self.other_client.action_qd_view_orders()
         found = self.Order.search(action['domain'])
         self.assertEqual(found.client_id, self.other_client)
+
+
+@tagged('post_install', '-at_install')
+class TestHomeScreen(QuickDeliveryCommon):
+    """الصفحة الرئيسية: السوبرماركتات أيقوناتٍ، والأرقام من الخادم."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Home = cls.env['quick.delivery.home']
+        cls.second = cls.env['res.partner'].create({
+            'name': 'سوبرماركت الكروت', 'is_qcommerce_client': True,
+            'api_key': 'HOME-KEY-2'})
+        cls.dispatcher = cls.env['res.users'].create({
+            'name': 'غرفة عمليات الرئيسية', 'login': 'home_dispatcher',
+            'group_ids': [(6, 0, [
+                cls.env.ref('quick_delivery.group_qd_dispatcher').id])]})
+        cls.outsider = cls.env['res.users'].create({
+            'name': 'مستخدم خارج التوصيل', 'login': 'home_outsider',
+            'group_ids': [(6, 0, [cls.env.ref('base.group_user').id])]})
+
+    def test_every_merchant_gets_a_tile(self):
+        merchants = self.Home.get_home()['merchants']
+        names = [m['name'] for m in merchants]
+        self.assertIn(self.client.name, names)
+        self.assertIn('سوبرماركت الكروت', names)
+
+    def test_tiles_carry_each_merchants_own_numbers(self):
+        """الغرض من الصفحة: حالة كل شركة من نظرة، لا مجموع الكل."""
+        self._order(merchant_order_id='HOME-1', client_id=self.client.id)
+        tiles = {m['name']: m for m in self.Home.get_home()['merchants']}
+        self.assertEqual(tiles[self.client.name]['active_count'], 1)
+        self.assertEqual(tiles['سوبرماركت الكروت']['active_count'], 0)
+
+    def test_tiles_have_distinct_tones(self):
+        merchants = self.Home.get_home()['merchants']
+        self.assertNotEqual(merchants[0]['tone'], merchants[1]['tone'])
+
+    def test_an_unconfigured_merchant_is_flagged(self):
+        tiles = {m['name']: m for m in self.Home.get_home()['merchants']}
+        self.assertFalse(tiles['سوبرماركت الكروت']['configured'],
+                         'سوبرماركت بلا مفتاح ولا رابط إبلاغ عُدَّ مكتملاً')
+
+    def test_the_kpis_cover_the_whole_operation(self):
+        self._order(merchant_order_id='HOME-K1')
+        kpis = self.Home.get_home()['kpis']
+        self.assertGreaterEqual(kpis['active'], 1)
+        for key in ('late', 'unassigned', 'online_drivers',
+                    'delivered_today', 'cod_today'):
+            self.assertIn(key, kpis)
+
+    def test_a_dispatcher_may_open_the_home(self):
+        data = self.Home.with_user(self.dispatcher).get_home()
+        self.assertIn('merchants', data)
+
+    @mute_logger('odoo.addons.base.models.ir_model', 'odoo.models')
+    def test_an_outsider_may_not(self):
+        """الصفحة تحمل جوالات العملاء وأرقام كل شركة."""
+        with self.assertRaises(AccessError):
+            self.Home.with_user(self.outsider).get_home()
+
+    def test_the_manager_only_tool_is_hidden_from_a_dispatcher(self):
+        keys = [e['key'] for e
+                in self.Home.with_user(self.dispatcher).get_home()['extras']]
+        self.assertNotIn('webhooks', keys)
+        self.assertIn('drivers', keys)

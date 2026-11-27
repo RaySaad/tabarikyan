@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- الصفحة الرئيسية: السوبرماركتات أيقوناتٍ، بنفس هوية مركز
+         السداد البنكي. تُفتح بالضغط على التطبيق نفسه. -->
+    <record id="action_quick_delivery_home" model="ir.actions.client">
+        <field name="name">مركز التوصيل الفوري</field>
+        <field name="tag">quick_delivery_home</field>
+    </record>
+
     <record id="action_quick_sla_dashboard" model="ir.actions.client">
         <field name="name">لوحة مراقبة 30 دقيقة + الخريطة</field>
         <field name="tag">quick_delivery.sla_dashboard</field>
@@ -646,6 +653,9 @@
 
     <!-- القوائم محصورة بمجموعات التوصيل: كانت ظاهرة لكل مستخدم داخلي. -->
     <menuitem id="menu_quick_delivery_root" name="التوصيل الفوري (30m)" sequence="10"
+              action="action_quick_delivery_home"
+              groups="quick_delivery.group_qd_dispatcher"/>
+    <menuitem id="menu_quick_home" name="الرئيسية" parent="menu_quick_delivery_root" action="action_quick_delivery_home" sequence="0"
               groups="quick_delivery.group_qd_dispatcher"/>
     <menuitem id="menu_quick_dashboard" name="غرفة العمليات والخريطة الحية" parent="menu_quick_delivery_root" action="action_quick_sla_dashboard" sequence="1"
               groups="quick_delivery.group_qd_dispatcher"/>

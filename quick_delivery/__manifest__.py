@@ -1,6 +1,6 @@
 {
     'name': 'Quick Commerce Delivery Pro (30-Min SLA + OTP + Wallet + Live Map)',
-    'version': '19.0.7.0.0',
+    'version': '19.0.8.0.0',
     'author': 'Tabarikyan',
     'category': 'Operations/Logistics',
     'summary': 'Full 30-Min Supermarket Delivery: Auto-Dispatch, OTP POD, Driver COD Wallet, Failure Reasons & Live Map',
@@ -15,6 +15,9 @@
     ],
     'assets': {
         'web.assets_backend': [
+            'quick_delivery/static/src/scss/quick_delivery_home.scss',
+            'quick_delivery/static/src/xml/quick_delivery_home.xml',
+            'quick_delivery/static/src/js/quick_delivery_home.js',
             'quick_delivery/static/src/js/sla_dashboard.js',
             'quick_delivery/static/src/xml/sla_dashboard.xml',
         ],
