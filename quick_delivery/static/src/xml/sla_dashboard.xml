@@ -2,7 +2,26 @@
 <templates xml:space="preserve">
     <t t-name="quick_delivery.SlaDashboardTemplate">
         <div class="p-4 bg-light h-100 overflow-auto" dir="rtl">
-            <h2 class="mb-4 fw-bold text-primary">غرفة عمليات التوصيل السريع (SLA 30 دقيقة)</h2>
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
+                <h2 class="fw-bold text-primary mb-0">
+                    غرفة عمليات التوصيل السريع
+                    <span t-if="state.scope.client_name" class="text-dark">
+                        — <t t-esc="state.scope.client_name"/>
+                    </span>
+                </h2>
+                <div class="d-flex align-items-center gap-2">
+                    <label class="small text-muted mb-0" for="qdScope">السوبرماركت:</label>
+                    <select id="qdScope" class="form-select form-select-sm" style="width: auto;"
+                            t-on-change="(ev) => this.onScopeChange(ev)">
+                        <option value="" t-att-selected="!state.scope.client_id">كل السوبرماركتات</option>
+                        <t t-foreach="state.scope.clients" t-as="c" t-key="c.id">
+                            <option t-att-value="c.id" t-att-selected="state.scope.client_id === c.id">
+                                <t t-esc="c.name"/>
+                            </option>
+                        </t>
+                    </select>
+                </div>
+            </div>
             
             <div class="row g-3 mb-4">
                 <div class="col-md-2">
@@ -19,7 +38,9 @@
                 </div>
                 <div class="col-md-3">
                     <div class="card border-0 shadow-sm p-3 bg-success text-white">
-                        <span class="small">مناديب متاحون / في مهمة</span>
+                        <!-- المندوبون طاقتك كلها لا طاقة شركة: يبقى
+                             هذا المؤشّر عاماً مهما كان النطاق. -->
+                        <span class="small">مناديب متاحون / في مهمة (الكل)</span>
                         <h3 class="fw-bold mt-1"><t t-esc="state.kpis.online_drivers"/> / <t t-esc="state.kpis.busy_drivers"/></h3>
                     </div>
                 </div>
@@ -43,7 +64,9 @@
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-header bg-white fw-bold d-flex justify-content-between">
                             <span>خريطة العمليات الحية</span>
-                            <span class="small text-muted">🟢 متاح | 🔵 مشغول | 🟠 فرع | 🔴 عميل</span>
+                            <span class="small text-muted">
+                                🟢 متاح | 🔵 مشغول | ⚪ لشركة أخرى | 🟠 فرع | 🔴 عميل
+                            </span>
                         </div>
                         <div class="card-body p-0">
                             <div t-ref="liveMapContainer" style="height: 440px; width: 100%; z-index: 1;"></div>
@@ -108,18 +131,26 @@
                             <tr>
                                 <th>اسم المندوب</th>
                                 <th>الحالة</th>
+                                <th>في مهمة لـ</th>
                                 <th>طلبات اليوم المنجزة</th>
                                 <th>عهدة مبالغ COD (SAR)</th>
                             </tr>
                         </thead>
                         <tbody>
                             <t t-foreach="state.drivers" t-as="d" t-key="d.id">
-                                <tr>
+                                <tr t-att-class="d.busy_for_other ? 'opacity-50' : ''">
                                     <td class="fw-bold"><t t-esc="d.name"/></td>
                                     <td>
                                         <span t-att-class="d.status === 'online' ? 'badge bg-success' : (d.status === 'busy' ? 'badge bg-primary' : 'badge bg-secondary')">
                                             <t t-esc="d.status"/>
                                         </span>
+                                    </td>
+                                    <td class="small">
+                                        <span t-if="d.busy_for"
+                                              t-att-class="d.busy_for_other ? 'text-muted' : 'fw-bold'">
+                                            <t t-esc="d.busy_for"/>
+                                        </span>
+                                        <span t-else="" class="text-muted">—</span>
                                     </td>
                                     <td><t t-esc="d.today_orders"/></td>
                                     <td class="fw-bold text-danger"><t t-esc="d.cod_balance"/> ريال</td>

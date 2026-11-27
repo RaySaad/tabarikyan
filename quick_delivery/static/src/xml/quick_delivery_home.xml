@@ -116,6 +116,15 @@
                                  class="o_qd_tile_sub text-danger fw-bold">
                                 <t t-esc="merchant.inbox_pending"/> وارد لم يُحوَّل
                             </div>
+
+                            <!-- الضغطة تفتح غرفة العمليات؛ وهذا الزر
+                                 لمن يريد السجل لا الخريطة. -->
+                            <div class="o_qd_tile_sub">
+                                <a href="#" class="small"
+                                   t-on-click.prevent="(ev) => this.openMerchantOrders(merchant, ev)">
+                                    سجل الطلبات
+                                </a>
+                            </div>
                         </div>
                     </div>
 

@@ -328,14 +328,28 @@ class QuickCommerceController(http.Controller):
     # ==================================================================
     @http.route('/api/v1/qcommerce/dashboard', type='jsonrpc', auth='user',
                 readonly=True)
-    def get_dashboard_data(self):
-        # بلا هذا الفحص كان أي مستخدم داخلي يقرأ اسم كل عميل وجواله
-        # وموقعه، ويعيد إسناد أي طلب.
+    def get_dashboard_data(self, client_id=None):
+        """غرفة العمليات - كلها أو لسوبرماركت واحد.
+
+        بلا client_id تُرجع العرض العام كما كانت. ومعه تُرشَّح
+        **الطلبات** وحدها: المندوب مشترك بين العثيم وبندة في نفس
+        الوردية، فإخفاء من يعمل لغيرها يُفقد رؤية الطاقة المتاحة -
+        وهي نصف فائدة الخريطة، إذ منها يُسنَد يدوياً. يبقى الجميع
+        ظاهرين، ومن هو في مهمة لشركة أخرى يُعلَّم بذلك.
+        """
         if not request.env.user.has_group(DISPATCHER_GROUP):
             raise AccessError(_('غرفة العمليات محصورة بفريق التوصيل.'))
 
         Order = request.env['quick.delivery.order'].sudo()
-        active_orders = Order.search([('state', 'in', Order.OPEN_STATES)])
+        client = request.env['res.partner'].sudo().browse(int(client_id)) \
+            if client_id else request.env['res.partner'].browse()
+        if client_id and (not client.exists()
+                          or not client.is_qcommerce_client):
+            raise BadRequest('سوبرماركت غير معروف', 404)
+
+        scope = [('client_id', '=', client.id)] if client else []
+        active_orders = Order.search(
+            [('state', 'in', Order.OPEN_STATES)] + scope)
         now = fields.Datetime.now()
 
         orders_list = []
@@ -362,25 +376,49 @@ class QuickCommerceController(http.Controller):
             })
 
         drivers = request.env['quick.delivery.driver'].sudo().search([])
-        drivers_list = [{
-            'id': driver.id,
-            'name': driver.name,
-            'status': driver.driver_status,
-            'lat': driver.current_lat,
-            'lng': driver.current_lng,
-            'cod_balance': driver.cod_custody_balance,
-            'today_orders': driver.today_delivered_count,
-        } for driver in drivers]
+        # لمن يعمل كل مندوب الآن: نداء واحد لكل الطلبات الحيّة، لا
+        # استعلام لكل مندوب.
+        busy_for = {}
+        for order in Order.search([('state', 'in', Order.OPEN_STATES),
+                                   ('driver_id', '!=', False)]):
+            busy_for.setdefault(order.driver_id.id, order.client_id)
+        drivers_list = []
+        for driver in drivers:
+            engaged = busy_for.get(driver.id)
+            drivers_list.append({
+                'id': driver.id,
+                'name': driver.name,
+                'status': driver.driver_status,
+                'lat': driver.current_lat,
+                'lng': driver.current_lng,
+                'cod_balance': driver.cod_custody_balance,
+                'today_orders': driver.today_delivered_count,
+                'busy_for': engaged.name if engaged else '',
+                # في مهمة لشركة أخرى: يظهر باهتاً على الخريطة، فتُرى
+                # الطاقة ولا يختلط عمل الشركات.
+                'busy_for_other': bool(client and engaged
+                                       and engaged.id != client.id),
+            })
 
         day_start = Order._day_start_utc_for_env()
         today_delivered = Order.search([
             ('state', '=', 'delivered'),
             ('delivered_at', '>=', day_start),
-        ])
+        ] + scope)
         total_cod_today = sum(today_delivered.filtered(
             lambda rec: rec.payment_method == 'COD').mapped('cod_amount'))
 
         return {
+            # اسم الشركة المختارة ليعرف المستخدم ما ينظر إليه، وقائمة
+            # الشركات للتنقّل بلا رجوع.
+            'scope': {
+                'client_id': client.id or False,
+                'client_name': client.name or '',
+                'clients': [{'id': rec.id, 'name': rec.name} for rec in
+                            request.env['res.partner'].sudo().search(
+                                [('is_qcommerce_client', '=', True)],
+                                order='name')],
+            },
             'kpis': {
                 'active_count': len(active_orders),
                 'unassigned_count': len(active_orders.filtered(

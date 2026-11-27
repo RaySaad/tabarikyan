@@ -37,26 +37,29 @@ export class QuickDeliveryHome extends Component {
     }
 
     /**
-     * ضغط السوبرماركت يفتح طلباته وحدها - الجارية إن كان عليه عمل،
-     * وإلا فكلها. الدخول على شركة واحدة هو الغرض من الصفحة.
+     * ضغط السوبرماركت يفتح **غرفة عملياته هو**: خريطته وطلباته
+     * ومؤقّتاته. كما في مركز السداد البنكي حيث يفتح المربّع لوحة
+     * القسم لا قائمة سجلات.
      */
     openMerchant(merchant) {
-        const domain = [["client_id", "=", merchant.id]];
-        const context = { search_default_group_state: 1 };
-        if (merchant.active_count) {
-            domain.push([
-                "state", "in",
-                ["searching_driver", "driver_assigned",
-                 "arrived_at_store", "picked_up"],
-            ]);
-        }
+        this.action.doAction({
+            type: "ir.actions.client",
+            tag: "quick_delivery.sla_dashboard",
+            name: merchant.name,
+            context: { client_id: merchant.id },
+        });
+    }
+
+    /** قائمة طلبات الشركة - زرٌّ ثانٍ لمن يريد السجل لا الخريطة. */
+    openMerchantOrders(merchant, ev) {
+        ev.stopPropagation();
         this.action.doAction({
             type: "ir.actions.act_window",
             name: merchant.name,
             res_model: "quick.delivery.order",
             views: [[false, "list"], [false, "form"]],
-            domain: domain,
-            context: context,
+            domain: [["client_id", "=", merchant.id]],
+            context: { search_default_group_state: 1 },
         });
     }
 

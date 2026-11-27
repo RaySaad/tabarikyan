@@ -720,3 +720,136 @@ class TestCustomerTracking(HttpCase):
         self.assertIn('/track/', payload['tracking_url'])
         self.assertNotIn('delivery_otp', payload,
                          'الرمز يُنشر في سجلات التاجر بلا داعٍ')
+
+
+@tagged('post_install', '-at_install')
+class TestScopedOperationsRoom(HttpCase):
+    """غرفة عمليات لكل سوبرماركت.
+
+    الطلبات تُرشَّح، والمندوبون لا: المندوب مشترك بين العثيم وبندة في
+    نفس الوردية، وإخفاء من يعمل لغيرها يُفقد رؤية الطاقة المتاحة -
+    وهي نصف فائدة الخريطة، إذ منها يُسنَد يدوياً.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env['quick.delivery.driver'].sudo().with_context(
+            active_test=False).search([]).write({'driver_status': 'offline'})
+        cls.othaim = cls.env['res.partner'].create({
+            'name': 'العثيم - غرفة', 'is_qcommerce_client': True,
+            'api_key': 'ROOM-KEY-1'})
+        cls.panda = cls.env['res.partner'].create({
+            'name': 'بندة - غرفة', 'is_qcommerce_client': True,
+            'api_key': 'ROOM-KEY-2'})
+        cls.driver = cls.env['quick.delivery.driver'].create({
+            'name': 'مندوب مشترك', 'phone': '0556660001',
+            'driver_status': 'online',
+            'current_lat': 24.7136, 'current_lng': 46.6753})
+        cls.password = 'roompass123'
+        cls.dispatcher = cls.env['res.users'].create({
+            'name': 'غرفة عمليات النطاق', 'login': 'room_dispatcher',
+            'password': cls.password,
+            'group_ids': [(6, 0, [
+                cls.env.ref('quick_delivery.group_qd_dispatcher').id])]})
+        cls.env.cr.flush()
+
+    def _new_order(self, client, ref, driver=None):
+        vals = {
+            'client_id': client.id, 'merchant_order_id': ref,
+            'store_name': 'فرع', 'store_lat': 24.71, 'store_lng': 46.67,
+            'customer_name': 'عميل', 'customer_phone': '0550000000',
+            'customer_lat': 24.72, 'customer_lng': 46.68,
+        }
+        if driver:
+            vals.update({'driver_id': driver.id, 'state': 'driver_assigned'})
+        order = self.env['quick.delivery.order'].create(vals)
+        self.env.cr.flush()
+        return order
+
+    def _room(self, client_id=None):
+        params = {} if client_id is None else {'client_id': client_id}
+        response = self.url_open(
+            '/api/v1/qcommerce/dashboard',
+            data=json.dumps({'jsonrpc': '2.0', 'method': 'call',
+                             'params': params}).encode('utf-8'),
+            headers={'Content-Type': 'application/json'})
+        return response.json()
+
+    def setUp(self):
+        super().setUp()
+        self.authenticate('room_dispatcher', self.password)
+
+    # ------------------------------------------------------------------
+    def test_the_global_room_still_shows_everything(self):
+        """الضابط: إضافة النطاق لم تكسر العرض العام."""
+        self._new_order(self.othaim, 'ROOM-G1')
+        self._new_order(self.panda, 'ROOM-G2')
+        result = self._room()['result']
+        names = {o['client_name'] for o in result['orders']}
+        self.assertIn('العثيم - غرفة', names)
+        self.assertIn('بندة - غرفة', names)
+        self.assertFalse(result['scope']['client_id'])
+
+    def test_a_scoped_room_shows_one_merchant_only(self):
+        self._new_order(self.othaim, 'ROOM-S1')
+        self._new_order(self.panda, 'ROOM-S2')
+        result = self._room(self.othaim.id)['result']
+        names = {o['client_name'] for o in result['orders']}
+        self.assertEqual(names, {'العثيم - غرفة'})
+        self.assertEqual(result['scope']['client_name'], 'العثيم - غرفة')
+
+    def test_the_scoped_kpis_count_that_merchant_only(self):
+        self._new_order(self.othaim, 'ROOM-K1')
+        self._new_order(self.panda, 'ROOM-K2')
+        self._new_order(self.panda, 'ROOM-K3')
+        self.assertEqual(self._room(self.othaim.id)['result']
+                         ['kpis']['active_count'], 1)
+        self.assertEqual(self._room(self.panda.id)['result']
+                         ['kpis']['active_count'], 2)
+
+    def test_every_driver_stays_visible_in_a_scoped_room(self):
+        """القرار المقصود: الطاقة المتاحة لا تختفي بتضييق النطاق."""
+        self._new_order(self.panda, 'ROOM-D1', driver=self.driver)
+        drivers = self._room(self.othaim.id)['result']['drivers']
+        names = [d['name'] for d in drivers]
+        self.assertIn('مندوب مشترك', names,
+                      'اختفى المندوب من خريطة شركة أخرى - فلا تُرى الطاقة')
+
+    def test_a_driver_busy_for_another_merchant_is_flagged(self):
+        self._new_order(self.panda, 'ROOM-D2', driver=self.driver)
+        drivers = {d['name']: d for d
+                   in self._room(self.othaim.id)['result']['drivers']}
+        entry = drivers['مندوب مشترك']
+        self.assertEqual(entry['busy_for'], 'بندة - غرفة')
+        self.assertTrue(entry['busy_for_other'])
+
+    def test_the_same_driver_is_not_flagged_inside_his_own_merchant(self):
+        """الضابط المقابل: لا يُعلَّم في غرفة الشركة التي يعمل لها."""
+        self._new_order(self.panda, 'ROOM-D3', driver=self.driver)
+        drivers = {d['name']: d for d
+                   in self._room(self.panda.id)['result']['drivers']}
+        self.assertFalse(drivers['مندوب مشترك']['busy_for_other'])
+
+    def test_a_free_driver_is_not_flagged(self):
+        drivers = {d['name']: d for d
+                   in self._room(self.othaim.id)['result']['drivers']}
+        self.assertEqual(drivers['مندوب مشترك']['busy_for'], '')
+        self.assertFalse(drivers['مندوب مشترك']['busy_for_other'])
+
+    def test_the_scope_carries_the_merchant_list_for_switching(self):
+        clients = self._room(self.othaim.id)['result']['scope']['clients']
+        names = {c['name'] for c in clients}
+        self.assertIn('العثيم - غرفة', names)
+        self.assertIn('بندة - غرفة', names)
+
+    @mute_logger('odoo.http')
+    def test_an_unknown_merchant_is_refused(self):
+        self.assertIn('error', self._room(999999999))
+
+    @mute_logger('odoo.http')
+    def test_a_non_merchant_partner_is_refused(self):
+        """شريك عادي ليس سوبرماركت: لا يُفتح له نطاق."""
+        plain = self.env['res.partner'].create({'name': 'شريك عادي'})
+        self.env.cr.flush()
+        self.assertIn('error', self._room(plain.id))
