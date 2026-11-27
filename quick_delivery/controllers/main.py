@@ -281,15 +281,14 @@ class QuickCommerceController(http.Controller):
                 raise BadRequest('JSON غير صالح في جسم الطلب')
             if not isinstance(data, dict):
                 raise BadRequest('جسم الطلب يجب أن يكون كائن JSON')
-            vals = Inbox._qd_map_payload(client, data)
-            Order = request.env['quick.delivery.order'].sudo()
-            existing = Order.search([
-                ('client_id', '=', client.id),
-                ('merchant_order_id', '=', vals['merchant_order_id']),
-            ], limit=1)
-            order = existing or Order.create(vals)
-            return _json_response(self._intake_result(order),
-                                  200 if existing else 201)
+            instruction = Inbox._qd_map_payload(client, data)
+            order, note, created = Inbox._qd_apply(client, instruction)
+            if not order:
+                # حدث لا يخصّ الطلبات: مقبولٌ ومفهوم، لا خطأ.
+                return _json_response({'status': 'ignored', 'note': note}, 202)
+            payload = self._intake_result(order)
+            payload['note'] = note
+            return _json_response(payload, 201 if created else 200)
 
         # وضع الالتقاط: يُحفظ أولاً، ثم يُحاول الفهم - فلا يضيع نداء
         # ولو كانت صيغته مجهولة تماماً.

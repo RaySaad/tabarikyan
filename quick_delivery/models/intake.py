@@ -72,7 +72,10 @@ class ResPartner(models.Model):
         لا نخترع صيغاً لم نرها: الصيغة الأصلية وحدها الآن، والبقية
         تُضاف من نداء حقيقي ملتقَط.
         """
-        return [('native', 'الصيغة الأصلية (صيغتنا)')]
+        return [
+            ('native', 'الصيغة الأصلية (صيغتنا)'),
+            ('othaim', 'العثيم (ORDER.READY_FOR_PICKUP)'),
+        ]
 
     @api.depends('qd_intake_code')
     def _compute_qd_intake_url(self):
@@ -89,7 +92,8 @@ class ResPartner(models.Model):
             [('client_id', 'in', self.ids)],
             groupby=['client_id'], aggregates=['__count'])}
         pending = {client.id: count for client, count in Inbox._read_group(
-            [('client_id', 'in', self.ids), ('state', '!=', 'mapped')],
+            [('client_id', 'in', self.ids),
+             ('state', 'not in', ['mapped', 'ignored'])],
             groupby=['client_id'], aggregates=['__count'])}
         for rec in self:
             rec.qd_inbox_count = counts.get(rec.id, 0)
@@ -135,10 +139,15 @@ class QuickDeliveryInbox(models.Model):
     raw_body = fields.Text(string='الجسم كما وصل', readonly=True)
     state = fields.Selection([
         ('received', 'وصل - بانتظار التحويل'),
-        ('mapped', 'حُوِّل إلى طلب'),
+        ('mapped', 'نُفِّذ'),
+        # حدثٌ لا يخصّ الطلبات ليس عطلاً: التجّار يدفعون أحداثهم كلها
+        # على مسار واحد، وحشرها في "تعذّر" يُغرق الشاشة بأحمر كاذب
+        # فيضيع العطل الحقيقي بينه.
+        ('ignored', 'مُهمَل - حدث لا يخصّنا'),
         ('failed', 'تعذّر التحويل'),
     ], string='الحالة', default='received', required=True, index=True)
     error = fields.Text(string='سبب التعذّر', readonly=True)
+    result_note = fields.Char(string='ما حدث', readonly=True)
     attempts = fields.Integer(string='محاولات التحويل', readonly=True,
                               default=0)
     order_id = fields.Many2one('quick.delivery.order', string='الطلب الناتج',
@@ -181,7 +190,7 @@ class QuickDeliveryInbox(models.Model):
     # التحويل
     # ------------------------------------------------------------------
     def _qd_try_map(self):
-        """يحاول تحويل الوارد إلى طلب. يُرجع الطلب أو مجموعة فارغة."""
+        """ينفّذ الوارد. يُرجع الطلب المتأثّر أو مجموعة فارغة."""
         self.ensure_one()
         Order = self.env['quick.delivery.order'].sudo()
         self.sudo().attempts += 1
@@ -189,42 +198,93 @@ class QuickDeliveryInbox(models.Model):
             data = json.loads(self.raw_body or '')
             if not isinstance(data, dict):
                 raise ValidationError(_('جسم الطلب ليس كائن JSON.'))
-            vals = self._qd_map_payload(self.client_id, data)
-            existing = Order.search([
-                ('client_id', '=', self.client_id.id),
-                ('merchant_order_id', '=', vals['merchant_order_id']),
-            ], limit=1)
-            # إعادة المعالجة يجب أن تكون آمنة للتكرار: الضغط على الزر
-            # مرتين لا ينشئ طلبين.
-            order = existing or Order.create(vals)
+            instruction = self._qd_map_payload(self.client_id, data)
+            order, note, _created = self._qd_apply(
+                self.client_id, instruction)
         except (UserError, ValidationError) as error:
             message = error.args[0] if error.args else _('بيانات غير صالحة')
-            self.sudo().write({'state': 'failed', 'error': message})
+            self.sudo().write({'state': 'failed', 'error': message,
+                               'result_note': False})
             return Order.browse()
         except Exception as error:                 # noqa: BLE001
             _logger.exception('تعذّر تحويل الوارد %s', self.id)
             self.sudo().write({'state': 'failed',
                                'error': '%s: %s' % (type(error).__name__,
-                                                    error)})
+                                                    error),
+                               'result_note': False})
             return Order.browse()
-        self.sudo().write({'state': 'mapped', 'error': False,
-                           'order_id': order.id})
+
+        self.sudo().write({
+            'state': 'mapped' if instruction['action'] != 'ignore'
+                     else 'ignored',
+            'error': False,
+            'result_note': note,
+            'order_id': order.id if order else False,
+        })
         return order
+
+    @api.model
+    def _qd_apply(self, client, instruction):
+        """ينفّذ تعليمة المُحوّل: إنشاء طلب، أو إلغاء، أو إهمال.
+
+        الفصل بين "فهم الصيغة" و"تنفيذ الأثر" مقصود: مُحوّل كل تاجر
+        يترجم لغته وحدها، والتنفيذ واحد للجميع.
+        """
+        Order = self.env['quick.delivery.order'].sudo()
+        action = instruction['action']
+
+        if action == 'ignore':
+            return (Order.browse(),
+                    instruction.get('note') or _('حدث مُهمَل'), False)
+
+        reference = instruction['merchant_order_id']
+        existing = Order.search([
+            ('client_id', '=', client.id),
+            ('merchant_order_id', '=', reference),
+        ], limit=1)
+
+        if action == 'create':
+            # آمنٌ للتكرار: إعادة إرسال التاجر عند انقطاع، أو ضغط
+            # "إعادة المعالجة" مرتين، لا يُنشئان طلبين.
+            if existing:
+                return existing, _('الطلب %s موجود مسبقاً - لم يُنشأ '
+                                   'طلب ثانٍ.') % existing.name, False
+            order = Order.create(instruction['vals'])
+            return order, _('أُنشئ الطلب %s.') % order.name, True
+
+        if action == 'cancel':
+            if not existing:
+                raise ValidationError(
+                    _('إلغاء لطلب غير موجود عندنا: %s') % reference)
+            if existing.state not in Order.OPEN_STATES:
+                return (existing,
+                        _('الطلب %s مُغلق أصلاً (%s) - لم يُلغَ.')
+                        % (existing.name, existing.state), False)
+            existing.write({
+                'state': 'cancelled',
+                'failure_reason': 'cancelled_by_merchant',
+                'failure_notes': instruction.get('note') or '',
+            })
+            return (existing,
+                    _('أُلغي الطلب %s بطلب التاجر.') % existing.name, False)
+
+        raise ValidationError(_('إجراء غير معروف من المُحوّل: %s') % action)
 
     def action_replay(self):
         """إعادة تحويل ما التُقط - بعد كتابة مُحوّل التاجر."""
         mapped = 0
         for rec in self:
-            if rec.state == 'mapped':
+            if rec.state in ('mapped', 'ignored'):
                 continue
-            if rec._qd_try_map():
+            rec._qd_try_map()
+            if rec.state in ('mapped', 'ignored'):
                 mapped += 1
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
                 'title': _('إعادة المعالجة'),
-                'message': _('حُوِّل %(ok)d من %(total)d نداء.')
+                'message': _('عُولج %(ok)d من %(total)d نداء.')
                            % {'ok': mapped, 'total': len(self)},
                 'type': 'success' if mapped else 'warning',
             },
@@ -247,13 +307,21 @@ class QuickDeliveryInbox(models.Model):
             raise ValidationError(
                 _('لا مُحوّل لصيغة "%s" - أضف دالة _qd_map_%s.')
                 % (fmt, fmt))
-        vals = handler(client, data)
-        vals['client_id'] = client.id
-        return vals
+        instruction = handler(client, data)
+        if instruction.get('action') == 'create':
+            instruction['vals']['client_id'] = client.id
+        return instruction
 
     @api.model
     def _qd_map_native(self, client, data):
         """صيغتنا الأصلية - نفس ما يقبله /api/v1/qcommerce/orders."""
+        return {'action': 'create',
+                'merchant_order_id': str(
+                    (data.get('order_id') or '')).strip(),
+                'vals': self._qd_native_vals(client, data)}
+
+    @api.model
+    def _qd_native_vals(self, client, data):
         store = data.get('store') or {}
         cust = data.get('customer') or {}
         pay = data.get('payment') or {}
@@ -293,6 +361,126 @@ class QuickDeliveryInbox(models.Model):
             'cod_amount': (float(pay.get('cod_amount') or 0.0)
                            if method == 'COD' else 0.0),
         }
+
+    # ------------------------------------------------------------------
+    # مُحوّل العثيم
+    # ------------------------------------------------------------------
+    # كُتب من نداء حقيقي ملتقَط، لا من وثيقة. ولا حقل واحد يطابق
+    # صيغتنا: مظروف payload يلفّ كل شيء، والمفاتيح camelCase،
+    # والإحداثيات متداخلة تحت geo، وأسماء طرق الدفع ألفاظهم.
+    OTHAIM_PAYMENTS = {
+        'CASH_ON_DELIVERY': 'COD',
+        'COD': 'COD',
+        'PREPAID_ONLINE': 'PREPAID',
+        'PREPAID': 'PREPAID',
+        'CARD_ON_DELIVERY': 'COD',
+    }
+
+    @api.model
+    def _qd_map_othaim(self, client, data):
+        event = str(data.get('eventType') or '').strip().upper()
+        body = data.get('payload') or {}
+        reference = str(body.get('orderNumber') or '').strip()
+
+        # الإلغاء من التاجر يُنفَّذ لا يُهمَل: مندوب يقود إلى طلب
+        # أُلغي قبل ربع ساعة خسارةٌ حقيقية.
+        if event in ('ORDER.CANCELLED_BY_MERCHANT', 'ORDER.CANCELLED'):
+            if not reference:
+                raise ValidationError(
+                    _('حدث إلغاء بلا orderNumber - لا نعرف أي طلب يُلغى.'))
+            return {
+                'action': 'cancel',
+                'merchant_order_id': reference,
+                'note': str(body.get('cancellationReason') or '')[:120],
+            }
+
+        if event not in ('ORDER.READY_FOR_PICKUP', 'ORDER.CREATED'):
+            # ليس عطلاً: يدفعون أحداثهم كلها على مسار واحد.
+            return {'action': 'ignore',
+                    'note': _('حدث لا يخصّ إنشاء الطلبات: %s')
+                            % (event or '(بلا نوع)')}
+
+        if not reference:
+            raise ValidationError(_('العثيم لم يرسل payload.orderNumber.'))
+
+        branch = body.get('branch') or {}
+        customer = body.get('customer') or {}
+        address = customer.get('address') or {}
+        fulfillment = body.get('fulfillment') or {}
+        payment = body.get('payment') or {}
+
+        store_name = (branch.get('nameAr') or branch.get('nameEn')
+                      or branch.get('code'))
+        if not store_name:
+            raise ValidationError(_('العثيم لم يرسل اسم الفرع '
+                                    '(payload.branch.nameAr).'))
+        customer_name = (customer.get('fullName') or '').strip()
+        customer_phone = str(customer.get('mobileNumber') or '').strip()
+        if not customer_name or not customer_phone:
+            raise ValidationError(
+                _('العثيم لم يرسل اسم العميل أو جواله '
+                  '(payload.customer.fullName / mobileNumber).'))
+
+        method = self.OTHAIM_PAYMENTS.get(
+            str(payment.get('paymentType') or '').strip().upper())
+        if not method:
+            raise ValidationError(_('طريقة دفع غير معروفة من العثيم: %s')
+                                  % payment.get('paymentType'))
+        amount = float((payment.get('amountDue') or {}).get('value') or 0.0)
+
+        try:
+            sla = int(fulfillment.get('promisedMinutes') or 30)
+        except (TypeError, ValueError):
+            raise ValidationError(_('promisedMinutes ليست رقماً: %r')
+                                  % fulfillment.get('promisedMinutes'))
+
+        return {
+            'action': 'create',
+            'merchant_order_id': reference,
+            'vals': {
+                'merchant_order_id': reference,
+                'sla_minutes': sla,
+                'store_code': branch.get('code'),
+                'store_name': store_name,
+                'store_lat': self._qd_geo(branch.get('geo'), 'latitude',
+                                          'موقع الفرع'),
+                'store_lng': self._qd_geo(branch.get('geo'), 'longitude',
+                                          'موقع الفرع'),
+                'customer_name': customer_name,
+                'customer_phone': customer_phone,
+                'customer_lat': self._qd_geo(address.get('geo'), 'latitude',
+                                             'موقع العميل'),
+                'customer_lng': self._qd_geo(address.get('geo'), 'longitude',
+                                             'موقع العميل'),
+                'address_notes': self._qd_othaim_address(address),
+                'bags_count': int(fulfillment.get('toteCount') or 1),
+                'payment_method': method,
+                'cod_amount': amount if method == 'COD' else 0.0,
+            },
+        }
+
+    @api.model
+    def _qd_geo(self, geo, key, label):
+        """إحداثية من كتلة geo متداخلة، برسالة تُسمّي المصدر.
+
+        الرسالة تقول "العثيم لم يرسل..." لا "قيمة مفقودة": فرقٌ بين
+        أن تطالب التاجر ببيان، وأن تبحث في كودك عن عطل ليس فيه.
+        """
+        if not isinstance(geo, dict) or geo.get(key) in (None, ''):
+            raise ValidationError(
+                _('العثيم لم يرسل %(label)s (geo.%(key)s) - لا يمكن '
+                  'إسناد مندوب بلا موقع.')
+                % {'label': label, 'key': key})
+        return self._qd_coordinate(geo.get(key), '%s.%s' % (label, key))
+
+    @api.model
+    def _qd_othaim_address(self, address):
+        """العنوان عندهم أجزاء، وعندنا سطر يقرأه المندوب على جواله."""
+        parts = [address.get('district'), address.get('street')]
+        if address.get('buildingNo'):
+            parts.append(_('مبنى %s') % address['buildingNo'])
+        parts.append(address.get('additionalDirections'))
+        return '، '.join(part for part in parts if part)
 
     @api.model
     def _qd_coordinate(self, value, label):

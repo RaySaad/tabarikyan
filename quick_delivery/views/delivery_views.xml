@@ -505,18 +505,21 @@
         <field name="arch" type="xml">
             <list string="الوارد" create="0"
                   decoration-danger="state == 'failed'"
-                  decoration-muted="state == 'mapped'">
+                  decoration-muted="state in ('mapped', 'ignored')">
                 <field name="received_at"/>
                 <field name="client_id"/>
                 <field name="remote_addr" optional="show"/>
                 <field name="order_id" optional="show"/>
                 <field name="attempts" optional="hide"/>
+                <field name="result_note" string="ما حدث" optional="show"/>
                 <field name="error" optional="show"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'mapped'"
+                       decoration-muted="state == 'ignored'"
                        decoration-danger="state == 'failed'"/>
                 <button name="action_replay" type="object" icon="fa-repeat"
-                        title="إعادة المعالجة" invisible="state == 'mapped'"/>
+                        title="إعادة المعالجة"
+                        invisible="state in ('mapped', 'ignored')"/>
             </list>
         </field>
     </record>
@@ -529,7 +532,7 @@
                 <header>
                     <button name="action_replay" type="object"
                             string="إعادة المعالجة" class="btn-primary"
-                            invisible="state == 'mapped'"/>
+                            invisible="state in ('mapped', 'ignored')"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -543,6 +546,7 @@
                         <group>
                             <field name="order_id"/>
                             <field name="attempts"/>
+                            <field name="result_note"/>
                             <field name="error"/>
                         </group>
                     </group>
@@ -575,8 +579,10 @@
                         domain="[('state', '=', 'received')]"/>
                 <filter name="filter_failed" string="تعذّر تحويله"
                         domain="[('state', '=', 'failed')]"/>
-                <filter name="filter_not_mapped" string="لم يصر طلباً"
-                        domain="[('state', '!=', 'mapped')]"/>
+                <filter name="filter_not_mapped" string="يحتاج معالجة"
+                        domain="[('state', 'not in', ['mapped', 'ignored'])]"/>
+                <filter name="filter_ignored" string="مُهمَل"
+                        domain="[('state', '=', 'ignored')]"/>
                 <separator/>
                 <filter name="group_client" string="السوبرماركت"
                         context="{'group_by': 'client_id'}"/>

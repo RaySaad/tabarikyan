@@ -5,6 +5,7 @@
 الصحيح ما زال يمر" يُمرِّر موديولاً يمنع كل شيء على أنه نجاح.
 """
 import base64
+import json
 import struct
 import zlib
 
@@ -764,3 +765,224 @@ class TestHomeScreen(QuickDeliveryCommon):
                 in self.Home.with_user(self.dispatcher).get_home()['extras']]
         self.assertNotIn('webhooks', keys)
         self.assertIn('drivers', keys)
+
+
+@tagged('post_install', '-at_install')
+class TestOthaimAdapter(QuickDeliveryCommon):
+    """مُحوّل العثيم - كُتب من نداء حقيقي ملتقَط لا من وثيقة.
+
+    الأجسام هنا هي نفسها التي وصلت في بروفة الربط.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Inbox = cls.env['quick.delivery.inbox']
+        cls.othaim = cls.env['res.partner'].create({
+            'name': 'شركة العثيم', 'is_qcommerce_client': True,
+            'api_key': 'OTHAIM-ADAPTER-1', 'qd_payload_format': 'othaim'})
+
+    def _body(self, **over):
+        body = {
+            'requestId': '6f1c2a90-3c4d-4a1e-9b77-0a5e21bb4410',
+            'eventType': 'ORDER.READY_FOR_PICKUP',
+            'apiVersion': '2.1',
+            'payload': {
+                'orderNumber': 'OTH-RYD-8841233',
+                'branch': {
+                    'code': 'RYD-0142',
+                    'nameAr': 'العثيم – النرجس',
+                    'nameEn': 'Othaim Al Narjis',
+                    'geo': {'latitude': 24.8312, 'longitude': 46.6411},
+                },
+                'customer': {
+                    'fullName': 'عبدالله محمد',
+                    'mobileNumber': '+966551234567',
+                    'address': {
+                        'district': 'النرجس',
+                        'street': 'شارع الأمير سلطان',
+                        'buildingNo': '2314',
+                        'additionalDirections': 'الدور الثاني، الشقة 5',
+                        'geo': {'latitude': 24.8401, 'longitude': 46.6338},
+                    },
+                },
+                'fulfillment': {'promisedMinutes': 30, 'toteCount': 4},
+                'payment': {'paymentType': 'CASH_ON_DELIVERY',
+                            'amountDue': {'value': 247.80,
+                                          'currency': 'SAR'}},
+            },
+        }
+        body['payload'].update(over.pop('payload', {}))
+        body.update(over)
+        return body
+
+    def _capture(self, body):
+        record = self.Inbox.create({
+            'client_id': self.othaim.id,
+            'raw_body': json.dumps(body, ensure_ascii=False),
+        })
+        record._qd_try_map()
+        return record
+
+    # ------------------------------------------------------- الإنشاء
+    def test_an_othaim_order_becomes_a_real_order(self):
+        record = self._capture(self._body())
+        self.assertEqual(record.state, 'mapped', record.error)
+        order = record.order_id
+        self.assertTrue(order)
+        self.assertEqual(order.merchant_order_id, 'OTH-RYD-8841233')
+        self.assertEqual(order.client_id, self.othaim)
+
+    def test_every_field_is_translated(self):
+        order = self._capture(self._body()).order_id
+        self.assertEqual(order.store_name, 'العثيم – النرجس')
+        self.assertEqual(order.store_code, 'RYD-0142')
+        self.assertAlmostEqual(order.store_lat, 24.8312, places=4)
+        self.assertAlmostEqual(order.store_lng, 46.6411, places=4)
+        self.assertEqual(order.customer_name, 'عبدالله محمد')
+        self.assertEqual(order.customer_phone, '+966551234567')
+        self.assertAlmostEqual(order.customer_lat, 24.8401, places=4)
+        self.assertEqual(order.bags_count, 4)
+        self.assertEqual(order.sla_minutes, 30)
+        self.assertEqual(order.payment_method, 'COD')
+        self.assertAlmostEqual(order.cod_amount, 247.80, places=2)
+
+    def test_the_address_parts_become_one_readable_line(self):
+        """المندوب يقرأ سطراً على جواله، لا كائن JSON."""
+        order = self._capture(self._body()).order_id
+        for part in ('النرجس', 'شارع الأمير سلطان', 'مبنى 2314',
+                     'الدور الثاني'):
+            self.assertIn(part, order.address_notes)
+
+    def test_prepaid_orders_carry_no_collection(self):
+        record = self._capture(self._body(payload={
+            'orderNumber': 'OTH-RYD-PRE-1',
+            'payment': {'paymentType': 'PREPAID_ONLINE',
+                        'amountDue': {'value': 0, 'currency': 'SAR'}}}))
+        self.assertEqual(record.state, 'mapped', record.error)
+        self.assertEqual(record.order_id.payment_method, 'PREPAID')
+        self.assertEqual(record.order_id.cod_amount, 0.0)
+
+    def test_the_english_branch_name_is_used_when_arabic_is_absent(self):
+        record = self._capture(self._body(payload={
+            'orderNumber': 'OTH-RYD-EN-1',
+            'branch': {'code': 'RYD-0142', 'nameEn': 'Othaim Al Narjis',
+                       'geo': {'latitude': 24.83, 'longitude': 46.64}}}))
+        self.assertEqual(record.order_id.store_name, 'Othaim Al Narjis')
+
+    # ------------------------------------------------------- التكرار
+    def test_a_resend_does_not_create_a_second_order(self):
+        """أنظمتهم تُعيد المحاولة عند انقطاع."""
+        first = self._capture(self._body())
+        second = self._capture(self._body())
+        self.assertEqual(second.state, 'mapped')
+        self.assertEqual(second.order_id, first.order_id,
+                         'إعادة الإرسال أنشأت طلباً ثانياً')
+        self.assertIn('موجود مسبقاً', second.result_note)
+
+    # ------------------------------------------------------- النواقص
+    def test_a_missing_customer_location_is_refused_by_name(self):
+        """الحالة الواقعية: طلب من مركز اتصال بعنوان نصّي.
+
+        الرسالة تُسمّي المصدر: تُطالب التاجر ببيان، لا تبحث في كودك.
+        """
+        body = self._body(payload={'orderNumber': 'OTH-RYD-NOGEO'})
+        body['payload']['customer']['address'].pop('geo')
+        record = self._capture(body)
+        self.assertEqual(record.state, 'failed')
+        self.assertIn('العثيم لم يرسل', record.error)
+        self.assertIn('موقع العميل', record.error)
+
+    def test_a_missing_branch_location_is_refused(self):
+        body = self._body(payload={'orderNumber': 'OTH-RYD-NOSTORE'})
+        body['payload']['branch'].pop('geo')
+        self.assertEqual(self._capture(body).state, 'failed')
+
+    def test_an_unknown_payment_type_is_refused(self):
+        record = self._capture(self._body(payload={
+            'orderNumber': 'OTH-RYD-PAY',
+            'payment': {'paymentType': 'CRYPTO'}}))
+        self.assertEqual(record.state, 'failed')
+        self.assertIn('طريقة دفع غير معروفة', record.error)
+
+    def test_a_missing_order_number_is_refused(self):
+        body = self._body()
+        body['payload'].pop('orderNumber')
+        record = self._capture(body)
+        self.assertEqual(record.state, 'failed')
+        self.assertIn('orderNumber', record.error)
+
+    # ------------------------------------------------------- الأحداث
+    def test_a_merchant_cancellation_cancels_the_order(self):
+        """مندوب يقود إلى طلب أُلغي قبل ربع ساعة خسارة حقيقية."""
+        created = self._capture(self._body()).order_id
+        record = self._capture({
+            'eventType': 'ORDER.CANCELLED_BY_MERCHANT',
+            'payload': {'orderNumber': 'OTH-RYD-8841233',
+                        'cancellationReason': 'ITEMS_OUT_OF_STOCK'}})
+        self.assertEqual(record.state, 'mapped', record.error)
+        created.invalidate_recordset()
+        self.assertEqual(created.state, 'cancelled')
+        self.assertEqual(created.failure_reason, 'cancelled_by_merchant')
+        self.assertIn('ITEMS_OUT_OF_STOCK', created.failure_notes)
+
+    def test_cancelling_releases_the_driver(self):
+        """الضابط العملي: المندوب لا يبقى محجوزاً على طلب ملغى.
+
+        الإسناد هنا يدوي: فرع النرجس يبعد نحو 13 كم عن موقع مندوب
+        الاختبار، ونطاق الإسناد التلقائي 6 كم - فلا يُسنَد تلقائياً،
+        وهذا سلوك صحيح لا خلل.
+        """
+        created = self._capture(self._body()).order_id
+        created.write({'driver_id': self.driver.id,
+                       'state': 'driver_assigned'})
+        self.driver.sudo().driver_status = 'busy'
+        self._capture({
+            'eventType': 'ORDER.CANCELLED_BY_MERCHANT',
+            'payload': {'orderNumber': 'OTH-RYD-8841233'}})
+        self.driver.invalidate_recordset()
+        self.assertEqual(self.driver.driver_status, 'online')
+
+    def test_cancelling_an_unknown_order_is_a_clear_error(self):
+        record = self._capture({
+            'eventType': 'ORDER.CANCELLED_BY_MERCHANT',
+            'payload': {'orderNumber': 'OTH-NOT-OURS'}})
+        self.assertEqual(record.state, 'failed')
+        self.assertIn('غير موجود', record.error)
+
+    def test_an_unrelated_event_is_ignored_not_failed(self):
+        """يدفعون أحداثهم كلها على مسار واحد: حشرها في "تعذّر" يُغرق
+        الشاشة بأحمر كاذب فيضيع العطل الحقيقي بينه."""
+        record = self._capture({
+            'eventType': 'LOYALTY.POINTS_UPDATED',
+            'payload': {'orderNumber': 'OTH-RYD-8841233'}})
+        self.assertEqual(record.state, 'ignored')
+        self.assertFalse(record.error)
+        self.assertIn('LOYALTY.POINTS_UPDATED', record.result_note)
+
+    def test_an_ignored_record_is_not_replayed(self):
+        record = self._capture({'eventType': 'LOYALTY.POINTS_UPDATED',
+                                'payload': {}})
+        before = record.attempts
+        record.action_replay()
+        self.assertEqual(record.attempts, before,
+                         'المُهمَل يُعاد معالجته بلا داعٍ')
+
+    # ------------------------------------------------- الصيغة الأصلية
+    def test_the_native_format_still_works(self):
+        """الضابط المقابل: إضافة صيغة تاجر لم تكسر صيغتنا."""
+        native_client = self.env['res.partner'].create({
+            'name': 'عميل بالصيغة الأصلية', 'is_qcommerce_client': True,
+            'api_key': 'NATIVE-STILL-1'})
+        record = self.Inbox.create({
+            'client_id': native_client.id,
+            'raw_body': json.dumps({
+                'order_id': 'NATIVE-1',
+                'store': {'store_name': 'فرع', 'lat': 24.71, 'lng': 46.67},
+                'customer': {'name': 'عميل', 'phone': '0550000000',
+                             'lat': 24.72, 'lng': 46.68},
+                'payment': {'method': 'PREPAID'},
+            }, ensure_ascii=False)})
+        record._qd_try_map()
+        self.assertEqual(record.state, 'mapped', record.error)
+        self.assertEqual(record.order_id.merchant_order_id, 'NATIVE-1')

@@ -52,7 +52,7 @@ class QuickDeliveryHome(models.AbstractModel):
         pending_inbox = {client.id: count for client, count
                          in Inbox._read_group(
                              [('client_id', 'in', clients.ids),
-                              ('state', '!=', 'mapped')],
+                              ('state', 'not in', ['mapped', 'ignored'])],
                              groupby=['client_id'], aggregates=['__count'])}
 
         merchants = []
