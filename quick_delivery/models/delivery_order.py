@@ -74,6 +74,10 @@ class ResPartner(models.Model):
     delivery_fee_per_order = fields.Float(
         string='رسوم التوصيل للطلب (SAR)', default=12.0,
         groups='quick_delivery.group_qd_manager')
+    qd_sms_customer = fields.Boolean(
+        string='أرسل رمز الاستلام لعميله', default=True,
+        help='رسالة نصية تحمل الرمز ورابط التتبّع، تُرسل عند إسناد '
+             'المندوب. أطفئها لمن يُوصل الرمز بنفسه - لكل رسالة تكلفة.')
 
     # أرقام الشهر لكل سوبرماركت: مع عميل واحد كانت القائمة تكفي، ومع
     # العثيم وبندة وغيرهما لا تكفي - تحتاج "كم طلباً وكم رسماً لكلٍّ".
@@ -432,6 +436,13 @@ class QuickDeliveryOrder(models.Model):
         if 'state' in vals or 'driver_id' in vals:
             self._queue_merchant_webhook()
             self._notify_dashboard()
+        # الرمز يُرسل عند الإسناد لا عند الإنشاء: قبله لا مندوب يُذكر
+        # اسمه، وطلبٌ بلا مندوب ليس عند العميل منه خبر بعد.
+        if new_state == 'driver_assigned' or (
+                'driver_id' in vals and vals.get('driver_id')):
+            self.filtered(
+                lambda rec: rec.state == 'driver_assigned'
+            )._queue_customer_sms()
         return res
 
     @api.model
@@ -659,6 +670,49 @@ class QuickDeliveryOrder(models.Model):
                 self._fields['failure_reason'].selection).get(
                     self.failure_reason, '') if self.failure_reason else '',
         }
+
+    # ------------------------------------------------------------------
+    # رسالة العميل
+    # ------------------------------------------------------------------
+    def _qd_sms_body(self, template):
+        """نص الرسالة من قالب المزوّد."""
+        self.ensure_one()
+        return (template or '')\
+            .replace('{otp}', self.sudo().delivery_otp or '')\
+            .replace('{driver}', self.driver_id.name or '')\
+            .replace('{merchant}', self.client_id.name or '')\
+            .replace('{order}', self.name or '')\
+            .replace('{tracking_url}', self.tracking_url or '')\
+            .replace('{cod_amount}', '%.2f' % (self.cod_amount or 0.0))
+
+    def _queue_customer_sms(self):
+        """يُسجَّل في صندوق صادر ويُرسل بعد تثبيت المعاملة.
+
+        الرمز كان يُسلَّم للتاجر ليُوصله، والسلسلة تنقطع عند أول تاجر
+        لا يفعل - فيقف المندوب عند الباب بلا سبيل للإغلاق. هنا نُرسله
+        نحن.
+        """
+        channel = self.env['quick.delivery.channel'].sudo().search(
+            [], order='sequence, id', limit=1)
+        if not channel:
+            return
+        Message = self.env['quick.delivery.message'].sudo()
+        for rec in self:
+            if not rec.client_id.sudo().qd_sms_customer:
+                continue
+            if not rec.customer_phone or not rec.driver_id:
+                continue
+            # قيد التفرّد يحمي من التكرار، لكن الفحص هنا يتجنّب
+            # استثناءً في كل إعادة إسناد.
+            if Message.search_count([('order_id', '=', rec.id),
+                                     ('kind', '=', 'otp')]):
+                continue
+            Message.create({
+                'order_id': rec.id,
+                'phone': rec.customer_phone,
+                'body': rec._qd_sms_body(channel.message_template),
+                'kind': 'otp',
+            })
 
     def _merchant_webhook_payload(self):
         self.ensure_one()

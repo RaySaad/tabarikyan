@@ -609,6 +609,176 @@
         </field>
     </record>
 
+
+    <!-- ============ قنوات إبلاغ العميل ============ -->
+    <record id="view_quick_delivery_channel_list" model="ir.ui.view">
+        <field name="name">quick.delivery.channel.list</field>
+        <field name="model">quick.delivery.channel</field>
+        <field name="arch" type="xml">
+            <list string="القنوات">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="kind"/>
+                <field name="wa_account_label" string="الحساب"
+                       invisible="not is_whatsapp"/>
+                <field name="wa_template_name" optional="show"/>
+                <field name="sender_name" optional="show"/>
+                <field name="is_whatsapp" column_invisible="1"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_quick_delivery_channel_form" model="ir.ui.view">
+        <field name="name">quick.delivery.channel.form</field>
+        <field name="model">quick.delivery.channel</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_send_test" type="object"
+                            string="إرسال رسالة تجريبية" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="معطّلة"
+                            bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="واتساب الرئيسي"/></h1>
+                    </div>
+                    <group>
+                        <group string="القناة">
+                            <field name="kind"/>
+                            <field name="sequence"/>
+                            <field name="active" widget="boolean_toggle"/>
+                            <field name="is_whatsapp" invisible="1"/>
+                            <field name="test_number"
+                                   placeholder="05XXXXXXXX"/>
+                        </group>
+                        <group string="واتساب" invisible="not is_whatsapp">
+                            <!-- بيانات الاعتماد تُقرأ من حساب واتساب في
+                                 أودو: مكان واحد تديره من شاشاته، ولا
+                                 نستدعي دواله الداخلية. -->
+                            <field name="wa_account_id"/>
+                            <field name="wa_account_label"/>
+                            <field name="wa_template_name"
+                                   placeholder="delivery_otp_ar"/>
+                            <field name="wa_language"/>
+                            <field name="graph_version"/>
+                            <field name="wa_phone_uid"
+                                   groups="quick_delivery.group_qd_manager"/>
+                            <field name="wa_token" password="True"
+                                   groups="quick_delivery.group_qd_manager"/>
+                        </group>
+                        <group string="مزوّد الرسائل النصية"
+                               invisible="is_whatsapp">
+                            <field name="endpoint_url"/>
+                            <field name="api_key" password="True"/>
+                            <field name="sender_name"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="نص الرسالة">
+                            <field name="message_template"/>
+                            <div class="alert alert-info" role="alert">
+                                <b>للرسائل النصية:</b> النص كاملاً.<br/>
+                                <b>لواتساب:</b> سطرٌ لكل متغيّر في القالب
+                                المعتمَد، بترتيبه
+                                (<code>{{1}}</code> ثم <code>{{2}}</code>…)
+                                — نصّ القالب ثابت عند ميتا ولا نملك إلا
+                                ملء فراغاته.<br/>
+                                المتغيّرات: <code>{otp}</code>
+                                <code>{driver}</code> <code>{merchant}</code>
+                                <code>{order}</code>
+                                <code>{tracking_url}</code>
+                                <code>{cod_amount}</code>
+                            </div>
+                        </page>
+                        <page string="الجسم والترويسات"
+                              invisible="is_whatsapp">
+                            <field name="headers_json"/>
+                            <field name="body_template"/>
+                            <div class="alert alert-warning" role="alert">
+                                القوالب الجاهزة <b>نقطة بداية لا ضمان</b> —
+                                واجهات المزوّدين تتغيّر. تحقّق من وثيقة
+                                مزوّدك الحالية، وجرّب بالزر أعلاه قبل
+                                الاعتماد.
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quick_delivery_channels" model="ir.actions.act_window">
+        <field name="name">قنوات إبلاغ العميل</field>
+        <field name="res_model">quick.delivery.channel</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">أضف أول قناة</p>
+            <p>تُجرَّب القنوات بالترتيب حتى تنجح واحدة: واتساب أولاً،
+               والرسالة النصية احتياطاً — فعميلٌ بلا واتساب موجود
+               دائماً.</p>
+        </field>
+    </record>
+
+    <!-- ============ صادر رسائل العملاء ============ -->
+    <record id="view_quick_delivery_message_list" model="ir.ui.view">
+        <field name="name">quick.delivery.message.list</field>
+        <field name="model">quick.delivery.message</field>
+        <field name="arch" type="xml">
+            <list string="رسائل العملاء" create="0"
+                  decoration-danger="state == 'failed'"
+                  decoration-muted="state == 'sent'">
+                <header>
+                    <button name="action_retry" type="object"
+                            string="إعادة إرسال المحدَّد" class="btn-primary"/>
+                </header>
+                <field name="create_date" string="وقت الإنشاء"/>
+                <field name="order_id"/>
+                <field name="client_id" optional="show"/>
+                <field name="phone"/>
+                <field name="channel_id" optional="show"/>
+                <field name="attempts" optional="hide"/>
+                <field name="response_code" optional="hide"/>
+                <field name="last_error" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'sent'"
+                       decoration-danger="state == 'failed'"/>
+                <button name="action_retry" type="object" icon="fa-repeat"
+                        title="إعادة الإرسال" invisible="state == 'sent'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_quick_delivery_message_search" model="ir.ui.view">
+        <field name="name">quick.delivery.message.search</field>
+        <field name="model">quick.delivery.message</field>
+        <field name="arch" type="xml">
+            <search string="بحث الرسائل">
+                <field name="order_id"/>
+                <field name="phone"/>
+                <field name="client_id"/>
+                <filter name="filter_not_sent" string="لم تُرسل بعد"
+                        domain="[('state', '!=', 'sent')]"/>
+                <filter name="filter_failed" string="فشلت نهائياً"
+                        domain="[('state', '=', 'failed')]"/>
+                <separator/>
+                <filter name="group_channel" string="القناة"
+                        context="{'group_by': 'channel_id'}"/>
+                <filter name="group_state" string="الحالة"
+                        context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_quick_delivery_messages" model="ir.actions.act_window">
+        <field name="name">رسائل العملاء</field>
+        <field name="res_model">quick.delivery.message</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_filter_not_sent': 1}</field>
+    </record>
+
     <!-- ============ صادر إبلاغ التاجر (Webhook) ============ -->
     <record id="view_quick_delivery_webhook_list" model="ir.ui.view">
         <field name="name">quick.delivery.webhook.list</field>
@@ -677,6 +847,10 @@
               groups="quick_delivery.group_qd_dispatcher"/>
     <menuitem id="menu_quick_inbox" name="الوارد من التجّار" parent="menu_quick_delivery_root" action="action_quick_delivery_inbox" sequence="5"
               groups="quick_delivery.group_qd_dispatcher"/>
-    <menuitem id="menu_quick_webhooks" name="إبلاغات التاجر (Webhook)" parent="menu_quick_delivery_root" action="action_quick_delivery_webhooks" sequence="6"
+    <menuitem id="menu_quick_messages" name="رسائل العملاء" parent="menu_quick_delivery_root" action="action_quick_delivery_messages" sequence="6"
+              groups="quick_delivery.group_qd_dispatcher"/>
+    <menuitem id="menu_quick_channels" name="قنوات الإبلاغ" parent="menu_quick_delivery_root" action="action_quick_delivery_channels" sequence="8"
+              groups="quick_delivery.group_qd_manager"/>
+    <menuitem id="menu_quick_webhooks" name="إبلاغات التاجر (Webhook)" parent="menu_quick_delivery_root" action="action_quick_delivery_webhooks" sequence="7"
               groups="quick_delivery.group_qd_manager"/>
 </odoo>

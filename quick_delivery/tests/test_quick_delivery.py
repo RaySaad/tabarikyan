@@ -986,3 +986,252 @@ class TestOthaimAdapter(QuickDeliveryCommon):
         record._qd_try_map()
         self.assertEqual(record.state, 'mapped', record.error)
         self.assertEqual(record.order_id.merchant_order_id, 'NATIVE-1')
+
+
+@tagged('post_install', '-at_install')
+class TestCustomerMessaging(QuickDeliveryCommon):
+    """إيصال رمز الاستلام إلى العميل - واتساب ثم رسالة نصية.
+
+    الشبكة لا تُستدعى هنا: ما يُختبر هو بناء الرسالة، واختيار القناة،
+    والتراجع عند الفشل، وألا تُرسل رسالتان للطلب الواحد.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Channel = cls.env['quick.delivery.channel']
+        cls.Message = cls.env['quick.delivery.message']
+        cls.Channel.search([]).unlink()
+        cls.whatsapp = cls.Channel.create({
+            'name': 'واتساب', 'kind': 'whatsapp', 'sequence': 1,
+            'wa_phone_uid': '123456789', 'wa_token': 'TOKEN-X',
+            'wa_template_name': 'delivery_otp_ar',
+            'message_template': '{merchant}\n{driver}\n{otp}\n{tracking_url}',
+        })
+        cls.sms = cls.Channel.create({
+            'name': 'رسالة نصية', 'kind': 'taqnyat', 'sequence': 20,
+            'endpoint_url': 'http://127.0.0.1:9/nowhere',
+            'api_key': 'SMS-KEY', 'sender_name': 'DELIVERY',
+            'headers_json': '{"Content-Type": "application/json"}',
+            'body_template': '{"recipients": ["{phone}"],'
+                             ' "body": "{message}"}',
+        })
+
+    # ------------------------------------------------------- الأرقام
+    def test_saudi_numbers_are_normalised(self):
+        """المزوّدون وميتا يرفضون 05XXXXXXXX أو يُرسلونها لبلد آخر."""
+        from odoo.addons.quick_delivery.models.messaging import normalize_phone
+        for raw in ('0551234567', '+966551234567', '00966551234567',
+                    '966551234567', '551234567', '055 123 4567'):
+            self.assertEqual(normalize_phone(raw), '966551234567', raw)
+
+    def test_an_empty_number_yields_nothing(self):
+        from odoo.addons.quick_delivery.models.messaging import normalize_phone
+        self.assertEqual(normalize_phone(''), '')
+        self.assertEqual(normalize_phone(None), '')
+
+    # ------------------------------------------------------ الإنشاء
+    def test_assigning_a_driver_queues_the_message(self):
+        order = self._order(merchant_order_id='MSG-1')
+        self.assertEqual(order.driver_id, self.driver)
+        message = self.Message.search([('order_id', '=', order.id)])
+        self.assertEqual(len(message), 1)
+        self.assertEqual(message.state, 'pending')
+
+    def test_the_body_carries_the_code_and_the_link(self):
+        order = self._order(merchant_order_id='MSG-2')
+        message = self.Message.search([('order_id', '=', order.id)])
+        self.assertIn(order.sudo().delivery_otp, message.body)
+        self.assertIn(order.tracking_url, message.body)
+        self.assertIn(self.driver.name, message.body)
+
+    def test_the_phone_is_the_customers(self):
+        order = self._order(merchant_order_id='MSG-3',
+                            customer_phone='0509998888')
+        message = self.Message.search([('order_id', '=', order.id)])
+        self.assertEqual(message.phone, '0509998888')
+
+    def test_no_second_message_for_the_same_order(self):
+        """إعادة إسناد المندوب لا تُرسل رمزاً ثانياً للعميل."""
+        order = self._order(merchant_order_id='MSG-4')
+        other = self.Driver.create({
+            'name': 'مندوب بديل للرسائل', 'phone': '0557770001',
+            'driver_status': 'online',
+            'current_lat': 24.7136, 'current_lng': 46.6753})
+        order.write({'driver_id': other.id})
+        self.assertEqual(
+            self.Message.search_count([('order_id', '=', order.id)]), 1)
+
+    def test_a_merchant_may_opt_out(self):
+        """لكل رسالة تكلفة: من يُوصل الرمز بنفسه لا نُرسل لعميله."""
+        self.client.qd_sms_customer = False
+        order = self._order(merchant_order_id='MSG-OFF')
+        self.assertFalse(self.Message.search_count(
+            [('order_id', '=', order.id)]))
+        self.client.qd_sms_customer = True
+
+    def test_an_unassigned_order_sends_nothing(self):
+        """قبل الإسناد لا مندوب يُذكر اسمه، ولا خبر عند العميل بعد."""
+        self.driver.driver_status = 'offline'
+        order = self._order(merchant_order_id='MSG-NODRV')
+        self.assertFalse(order.driver_id)
+        self.assertFalse(self.Message.search_count(
+            [('order_id', '=', order.id)]))
+
+    # ------------------------------------------------------ واتساب
+    def test_the_whatsapp_payload_matches_the_template_order(self):
+        """نصّ القالب ثابت عند ميتا: نملك ملء فراغاته بترتيبها فقط."""
+        sent = {}
+
+        def fake_post(url, json=None, headers=None, timeout=None, **kw):
+            sent['url'] = url
+            sent['json'] = json
+            sent['headers'] = headers
+
+            class Response:
+                status_code = 200
+                text = '{"messages":[{"id":"wamid.X"}]}'
+            return Response()
+
+        from odoo.addons.quick_delivery.models import messaging
+        original = messaging.requests.post
+        messaging.requests.post = fake_post
+        try:
+            ok, code, error = self.whatsapp._qd_send(
+                '0551234567', 'العثيم\nخالد\n123456\nhttps://x/track/y')
+        finally:
+            messaging.requests.post = original
+
+        self.assertTrue(ok, error)
+        self.assertIn('123456789/messages', sent['url'])
+        self.assertIn('Bearer TOKEN-X', sent['headers']['Authorization'])
+        body = sent['json']
+        self.assertEqual(body['to'], '966551234567')
+        self.assertEqual(body['type'], 'template')
+        self.assertEqual(body['template']['name'], 'delivery_otp_ar')
+        values = [p['text'] for p
+                  in body['template']['components'][0]['parameters']]
+        self.assertEqual(values,
+                         ['العثيم', 'خالد', '123456', 'https://x/track/y'])
+
+    def test_whatsapp_without_credentials_fails_clearly(self):
+        bare = self.Channel.create({
+            'name': 'واتساب بلا بيانات', 'kind': 'whatsapp',
+            'message_template': '{otp}'})
+        ok, code, error = bare._qd_send('0551234567', '123456')
+        self.assertFalse(ok)
+        self.assertIn('غير مضبوط', error)
+
+    def test_whatsapp_without_a_template_name_fails_clearly(self):
+        channel = self.Channel.create({
+            'name': 'واتساب بلا قالب', 'kind': 'whatsapp',
+            'wa_phone_uid': '1', 'wa_token': 't',
+            'message_template': '{otp}'})
+        ok, code, error = channel._qd_send('0551234567', '123456')
+        self.assertFalse(ok)
+        self.assertIn('قالب', error)
+
+    # ------------------------------------------------------ التراجع
+    def test_the_second_channel_is_tried_when_the_first_fails(self):
+        """عميل بلا واتساب أو حاجب لرقمنا موجود دائماً."""
+        calls = []
+
+        def fake_send(self_channel, phone, message):
+            calls.append(self_channel.name)
+            if self_channel.kind == 'whatsapp':
+                return False, 400, 'recipient not on whatsapp'
+            return True, 200, ''
+
+        order = self._order(merchant_order_id='MSG-FB')
+        message = self.Message.search([('order_id', '=', order.id)])
+        from odoo.addons.quick_delivery.models.messaging import (
+            QuickDeliveryChannel)
+        original = QuickDeliveryChannel._qd_send
+        QuickDeliveryChannel._qd_send = fake_send
+        try:
+            message._deliver()
+        finally:
+            QuickDeliveryChannel._qd_send = original
+
+        self.assertEqual(calls, ['واتساب', 'رسالة نصية'])
+        self.assertEqual(message.state, 'sent')
+        self.assertEqual(message.channel_id, self.sms)
+
+    def test_failing_everywhere_is_retried_not_dropped(self):
+        def fake_send(self_channel, phone, message):
+            return False, 500, 'provider down'
+
+        order = self._order(merchant_order_id='MSG-DOWN')
+        message = self.Message.search([('order_id', '=', order.id)])
+        from odoo.addons.quick_delivery.models.messaging import (
+            QuickDeliveryChannel)
+        original = QuickDeliveryChannel._qd_send
+        QuickDeliveryChannel._qd_send = fake_send
+        try:
+            message._deliver()
+        finally:
+            QuickDeliveryChannel._qd_send = original
+
+        self.assertEqual(message.state, 'pending', 'الرسالة أُسقطت بلا رجعة')
+        self.assertEqual(message.attempts, 1)
+        self.assertIn('واتساب', message.last_error)
+        self.assertIn('رسالة نصية', message.last_error)
+
+    def test_a_sent_message_is_never_resent(self):
+        order = self._order(merchant_order_id='MSG-ONCE')
+        message = self.Message.search([('order_id', '=', order.id)])
+        message.write({'state': 'sent'})
+        calls = []
+
+        def fake_send(self_channel, phone, body):
+            calls.append(1)
+            return True, 200, ''
+
+        from odoo.addons.quick_delivery.models.messaging import (
+            QuickDeliveryChannel)
+        original = QuickDeliveryChannel._qd_send
+        QuickDeliveryChannel._qd_send = fake_send
+        try:
+            message._deliver()
+        finally:
+            QuickDeliveryChannel._qd_send = original
+        self.assertFalse(calls, 'أُعيد إرسال رسالة مُرسلة')
+
+    def test_no_channel_at_all_is_recorded_not_silent(self):
+        order = self._order(merchant_order_id='MSG-NOCH')
+        message = self.Message.search([('order_id', '=', order.id)])
+        self.Channel.search([]).write({'active': False})
+        try:
+            message._deliver()
+        finally:
+            self.Channel.with_context(active_test=False).search(
+                []).write({'active': True})
+        self.assertEqual(message.state, 'failed')
+        self.assertIn('لا قناة', message.last_error)
+
+    # ------------------------------------------------- الرسالة النصية
+    def test_the_sms_body_is_valid_json_with_arabic_and_newlines(self):
+        """سطر جديد أو علامة اقتباس في رسالة عربية كان يُفسد الجسم."""
+        sent = {}
+
+        def fake_post(url, data=None, headers=None, timeout=None, **kw):
+            sent['data'] = data
+
+            class Response:
+                status_code = 200
+                text = 'OK'
+            return Response()
+
+        from odoo.addons.quick_delivery.models import messaging
+        original = messaging.requests.post
+        messaging.requests.post = fake_post
+        try:
+            self.sms._qd_send('0551234567',
+                              'طلبك من "العثيم"\nالرمز: 123456')
+        finally:
+            messaging.requests.post = original
+
+        parsed = json.loads(sent['data'].decode('utf-8'))
+        self.assertEqual(parsed['recipients'], ['966551234567'])
+        self.assertIn('العثيم', parsed['body'])
+        self.assertIn('\n', parsed['body'])
