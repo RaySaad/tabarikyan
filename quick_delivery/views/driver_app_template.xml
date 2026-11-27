@@ -27,43 +27,51 @@
             <!-- بلا CDN: الملفان من هذا الخادم، فلا يتعطّل شكل التطبيق
                  بانقطاع نطاق خارجي. رقم النسخة لتجاوز ذاكرة المتصفح. -->
             <link rel="stylesheet"
-                  href="/quick_delivery/static/src/driver_app/app.css?v=4.0.0"/>
+                  href="/quick_delivery/static/src/driver_app/app.css?v=7.0.0"/>
         </head>
         <body>
             <!-- ================= شاشة الدخول ================= -->
             <div id="screen-login" class="qd-login hidden">
-                <div class="qd-login__brand">
-                    <div class="qd-login__logo">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff"
-                             stroke-width="1.8" stroke-linecap="round"
-                             stroke-linejoin="round" aria-hidden="true">
-                            <path d="M3 7h10v8H3z"/>
-                            <path d="M13 10h4l3 3v2h-7z"/>
-                            <circle cx="7" cy="18" r="2"/>
-                            <circle cx="17" cy="18" r="2"/>
-                        </svg>
+                <div class="qd-login__inner">
+                    <div class="qd-login__brand">
+                        <div class="qd-login__logo">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff"
+                                 stroke-width="1.8" stroke-linecap="round"
+                                 stroke-linejoin="round" aria-hidden="true">
+                                <path d="M3 7h10v8H3z"/>
+                                <path d="M13 10h4l3 3v2h-7z"/>
+                                <circle cx="7" cy="18" r="2"/>
+                                <circle cx="17" cy="18" r="2"/>
+                            </svg>
+                        </div>
+                        <h1>تطبيق مندوب التوصيل</h1>
+                        <p>ادخل برقم جوالك ورمز الدخول من غرفة العمليات</p>
                     </div>
-                    <h1>تطبيق مندوب التوصيل</h1>
-                    <p>ادخل برقم جوالك ورمز الدخول من غرفة العمليات</p>
+
+                    <div class="qd-login__card">
+                        <div id="loginError" class="qd-login__error hidden">
+                            <span aria-hidden="true">⚠</span>
+                            <span id="loginErrorText"></span>
+                        </div>
+
+                        <label class="qd-label" for="loginPhone">رقم الجوال</label>
+                        <input id="loginPhone" class="qd-field" type="tel"
+                               inputmode="tel" autocomplete="username"
+                               placeholder="05XXXXXXXX" dir="ltr"/>
+
+                        <label class="qd-label" for="loginPin">رمز الدخول</label>
+                        <input id="loginPin" class="qd-field" type="password"
+                               inputmode="numeric" autocomplete="current-password"
+                               maxlength="6" placeholder="••••" dir="ltr"/>
+
+                        <button id="loginBtn" class="qd-btn qd-btn--primary"
+                                type="button">دخول</button>
+                    </div>
+
+                    <p class="qd-login__help">
+                        نسيت الرمز؟ غرفة العمليات تُولّد لك رمزاً جديداً.
+                    </p>
                 </div>
-
-                <label class="qd-label" for="loginPhone">رقم الجوال</label>
-                <input id="loginPhone" class="qd-field" type="tel"
-                       inputmode="tel" autocomplete="username"
-                       placeholder="05XXXXXXXX" dir="ltr"/>
-
-                <label class="qd-label" for="loginPin">رمز الدخول</label>
-                <input id="loginPin" class="qd-field" type="password"
-                       inputmode="numeric" autocomplete="current-password"
-                       maxlength="6" placeholder="••••" dir="ltr"/>
-
-                <p id="loginError" class="qd-cod hidden"></p>
-
-                <button id="loginBtn" class="qd-btn qd-btn--primary"
-                        type="button">دخول</button>
-                <p class="qd-empty" style="padding:14px 0 0">
-                    نسيت الرمز؟ غرفة العمليات تُولّد لك رمزاً جديداً.
-                </p>
             </div>
 
             <!-- ================= التطبيق ================= -->
@@ -126,6 +134,23 @@
 
                     <!-- طلب حيّ -->
                     <div id="orderBox" class="hidden">
+                        <!-- أين أنا الآن من الطلب: كانت المرحلة تُعرف
+                             من نصّ الزر وحده. -->
+                        <div class="qd-track">
+                            <div class="qd-track__step" id="qdTrack0">
+                                <div class="qd-track__dot">1</div>
+                                <span class="qd-track__label">إلى الفرع</span>
+                            </div>
+                            <div class="qd-track__step" id="qdTrack1">
+                                <div class="qd-track__dot">2</div>
+                                <span class="qd-track__label">استلام الأكياس</span>
+                            </div>
+                            <div class="qd-track__step" id="qdTrack2">
+                                <div class="qd-track__dot">3</div>
+                                <span class="qd-track__label">التسليم للعميل</span>
+                            </div>
+                        </div>
+
                         <div id="slaBox" class="qd-sla">
                             <div id="slaLabel" class="qd-sla__label">
                                 الوقت المتبقي للتسليم
@@ -212,7 +237,7 @@
             <div id="toast" class="qd-toast hidden"></div>
 
             <script type="text/javascript"
-                    src="/quick_delivery/static/src/driver_app/app.js?v=4.0.0"></script>
+                    src="/quick_delivery/static/src/driver_app/app.js?v=7.0.0"></script>
         </body>
         </html>
     </template>

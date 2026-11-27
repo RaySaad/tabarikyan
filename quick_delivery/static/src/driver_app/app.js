@@ -184,6 +184,11 @@
     // ==================================================================
     // الدخول والخروج
     // ==================================================================
+    function showLoginError(message) {
+        $('loginErrorText').textContent = message;
+        $('loginError').classList.remove('hidden');
+    }
+
     function showLogin() {
         $('screen-login').classList.remove('hidden');
         $('screen-app').classList.add('hidden');
@@ -198,8 +203,13 @@
         var phone = $('loginPhone').value.trim();
         var pin = $('loginPin').value.trim();
         if (!phone || !pin) {
-            $('loginError').textContent = 'أدخل رقم الجوال ورمز الدخول';
-            $('loginError').classList.remove('hidden');
+            showLoginError('أدخل رقم الجوال ورمز الدخول');
+            return;
+        }
+        // فحص محلّي قبل أي نداء: رسالة الخادم عامة عمداً (لا تكشف من
+        // هو مندوب)، فخطأ مطبعي بسيط كان يبدو كرمز خاطئ.
+        if (phone.replace(/\D/g, '').length < 9) {
+            showLoginError('رقم الجوال ناقص - اكتبه كاملاً (مثل 05XXXXXXXX)');
             return;
         }
         var button = $('loginBtn');
@@ -213,8 +223,7 @@
             $('loginPin').value = '';
             startApp();
         }).catch(function (error) {
-            $('loginError').textContent = error.message || 'تعذّر الدخول';
-            $('loginError').classList.remove('hidden');
+            showLoginError(error.message || 'تعذّر الدخول');
         }).then(function () {
             button.disabled = false;
             button.textContent = 'دخول';
@@ -375,6 +384,8 @@
             ? 'التوجّه إلى فرع ' + (order.store_name || 'السوبرماركت')
             : 'التوجّه إلى موقع العميل';
 
+        renderTrack();
+
         var step = $('stepBtn');
         var pod = $('podBox');
         if (order.state === 'driver_assigned') {
@@ -391,6 +402,20 @@
             step.className = 'qd-btn qd-btn--primary';
         }
         tickCountdown(true);
+    }
+
+    function renderTrack() {
+        // المرحلة المنجَزة والمرحلة الحالية: ثلاث خطوات لا خمس -
+        // المندوب لا يعنيه "جارٍ البحث" ولا ما بعد التسليم.
+        var reached = { driver_assigned: 0, arrived_at_store: 1,
+                        picked_up: 2 }[order.state];
+        if (reached === undefined) { reached = 0; }
+        for (var i = 0; i < 3; i++) {
+            var node = $('qdTrack' + i);
+            if (!node) { continue; }
+            node.classList.toggle('is-done', i < reached);
+            node.classList.toggle('is-current', i === reached);
+        }
     }
 
     function tickCountdown(force) {

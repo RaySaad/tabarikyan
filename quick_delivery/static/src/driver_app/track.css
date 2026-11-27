@@ -1,0 +1,166 @@
+/* صفحة تتبع العميل النهائي - بلا أي مكتبة خارجية.
+ *
+ * تُفتح على بيانات الجوال في الشارع، فكل بايت محسوب: لا إطار، لا
+ * خطوط مُحمَّلة، لا خرائط. ما يحتاجه العميل: أين طلبه، ومتى يصل،
+ * وما الرمز الذي يقوله للمندوب.
+ */
+
+:root {
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --page: #f1f5f9;
+    --card: #ffffff;
+    --green: #15803d;
+    --green-soft: #dcfce7;
+    --amber: #b45309;
+    --amber-soft: #fef3c7;
+    --red: #b91c1c;
+    --red-soft: #fee2e2;
+    --blue: #1d4ed8;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.tk-wrap { max-width: 520px; margin: 0 auto; padding: 0 16px 40px; }
+
+.tk-head {
+    background: var(--ink);
+    color: #fff;
+    padding: calc(20px + env(safe-area-inset-top, 0)) 16px 20px;
+    text-align: center;
+}
+.tk-head__merchant { font-size: .85rem; opacity: .75; }
+.tk-head__title { font-size: 1.2rem; font-weight: 700; margin: 4px 0 0; }
+.tk-head__ref {
+    font-size: .8rem; opacity: .7; margin-top: 2px;
+    font-variant-numeric: tabular-nums; direction: ltr;
+}
+
+.tk-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px;
+    margin-top: 16px;
+}
+
+/* ===================== الحالة والمؤقّت ===================== */
+.tk-status {
+    text-align: center;
+    border: 0;
+    background: var(--green-soft);
+    color: var(--green);
+    margin-top: -14px;
+    position: relative;
+}
+.tk-status--late { background: var(--red-soft); color: var(--red); }
+.tk-status--done { background: var(--green-soft); color: var(--green); }
+.tk-status--failed { background: var(--red-soft); color: var(--red); }
+.tk-status__label { font-size: 1.05rem; font-weight: 700; }
+.tk-status__timer {
+    font-size: 2.6rem; font-weight: 800; line-height: 1.1;
+    font-variant-numeric: tabular-nums; margin-top: 4px;
+}
+.tk-status__hint { font-size: .82rem; opacity: .85; }
+
+/* ===================== المراحل ===================== */
+.tk-steps { list-style: none; margin: 0; padding: 0; }
+.tk-steps li {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 0 0 18px; position: relative;
+}
+.tk-steps li:last-child { padding-bottom: 0; }
+/* الخط الواصل بين النقاط */
+.tk-steps li:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 13px;
+    top: 26px; bottom: 2px;
+    width: 2px; background: var(--line);
+}
+.tk-steps li.is-done:not(:last-child)::before { background: var(--green); }
+
+.tk-dot {
+    flex: none; width: 28px; height: 28px; border-radius: 50%;
+    border: 2px solid var(--line); background: var(--card);
+    display: grid; place-items: center;
+    font-size: .8rem; font-weight: 700; color: var(--muted);
+    position: relative; z-index: 1;
+}
+.tk-steps li.is-done .tk-dot {
+    border-color: var(--green); background: var(--green); color: #fff;
+}
+.tk-steps li.is-current .tk-dot {
+    border-color: var(--green); color: var(--green);
+    box-shadow: 0 0 0 4px var(--green-soft);
+}
+.tk-steps__text { padding-top: 2px; }
+.tk-steps__title { font-weight: 600; color: var(--muted); }
+.tk-steps li.is-done .tk-steps__title,
+.tk-steps li.is-current .tk-steps__title { color: var(--ink); }
+.tk-steps li.is-current .tk-steps__title { font-weight: 700; }
+.tk-steps__note { font-size: .82rem; color: var(--muted); }
+
+/* ===================== الرمز ===================== */
+.tk-otp {
+    text-align: center;
+    background: var(--ink);
+    color: #fff;
+    border: 0;
+}
+.tk-otp__label { font-size: .85rem; opacity: .8; }
+.tk-otp__code {
+    font-size: 2.8rem; font-weight: 800; letter-spacing: .55rem;
+    font-variant-numeric: tabular-nums; direction: ltr;
+    margin: 6px 0 4px; padding-inline-start: .55rem;
+}
+.tk-otp__hint { font-size: .8rem; opacity: .7; }
+
+/* ===================== المندوب والمبلغ ===================== */
+.tk-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 0;
+}
+.tk-row + .tk-row { border-top: 1px solid var(--line); }
+.tk-row__label { font-size: .78rem; color: var(--muted); }
+.tk-row__value { font-weight: 700; }
+.tk-row__spacer { margin-inline-start: auto; }
+
+.tk-call {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--green); color: #fff; text-decoration: none;
+    border-radius: 10px; padding: 10px 16px; font-weight: 700;
+    font-size: .92rem;
+}
+
+.tk-cod {
+    background: var(--amber-soft); color: var(--amber);
+    border-radius: 12px; padding: 12px; text-align: center;
+    font-weight: 700; margin-top: 12px;
+}
+
+.tk-foot {
+    text-align: center; color: var(--muted);
+    font-size: .78rem; margin-top: 20px; line-height: 1.8;
+}
+
+.tk-missing {
+    text-align: center; padding: 60px 20px; color: var(--muted);
+}
+.tk-missing h1 { color: var(--ink); font-size: 1.15rem; }
+
+@media (max-width: 340px) {
+    .tk-status__timer { font-size: 2.1rem; }
+    .tk-otp__code { font-size: 2.2rem; letter-spacing: .35rem; }
+}

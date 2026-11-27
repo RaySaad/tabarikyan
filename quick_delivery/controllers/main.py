@@ -207,14 +207,9 @@ class QuickCommerceController(http.Controller):
             ('merchant_order_id', '=', merchant_order_id),
         ], limit=1)
         if existing:
-            return _json_response({
-                'status': 'success',
-                'message': 'Order already exists',
-                'tracking_number': existing.name,
-                'delivery_otp': existing.delivery_otp,
-                'assigned_driver': existing.driver_id.name or 'searching',
-                'state': existing.state,
-            }, 200)
+            payload = self._intake_result(existing)
+            payload['message'] = 'Order already exists'
+            return _json_response(payload, 200)
 
         method = str(pay.get('method') or 'PREPAID').upper()
         if method not in ('PREPAID', 'COD'):
@@ -245,15 +240,7 @@ class QuickCommerceController(http.Controller):
                            if method == 'COD' else 0.0),
         })
 
-        return _json_response({
-            'status': 'success',
-            'tracking_number': order.name,
-            # الرمز يُسلَّم هنا مرة واحدة ليعرضه التاجر لعميله - وأُزيل
-            # من إبلاغات تغيير الحالة.
-            'delivery_otp': order.delivery_otp,
-            'assigned_driver': order.driver_id.name or 'searching',
-            'state': order.state,
-        }, 201)
+        return _json_response(self._intake_result(order), 201)
 
     # ==================================================================
     # 1-ب. مسار الاستقبال الخاص بكل تاجر
@@ -326,7 +313,12 @@ class QuickCommerceController(http.Controller):
         return {
             'status': 'success',
             'tracking_number': order.name,
+            # الرمز يُسلَّم هنا مرة واحدة ليعرضه التاجر لعميله - وأُزيل
+            # من إبلاغات تغيير الحالة.
             'delivery_otp': order.delivery_otp,
+            # ورابط التتبع: يضعه التاجر في رسالته لعميله، فيصل الرمز
+            # إلى صاحبه بدل أن يبقى في سجلات التاجر.
+            'tracking_url': order.tracking_url,
             'assigned_driver': order.driver_id.name or 'searching',
             'state': order.state,
         }
@@ -430,6 +422,71 @@ class QuickCommerceController(http.Controller):
             return {'status': 'error',
                     'error': error.args[0] if error.args else 'خطأ'}
         return {'status': 'success'}
+
+    # ==================================================================
+    # 2-ب. صفحة تتبع العميل النهائي
+    # ==================================================================
+    # الحارس الوحيد هو الرمز في الرابط. لا رقم تتبع متسلسل: QCK-2026-
+    # 000047 يُخمَّن، فيقرأ أي أحد رمز تسليم أي طلب ويستلم بدل صاحبه.
+    TRACK_STEPS = (
+        ('جارٍ تجهيز طلبك', 'نبحث عن أقرب مندوب إليك'),
+        ('تم تعيين مندوب', 'في طريقه إلى الفرع'),
+        ('المندوب في الفرع', 'يستلم طلبك الآن'),
+        ('في الطريق إليك', 'أبقِ جوالك قريباً'),
+        ('تم التسليم', ''),
+    )
+
+    def _tracked_order(self, token):
+        token = (token or '').strip()
+        if len(token) < 16:
+            # رمز قصير = محاولة تخمين، لا رابط حقيقي. لا نبحث أصلاً.
+            return request.env['quick.delivery.order'].browse()
+        return request.env['quick.delivery.order'].sudo().search(
+            [('tracking_token', '=', token)], limit=1)
+
+    @http.route('/track/<string:token>', type='http', auth='public',
+                website=False, readonly=True)
+    def public_tracking_page(self, token, **kwargs):
+        order = self._tracked_order(token)
+        if not order:
+            return request.render('quick_delivery.tracking_missing_template',
+                                  {}, status=404)
+        data = order._public_tracking_data()
+
+        steps = []
+        for index, (title, note) in enumerate(self.TRACK_STEPS):
+            if data['state'] in ('failed', 'cancelled'):
+                css = 'is-done' if index < data['step'] else ''
+            elif data['is_delivered'] or index < data['step']:
+                css = 'is-done'
+            elif index == data['step']:
+                css = 'is-current'
+            else:
+                css = ''
+            steps.append({'title': title, 'note': note, 'cls': css})
+
+        status_class = 'tk-card tk-status'
+        if data['state'] in ('failed', 'cancelled'):
+            status_class += ' tk-status--failed'
+        elif data['is_delivered']:
+            status_class += ' tk-status--done'
+        elif data['is_open'] and not data['remaining_seconds']:
+            status_class += ' tk-status--late'
+
+        return request.render('quick_delivery.tracking_page_template', {
+            'd': data, 'steps': steps, 'token': token,
+            'status_class': status_class,
+        })
+
+    @http.route('/api/v1/track/<string:token>', type='http', auth='public',
+                methods=['GET'], csrf=False, save_session=False,
+                readonly=True)
+    @api_endpoint
+    def public_tracking_data(self, token, **kwargs):
+        order = self._tracked_order(token)
+        if not order:
+            raise BadRequest('Not found', 404)
+        return _json_response(order._public_tracking_data())
 
     # ==================================================================
     # 3. تطبيق المندوب - ويب مستقل (PWA)

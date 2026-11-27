@@ -62,6 +62,8 @@ class ResPartner(models.Model):
              'فإضافة الثالث لا تمسّ الاثنين.')
     qd_inbox_count = fields.Integer(
         string='نداءات واردة', compute='_compute_qd_inbox_count')
+    qd_inbox_pending = fields.Integer(
+        string='وارد لم يصر طلباً', compute='_compute_qd_inbox_count')
 
     @api.model
     def _qd_payload_format_selection(self):
@@ -83,12 +85,15 @@ class ResPartner(models.Model):
 
     def _compute_qd_inbox_count(self):
         Inbox = self.env['quick.delivery.inbox'].sudo()
-        groups = Inbox._read_group([('client_id', 'in', self.ids)],
-                                   groupby=['client_id'],
-                                   aggregates=['__count'])
-        counts = {client.id: count for client, count in groups}
+        counts = {client.id: count for client, count in Inbox._read_group(
+            [('client_id', 'in', self.ids)],
+            groupby=['client_id'], aggregates=['__count'])}
+        pending = {client.id: count for client, count in Inbox._read_group(
+            [('client_id', 'in', self.ids), ('state', '!=', 'mapped')],
+            groupby=['client_id'], aggregates=['__count'])}
         for rec in self:
             rec.qd_inbox_count = counts.get(rec.id, 0)
+            rec.qd_inbox_pending = pending.get(rec.id, 0)
 
     _qd_intake_code_uniq = models.Constraint(
         'unique(qd_intake_code)',

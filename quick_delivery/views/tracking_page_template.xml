@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- صفحة تتبع العميل النهائي.
+
+         تُرسم كاملة في الخادم - الحالة والمراحل والرمز والمندوب - فمن
+         فتحها بجافاسكربت معطّلة أو بشبكة ماتت بعد التحميل يرى طلبه.
+         وtrack.js يُحدّثها فوقها كل عشر ثوان.
+
+         ما لا تحمله عمداً: اسم العميل وعنوانه وجواله (يعرفها أصلاً،
+         وإظهارها تُسرَّب لمن يقع الرابط بيده)، ولا رقم طلب التاجر،
+         ولا رسومنا، ولا شيء عن بقية الطلبات. -->
+    <template id="tracking_page_template" name="Customer Order Tracking">&lt;!DOCTYPE html&gt;
+        <html lang="ar" dir="rtl">
+        <head>
+            <meta charset="utf-8"/>
+            <meta name="viewport"
+                  content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+            <meta name="theme-color" content="#0f172a"/>
+            <meta name="robots" content="noindex, nofollow"/>
+            <!-- الرابط سرّ: لا يُسرَّب في Referer إلى أي موقع خارجي -->
+            <meta name="referrer" content="no-referrer"/>
+            <title>تتبّع طلبك</title>
+            <link rel="icon" type="image/png"
+                  href="/quick_delivery/static/src/driver_app/icon-192.png"/>
+            <link rel="stylesheet"
+                  href="/quick_delivery/static/src/driver_app/track.css?v=7.0.0"/>
+        </head>
+        <body>
+            <div class="tk-head">
+                <div class="tk-head__merchant"><t t-esc="d['merchant_name']"/></div>
+                <h1 class="tk-head__title">تتبّع طلبك</h1>
+                <div class="tk-head__ref"><t t-esc="d['tracking_number']"/></div>
+            </div>
+
+            <div class="tk-wrap" id="tk-app"
+                 t-att-data-token="token"
+                 t-att-data-remaining="d['remaining_seconds']"
+                 t-att-data-open="'1' if d['is_open'] else '0'">
+
+                <!-- الحالة والمؤقّت -->
+                <div t-att-class="status_class" id="tkStatus">
+                    <div class="tk-status__label" id="tkLabel">
+                        <t t-esc="d['state_label']"/>
+                    </div>
+                    <div id="tkTimerWrap"
+                         t-att-style="'' if d['is_open'] else 'display:none'">
+                        <div class="tk-status__timer" id="tkTimer">--:--</div>
+                        <div class="tk-status__hint" id="tkHint">
+                            الوقت المتبقي المتوقّع للتسليم
+                        </div>
+                    </div>
+                    <div t-if="d['failure_reason']" class="tk-status__hint">
+                        <t t-esc="d['failure_reason']"/>
+                    </div>
+                </div>
+
+                <!-- رمز التسليم -->
+                <div class="tk-card tk-otp" id="tkOtp"
+                     t-att-style="'' if d['delivery_otp'] else 'display:none'">
+                    <div class="tk-otp__label">رمز التسليم</div>
+                    <div class="tk-otp__code" id="tkOtpCode">
+                        <t t-esc="d['delivery_otp']"/>
+                    </div>
+                    <div class="tk-otp__hint">
+                        قُل هذا الرمز للمندوب عند استلام طلبك — ولا تعطه
+                        لأحد قبل أن يصل.
+                    </div>
+                </div>
+
+                <!-- المراحل -->
+                <div class="tk-card">
+                    <ol class="tk-steps">
+                        <li t-foreach="steps" t-as="s"
+                            t-att-id="'tkStep%d' % s_index"
+                            t-att-class="s['cls']">
+                            <span class="tk-dot"><t t-esc="s_index + 1"/></span>
+                            <span class="tk-steps__text">
+                                <span class="tk-steps__title">
+                                    <t t-esc="s['title']"/>
+                                </span>
+                                <span t-if="s['note']" class="tk-steps__note">
+                                    <br/><t t-esc="s['note']"/>
+                                </span>
+                            </span>
+                        </li>
+                    </ol>
+                </div>
+
+                <!-- المندوب والطلب -->
+                <div class="tk-card">
+                    <div class="tk-row" id="tkDriver"
+                         t-att-style="'' if d['driver_name'] else 'display:none'">
+                        <span>
+                            <span class="tk-row__label">مندوبك</span><br/>
+                            <span class="tk-row__value" id="tkDriverName">
+                                <t t-esc="d['driver_name']"/>
+                            </span>
+                        </span>
+                        <span class="tk-row__spacer"></span>
+                        <a class="tk-call" id="tkCall"
+                           t-att-href="'tel:%s' % d['driver_phone']"
+                           t-att-style="'' if d['driver_phone'] else 'display:none'">
+                            اتصال
+                        </a>
+                    </div>
+                    <div class="tk-row">
+                        <span>
+                            <span class="tk-row__label">الاستلام من</span><br/>
+                            <span class="tk-row__value">
+                                <t t-esc="d['store_name']"/>
+                            </span>
+                        </span>
+                        <span class="tk-row__spacer"></span>
+                        <span>
+                            <span class="tk-row__label">عدد الأكياس</span><br/>
+                            <span class="tk-row__value">
+                                <t t-esc="d['bags_count']"/>
+                            </span>
+                        </span>
+                    </div>
+                    <div t-if="d['cod_amount']" class="tk-cod">
+                        جهّز مبلغ <t t-esc="'%.2f' % d['cod_amount']"/> ريال
+                        نقداً عند الاستلام
+                    </div>
+                </div>
+
+                <p class="tk-foot">
+                    تتحدّث هذه الصفحة تلقائياً.<br/>
+                    لا تشارك رابطها ولا الرمز مع أحد.
+                </p>
+            </div>
+
+            <script type="text/javascript"
+                    src="/quick_delivery/static/src/driver_app/track.js?v=7.0.0"></script>
+        </body>
+        </html>
+    </template>
+
+    <!-- رابط غير صحيح أو طلب حُذف -->
+    <template id="tracking_missing_template" name="Tracking Link Not Found">&lt;!DOCTYPE html&gt;
+        <html lang="ar" dir="rtl">
+        <head>
+            <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1"/>
+            <meta name="robots" content="noindex, nofollow"/>
+            <title>رابط غير صالح</title>
+            <link rel="stylesheet"
+                  href="/quick_delivery/static/src/driver_app/track.css?v=7.0.0"/>
+        </head>
+        <body>
+            <div class="tk-missing">
+                <h1>هذا الرابط غير صالح</h1>
+                <p>قد يكون الطلب قديماً جداً أو الرابط ناقصاً.<br/>
+                   راجع المتجر الذي طلبت منه.</p>
+            </div>
+        </body>
+        </html>
+    </template>
+</odoo>

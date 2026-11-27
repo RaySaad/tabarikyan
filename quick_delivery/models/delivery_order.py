@@ -85,6 +85,17 @@ class ResPartner(models.Model):
         compute_sudo=True,
         help='مجموع الرسوم المثبَّتة على طلبات الشهر المسلَّمة - بالرسم '
              'الذي كان ساريا وقت كل طلب، لا بالرسم الحالي.')
+    # الأرقام الحيّة لكل سوبرماركت: الكروت تعرضها، فتُقرأ حالة كل
+    # شركة من نظرة واحدة بدل فتح قائمة وفلترتها.
+    qd_active_orders = fields.Integer(
+        string='طلبات جارية', compute='_compute_qd_live_figures',
+        compute_sudo=True)
+    qd_late_orders = fields.Integer(
+        string='متأخرة الآن', compute='_compute_qd_live_figures',
+        compute_sudo=True)
+    qd_today_delivered = fields.Integer(
+        string='سُلّمت اليوم', compute='_compute_qd_live_figures',
+        compute_sudo=True)
     qd_is_configured = fields.Boolean(
         string='الربط مكتمل', compute='_compute_qd_is_configured',
         search='_search_qd_is_configured', compute_sudo=True,
@@ -114,6 +125,39 @@ class ResPartner(models.Model):
         if wanted:
             return ready
         return ['!'] + ready
+
+    def _compute_qd_live_figures(self):
+        """ثلاثة استعلامات مُجمَّعة للقائمة كلها، لا ثلاثة لكل كرت."""
+        Order = self.env['quick.delivery.order'].sudo()
+        now = fields.Datetime.now()
+        day_start = _day_start_utc(self.env)
+
+        def by_client(domain):
+            return {client.id: count for client, count in Order._read_group(
+                domain + [('client_id', 'in', self.ids)],
+                groupby=['client_id'], aggregates=['__count'])}
+
+        active = by_client([('state', 'in', Order.OPEN_STATES)])
+        late = by_client([('state', 'in', Order.OPEN_STATES),
+                          ('sla_deadline', '<', now)])
+        done = by_client([('state', '=', 'delivered'),
+                          ('delivered_at', '>=', day_start)])
+        for rec in self:
+            rec.qd_active_orders = active.get(rec.id, 0)
+            rec.qd_late_orders = late.get(rec.id, 0)
+            rec.qd_today_delivered = done.get(rec.id, 0)
+
+    def action_qd_view_live_orders(self):
+        self.ensure_one()
+        Order = self.env['quick.delivery.order']
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'الطلبات الجارية - %s' % self.name,
+            'res_model': 'quick.delivery.order',
+            'view_mode': 'list,form',
+            'domain': [('client_id', '=', self.id),
+                       ('state', 'in', list(Order.OPEN_STATES))],
+        }
 
     def _compute_qd_month_figures(self):
         """استعلامان مُجمَّعان للقائمة كلها، لا استعلام لكل سطر."""
@@ -214,6 +258,14 @@ class QuickDeliveryOrder(models.Model):
     # الرمز محصور بمجموعة المدير: المندوب يُدخله ولا يقرأه (المقارنة في
     # الخادم بـsudo)، وغرفة العمليات لا تحتاجه - ومن يقرأه يستطيع إغلاق
     # أي طلب بلا تسليم.
+    # رابط التتبع للعميل النهائي: رمز عشوائي طويل هو الحارس الوحيد.
+    # لا رقم تسلسلي: QCK-2026-000047 يُخمَّن، فيقرأ أي أحد رمز تسليم
+    # أي طلب ويستلم بدل صاحبه.
+    tracking_token = fields.Char(
+        string='رمز رابط التتبع', copy=False, index=True, readonly=True)
+    tracking_url = fields.Char(
+        string='رابط تتبع العميل', compute='_compute_tracking_url',
+        help='يُعطى للعميل النهائي: يرى حالة طلبه ومندوبه ورمز التسليم.')
     delivery_otp = fields.Char(string='رمز التحقق (OTP)', copy=False,
                                groups='quick_delivery.group_qd_manager')
     pod_photo = fields.Binary(string='صورة إثبات التسليم', attachment=True)
@@ -306,6 +358,14 @@ class QuickDeliveryOrder(models.Model):
                 raise ValidationError(_('مدة التوصيل المستهدفة يجب أن تكون '
                                         'أكبر من صفر.'))
 
+    @api.depends('tracking_token')
+    def _compute_tracking_url(self):
+        base = self.env['ir.config_parameter'].sudo().get_param(
+            'web.base.url', '')
+        for rec in self:
+            token = rec.sudo().tracking_token
+            rec.tracking_url = '%s/track/%s' % (base, token) if token else ''
+
     @api.depends('delivery_fee', 'driver_commission')
     def _compute_net_revenue(self):
         for rec in self:
@@ -337,6 +397,8 @@ class QuickDeliveryOrder(models.Model):
             # إنشاء طلب يدوياً بخطأ صلاحية.
             if not rec.sudo().delivery_otp:
                 rec.sudo().delivery_otp = self._generate_otp()
+            if not rec.sudo().tracking_token:
+                rec.sudo().tracking_token = secrets.token_urlsafe(24)
             # ترتيب مقصود: إبلاغ الإنشاء أولاً ثم الإسناد - فيصل التاجر
             # حدثان مرتَّبان (أُنشئ، ثم أُسند) بدل إبلاغين متطابقين.
             rec._queue_merchant_webhook()
@@ -553,6 +615,51 @@ class QuickDeliveryOrder(models.Model):
     # ------------------------------------------------------------------
     # إبلاغ التاجر
     # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # صفحة تتبع العميل
+    # ------------------------------------------------------------------
+    STATE_STEPS = ('searching_driver', 'driver_assigned', 'arrived_at_store',
+                   'picked_up', 'delivered')
+
+    def _public_tracking_data(self):
+        """ما يراه العميل النهائي - ولا شيء غيره.
+
+        لا اسمه ولا عنوانه ولا جواله: يعرفها أصلاً، وإظهارها تُسرَّب
+        لمن يقع الرابط بيده. ولا رقم طلب التاجر ولا رسومنا.
+        """
+        self.ensure_one()
+        remaining = 0
+        if self.sla_deadline and self.state in self.OPEN_STATES:
+            remaining = max(0, int((self.sla_deadline
+                                    - fields.Datetime.now()).total_seconds()))
+        step = (self.STATE_STEPS.index(self.state)
+                if self.state in self.STATE_STEPS else -1)
+        return {
+            'tracking_number': self.name,
+            'state': self.state,
+            'state_label': dict(self._fields['state'].selection).get(
+                self.state, self.state),
+            'step': step,
+            'steps_total': len(self.STATE_STEPS),
+            'is_open': self.state in self.OPEN_STATES,
+            'is_delivered': self.state == 'delivered',
+            'remaining_seconds': remaining,
+            'store_name': self.store_name,
+            'merchant_name': self.client_id.name,
+            'bags_count': self.bags_count,
+            'cod_amount': self.cod_amount if self.payment_method == 'COD'
+                          else 0.0,
+            'driver_name': self.driver_id.name or '',
+            'driver_phone': self.driver_id.phone or '',
+            # الرمز يُعرض ما دام الطلب حياً. بعد التسليم لا معنى له،
+            # وإبقاؤه يجعل الرابط المحفوظ في جوال العميل سرّاً بلا سبب.
+            'delivery_otp': (self.sudo().delivery_otp
+                             if self.state in self.OPEN_STATES else ''),
+            'failure_reason': dict(
+                self._fields['failure_reason'].selection).get(
+                    self.failure_reason, '') if self.failure_reason else '',
+        }
+
     def _merchant_webhook_payload(self):
         self.ensure_one()
         return {
@@ -562,6 +669,10 @@ class QuickDeliveryOrder(models.Model):
             # رمز الـOTP *لا* يُرسل هنا: يُسلَّم مرة واحدة في رد إنشاء
             # الطلب ليعرضه التاجر لعميله. إعادة إرساله في كل تغيير حالة
             # تنشره بلا داعٍ في سجلات التاجر وشبكته.
+            # الرابط يُرسل في كل إبلاغ ليضعه التاجر في رسالته لعميله.
+            # الرمز نفسه لا يُرسل: من فتح الرابط رآه، ومن لم يفتحه لا
+            # داعي لنشره في سجلات التاجر وشبكته.
+            'tracking_url': self.tracking_url or None,
             'failure_reason': self.failure_reason or None,
             'failure_notes': self.failure_notes or None,
             'pod_method': self.pod_method or None,

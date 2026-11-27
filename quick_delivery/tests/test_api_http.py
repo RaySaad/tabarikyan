@@ -603,3 +603,120 @@ class TestMerchantIntake(HttpCase):
         body = self._push('{', raw=True).text
         for leak in ('Traceback', 'File "', 'quick_delivery/'):
             self.assertNotIn(leak, body)
+
+
+@tagged('post_install', '-at_install')
+class TestCustomerTracking(HttpCase):
+    """صفحة العميل النهائي: بها يصله رمز التسليم وحالة طلبه."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env['quick.delivery.driver'].sudo().with_context(
+            active_test=False).search([]).write({'driver_status': 'offline'})
+        cls.driver = cls.env['quick.delivery.driver'].create({
+            'name': 'مندوب التتبع', 'phone': '0555550001', 'pin': '1234',
+            'driver_status': 'online',
+            'current_lat': 24.7136, 'current_lng': 46.6753})
+        cls.client = cls.env['res.partner'].create({
+            'name': 'سوبرماركت التتبع', 'is_qcommerce_client': True,
+            'api_key': 'TRACK-KEY-1'})
+        cls.order = cls.env['quick.delivery.order'].create({
+            'client_id': cls.client.id, 'merchant_order_id': 'TRK-1',
+            'store_name': 'فرع العليا', 'store_lat': 24.71, 'store_lng': 46.67,
+            'customer_name': 'عبدالله السرّي', 'customer_phone': '0509998888',
+            'customer_lat': 24.72, 'customer_lng': 46.68,
+            'address_notes': 'فيلا 23 شارع سرّي',
+            'payment_method': 'COD', 'cod_amount': 185.5,
+        })
+        cls.env.cr.flush()
+
+    def _page(self, token=None):
+        return self.url_open('/track/%s' % (token or self.order.tracking_token))
+
+    def _json(self, token=None):
+        return self.url_open(
+            '/api/v1/track/%s' % (token or self.order.tracking_token))
+
+    # ------------------------------------------------------- الرمز
+    def test_every_order_gets_a_long_random_token(self):
+        """رقم تتبع متسلسل يُخمَّن، فيُقرأ رمز تسليم أي طلب."""
+        self.assertGreaterEqual(len(self.order.tracking_token), 24)
+        other = self.env['quick.delivery.order'].create({
+            'client_id': self.client.id, 'merchant_order_id': 'TRK-2',
+            'store_name': 'فرع', 'store_lat': 24.71, 'store_lng': 46.67,
+            'customer_name': 'عميل', 'customer_phone': '0550000000',
+            'customer_lat': 24.72, 'customer_lng': 46.68})
+        self.assertNotEqual(other.tracking_token, self.order.tracking_token)
+
+    def test_the_url_is_built_from_the_token(self):
+        self.assertTrue(self.order.tracking_url.endswith(
+            '/track/%s' % self.order.tracking_token))
+
+    # ------------------------------------------------------ الصفحة
+    def test_the_page_opens_for_anyone_with_the_link(self):
+        response = self._page()
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('تتبّع طلبك', response.text)
+
+    def test_a_wrong_token_gets_404(self):
+        self.assertEqual(self._page('x' * 40).status_code, 404)
+
+    def test_a_short_token_is_refused_without_a_lookup(self):
+        self.assertEqual(self._page('123').status_code, 404)
+
+    def test_the_customer_sees_the_delivery_code(self):
+        """هذا هو الغرض كله: أن يصل الرمز إلى صاحبه."""
+        body = self._page().text
+        self.assertIn(self.order.sudo().delivery_otp, body)
+        self.assertIn('رمز التسليم', body)
+
+    def test_the_page_leaks_nothing_private(self):
+        """من يقع الرابط بيده لا يجوز أن يقرأ اسم العميل وعنوانه."""
+        body = self._page().text
+        for secret in ('عبدالله السرّي', '0509998888', 'فيلا 23 شارع سرّي',
+                       'TRK-1'):
+            self.assertNotIn(secret, body,
+                             'الصفحة تسرّب: %s' % secret)
+
+    def test_the_cod_amount_is_shown(self):
+        self.assertIn('185.50', self._page().text)
+
+    def test_the_code_disappears_after_delivery(self):
+        """رابط محفوظ في جوال العميل لا يبقى حاملاً سرّاً بلا سبب."""
+        otp = self.order.sudo().delivery_otp
+        self.order.write({'driver_id': self.driver.id,
+                          'state': 'driver_assigned'})
+        self.order.write({'state': 'picked_up'})
+        self.order.action_mark_delivered(otp_code=otp)
+        self.env.cr.flush()
+        body = self._page().text
+        self.assertNotIn(otp, body)
+
+    # -------------------------------------------------------- JSON
+    def test_the_json_endpoint_feeds_the_live_refresh(self):
+        response = self._json()
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['tracking_number'], self.order.name)
+        self.assertTrue(data['is_open'])
+        self.assertNotIn('customer_name', data)
+        self.assertNotIn('merchant_order_id', data)
+
+    def test_the_json_endpoint_refuses_a_wrong_token(self):
+        self.assertEqual(self._json('y' * 40).status_code, 404)
+
+    def test_the_driver_appears_once_assigned(self):
+        self.order.write({'driver_id': self.driver.id,
+                          'state': 'driver_assigned'})
+        self.env.cr.flush()
+        data = self._json().json()
+        self.assertEqual(data['driver_name'], 'مندوب التتبع')
+        self.assertEqual(data['driver_phone'], '0555550001')
+
+    def test_the_merchant_webhook_carries_the_link(self):
+        """التاجر يضعه في رسالته لعميله - وبه يصل الرمز إلى صاحبه."""
+        payload = self.order._merchant_webhook_payload()
+        self.assertIn('/track/', payload['tracking_url'])
+        self.assertNotIn('delivery_otp', payload,
+                         'الرمز يُنشر في سجلات التاجر بلا داعٍ')
