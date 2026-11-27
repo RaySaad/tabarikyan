@@ -453,3 +453,153 @@ class TestDashboardAccess(HttpCase):
         payload = self._call_dashboard().json()
         self.assertNotIn('error', payload)
         self.assertIn('kpis', payload['result'])
+
+
+@tagged('post_install', '-at_install')
+class TestMerchantIntake(HttpCase):
+    """المواصفة تأتي من التاجر لا منّا: نلتقط النداء كما وصل، ونكتب
+    المُحوّل من الواقع لا من الورق."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env['quick.delivery.driver'].sudo().with_context(
+            active_test=False).search([]).write({'driver_status': 'offline'})
+        cls.client = cls.env['res.partner'].create({
+            'name': 'العثيم للاختبار', 'is_qcommerce_client': True,
+            'api_key': 'INTAKE-KEY-1'})
+        cls.client.action_qd_generate_intake_code()
+        cls.code = cls.client.qd_intake_code
+        cls.env.cr.flush()
+
+    def _push(self, body, code=None, raw=False, headers=None):
+        payload = body if raw else json.dumps(body)
+        return self.url_open(
+            '/api/v1/intake/%s' % (code or self.code),
+            data=payload.encode('utf-8'),
+            headers={'Content-Type': 'application/json', **(headers or {})})
+
+    def _native_body(self, order_id='IN-1'):
+        return {
+            'order_id': order_id,
+            'store': {'store_name': 'فرع العليا', 'lat': 24.71, 'lng': 46.67},
+            'customer': {'name': 'عميل', 'phone': '0550000000',
+                         'lat': 24.72, 'lng': 46.68},
+            'payment': {'method': 'PREPAID'},
+        }
+
+    # ------------------------------------------------------- المسار
+    def test_the_generated_code_is_not_guessable(self):
+        self.assertGreaterEqual(len(self.code), 12)
+        self.assertIn('-', self.code)
+
+    def test_the_url_is_built_from_the_code(self):
+        self.assertTrue(self.client.qd_intake_url.endswith(
+            '/api/v1/intake/%s' % self.code))
+
+    def test_an_unknown_code_is_refused(self):
+        response = self._push(self._native_body(), code='لا-يوجد')
+        self.assertEqual(response.status_code, 404)
+
+    def test_regenerating_the_code_kills_the_old_url(self):
+        old = self.code
+        self.client.action_qd_generate_intake_code()
+        self.env.cr.flush()
+        self.assertEqual(self._push(self._native_body('IN-OLD'),
+                                    code=old).status_code, 404)
+
+    # --------------------------------------------- وضع الالتقاط
+    def test_a_known_format_becomes_an_order(self):
+        response = self._push(self._native_body('IN-OK'))
+        self.assertEqual(response.status_code, 202, response.text)
+        body = response.json()
+        self.assertTrue(body['tracking_number'])
+        record = self.env['quick.delivery.inbox'].browse(body['intake_id'])
+        self.assertEqual(record.state, 'mapped')
+        self.assertTrue(record.order_id)
+
+    def test_an_unknown_format_is_captured_not_lost(self):
+        """جوهر الفكرة: صيغة مجهولة تماماً لا تضيع."""
+        response = self._push({'theirOrderNo': 'X-9', 'lat': 24.7})
+        self.assertEqual(response.status_code, 202, response.text)
+        record = self.env['quick.delivery.inbox'].browse(
+            response.json()['intake_id'])
+        self.assertEqual(record.state, 'failed')
+        self.assertFalse(record.order_id)
+        self.assertIn('theirOrderNo', record.raw_body,
+                      'الجسم لم يُحفظ كما وصل - لا دليل يوم الربط')
+
+    def test_even_broken_json_is_captured(self):
+        response = self._push('{ليس JSON', raw=True)
+        self.assertEqual(response.status_code, 202)
+        record = self.env['quick.delivery.inbox'].browse(
+            response.json()['intake_id'])
+        self.assertEqual(record.state, 'failed')
+        self.assertIn('ليس JSON', record.raw_body)
+
+    def test_secrets_in_headers_are_masked(self):
+        """السجل يقرأه غير واحد: نعرف أي ترويسة استعملوها، لا سرّهم."""
+        self._push(self._native_body('IN-HDR'),
+                   headers={'X-API-Key': 'SUPER-SECRET-VALUE-123456'})
+        record = self.env['quick.delivery.inbox'].search(
+            [('client_id', '=', self.client.id)], limit=1)
+        stored = json.dumps(record.headers, ensure_ascii=False)
+        self.assertNotIn('SUPER-SECRET-VALUE-123456', stored)
+        self.assertIn('X-Api-Key', stored)
+
+    def test_replay_turns_a_captured_call_into_an_order(self):
+        """ما التُقط قبل كتابة المُحوّل يُعاد تحويله بأثر رجعي."""
+        record = self.env['quick.delivery.inbox'].create({
+            'client_id': self.client.id,
+            'raw_body': json.dumps(self._native_body('IN-REPLAY')),
+            'state': 'failed', 'error': 'لا مُحوّل بعد',
+        })
+        record.action_replay()
+        self.assertEqual(record.state, 'mapped')
+        self.assertTrue(record.order_id)
+
+    def test_replaying_twice_does_not_duplicate_the_order(self):
+        record = self.env['quick.delivery.inbox'].create({
+            'client_id': self.client.id,
+            'raw_body': json.dumps(self._native_body('IN-TWICE')),
+            'state': 'failed',
+        })
+        record.action_replay()
+        first = record.order_id
+        record.write({'state': 'failed'})
+        record.action_replay()
+        self.assertEqual(record.order_id, first,
+                         'إعادة المعالجة مرتين أنشأت طلبين')
+
+    # ------------------------------------------- وضع الإنتاج
+    def test_strict_mode_refuses_an_unknown_format_with_400(self):
+        """بعد الربط: قبول طلب لا نفهمه يعني طلباً لن يصل أحداً."""
+        self.client.qd_capture_mode = False
+        self.env.cr.flush()
+        response = self._push({'theirOrderNo': 'X-10'})
+        self.assertEqual(response.status_code, 400)
+
+    def test_strict_mode_still_accepts_a_known_format(self):
+        """الضابط المقابل."""
+        self.client.qd_capture_mode = False
+        self.env.cr.flush()
+        response = self._push(self._native_body('IN-STRICT'))
+        self.assertEqual(response.status_code, 201, response.text)
+        self.assertTrue(response.json()['tracking_number'])
+
+    def test_strict_mode_is_idempotent(self):
+        self.client.qd_capture_mode = False
+        self.env.cr.flush()
+        first = self._push(self._native_body('IN-IDEM'))
+        second = self._push(self._native_body('IN-IDEM'))
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(first.json()['tracking_number'],
+                         second.json()['tracking_number'])
+
+    def test_no_traceback_leaks_from_the_intake(self):
+        self.client.qd_capture_mode = False
+        self.env.cr.flush()
+        body = self._push('{', raw=True).text
+        for leak in ('Traceback', 'File "', 'quick_delivery/'):
+            self.assertNotIn(leak, body)

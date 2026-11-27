@@ -176,12 +176,48 @@
                       groups="quick_delivery.group_qd_manager">
                     <group>
                         <field name="is_qcommerce_client"/>
-                        <field name="api_key" password="True"/>
-                        <field name="webhook_url"
-                               placeholder="https://erp.example.com/webhook/delivery"/>
-                        <field name="webhook_secret" password="True"/>
-                        <field name="delivery_fee_per_order"/>
                     </group>
+                    <group invisible="not is_qcommerce_client">
+                        <group string="استقبال الطلبات منهم">
+                            <!-- الرابط هو ما تعطيه لنظام التاجر.
+                                 الجزء العشوائي فيه سرّ، فلا يُخمَّن. -->
+                            <field name="qd_intake_url"
+                                   widget="CopyClipboardChar"
+                                   invisible="not qd_intake_code"/>
+                            <field name="qd_intake_code" invisible="1"/>
+                            <button name="action_qd_generate_intake_code"
+                                    type="object" class="btn-primary"
+                                    string="توليد رابط استقبال"
+                                    invisible="qd_intake_code"/>
+                            <button name="action_qd_generate_intake_code"
+                                    type="object" class="btn-link"
+                                    string="توليد رابط جديد (يُبطل القديم)"
+                                    confirm="سيتوقف الرابط الحالي فوراً، ولن يستطيع نظام التاجر الإرسال حتى تعطيه الجديد. متأكد؟"
+                                    invisible="not qd_intake_code"/>
+                            <field name="qd_payload_format"/>
+                            <field name="qd_capture_mode"
+                                   widget="boolean_toggle"/>
+                            <button name="action_qd_view_inbox" type="object"
+                                    class="btn-link" string="عرض الوارد"
+                                    invisible="qd_inbox_count == 0"/>
+                            <field name="qd_inbox_count" invisible="1"/>
+                        </group>
+                        <group string="الإبلاغ والرسوم">
+                            <field name="api_key" password="True"/>
+                            <field name="webhook_url"
+                                   placeholder="https://erp.example.com/webhook/delivery"/>
+                            <field name="webhook_secret" password="True"/>
+                            <field name="delivery_fee_per_order"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info mt-2" role="alert"
+                         invisible="not qd_capture_mode or not is_qcommerce_client">
+                        <b>وضع الالتقاط مفعّل.</b> كل نداء يصل يُحفظ كما
+                        وصل ويُرد <code>202</code> ولو كانت صيغته مجهولة،
+                        فلا يضيع شيء أثناء الربط. <b>أطفئه بعد انتهاء
+                        الربط</b>: قبول طلب لا نفهمه في الإنتاج يعني
+                        طلباً لن يصل أحداً والتاجر يظنّه مقبولاً.
+                    </div>
                 </page>
             </xpath>
         </field>
@@ -337,6 +373,8 @@
                 <field name="name"/>
                 <field name="phone" optional="show"/>
                 <field name="qd_is_configured" string="الربط مكتمل"/>
+                <field name="qd_capture_mode" string="وضع الالتقاط"
+                       optional="show"/>
                 <field name="delivery_fee_per_order"
                        groups="quick_delivery.group_qd_manager"/>
                 <field name="qd_month_orders" sum="طلبات الشهر"/>
@@ -371,6 +409,108 @@
             <p>لكل سوبرماركت مفتاح API خاص ورابط إبلاغ خاص ورسم توصيل
                خاص. رقم الطلب فريد داخل كل عميل، فلا يتعارض
                <b>SO-100</b> من العثيم مع <b>SO-100</b> من بندة.</p>
+        </field>
+    </record>
+
+
+    <!-- ============ الوارد الخام من أنظمة التجّار ============ -->
+    <record id="view_quick_delivery_inbox_list" model="ir.ui.view">
+        <field name="name">quick.delivery.inbox.list</field>
+        <field name="model">quick.delivery.inbox</field>
+        <field name="arch" type="xml">
+            <list string="الوارد" create="0"
+                  decoration-danger="state == 'failed'"
+                  decoration-muted="state == 'mapped'">
+                <field name="received_at"/>
+                <field name="client_id"/>
+                <field name="remote_addr" optional="show"/>
+                <field name="order_id" optional="show"/>
+                <field name="attempts" optional="hide"/>
+                <field name="error" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'mapped'"
+                       decoration-danger="state == 'failed'"/>
+                <button name="action_replay" type="object" icon="fa-repeat"
+                        title="إعادة المعالجة" invisible="state == 'mapped'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_quick_delivery_inbox_form" model="ir.ui.view">
+        <field name="name">quick.delivery.inbox.form</field>
+        <field name="model">quick.delivery.inbox</field>
+        <field name="arch" type="xml">
+            <form create="0">
+                <header>
+                    <button name="action_replay" type="object"
+                            string="إعادة المعالجة" class="btn-primary"
+                            invisible="state == 'mapped'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="client_id"/>
+                            <field name="received_at"/>
+                            <field name="remote_addr"/>
+                            <field name="endpoint_code"/>
+                        </group>
+                        <group>
+                            <field name="order_id"/>
+                            <field name="attempts"/>
+                            <field name="error"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="الجسم كما وصل">
+                            <!-- هذا هو الدليل: ما أرسله التاجر حرفياً،
+                                 ومنه يُكتب المُحوّل. -->
+                            <field name="raw_body" widget="text"
+                                   options="{'resizable': true}"/>
+                        </page>
+                        <page string="الترويسات">
+                            <!-- الأسرار مقنَّعة: نعرف أي ترويسة
+                                 استعملوها وشكلها، ولا نحتفظ بسرّهم. -->
+                            <field name="headers" widget="json"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_quick_delivery_inbox_search" model="ir.ui.view">
+        <field name="name">quick.delivery.inbox.search</field>
+        <field name="model">quick.delivery.inbox</field>
+        <field name="arch" type="xml">
+            <search string="بحث الوارد">
+                <field name="client_id"/>
+                <field name="raw_body" string="بحث في الجسم"/>
+                <filter name="filter_pending" string="بانتظار التحويل"
+                        domain="[('state', '=', 'received')]"/>
+                <filter name="filter_failed" string="تعذّر تحويله"
+                        domain="[('state', '=', 'failed')]"/>
+                <filter name="filter_not_mapped" string="لم يصر طلباً"
+                        domain="[('state', '!=', 'mapped')]"/>
+                <separator/>
+                <filter name="group_client" string="السوبرماركت"
+                        context="{'group_by': 'client_id'}"/>
+                <filter name="group_state" string="الحالة"
+                        context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_quick_delivery_inbox" model="ir.actions.act_window">
+        <field name="name">الوارد من أنظمة التجّار</field>
+        <field name="res_model">quick.delivery.inbox</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_filter_not_mapped': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">لم يصل شيء بعد</p>
+            <p>كل نداء يصل من نظام التاجر يُحفظ هنا كما وصل — الجسم
+               والترويسات والوقت والعنوان. منه يُكتب مُحوّل صيغته، وبزر
+               <b>إعادة المعالجة</b> يصير ما التُقط طلبات فعلية.</p>
         </field>
     </record>
 
@@ -437,6 +577,8 @@
               groups="quick_delivery.group_qd_dispatcher"/>
     <menuitem id="menu_quick_drivers" name="المندوبون" parent="menu_quick_delivery_root" action="action_quick_delivery_drivers" sequence="3"
               groups="quick_delivery.group_qd_dispatcher"/>
-    <menuitem id="menu_quick_webhooks" name="إبلاغات التاجر (Webhook)" parent="menu_quick_delivery_root" action="action_quick_delivery_webhooks" sequence="5"
+    <menuitem id="menu_quick_inbox" name="الوارد من التجّار" parent="menu_quick_delivery_root" action="action_quick_delivery_inbox" sequence="5"
+              groups="quick_delivery.group_qd_dispatcher"/>
+    <menuitem id="menu_quick_webhooks" name="إبلاغات التاجر (Webhook)" parent="menu_quick_delivery_root" action="action_quick_delivery_webhooks" sequence="6"
               groups="quick_delivery.group_qd_manager"/>
 </odoo>

@@ -5,3 +5,5 @@ access_quick_delivery_driver_dispatcher,quick.delivery.driver.dispatcher,model_q
 access_quick_delivery_driver_manager,quick.delivery.driver.manager,model_quick_delivery_driver,quick_delivery.group_qd_manager,1,1,1,1
 access_quick_delivery_webhook_dispatcher,quick.delivery.webhook.dispatcher,model_quick_delivery_webhook,quick_delivery.group_qd_dispatcher,1,1,0,0
 access_quick_delivery_webhook_manager,quick.delivery.webhook.manager,model_quick_delivery_webhook,quick_delivery.group_qd_manager,1,1,1,1
+access_quick_delivery_inbox_dispatcher,quick.delivery.inbox.dispatcher,model_quick_delivery_inbox,quick_delivery.group_qd_dispatcher,1,1,0,0
+access_quick_delivery_inbox_manager,quick.delivery.inbox.manager,model_quick_delivery_inbox,quick_delivery.group_qd_manager,1,1,1,1

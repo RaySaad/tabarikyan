@@ -10,6 +10,8 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.http import request, Response
 from odoo.tools import file_open
 
+from ..models.intake import MAX_BODY_BYTES
+
 _logger = logging.getLogger(__name__)
 
 DISPATCHER_GROUP = 'quick_delivery.group_qd_dispatcher'
@@ -252,6 +254,82 @@ class QuickCommerceController(http.Controller):
             'assigned_driver': order.driver_id.name or 'searching',
             'state': order.state,
         }, 201)
+
+    # ==================================================================
+    # 1-ب. مسار الاستقبال الخاص بكل تاجر
+    # ==================================================================
+    @http.route('/api/v1/intake/<string:code>', type='http', auth='none',
+                methods=['POST'], csrf=False, save_session=False,
+                readonly=False)
+    @api_endpoint
+    def merchant_intake(self, code, **kwargs):
+        """يستقبل بصيغة التاجر، لا بصيغتنا.
+
+        المواصفة تأتي من العثيم وبندة لا منّا. وهذا المسار يُحفظ فيه
+        النداء **كما وصل** قبل أي محاولة فهم: نكتب المُحوّل من نداء
+        حقيقي لا من وثيقة، وما التُقط قبل كتابته يُعاد تحويله بزر.
+
+        الرمز في الرابط سرّ بذاته (جزء عشوائي)، فالمسار غير مُخمَّن.
+        """
+        Inbox = request.env['quick.delivery.inbox'].sudo()
+        client = request.env['res.partner'].sudo().search([
+            ('qd_intake_code', '=', code),
+            ('is_qcommerce_client', '=', True),
+        ], limit=1)
+        if not client:
+            raise BadRequest('Unknown endpoint', 404)
+
+        length = request.httprequest.content_length or 0
+        if length > MAX_BODY_BYTES:
+            raise BadRequest(
+                'جسم الطلب أكبر من الحدّ (%d بايت)' % MAX_BODY_BYTES, 413)
+        raw_body = request.httprequest.get_data(as_text=True)
+
+        if not client.qd_capture_mode:
+            # وضع الإنتاج: صارم. قبول طلب لا نفهمه يعني طلباً لن يصل
+            # أحداً والتاجر يظنّه مقبولاً.
+            try:
+                data = json.loads(raw_body or '')
+            except Exception:
+                raise BadRequest('JSON غير صالح في جسم الطلب')
+            if not isinstance(data, dict):
+                raise BadRequest('جسم الطلب يجب أن يكون كائن JSON')
+            vals = Inbox._qd_map_payload(client, data)
+            Order = request.env['quick.delivery.order'].sudo()
+            existing = Order.search([
+                ('client_id', '=', client.id),
+                ('merchant_order_id', '=', vals['merchant_order_id']),
+            ], limit=1)
+            order = existing or Order.create(vals)
+            return _json_response(self._intake_result(order),
+                                  200 if existing else 201)
+
+        # وضع الالتقاط: يُحفظ أولاً، ثم يُحاول الفهم - فلا يضيع نداء
+        # ولو كانت صيغته مجهولة تماماً.
+        record = Inbox._qd_capture(
+            client, code, raw_body,
+            Inbox._qd_safe_headers(request.httprequest.headers.items()),
+            request.httprequest.remote_addr)
+        if not record:
+            raise BadRequest('بلغ هذا التاجر سقف الالتقاط', 429)
+
+        order = record._qd_try_map()
+        payload = {'status': 'accepted', 'intake_id': record.id}
+        if order:
+            payload.update(self._intake_result(order))
+        else:
+            payload['note'] = ('استُلم وحُفظ - بانتظار مُحوّل الصيغة. '
+                               'لن يضيع، ويُعاد تحويله لاحقاً.')
+        return _json_response(payload, 202)
+
+    def _intake_result(self, order):
+        return {
+            'status': 'success',
+            'tracking_number': order.name,
+            'delivery_otp': order.delivery_otp,
+            'assigned_driver': order.driver_id.name or 'searching',
+            'state': order.state,
+        }
 
     # ==================================================================
     # 2. غرفة العمليات
