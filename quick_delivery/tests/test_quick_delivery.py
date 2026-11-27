@@ -53,12 +53,12 @@ class QuickDeliveryCommon(TransactionCase):
             'name': 'سوبرماركت الاختبار',
             'is_qcommerce_client': True,
             'api_key': 'UNITKEY-1',
-            'webhook_url': 'http://127.0.0.1:9/nowhere',
+            'webhook_url': 'http://merchant.invalid/hook',
         })
         # المندوب كيان مستقل - لا مستخدم أودو، ولا رخصة، ولا مجموعة.
         cls.driver = cls.Driver.create({
             'name': 'مندوب الاختبار', 'phone': '0551110001',
-            'pin': '1234', 'driver_status': 'online',
+            'pin': '7391', 'driver_status': 'online',
             'current_lat': 24.7136, 'current_lng': 46.6753,
         })
 
@@ -468,14 +468,14 @@ class TestDriverAuthentication(QuickDeliveryCommon):
     """
 
     def test_correct_pin_authenticates(self):
-        found = self.Driver._qd_authenticate('0551110001', '1234')
+        found = self.Driver._qd_authenticate('0551110001', '7391')
         self.assertEqual(found, self.driver)
 
     def test_wrong_pin_is_refused(self):
         self.assertFalse(self.Driver._qd_authenticate('0551110001', '9999'))
 
     def test_unknown_phone_is_refused_without_crashing(self):
-        self.assertFalse(self.Driver._qd_authenticate('0569999999', '1234'))
+        self.assertFalse(self.Driver._qd_authenticate('0569999999', '7391'))
 
     def test_empty_pin_is_refused(self):
         """رمز فارغ كان يطابق أي سجل حُفظ رمزه فارغاً."""
@@ -484,7 +484,7 @@ class TestDriverAuthentication(QuickDeliveryCommon):
     def test_pin_is_never_stored_in_clear_text(self):
         stored = self.driver.sudo().pin_hash
         self.assertTrue(stored)
-        self.assertNotIn('1234', stored)
+        self.assertNotIn('7391', stored)
         self.assertEqual(self.driver.sudo().pin, '',
                          'الرمز يُقرأ من قاعدة البيانات - يجب ألا يُقرأ')
 
@@ -493,7 +493,7 @@ class TestDriverAuthentication(QuickDeliveryCommon):
         for variant in ('+966551110001', '00966551110001', '966551110001',
                         '055 111 0001'):
             self.assertEqual(
-                self.Driver._qd_authenticate(variant, '1234'), self.driver,
+                self.Driver._qd_authenticate(variant, '7391'), self.driver,
                 'صيغة الرقم %s مُنعت من الدخول' % variant)
 
     def test_five_wrong_attempts_lock_the_account(self):
@@ -501,13 +501,13 @@ class TestDriverAuthentication(QuickDeliveryCommon):
             self.Driver._qd_authenticate('0551110001', '0000')
         self.assertTrue(self.Driver._qd_login_lock_minutes('0551110001'))
         self.assertFalse(
-            self.Driver._qd_authenticate('0551110001', '1234'),
+            self.Driver._qd_authenticate('0551110001', '7391'),
             'الرمز الصحيح قُبل رغم القفل - التخمين لا يتوقف')
 
     def test_a_successful_login_resets_the_counter(self):
         """الضابط المقابل: محاولتان خاطئتان لا تُراكمان على المندوب."""
         self.Driver._qd_authenticate('0551110001', '0000')
-        self.Driver._qd_authenticate('0551110001', '1234')._qd_open_session()
+        self.Driver._qd_authenticate('0551110001', '7391')._qd_open_session()
         self.assertEqual(self.driver.login_fail_count, 0)
         self.assertFalse(self.Driver._qd_login_lock_minutes('0551110001'))
 
@@ -536,16 +536,30 @@ class TestDriverAuthentication(QuickDeliveryCommon):
 
     def test_changing_the_pin_revokes_live_sessions(self):
         token = self.driver._qd_open_session()
-        self.driver.pin = '4321'
+        self.driver.pin = '8264'
         self.assertFalse(self.Driver._qd_driver_from_session(token),
                          'الجهاز القديم بقي داخلاً بعد تغيير الرمز')
-        self.assertEqual(self.Driver._qd_authenticate('0551110001', '4321'),
+        self.assertEqual(self.Driver._qd_authenticate('0551110001', '8264'),
                          self.driver)
 
     def test_revoking_sessions_logs_the_device_out(self):
         token = self.driver._qd_open_session()
         self.driver.action_revoke_sessions()
         self.assertFalse(self.Driver._qd_driver_from_session(token))
+
+    def test_predictable_pins_are_refused(self):
+        """القفل يحمي من تخمين مندوبٍ بعينه، لا من تجريب "1234" على
+        كل المندوبين - ولا يُحتسب فشلٌ على من لم يُجرَّب رقمه بعد."""
+        for weak in ('1234', '0000', '1111', '123456', '999999', '4321'):
+            with self.assertRaises(ValidationError, msg=weak):
+                self.Driver.create({'name': 'رمز متوقَّع',
+                                    'phone': '0558881234', 'pin': weak})
+
+    def test_a_strong_pin_is_accepted(self):
+        """الضابط المقابل: المنع لم يُغلق الباب على الأرقام الصالحة."""
+        driver = self.Driver.create({'name': 'رمز سليم',
+                                     'phone': '0558882345', 'pin': '7391'})
+        self.assertTrue(driver.has_pin)
 
     def test_a_short_or_non_numeric_pin_is_refused(self):
         for bad in ('123', 'abcd', '12 34', '1234567'):
@@ -558,7 +572,7 @@ class TestDriverAuthentication(QuickDeliveryCommon):
         self.assertTrue(self.driver.has_pin)
         # لا نعرف الرمز المولَّد (يُعرض مرة ولا يُخزَّن نصاً)، فنتأكد أن
         # القديم بطل - وهذا هو السلوك المطلوب.
-        self.assertFalse(self.Driver._qd_authenticate('0551110001', '1234'))
+        self.assertFalse(self.Driver._qd_authenticate('0551110001', '7391'))
 
     @mute_logger('odoo.sql_db')
     def test_duplicate_phone_is_refused_by_the_database(self):
@@ -594,7 +608,7 @@ class TestMultiMerchant(QuickDeliveryCommon):
         cls.other_client = cls.env['res.partner'].create({
             'name': 'سوبرماركت ثانٍ', 'is_qcommerce_client': True,
             'api_key': 'UNITKEY-MM', 'delivery_fee_per_order': 20.0,
-            'webhook_url': 'http://127.0.0.1:9/nowhere',
+            'webhook_url': 'http://merchant.invalid/hook',
         })
 
     def _delivered(self, client, merchant_order_id):
@@ -1010,7 +1024,7 @@ class TestCustomerMessaging(QuickDeliveryCommon):
         })
         cls.sms = cls.Channel.create({
             'name': 'رسالة نصية', 'kind': 'taqnyat', 'sequence': 20,
-            'endpoint_url': 'http://127.0.0.1:9/nowhere',
+            'endpoint_url': 'http://sms-provider.invalid/send',
             'api_key': 'SMS-KEY', 'sender_name': 'DELIVERY',
             'headers_json': '{"Content-Type": "application/json"}',
             'body_template': '{"recipients": ["{phone}"],'
@@ -1210,6 +1224,24 @@ class TestCustomerMessaging(QuickDeliveryCommon):
         self.assertIn('لا قناة', message.last_error)
 
     # ------------------------------------------------- الرسالة النصية
+    def test_an_internal_url_is_refused(self):
+        """رابطٌ يشير إلى داخل الشبكة يجعل الخادم أداةً للوصول إلى ما
+        لا يصله المستخدم - وأخطره عنوان بيانات السحابة."""
+        for url in ('http://169.254.169.254/latest/meta-data/',
+                    'http://127.0.0.1:8069/web',
+                    'http://localhost/x'):
+            self.sms.endpoint_url = url
+            ok, code, error = self.sms._qd_send('0551234567', 'نص')
+            self.assertFalse(ok, url)
+            self.assertIn('داخلي', error + ' ')
+        self.sms.endpoint_url = 'http://sms-provider.invalid/send'
+
+    def test_a_non_http_scheme_is_refused(self):
+        self.sms.endpoint_url = 'file:///etc/passwd'
+        ok, code, error = self.sms._qd_send('0551234567', 'نص')
+        self.assertFalse(ok)
+        self.sms.endpoint_url = 'http://sms-provider.invalid/send'
+
     def test_the_sms_body_is_valid_json_with_arabic_and_newlines(self):
         """سطر جديد أو علامة اقتباس في رسالة عربية كان يُفسد الجسم."""
         sent = {}
@@ -1235,3 +1267,68 @@ class TestCustomerMessaging(QuickDeliveryCommon):
         self.assertEqual(parsed['recipients'], ['966551234567'])
         self.assertIn('العثيم', parsed['body'])
         self.assertIn('\n', parsed['body'])
+
+
+@tagged('post_install', '-at_install')
+class TestHardening(QuickDeliveryCommon):
+    """ثغرات وُجدت في مراجعة، وضوابطها."""
+
+    def _ready_order(self, ref):
+        order = self._order(merchant_order_id=ref)
+        if not order.driver_id:
+            order.write({'driver_id': self.driver.id,
+                         'state': 'driver_assigned'})
+        order.write({'state': 'picked_up'})
+        return order
+
+    # ----------------------------------------- مدى إحداثيات المندوب
+    def test_an_impossible_position_is_refused(self):
+        """جوال معطوب أو نداء مُلفَّق كان يضع المندوب خارج الكرة."""
+        with self.assertRaises(ValidationError):
+            self.driver.write({'current_lat': 999.0})
+        with self.assertRaises(ValidationError):
+            self.driver.write({'current_lng': -200.0})
+
+    def test_a_real_position_passes(self):
+        self.driver.write({'current_lat': 21.4858, 'current_lng': 39.1925})
+        self.assertAlmostEqual(self.driver.current_lat, 21.4858, places=4)
+
+    # ------------------------------------------- سبب عدم الإسناد
+    def test_an_unassigned_order_says_why_no_driver_is_online(self):
+        self.driver.driver_status = 'offline'
+        order = self._order(merchant_order_id='HARD-WHY-1')
+        self.assertFalse(order.driver_id)
+        self.assertIn('غير متصل', order.dispatch_note)
+
+    def test_it_says_when_the_nearest_driver_is_too_far(self):
+        """الرسالة تقول القرار: وسّع النطاق أو قرّب مندوباً."""
+        self.driver.write({'current_lat': 21.4858,
+                           'current_lng': 39.1925})      # جدة
+        order = self._order(merchant_order_id='HARD-WHY-2')
+        self.assertFalse(order.driver_id)
+        self.assertIn('كم', order.dispatch_note)
+        self.assertIn('النطاق', order.dispatch_note)
+
+    def test_it_says_when_everyone_is_busy(self):
+        first = self._order(merchant_order_id='HARD-WHY-3')
+        self.assertEqual(first.driver_id, self.driver)
+        second = self._order(merchant_order_id='HARD-WHY-4')
+        self.assertFalse(second.driver_id)
+        self.assertIn('طلبات أخرى', second.dispatch_note)
+
+    def test_it_says_when_locations_are_unknown(self):
+        self.driver.write({'current_lat': 0.0, 'current_lng': 0.0})
+        order = self._order(merchant_order_id='HARD-WHY-5')
+        self.assertFalse(order.driver_id)
+        self.assertIn('التطبيق', order.dispatch_note)
+
+    def test_the_note_is_cleared_once_assigned(self):
+        """الضابط المقابل: سببٌ قديم باقٍ على طلب أُسند يُضلّل."""
+        self.driver.driver_status = 'offline'
+        order = self._order(merchant_order_id='HARD-WHY-6')
+        self.assertTrue(order.dispatch_note)
+        self.driver.write({'driver_status': 'online',
+                           'current_lat': 24.7136, 'current_lng': 46.6753})
+        order.auto_assign_nearest_driver()
+        self.assertEqual(order.driver_id, self.driver)
+        self.assertFalse(order.dispatch_note)

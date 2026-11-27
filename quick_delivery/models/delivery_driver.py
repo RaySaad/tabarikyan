@@ -30,6 +30,16 @@ PIN_CRYPT_CONTEXT = CryptContext(['pbkdf2_sha512'])
 
 PIN_RE = re.compile(r'^\d{4,6}$')
 
+# أرقام سرية مرفوضة: القفل يحمي من تخمين مندوبٍ بعينه، لكنه لا يحمي
+# من تجريب "1234" على كل المندوبين - ولا يُحتسب فشلٌ على من لم يُجرَّب
+# رقمه بعد. فالمنع عند الاختيار هو الحارس.
+WEAK_PINS = {
+    '0000', '1111', '2222', '3333', '4444', '5555', '6666', '7777',
+    '8888', '9999', '1234', '4321', '1212', '2580', '0123',
+    '000000', '111111', '123456', '654321', '121212', '112233',
+    '123123', '999999', '555555',
+}
+
 # عمر جلسة التطبيق: وردية كاملة وزيادة، ثم إعادة دخول.
 SESSION_HOURS = 16
 MAX_PIN_ATTEMPTS = 5
@@ -138,6 +148,18 @@ class QuickDeliveryDriver(models.Model):
         for rec in self:
             rec.login_key = self._phone_key(rec.phone)
 
+    @api.constrains('current_lat', 'current_lng')
+    def _check_position(self):
+        """جوالٌ معطوب أو نداء مُلفَّق كان يضع المندوب خارج الكرة
+        الأرضية، فيُفسد الخريطة وحساب المسافات."""
+        for rec in self:
+            if not -90.0 <= rec.current_lat <= 90.0:
+                raise ValidationError(_('خط عرض خارج النطاق: %s')
+                                      % rec.current_lat)
+            if not -180.0 <= rec.current_lng <= 180.0:
+                raise ValidationError(_('خط طول خارج النطاق: %s')
+                                      % rec.current_lng)
+
     @api.constrains('phone')
     def _check_phone(self):
         for rec in self:
@@ -159,6 +181,10 @@ class QuickDeliveryDriver(models.Model):
             if not PIN_RE.match(value):
                 raise ValidationError(_(
                     'رمز الدخول يجب أن يكون من أربعة إلى ستة أرقام فقط.'))
+            if value in WEAK_PINS or len(set(value)) == 1:
+                raise ValidationError(_(
+                    'رمز الدخول "%s" من الأرقام المتوقَّعة. اختر غيره - '
+                    'أو اضغط "توليد رمز دخول".') % value)
             rec.sudo().write({
                 'pin_hash': PIN_CRYPT_CONTEXT.hash(value),
                 # رمز جديد يُنهي الجلسات القائمة: من يُغيَّر رمزه يُخرج

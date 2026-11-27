@@ -28,7 +28,7 @@ class TestMerchantApi(HttpCase):
             'api_key': 'HTTPKEY-1',
         })
         cls.env['quick.delivery.driver'].create({
-            'name': 'مندوب الـAPI', 'phone': '0552220001', 'pin': '1234',
+            'name': 'مندوب الـAPI', 'phone': '0552220001', 'pin': '7391',
             'driver_status': 'online',
             'current_lat': 24.7136, 'current_lng': 46.6753,
         })
@@ -160,12 +160,12 @@ class TestDriverApi(HttpCase):
             'name': 'سوبرماركت المندوب', 'is_qcommerce_client': True,
             'api_key': 'HTTPKEY-D'})
         cls.driver = cls.Driver.create({
-            'name': 'مندوب HTTP', 'phone': '0553330001', 'pin': '4321',
+            'name': 'مندوب HTTP', 'phone': '0553330001', 'pin': '8264',
             'driver_status': 'online',
             'current_lat': 24.7136, 'current_lng': 46.6753,
         })
         cls.other = cls.Driver.create({
-            'name': 'مندوب آخر', 'phone': '0553330002', 'pin': '4321',
+            'name': 'مندوب آخر', 'phone': '0553330002', 'pin': '8264',
             'driver_status': 'offline'})
         cls.env.cr.flush()
 
@@ -177,7 +177,7 @@ class TestDriverApi(HttpCase):
         return self.url_open(url, data=json.dumps(body or {}).encode('utf-8'),
                              headers=headers)
 
-    def _login(self, phone='0553330001', pin='4321'):
+    def _login(self, phone='0553330001', pin='8264'):
         return self._post(LOGIN_URL, {'phone': phone, 'pin': pin})
 
     def _token(self):
@@ -615,7 +615,7 @@ class TestCustomerTracking(HttpCase):
         cls.env['quick.delivery.driver'].sudo().with_context(
             active_test=False).search([]).write({'driver_status': 'offline'})
         cls.driver = cls.env['quick.delivery.driver'].create({
-            'name': 'مندوب التتبع', 'phone': '0555550001', 'pin': '1234',
+            'name': 'مندوب التتبع', 'phone': '0555550001', 'pin': '7391',
             'driver_status': 'online',
             'current_lat': 24.7136, 'current_lng': 46.6753})
         cls.client = cls.env['res.partner'].create({
@@ -912,3 +912,115 @@ class TestNoExternalLibraries(HttpCase):
                     self.assertNotIn(
                         marker, content,
                         '%s ما زال يُحمّل من %s' % (path, host))
+
+
+@tagged('post_install', '-at_install')
+class TestOtpAttempts(HttpCase):
+    """حدّ محاولات رمز التسليم - عبر HTTP لا بالوحدة.
+
+    في اختبار الوحدة يلفّ assertRaises الكتلة بنقطة حفظ ويتراجع عنها،
+    فيضيع العدّاد ويبدو أن الحدّ لا يعمل. والمسار الحقيقي لا يرفع
+    الخطأ إلى أودو: مُغلّف المسار يلتقطه ويُرجع 400، فتُثبَّت المعاملة
+    والعدّاد معها. هذا هو ما يجب أن يُختبر.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env['quick.delivery.driver'].sudo().with_context(
+            active_test=False).search([]).write({'driver_status': 'offline'})
+        cls.driver = cls.env['quick.delivery.driver'].create({
+            'name': 'مندوب الرمز', 'phone': '0557778001', 'pin': '7391',
+            'driver_status': 'online',
+            'current_lat': 24.7136, 'current_lng': 46.6753})
+        cls.client_partner = cls.env['res.partner'].create({
+            'name': 'سوبرماركت الرمز', 'is_qcommerce_client': True,
+            'api_key': 'OTP-KEY-1'})
+        cls.env.cr.flush()
+
+    def _token(self):
+        response = self.url_open(
+            '/api/v1/driver/login',
+            data=json.dumps({'phone': '0557778001',
+                             'pin': '7391'}).encode('utf-8'),
+            headers={'Content-Type': 'application/json'})
+        return response.json()['token']
+
+    def _picked_up_order(self, ref):
+        order = self.env['quick.delivery.order'].create({
+            'client_id': self.client_partner.id, 'merchant_order_id': ref,
+            'store_name': 'فرع', 'store_lat': 24.71, 'store_lng': 46.67,
+            'customer_name': 'عميل', 'customer_phone': '0550000000',
+            'customer_lat': 24.72, 'customer_lng': 46.68,
+            'driver_id': self.driver.id, 'state': 'driver_assigned',
+        })
+        order.write({'state': 'picked_up'})
+        self.env.cr.flush()
+        return order
+
+    def _try_code(self, order, token, code):
+        return self.url_open(
+            '/api/v1/driver/order/%d/status' % order.id,
+            data=json.dumps({'state': 'delivered',
+                             'otp_code': code}).encode('utf-8'),
+            headers={'Content-Type': 'application/json',
+                     'Authorization': 'Bearer %s' % token})
+
+    def test_a_wrong_code_is_counted_and_kept(self):
+        order = self._picked_up_order('OTPC-1')
+        token = self._token()
+        response = self._try_code(order, token, '000000')
+        self.assertEqual(response.status_code, 400)
+        order.invalidate_recordset()
+        self.assertEqual(order.otp_attempts, 1,
+                         'العدّاد لم يُحفظ - ضاع مع الخطأ')
+
+    def test_guessing_is_stopped_after_the_limit(self):
+        """ستة أرقام تُخمَّن بالتكرار، ولم يكن ثمة حدّ ولا أثر."""
+        order = self._picked_up_order('OTPC-2')
+        token = self._token()
+        for _unused in range(5):
+            self._try_code(order, token, '000000')
+        order.invalidate_recordset()
+        self.assertEqual(order.otp_attempts, 5)
+
+        # حتى الرمز الصحيح يُرفض بعد الحدّ: يبقى أثر لمن حاول.
+        blocked = self._try_code(order, token, order.sudo().delivery_otp)
+        self.assertEqual(blocked.status_code, 400)
+        self.assertIn('حدّ محاولات', blocked.json()['error'])
+        order.invalidate_recordset()
+        self.assertEqual(order.state, 'picked_up')
+
+    def test_the_right_code_still_works_before_the_limit(self):
+        """الضابط المقابل: الحدّ لم يُغلق الباب على التسليم الصحيح."""
+        order = self._picked_up_order('OTPC-3')
+        token = self._token()
+        self._try_code(order, token, '000000')
+        done = self._try_code(order, token, order.sudo().delivery_otp)
+        self.assertEqual(done.status_code, 200, done.text)
+        order.invalidate_recordset()
+        self.assertEqual(order.state, 'delivered')
+        self.assertEqual(order.otp_attempts, 0)
+
+    def test_the_photo_closes_a_blocked_order(self):
+        """الحدّ لا يحبس الطلب: الصورة تُغلقه."""
+        import base64
+
+        from .test_quick_delivery import _png_bytes
+
+        order = self._picked_up_order('OTPC-4')
+        token = self._token()
+        for _unused in range(5):
+            self._try_code(order, token, '000000')
+        response = self.url_open(
+            '/api/v1/driver/order/%d/status' % order.id,
+            data=json.dumps({
+                'state': 'delivered',
+                'photo_base64': base64.b64encode(_png_bytes()).decode(),
+            }).encode('utf-8'),
+            headers={'Content-Type': 'application/json',
+                     'Authorization': 'Bearer %s' % token})
+        self.assertEqual(response.status_code, 200, response.text)
+        order.invalidate_recordset()
+        self.assertEqual(order.state, 'delivered')
+        self.assertEqual(order.pod_method, 'photo')

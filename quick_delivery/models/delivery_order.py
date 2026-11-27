@@ -16,6 +16,9 @@ _logger = logging.getLogger(__name__)
 # (quick_delivery.dispatch_radius_km) ليُعدَّل بلا تعديل كود.
 DEFAULT_DISPATCH_RADIUS_KM = 6.0
 
+# حدّ محاولات رمز التسليم على الطلب الواحد. بعده لا يُغلق إلا بصورة.
+MAX_OTP_ATTEMPTS = 5
+
 # المنطقة الزمنية التي تُحسب عليها "أيام" العمل (عهدة اليوم، أرباح اليوم).
 # الافتراضي الرياض: الخطأ هنا خطأ مالي، لا تجميلي - يوم الرياض يبدأ
 # 21:00 UTC من اليوم السابق، فحساب "اليوم" بـ UTC ينقل أول ثلاث ساعات
@@ -272,6 +275,10 @@ class QuickDeliveryOrder(models.Model):
         help='يُعطى للعميل النهائي: يرى حالة طلبه ومندوبه ورمز التسليم.')
     delivery_otp = fields.Char(string='رمز التحقق (OTP)', copy=False,
                                groups='quick_delivery.group_qd_manager')
+    # عدد محاولات الرمز: ستة أرقام تُخمَّن بالتكرار، ولم يكن ثمة حدٌّ
+    # ولا أثرٌ لمن يحاول. المندوب قد يُغلق طلباً بلا تسليم.
+    otp_attempts = fields.Integer(string='محاولات الرمز الخاطئة',
+                                  readonly=True, copy=False)
     pod_photo = fields.Binary(string='صورة إثبات التسليم', attachment=True)
     pod_method = fields.Selection([
         ('otp', 'رمز تحقق من العميل'),
@@ -301,6 +308,11 @@ class QuickDeliveryOrder(models.Model):
     # المندوب كيان مستقل لا مستخدم أودو: لا رخصة مدفوعة لكل مندوب، ولا
     # دخول إلى /web من جوال يُسلَّم لغيره غداً. ondelete='restrict'
     # لأن حذف المندوب يمسح تاريخ من أوصل ماذا - الأرشفة هي الطريق.
+    # لماذا لم يُسنَد: كان الطلب يجلس في "جاري البحث" بلا سبب مكتوب،
+    # فيُخمَّن: أبعيد؟ أمشغول؟ أمنصرف؟ وكلٌّ منها يستدعي قراراً مختلفاً
+    # (نطاق أوسع، أو مندوب إضافي، أو تنبيههم ليفتحوا التطبيق).
+    dispatch_note = fields.Char(string='سبب عدم الإسناد', readonly=True,
+                                copy=False)
     driver_id = fields.Many2one('quick.delivery.driver',
                                 string='المندوب المسند', index=True,
                                 ondelete='restrict')
@@ -521,19 +533,25 @@ class QuickDeliveryOrder(models.Model):
                 continue
             # المؤرشف مستبعد تلقائياً من search: مندوبٌ أُوقف لا
             # يُسنَد له شيء دون أن نكتب شرطاً لذلك.
-            candidates = self.env['quick.delivery.driver'].sudo().search([
+            Driver = self.env['quick.delivery.driver'].sudo()
+            candidates = Driver.search([
                 ('driver_status', '=', 'online'),
                 ('current_lat', '!=', 0.0),
                 ('current_lng', '!=', 0.0),
             ])
+            if not candidates:
+                rec._qd_explain_no_driver(Driver, radius)
+                continue
             ranked = sorted(
                 ((self._haversine(rec.store_lat, rec.store_lng,
                                   drv.current_lat, drv.current_lng), drv)
                  for drv in candidates),
                 key=lambda pair: pair[0],
             )
+            assigned = False
             for distance, driver in ranked:
                 if distance > radius:
+                    # أبعد من النطاق: والبقية أبعد (القائمة مرتّبة).
                     break
                 # قفل صفّ المندوب قبل إسناده: نداءان متزامنان من الـAPI
                 # (طلبان في نفس اللحظة) كانا يرشّحان نفس أقرب مندوب
@@ -541,9 +559,38 @@ class QuickDeliveryOrder(models.Model):
                 if not driver._qd_lock_if_free():
                     continue
                 rec.write({'driver_id': driver.id,
-                           'state': 'driver_assigned'})
+                           'state': 'driver_assigned',
+                           'dispatch_note': False})
                 driver.sudo().write({'driver_status': 'busy'})
+                assigned = True
                 break
+            if not assigned:
+                # لا for/else هنا: الـbreak عند تجاوز النطاق كان
+                # يتخطّاه، فلا يُكتب أكثر الأسباب وقوعاً.
+                rec._qd_explain_no_driver(Driver, radius, ranked)
+
+    def _qd_explain_no_driver(self, Driver, radius, ranked=None):
+        """يكتب على الطلب لماذا لم يجد مندوباً.
+
+        السؤال "لماذا لم يُسنَد" يجب أن يجيبه النظام لا أن يبحث عنه
+        المستخدم، ولكلّ سبب قرارٌ مختلف.
+        """
+        self.ensure_one()
+        if ranked:
+            nearest = ranked[0][0]
+            note = _('أقرب مندوب متاح يبعد %(km).1f كم - والنطاق '
+                     '%(radius).1f كم. وسّع النطاق أو قرّب مندوباً.') % {
+                'km': nearest, 'radius': radius}
+        elif Driver.search_count([('driver_status', '=', 'busy')]):
+            note = _('كل المندوبين المتاحين على طلبات أخرى - تحتاج '
+                     'مندوباً إضافياً.')
+        elif Driver.search_count([('driver_status', '=', 'online')]):
+            note = _('مندوبون متاحون لكن مواقعهم غير معروفة - لم يفتحوا '
+                     'التطبيق أو لم يسمحوا بالموقع.')
+        else:
+            note = _('لا مندوب متاح الآن - الجميع غير متصل.')
+        if self.dispatch_note != note:
+            self.sudo().dispatch_note = note
 
     @staticmethod
     def _haversine(lat1, lon1, lat2, lon2):
@@ -598,9 +645,24 @@ class QuickDeliveryOrder(models.Model):
         self.ensure_one()
         vals = {'state': 'delivered', 'delivered_at': fields.Datetime.now()}
         if otp_code:
+            if self.otp_attempts >= MAX_OTP_ATTEMPTS:
+                raise UserError(_(
+                    'تجاوزت حدّ محاولات الرمز (%d) على هذا الطلب. '
+                    'أغلقه بصورة إثبات التسليم، أو راجع غرفة العمليات.'
+                ) % MAX_OTP_ATTEMPTS)
             if not self.verify_otp(otp_code):
-                raise UserError(_('رمز التحقق (OTP) غير صحيح.'))
+                # المحاولات تُعدّ وتُسجَّل: الحدّ وحده بلا أثر لا يكشف
+                # من يحاول التخمين.
+                self.sudo().otp_attempts += 1
+                _logger.warning(
+                    'رمز خاطئ على الطلب %s (المحاولة %d) من المندوب %s',
+                    self.name, self.otp_attempts,
+                    self.driver_id.name or '-')
+                raise UserError(_(
+                    'رمز التحقق غير صحيح. المحاولات المتبقية: %d.'
+                ) % max(0, MAX_OTP_ATTEMPTS - self.otp_attempts))
             vals['pod_method'] = 'otp'
+            vals['otp_attempts'] = 0
         else:
             photo = self.normalize_photo_payload(photo_base64)
             if not photo:

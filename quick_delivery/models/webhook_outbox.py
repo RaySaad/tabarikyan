@@ -6,6 +6,8 @@ import requests
 
 from odoo import models, fields, api, _
 
+from .outbound_url import OutboundUrlError, check_outbound_url
+
 _logger = logging.getLogger(__name__)
 
 # تراجع أُسّي: 1، 2، 4، 8... دقائق. سيرفر التاجر المتوقّف لا يُقصف
@@ -87,6 +89,16 @@ class QuickDeliveryWebhook(models.Model):
                               'last_error': 'لا يوجد Webhook URL للعميل'})
                 continue
             attempts = record.attempts + 1
+            try:
+                # رابطٌ يشير إلى داخل الشبكة يجعل الخادم أداةً للوصول
+                # إلى ما لا يصله التاجر - وأخطره عنوان بيانات السحابة.
+                check_outbound_url(self.env, url, 'رابط إبلاغ التاجر')
+            except OutboundUrlError as error:
+                record.write({'state': 'failed', 'attempts': attempts,
+                              'last_error': str(error)[:250]})
+                _logger.error('رابط إبلاغ مرفوض للعميل %s: %s',
+                              client.name, error)
+                continue
             try:
                 response = requests.post(
                     url,

@@ -24,6 +24,8 @@ import requests
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 
+from .outbound_url import OutboundUrlError, check_outbound_url
+
 _logger = logging.getLogger(__name__)
 
 MAX_ATTEMPTS = 5
@@ -252,6 +254,10 @@ class QuickDeliveryChannel(models.Model):
         url = 'https://graph.facebook.com/%s/%s/messages' % (
             self.graph_version or DEFAULT_GRAPH_VERSION, phone_uid)
         try:
+            check_outbound_url(self.env, url, 'رابط واتساب')
+        except OutboundUrlError as error:
+            return False, 0, str(error)[:250]
+        try:
             response = requests.post(
                 url, json=payload,
                 headers={'Authorization': 'Bearer %s' % token,
@@ -281,6 +287,11 @@ class QuickDeliveryChannel(models.Model):
             headers = json.loads(raw_headers)
         except Exception:
             headers = {'Content-Type': 'application/json'}
+        try:
+            check_outbound_url(self.env, self.endpoint_url,
+                               'رابط مزوّد الرسائل')
+        except OutboundUrlError as error:
+            return False, 0, str(error)[:250]
         try:
             response = requests.post(self.endpoint_url,
                                      data=body.encode('utf-8'),
