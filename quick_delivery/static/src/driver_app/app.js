@@ -28,6 +28,12 @@
     var audioCtx = null;
     var installEvent = null;
     var toastTimer = null;
+    var swRegistration = null;
+    // الطلب "مقروء" حين يراه المندوب فعلاً: قبلها يتكرّر التنبيه.
+    // طلبٌ يصل والجوال في الجيب لا ينفع فيه تنبيه واحد.
+    var orderSeen = false;
+    var alertTimer = null;
+    var ALERT_REPEAT_MS = 25000;
 
     function $(id) { return document.getElementById(id); }
 
@@ -65,6 +71,22 @@
         }, kind === 'error' ? 6000 : 3200);
     }
 
+    /**
+     * قناة الصوت في المتصفحات المحمولة تُفتح بإيماءة مستخدم فقط.
+     * كان الصوت يُرفض صامتاً حين يفتح المندوب التطبيق فيجد طلباً
+     * بانتظاره: لا إيماءة سبقت، فلا صوت - ولا يعلم أن ثمة طلباً.
+     */
+    function unlockAudio() {
+        try {
+            if (!audioCtx) {
+                var Ctor = window.AudioContext || window.webkitAudioContext;
+                if (!Ctor) { return; }
+                audioCtx = new Ctor();
+            }
+            if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+        } catch (err) { /* ignore */ }
+    }
+
     function beep() {
         // صوت مُولَّد محلياً: النسخة السابقة كانت تجلبه من
         // actions.google.com - فلا صوت بلا إنترنت ولا على شبكة محجوبة.
@@ -94,6 +116,80 @@
         try {
             if (navigator.vibrate) { navigator.vibrate([200, 90, 200]); }
         } catch (err) { /* ignore */ }
+    }
+
+    /**
+     * إشعار نظام حقيقي - يظهر والشاشة مطفأة والتطبيق في الخلفية.
+     *
+     * الصوت والاهتزاز داخل الصفحة يتوقّفان حين يُجمّد المتصفح
+     * المؤقّتات، والمندوب يضع جواله في جيبه طوال الوردية. هذا يصل.
+     *
+     * بلا تفاصيل عمداً: لا اسم عميل ولا عنوان ولا مبلغ على شاشة
+     * مقفلة في جهاز قد يُسلَّم لمندوب آخر غداً.
+     */
+    function systemNotify(title, body) {
+        if (!('Notification' in window)
+                || Notification.permission !== 'granted') {
+            return;
+        }
+        var options = {
+            body: body,
+            icon: '/quick_delivery/static/src/driver_app/icon-192.png',
+            badge: '/quick_delivery/static/src/driver_app/icon-192.png',
+            vibrate: [300, 120, 300, 120, 300],
+            // tag واحد: التنبيه المتكرّر يستبدل السابق ولا يُراكم
+            // عشرة إشعارات على الشاشة.
+            tag: 'qd-order',
+            renotify: true,
+            requireInteraction: true,
+            lang: 'ar',
+            dir: 'rtl'
+        };
+        try {
+            if (swRegistration && swRegistration.showNotification) {
+                swRegistration.showNotification(title, options);
+            } else {
+                new Notification(title, options);
+            }
+        } catch (err) { /* بعض المتصفحات ترفض بلا عامل خدمي */ }
+    }
+
+    function askNotificationPermission() {
+        if (!('Notification' in window)) { return; }
+        if (Notification.permission !== 'default') {
+            renderNotifyBar();
+            return;
+        }
+        // يُطلب عند بدء الوردية لا عند فتح الصفحة: السياق واضح
+        // ("لتصلك الطلبات")، والطلب بلا سياق يُرفض عادةً.
+        try {
+            Notification.requestPermission().then(renderNotifyBar);
+        } catch (err) {
+            Notification.requestPermission(renderNotifyBar);
+        }
+    }
+
+    function renderNotifyBar() {
+        var bar = $('notifyBar');
+        if (!bar) { return; }
+        var blocked = ('Notification' in window)
+            && Notification.permission === 'denied';
+        bar.classList.toggle('hidden', !(blocked && isOnline));
+    }
+
+    /** يتكرّر التنبيه حتى يرى المندوب الطلب. */
+    function startAlertLoop() {
+        stopAlertLoop();
+        alertTimer = window.setInterval(function () {
+            if (!order || orderSeen) { stopAlertLoop(); return; }
+            beep();
+            systemNotify('طلب توصيل بانتظارك',
+                         'لم يُفتح بعد - افتح التطبيق');
+        }, ALERT_REPEAT_MS);
+    }
+
+    function stopAlertLoop() {
+        if (alertTimer) { window.clearInterval(alertTimer); alertTimer = null; }
     }
 
     // ==================================================================
@@ -270,10 +366,14 @@
         if (checked) {
             startGeo();
             requestWakeLock();
+            unlockAudio();
             beep();            // يفتح قناة الصوت بإيماءة المستخدم
+            askNotificationPermission();
         } else {
             releaseWakeLock();
+            stopAlertLoop();
         }
+        renderNotifyBar();
         sync(checked ? 'online' : 'offline');
     }
 
@@ -327,12 +427,22 @@
 
         var hadOrder = !!order;
         if (data.has_order) {
+            var isNew = !hadOrder || order.id !== data.order.id;
             order = data.order;
             remaining = order.remaining_seconds;
-            if (!hadOrder) { beep(); }
+            if (isNew) {
+                // "رآه" فقط إن كان ينظر إلى الشاشة الآن.
+                orderSeen = document.visibilityState === 'visible';
+                beep();
+                systemNotify('طلب توصيل جديد',
+                             'اضغط لفتح التطبيق واستلام الطلب');
+                if (!orderSeen) { startAlertLoop(); }
+            }
             renderOrder();
         } else {
             order = null;
+            orderSeen = false;
+            stopAlertLoop();
             renderEmpty();
         }
         renderTopBar();
@@ -566,6 +676,8 @@
         // النطاق /driver يحتاج ترويسة Service-Worker-Allowed، وهي
         // تُرسَل من مسار أودو لا من ملف static.
         navigator.serviceWorker.register('/driver/sw.js', { scope: '/driver' })
+            .then(function () { return navigator.serviceWorker.ready; })
+            .then(function (registration) { swRegistration = registration; })
             .catch(function () { /* يعمل التطبيق بلا تخزين مؤقت */ });
     }
 
@@ -601,7 +713,22 @@
             // العودة من الخلفية: المتصفح يُوقف المؤقّتات، فنُحدّث فوراً
             // بدل إظهار طلب قديم ومؤقّت متأخّر.
             if (isOnline) { requestWakeLock(); }
+            // عاد ينظر إلى الشاشة: الطلب صار مرئياً فيتوقّف التكرار.
+            if (order) { orderSeen = true; stopAlertLoop(); }
             sync(null);
+        });
+
+        // أول لمسة على الصفحة تفتح قناة الصوت: قد يكون المندوب
+        // "متاح" من جلسة سابقة فلا يمرّ على مفتاح الوردية أصلاً.
+        document.addEventListener('pointerdown', function onFirstTouch() {
+            unlockAudio();
+            document.removeEventListener('pointerdown', onFirstTouch);
+        }, { once: true });
+
+        // لمس بطاقة الطلب = رآه: يتوقّف التكرار.
+        $('orderBox').addEventListener('pointerdown', function () {
+            orderSeen = true;
+            stopAlertLoop();
         });
 
         setupInstall();

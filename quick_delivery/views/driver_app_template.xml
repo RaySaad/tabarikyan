@@ -27,7 +27,7 @@
             <!-- بلا CDN: الملفان من هذا الخادم، فلا يتعطّل شكل التطبيق
                  بانقطاع نطاق خارجي. رقم النسخة لتجاوز ذاكرة المتصفح. -->
             <link rel="stylesheet"
-                  href="/quick_delivery/static/src/driver_app/app.css?v=7.0.0"/>
+                  href="/quick_delivery/static/src/driver_app/app.css?v=12.0.0"/>
         </head>
         <body>
             <!-- ================= شاشة الدخول ================= -->
@@ -94,6 +94,13 @@
 
                 <div id="networkBar" class="qd-offline-bar hidden">
                     لا يوجد اتصال - التطبيق يعيد المحاولة تلقائياً
+                </div>
+
+                <!-- الإشعارات محجوبة: المندوب لن يعلم بطلب والشاشة
+                     مطفأة، ولا سبيل لطلب الإذن ثانيةً من الكود. -->
+                <div id="notifyBar" class="qd-offline-bar hidden">
+                    الإشعارات محجوبة — فعّلها من إعدادات المتصفح لهذا
+                    الموقع، وإلا لن يصلك تنبيه والشاشة مطفأة
                 </div>
 
                 <div class="qd-wallet">
@@ -237,7 +244,7 @@
             <div id="toast" class="qd-toast hidden"></div>
 
             <script type="text/javascript"
-                    src="/quick_delivery/static/src/driver_app/app.js?v=7.0.0"></script>
+                    src="/quick_delivery/static/src/driver_app/app.js?v=12.0.0"></script>
         </body>
         </html>
     </template>

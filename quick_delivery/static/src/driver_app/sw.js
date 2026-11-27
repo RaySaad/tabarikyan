@@ -9,7 +9,7 @@
  */
 'use strict';
 
-var CACHE = 'qd-driver-v7';
+var CACHE = 'qd-driver-v12';
 var SHELL = [
     '/driver',
     '/quick_delivery/static/src/driver_app/app.css',
@@ -38,6 +38,25 @@ self.addEventListener('activate', function (event) {
                 return name === CACHE ? null : caches.delete(name);
             }));
         }).then(function () { return self.clients.claim(); })
+    );
+});
+
+/* ضغط الإشعار يفتح التطبيق - أو يعيد تنشيط نافذته إن كانت مفتوحة
+   في الخلفية، بدل فتح ثانية فوقها. */
+self.addEventListener('notificationclick', function (event) {
+    event.notification.close();
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then(function (clientList) {
+                for (var i = 0; i < clientList.length; i++) {
+                    var client = clientList[i];
+                    if (client.url.indexOf('/driver') !== -1
+                            && 'focus' in client) {
+                        return client.focus();
+                    }
+                }
+                return self.clients.openWindow('/driver');
+            })
     );
 });
 
