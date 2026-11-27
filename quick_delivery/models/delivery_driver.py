@@ -198,18 +198,23 @@ class QuickDeliveryDriver(models.Model):
             groupby=['driver_id'], aggregates=['cod_amount:sum'])
         cod_by_driver = {driver.id: total for driver, total in cod_groups}
 
+        # الأرباح من العمولة المثبَّتة على كل طلب، لا من العمولة
+        # الحالية مضروبة في العدد: تعديل العمولة كان يُغيّر أرباح أيام
+        # مضت - ومنها أيام صُرفت بالفعل.
         today_groups = Order._read_group(
             [('driver_id', 'in', self.ids), ('state', '=', 'delivered'),
              ('delivered_at', '>=', day_start)],
-            groupby=['driver_id'], aggregates=['__count'])
-        count_by_driver = {driver.id: count for driver, count in today_groups}
+            groupby=['driver_id'],
+            aggregates=['__count', 'driver_commission:sum'])
+        today_by_driver = {driver.id: (count, earned)
+                           for driver, count, earned in today_groups}
 
         for rec in self:
             rec.cod_custody_balance = cod_by_driver.get(rec.id, 0.0)
-            delivered_today = count_by_driver.get(rec.id, 0)
+            delivered_today, earned_today = today_by_driver.get(
+                rec.id, (0, 0.0))
             rec.today_delivered_count = delivered_today
-            rec.today_earnings = (delivered_today
-                                  * rec.sudo().commission_per_order)
+            rec.today_earnings = earned_today
 
     # ------------------------------------------------------------------
     # الدخول والجلسة

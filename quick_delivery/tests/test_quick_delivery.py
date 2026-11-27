@@ -576,3 +576,125 @@ class TestDriverAuthentication(QuickDeliveryCommon):
         order = self._order(merchant_order_id='ARCH-1')
         self.assertFalse(order.driver_id)
         self.assertEqual(order.state, 'searching_driver')
+
+
+@tagged('post_install', '-at_install')
+class TestMultiMerchant(QuickDeliveryCommon):
+    """العثيم وبندة وغيرهما على نفس النظام.
+
+    الفصل كان موجوداً في الأساس (مفتاح وتفرّد لكل عميل)، لكن الأرقام
+    كانت تُقرأ من الإعداد الحالي - فتتغيّر بأثر رجعي.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.client.write({'delivery_fee_per_order': 12.0})
+        cls.other_client = cls.env['res.partner'].create({
+            'name': 'سوبرماركت ثانٍ', 'is_qcommerce_client': True,
+            'api_key': 'UNITKEY-MM', 'delivery_fee_per_order': 20.0,
+            'webhook_url': 'http://127.0.0.1:9/nowhere',
+        })
+
+    def _delivered(self, client, merchant_order_id):
+        order = self._order(merchant_order_id=merchant_order_id,
+                            client_id=client.id)
+        if not order.driver_id:
+            order.write({'driver_id': self.driver.id,
+                         'state': 'driver_assigned'})
+        order.write({'state': 'picked_up'})
+        order.action_mark_delivered(otp_code=order.sudo().delivery_otp)
+        return order
+
+    # ----------------------------------------------------- الفصل
+    def test_each_merchant_keeps_its_own_fee(self):
+        first = self._order(merchant_order_id='MM-1', client_id=self.client.id)
+        second = self._order(merchant_order_id='MM-2',
+                             client_id=self.other_client.id)
+        self.assertEqual(first.delivery_fee, 12.0)
+        self.assertEqual(second.delivery_fee, 20.0)
+
+    def test_changing_the_fee_does_not_rewrite_history(self):
+        """رفعُ رسم العثيم كان يُعيد كتابة كل تقرير سابق."""
+        order = self._order(merchant_order_id='MM-FROZEN',
+                            client_id=self.client.id)
+        self.assertEqual(order.delivery_fee, 12.0)
+        self.client.delivery_fee_per_order = 30.0
+        order.invalidate_recordset()
+        self.assertEqual(order.delivery_fee, 12.0,
+                         'الرسم تغيّر بأثر رجعي على طلب سابق')
+
+    def test_the_new_fee_applies_to_the_next_order(self):
+        """الضابط المقابل: التثبيت لا يعني تجميد الإعداد."""
+        self.client.delivery_fee_per_order = 30.0
+        order = self._order(merchant_order_id='MM-NEW',
+                            client_id=self.client.id)
+        self.assertEqual(order.delivery_fee, 30.0)
+
+    def test_commission_is_frozen_at_assignment(self):
+        order = self._order(merchant_order_id='MM-COMM')
+        self.assertEqual(order.driver_id, self.driver)
+        self.assertEqual(order.driver_commission,
+                         self.driver.sudo().commission_per_order)
+        self.driver.sudo().commission_per_order = 99.0
+        order.invalidate_recordset()
+        self.assertEqual(order.driver_commission, 8.0,
+                         'عمولة طلب مضى تغيّرت بتعديل الإعداد')
+
+    def test_removing_the_driver_clears_the_commission(self):
+        order = self._order(merchant_order_id='MM-UNASSIGN')
+        self.assertTrue(order.driver_commission)
+        order.write({'driver_id': False, 'state': 'searching_driver'})
+        self.assertEqual(order.driver_commission, 0.0)
+
+    def test_net_revenue_is_fee_minus_commission(self):
+        order = self._order(merchant_order_id='MM-NET')
+        self.assertEqual(order.net_revenue,
+                         order.delivery_fee - order.driver_commission)
+
+    # ------------------------------------------------ أرقام الشهر
+    def test_month_figures_are_per_merchant(self):
+        self._delivered(self.client, 'MM-A1')
+        self._delivered(self.client, 'MM-A2')
+        self._delivered(self.other_client, 'MM-B1')
+
+        self.client.invalidate_recordset()
+        self.other_client.invalidate_recordset()
+        self.assertEqual(self.client.qd_month_orders, 2)
+        self.assertEqual(self.client.qd_month_fees, 24.0)
+        self.assertEqual(self.other_client.qd_month_orders, 1)
+        self.assertEqual(self.other_client.qd_month_fees, 20.0)
+
+    def test_an_undelivered_order_is_not_billed(self):
+        """الضابط المقابل: الرسم على ما سُلِّم، لا على ما أُنشئ."""
+        self._order(merchant_order_id='MM-OPEN',
+                    client_id=self.other_client.id)
+        self.other_client.invalidate_recordset()
+        self.assertEqual(self.other_client.qd_month_orders, 0)
+        self.assertEqual(self.other_client.qd_month_fees, 0.0)
+
+    def test_driver_earnings_come_from_the_frozen_commission(self):
+        """تعديل العمولة كان يُغيّر أرباح أيام صُرفت بالفعل."""
+        self._delivered(self.client, 'MM-E1')
+        self.driver.invalidate_recordset()
+        self.assertEqual(self.driver.today_delivered_count, 1)
+        self.assertEqual(self.driver.today_earnings, 8.0)
+
+        self.driver.sudo().commission_per_order = 50.0
+        self.driver.invalidate_recordset()
+        self.assertEqual(self.driver.today_earnings, 8.0,
+                         'أرباح اليوم تغيّرت بتعديل العمولة')
+
+    def test_configuration_flag_requires_key_and_webhook(self):
+        bare = self.env['res.partner'].create({
+            'name': 'سوبرماركت بلا ربط', 'is_qcommerce_client': True})
+        self.assertFalse(bare.qd_is_configured)
+        self.assertTrue(self.other_client.qd_is_configured)
+
+    def test_the_merchant_order_action_is_scoped(self):
+        self._order(merchant_order_id='MM-SCOPE-1', client_id=self.client.id)
+        self._order(merchant_order_id='MM-SCOPE-2',
+                    client_id=self.other_client.id)
+        action = self.other_client.action_qd_view_orders()
+        found = self.Order.search(action['domain'])
+        self.assertEqual(found.client_id, self.other_client)

@@ -44,6 +44,18 @@ def _day_start_utc(env, reference=None):
     return local_midnight.astimezone(pytz.utc).replace(tzinfo=None)
 
 
+def _month_start_utc(env, reference=None):
+    """بداية الشهر المحلي - بنفس منطقة اليوم، لا بـUTC."""
+    day_start = _day_start_utc(env, reference)
+    tz_name = env.user.tz or env.context.get('tz') or FALLBACK_TZ
+    try:
+        tz = pytz.timezone(tz_name)
+    except pytz.UnknownTimeZoneError:          # pragma: no cover
+        tz = pytz.timezone(FALLBACK_TZ)
+    local = pytz.utc.localize(day_start).astimezone(tz).replace(day=1)
+    return local.astimezone(pytz.utc).replace(tzinfo=None)
+
+
 class ResPartner(models.Model):
     _inherit = 'res.partner'
 
@@ -63,10 +75,72 @@ class ResPartner(models.Model):
         string='رسوم التوصيل للطلب (SAR)', default=12.0,
         groups='quick_delivery.group_qd_manager')
 
+    # أرقام الشهر لكل سوبرماركت: مع عميل واحد كانت القائمة تكفي، ومع
+    # العثيم وبندة وغيرهما لا تكفي - تحتاج "كم طلباً وكم رسماً لكلٍّ".
+    qd_month_orders = fields.Integer(
+        string='طلبات الشهر', compute='_compute_qd_month_figures',
+        compute_sudo=True)
+    qd_month_fees = fields.Float(
+        string='رسوم الشهر (SAR)', compute='_compute_qd_month_figures',
+        compute_sudo=True,
+        help='مجموع الرسوم المثبَّتة على طلبات الشهر المسلَّمة - بالرسم '
+             'الذي كان ساريا وقت كل طلب، لا بالرسم الحالي.')
+    qd_is_configured = fields.Boolean(
+        string='الربط مكتمل', compute='_compute_qd_is_configured',
+        search='_search_qd_is_configured', compute_sudo=True,
+        help='له مفتاح API ورابط إبلاغ - أي يستطيع إرسال الطلبات '
+             'واستقبال تغيّر الحالة.')
+
     _qd_api_key_uniq = models.Constraint(
         'unique(api_key)',
         'مفتاح الـAPI مستخدم لعميل آخر بالفعل - لكل سوبرماركت مفتاحه.',
     )
+
+    @api.depends('api_key', 'webhook_url')
+    def _compute_qd_is_configured(self):
+        for rec in self:
+            data = rec.sudo()
+            rec.qd_is_configured = bool(data.api_key and data.webhook_url)
+
+    def _search_qd_is_configured(self, operator, value):
+        """محسوب غير مخزَّن لا يُبحث فيه بلا هذه الدالة - والفلتر
+        المطلوب هو "من ربطه ناقص" قبل أن يُرسل أول طلب."""
+        if operator not in ('in', 'not in'):
+            raise NotImplementedError(operator)
+        wanted = True in value
+        if operator == 'not in':
+            wanted = not wanted
+        ready = ['&', ('api_key', '!=', False), ('webhook_url', '!=', False)]
+        if wanted:
+            return ready
+        return ['!'] + ready
+
+    def _compute_qd_month_figures(self):
+        """استعلامان مُجمَّعان للقائمة كلها، لا استعلام لكل سطر."""
+        Order = self.env['quick.delivery.order'].sudo()
+        month_start = _month_start_utc(self.env)
+        domain = [('client_id', 'in', self.ids), ('state', '=', 'delivered'),
+                  ('delivered_at', '>=', month_start)]
+        groups = Order._read_group(
+            domain, groupby=['client_id'],
+            aggregates=['__count', 'delivery_fee:sum'])
+        by_client = {client.id: (count, fees)
+                     for client, count, fees in groups}
+        for rec in self:
+            count, fees = by_client.get(rec.id, (0, 0.0))
+            rec.qd_month_orders = count
+            rec.qd_month_fees = fees
+
+    def action_qd_view_orders(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'طلبات %s' % self.name,
+            'res_model': 'quick.delivery.order',
+            'view_mode': 'list,form',
+            'domain': [('client_id', '=', self.id)],
+            'context': {'search_default_group_state': 1},
+        }
 
 
 class QuickDeliveryOrder(models.Model):
@@ -121,6 +195,18 @@ class QuickDeliveryOrder(models.Model):
         ('COD', 'دفع عند الاستلام')
     ], default='PREPAID', string='طريقة الدفع', required=True)
     cod_amount = fields.Float(string='مبلغ التحصيل (SAR)', default=0.0)
+    # الرسم والعمولة يُثبَّتان على الطلب لا يُقرآن من الإعداد الحالي:
+    # رفعُ رسم العثيم من 12 إلى 15 كان يُعيد كتابة كل تقرير سابق
+    # بأثر رجعي، فيصير حساب الشهر الماضي رقماً لم يُتَّفق عليه.
+    delivery_fee = fields.Float(
+        string='رسم التوصيل المحتسب (SAR)', readonly=True, copy=False,
+        help='رسم السوبرماركت كما كان وقت إنشاء الطلب.')
+    driver_commission = fields.Float(
+        string='عمولة المندوب المحتسبة (SAR)', readonly=True, copy=False,
+        help='عمولة المندوب كما كانت وقت إسناد الطلب إليه.')
+    net_revenue = fields.Float(
+        string='الصافي (SAR)', compute='_compute_net_revenue', store=True,
+        help='رسم التوصيل ناقص عمولة المندوب.')
     is_cod_settled = fields.Boolean(string='تمت تسوية العهدة', default=False)
     cod_settled_at = fields.Datetime(string='تاريخ تسوية العهدة')
 
@@ -220,6 +306,11 @@ class QuickDeliveryOrder(models.Model):
                 raise ValidationError(_('مدة التوصيل المستهدفة يجب أن تكون '
                                         'أكبر من صفر.'))
 
+    @api.depends('delivery_fee', 'driver_commission')
+    def _compute_net_revenue(self):
+        for rec in self:
+            rec.net_revenue = rec.delivery_fee - rec.driver_commission
+
     @api.depends('create_date', 'sla_minutes')
     def _compute_deadline(self):
         for rec in self:
@@ -238,6 +329,9 @@ class QuickDeliveryOrder(models.Model):
                 ) or 'QCK-%s' % fields.Datetime.now().strftime('%Y%m%d%H%M%S%f')
         records = super().create(vals_list)
         for rec in records:
+            if not rec.delivery_fee:
+                rec.sudo().delivery_fee = \
+                    rec.client_id.sudo().delivery_fee_per_order
             # الرمز يُكتب بـsudo بعد الإنشاء، لا في vals: الحقل محصور
             # بمجموعة المدير، فكتابته في vals تمنع غرفة العمليات من
             # إنشاء طلب يدوياً بخطأ صلاحية.
@@ -263,6 +357,12 @@ class QuickDeliveryOrder(models.Model):
 
         res = super().write(vals)
 
+        if 'driver_id' in vals:
+            # العمولة تُثبَّت لحظة الإسناد، وتُصفَّر إن سُحب المندوب.
+            for rec in self:
+                rec.sudo().driver_commission = (
+                    rec.driver_id.sudo().commission_per_order
+                    if rec.driver_id else 0.0)
         if previous_drivers:
             (previous_drivers - self.driver_id).sudo()._qd_refresh_status()
         if new_state and new_state not in self.OPEN_STATES:

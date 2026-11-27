@@ -17,8 +17,12 @@
                 <field name="customer_name"/>
                 <field name="driver_id"/>
                 <field name="delivery_otp"/>
-                <field name="cod_amount"/>
+                <field name="cod_amount" sum="مبلغ التحصيل"/>
                 <field name="is_cod_settled"/>
+                <field name="delivery_fee" sum="رسوم التوصيل" optional="show"/>
+                <field name="driver_commission" sum="عمولة المندوبين"
+                       optional="hide"/>
+                <field name="net_revenue" sum="الصافي" optional="hide"/>
                 <field name="state" widget="badge"/>
             </list>
         </field>
@@ -64,6 +68,9 @@
                             <field name="pod_photo" widget="image" class="oe_avatar"/>
                         </group>
                         <group string="التحصيل والعهدة والتعذر">
+                            <field name="delivery_fee"/>
+                            <field name="driver_commission"/>
+                            <field name="net_revenue"/>
                             <field name="bags_count"/>
                             <field name="payment_method"/>
                             <field name="cod_amount"/>
@@ -78,10 +85,82 @@
         </field>
     </record>
 
+
+    <record id="view_quick_delivery_order_search" model="ir.ui.view">
+        <field name="name">quick.delivery.order.search</field>
+        <field name="model">quick.delivery.order</field>
+        <field name="arch" type="xml">
+            <!-- لم تكن للطلبات شاشة بحث إطلاقاً: مع سوبرماركت واحد
+                 تُحتمل القائمة، ومع العثيم وبندة وغيرهما تصير غير
+                 قابلة للقراءة - لا فلترة بالعميل ولا تجميع. -->
+            <search string="بحث الطلبات">
+                <field name="name" string="رقم التتبع أو طلب التاجر"
+                       filter_domain="['|', ('name', 'ilike', self),
+                                       ('merchant_order_id', 'ilike', self)]"/>
+                <field name="client_id"/>
+                <field name="customer_name"
+                       filter_domain="['|', ('customer_name', 'ilike', self),
+                                       ('customer_phone', 'ilike', self)]"
+                       string="العميل أو جواله"/>
+                <field name="driver_id"/>
+                <field name="store_name"/>
+
+                <filter name="filter_open" string="قيد التنفيذ"
+                        domain="[('state', 'in', ['searching_driver',
+                                 'driver_assigned', 'arrived_at_store',
+                                 'picked_up'])]"/>
+                <filter name="filter_unassigned" string="بلا مندوب"
+                        domain="[('state', '=', 'searching_driver')]"/>
+                <filter name="filter_late" string="تجاوزت الوقت"
+                        domain="[('sla_deadline', '&lt;',
+                                  datetime.datetime.now()
+                                  .strftime('%Y-%m-%d %H:%M:%S')),
+                                 ('state', 'in', ['searching_driver',
+                                  'driver_assigned', 'arrived_at_store',
+                                  'picked_up'])]"/>
+                <separator/>
+                <filter name="filter_delivered" string="مسلَّمة"
+                        domain="[('state', '=', 'delivered')]"/>
+                <filter name="filter_failed" string="تعذّر تسليمها"
+                        domain="[('state', 'in', ['failed', 'cancelled'])]"/>
+                <separator/>
+                <filter name="filter_cod" string="تحصيل نقدي"
+                        domain="[('payment_method', '=', 'COD')]"/>
+                <filter name="filter_cod_unsettled" string="عهدة غير مسوّاة"
+                        domain="[('payment_method', '=', 'COD'),
+                                 ('state', '=', 'delivered'),
+                                 ('is_cod_settled', '=', False)]"/>
+                <separator/>
+                <filter name="filter_today" string="اليوم"
+                        domain="[('create_date', '&gt;=',
+                                  context_today().strftime('%Y-%m-%d 00:00:00'))]"/>
+                <filter name="filter_this_month" string="هذا الشهر"
+                        domain="[('create_date', '&gt;=',
+                                  (context_today() + relativedelta(day=1))
+                                  .strftime('%Y-%m-%d 00:00:00'))]"/>
+                <separator/>
+                <filter name="group_client" string="السوبرماركت"
+                        context="{'group_by': 'client_id'}"/>
+                <filter name="group_state" string="الحالة"
+                        context="{'group_by': 'state'}"/>
+                <filter name="group_driver" string="المندوب"
+                        context="{'group_by': 'driver_id'}"/>
+                <filter name="group_store" string="الفرع"
+                        context="{'group_by': 'store_name'}"/>
+                <filter name="group_payment" string="طريقة الدفع"
+                        context="{'group_by': 'payment_method'}"/>
+                <filter name="group_month" string="الشهر"
+                        context="{'group_by': 'create_date:month'}"/>
+            </search>
+        </field>
+    </record>
+
     <record id="action_quick_delivery_orders" model="ir.actions.act_window">
         <field name="name">جميع طلبات التوصيل</field>
         <field name="res_model">quick.delivery.order</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_quick_delivery_order_search"/>
+        <field name="context">{'search_default_filter_today': 1}</field>
     </record>
 
     <record id="view_partner_form_qcommerce" model="ir.ui.view">
@@ -248,6 +327,53 @@
         </field>
     </record>
 
+
+    <!-- ============ السوبرماركتات (عملاء الـAPI) ============ -->
+    <record id="view_qcommerce_client_list" model="ir.ui.view">
+        <field name="name">res.partner.qcommerce.list</field>
+        <field name="model">res.partner</field>
+        <field name="arch" type="xml">
+            <list string="السوبرماركتات" decoration-warning="not qd_is_configured">
+                <field name="name"/>
+                <field name="phone" optional="show"/>
+                <field name="qd_is_configured" string="الربط مكتمل"/>
+                <field name="delivery_fee_per_order"
+                       groups="quick_delivery.group_qd_manager"/>
+                <field name="qd_month_orders" sum="طلبات الشهر"/>
+                <field name="qd_month_fees" sum="رسوم الشهر"/>
+                <button name="action_qd_view_orders" type="object"
+                        icon="fa-list" title="طلبات هذا السوبرماركت"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qcommerce_client_search" model="ir.ui.view">
+        <field name="name">res.partner.qcommerce.search</field>
+        <field name="model">res.partner</field>
+        <field name="arch" type="xml">
+            <search string="بحث السوبرماركتات">
+                <field name="name"/>
+                <filter name="filter_not_configured" string="ربطه ناقص"
+                        domain="[('qd_is_configured', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qcommerce_clients" model="ir.actions.act_window">
+        <field name="name">السوبرماركتات (عملاء الـAPI)</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('is_qcommerce_client', '=', True)]</field>
+        <field name="context">{'default_is_qcommerce_client': True}</field>
+        <field name="search_view_id" ref="view_qcommerce_client_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">أضف أول سوبرماركت</p>
+            <p>لكل سوبرماركت مفتاح API خاص ورابط إبلاغ خاص ورسم توصيل
+               خاص. رقم الطلب فريد داخل كل عميل، فلا يتعارض
+               <b>SO-100</b> من العثيم مع <b>SO-100</b> من بندة.</p>
+        </field>
+    </record>
+
     <!-- ============ صادر إبلاغ التاجر (Webhook) ============ -->
     <record id="view_quick_delivery_webhook_list" model="ir.ui.view">
         <field name="name">quick.delivery.webhook.list</field>
@@ -307,8 +433,10 @@
               groups="quick_delivery.group_qd_dispatcher"/>
     <menuitem id="menu_quick_orders" name="سجل الطلبات" parent="menu_quick_delivery_root" action="action_quick_delivery_orders" sequence="2"
               groups="quick_delivery.group_qd_dispatcher"/>
+    <menuitem id="menu_quick_clients" name="السوبرماركتات" parent="menu_quick_delivery_root" action="action_qcommerce_clients" sequence="4"
+              groups="quick_delivery.group_qd_dispatcher"/>
     <menuitem id="menu_quick_drivers" name="المندوبون" parent="menu_quick_delivery_root" action="action_quick_delivery_drivers" sequence="3"
               groups="quick_delivery.group_qd_dispatcher"/>
-    <menuitem id="menu_quick_webhooks" name="إبلاغات التاجر (Webhook)" parent="menu_quick_delivery_root" action="action_quick_delivery_webhooks" sequence="4"
+    <menuitem id="menu_quick_webhooks" name="إبلاغات التاجر (Webhook)" parent="menu_quick_delivery_root" action="action_quick_delivery_webhooks" sequence="5"
               groups="quick_delivery.group_qd_manager"/>
 </odoo>
