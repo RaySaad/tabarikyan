@@ -120,6 +120,10 @@ class ResPartner(models.Model):
              'الذي كان ساريا وقت كل طلب، لا بالرسم الحالي.')
     # الأرقام الحيّة لكل سوبرماركت: الكروت تعرضها، فتُقرأ حالة كل
     # شركة من نظرة واحدة بدل فتح قائمة وفلترتها.
+    qd_dedicated_driver_ids = fields.Many2many(
+        'quick.delivery.driver', 'qd_driver_client_rel', 'client_id',
+        'driver_id', string='المندوبون المخصَّصون',
+        help='من خُصّص لهذه الشركة وحدها. فارغ = كل المندوبين يخدمونها.')
     qd_active_orders = fields.Integer(
         string='طلبات جارية', compute='_compute_qd_live_figures',
         compute_sudo=True)
@@ -640,10 +644,14 @@ class QuickDeliveryOrder(models.Model):
             # المؤرشف مستبعد تلقائياً من search: مندوبٌ أُوقف لا
             # يُسنَد له شيء دون أن نكتب شرطاً لذلك.
             Driver = self.env['quick.delivery.driver'].sudo()
+            # المخصَّص لشركة أخرى يُستبعد هنا لا بعد الترتيب: وإلا رُشّح
+            # أقربُ مندوب ثم رُفض، فظهر الطلب بلا مندوب وأقربُهم واقف.
             candidates = Driver.search([
                 ('driver_status', '=', 'online'),
                 ('current_lat', '!=', 0.0),
                 ('current_lng', '!=', 0.0),
+                '|', ('client_ids', '=', False),
+                ('client_ids', 'in', rec.client_id.id),
             ])
             if not candidates:
                 rec._qd_explain_no_driver(Driver, radius)
@@ -682,6 +690,19 @@ class QuickDeliveryOrder(models.Model):
         المستخدم، ولكلّ سبب قرارٌ مختلف.
         """
         self.ensure_one()
+        # مندوبون متاحون لكنهم مخصَّصون لشركات أخرى: سببٌ مختلف
+        # تماماً، وقراره مختلف (ارفع التخصيص أو عيّن مندوباً للشركة).
+        dedicated_elsewhere = Driver.search_count([
+            ('driver_status', '=', 'online'),
+            ('client_ids', '!=', False),
+            ('client_ids', 'not in', self.client_id.id),
+        ])
+        if not ranked and dedicated_elsewhere:
+            note = _('المندوبون المتاحون مخصَّصون لشركات أخرى - خصّص '
+                     'مندوباً لـ%s أو ارفع التخصيص.') % self.client_id.name
+            if self.dispatch_note != note:
+                self.sudo().dispatch_note = note
+            return
         if ranked:
             nearest = ranked[0][0]
             note = _('أقرب مندوب متاح يبعد %(km).1f كم - والنطاق '

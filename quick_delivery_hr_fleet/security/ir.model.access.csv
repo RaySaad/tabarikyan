@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_qd_make_driver,quick.delivery.make.driver,model_quick_delivery_make_driver,quick_delivery.group_qd_manager,1,1,1,1

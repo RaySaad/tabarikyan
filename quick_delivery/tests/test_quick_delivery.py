@@ -1486,3 +1486,67 @@ class TestRateLimit(QuickDeliveryCommon):
         self._shift_window('ident-OLD', days=3)
         self.Throttle.cron_purge()
         self.assertFalse(counter.exists())
+
+
+@tagged('post_install', '-at_install')
+class TestDedicatedDrivers(QuickDeliveryCommon):
+    """تخصيص المندوب لسوبرماركت: لا يصله طلب غيرها."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.panda = cls.env['res.partner'].create({
+            'name': 'بندة المخصَّصة', 'is_qcommerce_client': True,
+            'api_key': 'DEDICATED-KEY-0123456789'})
+
+    def test_an_unassigned_driver_serves_everyone(self):
+        """الضابط: الفارغ يعني الجميع، لا لا أحد."""
+        self.assertTrue(self.driver.serves_all_clients)
+        order = self._order(merchant_order_id='DED-ALL',
+                            client_id=self.panda.id)
+        self.assertEqual(order.driver_id, self.driver)
+
+    def test_a_dedicated_driver_takes_his_own_merchant(self):
+        self.driver.client_ids = [(6, 0, [self.panda.id])]
+        order = self._order(merchant_order_id='DED-OWN',
+                            client_id=self.panda.id)
+        self.assertEqual(order.driver_id, self.driver)
+
+    def test_a_dedicated_driver_is_never_given_another_merchant(self):
+        """العثيم يشترط مندوبين مخصَّصين: لا يُؤخذون لبندة."""
+        self.driver.client_ids = [(6, 0, [self.panda.id])]
+        order = self._order(merchant_order_id='DED-OTHER',
+                            client_id=self.client.id)
+        self.assertFalse(order.driver_id,
+                         'أُسند مندوب مخصَّص لشركة أخرى')
+
+    def test_the_reason_names_the_dedication(self):
+        """ولكلّ سبب قرار: خصّص مندوباً أو ارفع التخصيص."""
+        self.driver.client_ids = [(6, 0, [self.panda.id])]
+        order = self._order(merchant_order_id='DED-WHY',
+                            client_id=self.client.id)
+        self.assertIn('مخصَّصون', order.dispatch_note)
+        self.assertIn(self.client.name, order.dispatch_note)
+
+    def test_serving_several_merchants(self):
+        self.driver.client_ids = [(6, 0, [self.panda.id, self.client.id])]
+        first = self._order(merchant_order_id='DED-M1',
+                            client_id=self.panda.id)
+        self.assertEqual(first.driver_id, self.driver)
+        first.write({'state': 'cancelled'})
+        second = self._order(merchant_order_id='DED-M2',
+                             client_id=self.client.id)
+        self.assertEqual(second.driver_id, self.driver)
+
+    def test_the_merchant_lists_its_dedicated_drivers(self):
+        self.driver.client_ids = [(6, 0, [self.panda.id])]
+        self.panda.invalidate_recordset()
+        self.assertIn(self.driver, self.panda.qd_dedicated_driver_ids)
+
+    def test_searching_dedicated_drivers(self):
+        self.driver.client_ids = [(6, 0, [self.panda.id])]
+        dedicated = self.Driver.search([('serves_all_clients', '=', False)])
+        self.assertIn(self.driver, dedicated)
+        self.assertNotIn(
+            self.driver, self.Driver.search(
+                [('serves_all_clients', '=', True)]))

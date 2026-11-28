@@ -63,6 +63,17 @@ class QuickDeliveryDriver(models.Model):
     login_key = fields.Char(
         string='مفتاح الدخول', compute='_compute_login_key',
         store=True, index=True, copy=False)
+    # تخصيص المندوب لشركة: فارغ = يخدم الجميع، ومحدَّد = لا يصله طلب
+    # غيرها. العثيم قد يشترط مندوبين مخصَّصين له، وبندة لا.
+    client_ids = fields.Many2many(
+        'res.partner', 'qd_driver_client_rel', 'driver_id', 'client_id',
+        string='يخدم هذه الشركات',
+        domain=[('is_qcommerce_client', '=', True)],
+        help='اتركه فارغاً ليخدم كل الشركات. وتحديدُ شركة يمنع عنه '
+             'طلبات غيرها في الإسناد التلقائي.')
+    serves_all_clients = fields.Boolean(
+        string='يخدم الجميع', compute='_compute_serves_all_clients',
+        search='_search_serves_all_clients')
     vehicle_plate = fields.Char(string='لوحة المركبة')
     notes = fields.Text(string='ملاحظات')
 
@@ -142,6 +153,24 @@ class QuickDeliveryDriver(models.Model):
     def _phone_key(self, phone):
         digits = re.sub(r'\D', '', phone or '')
         return digits[-9:] if len(digits) >= 9 else digits
+
+    @api.depends('client_ids')
+    def _compute_serves_all_clients(self):
+        for rec in self:
+            rec.serves_all_clients = not rec.client_ids
+
+    def _search_serves_all_clients(self, operator, value):
+        if operator not in ('in', 'not in'):
+            raise NotImplementedError(operator)
+        wanted = True in value
+        if operator == 'not in':
+            wanted = not wanted
+        return [('client_ids', '=' if wanted else '!=', False)]
+
+    def _qd_serves(self, client):
+        """هل يخدم هذا المندوب هذه الشركة؟"""
+        self.ensure_one()
+        return not self.client_ids or client in self.client_ids
 
     @api.depends('phone')
     def _compute_login_key(self):

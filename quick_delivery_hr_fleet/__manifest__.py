@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'التوصيل الفوري: ربط المندوبين بالموظفين والأسطول',
-    'version': '19.0.1.0.0',
+    'version': '19.0.2.0.0',
     'author': 'Tabarikyan',
     'category': 'Operations/Logistics',
     'summary': 'يربط مندوب التوصيل بملف الموظف وبمركبة الأسطول',
@@ -10,6 +10,10 @@
     # يُفرض عليه تطبيقان.
     'depends': ['quick_delivery', 'hr', 'fleet'],
     'data': [
+        'security/ir.model.access.csv',
+        # المعالج قبل الشاشات: زر بطاقة الموظف يشير إلى إجراء المعالج،
+        # والترتيب العكسي يُسقط التثبيت بـ"External ID not found".
+        'views/make_driver_views.xml',
         'views/driver_link_views.xml',
     ],
     'installable': True,

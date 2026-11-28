@@ -61,6 +61,15 @@
                         <span class="o_stat_text">توصيل فوري</span>
                     </div>
                 </button>
+                <button name="%(quick_delivery_hr_fleet.action_make_driver)d" type="action"
+                        class="oe_stat_button" icon="fa-plus"
+                        invisible="qd_is_driver"
+                        groups="quick_delivery.group_qd_manager">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">اجعله</span>
+                        <span class="o_stat_text">مندوب توصيل</span>
+                    </div>
+                </button>
                 <field name="qd_is_driver" invisible="1"/>
                 <field name="qd_driver_id" invisible="1"/>
             </xpath>
