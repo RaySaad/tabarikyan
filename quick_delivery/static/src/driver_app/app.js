@@ -10,8 +10,11 @@
     var API_LOGIN = '/api/v1/driver/login';
     var API_LOGOUT = '/api/v1/driver/logout';
     var API_STATE = '/api/v1/driver/state';
+    var API_PUSH_KEY = '/api/v1/driver/push/key';
+    var API_PUSH_SUB = '/api/v1/driver/push/subscribe';
     var SESSION_KEY = 'qd_driver_session';
     var POLL_MS = 8000;
+    var pushSyncing = false;
     var LATE_SECONDS = 600;
 
     var session = null;        // {token, name}
@@ -163,9 +166,15 @@
         // يُطلب عند بدء الوردية لا عند فتح الصفحة: السياق واضح
         // ("لتصلك الطلبات")، والطلب بلا سياق يُرفض عادةً.
         try {
-            Notification.requestPermission().then(renderNotifyBar);
+            Notification.requestPermission().then(function (result) {
+                renderNotifyBar();
+                if (result === 'granted') { ensurePushSubscription(); }
+            });
         } catch (err) {
-            Notification.requestPermission(renderNotifyBar);
+            Notification.requestPermission(function (result) {
+                renderNotifyBar();
+                if (result === 'granted') { ensurePushSubscription(); }
+            });
         }
     }
 
@@ -223,6 +232,65 @@
             error.offline = true;
             throw error;
         });
+    }
+
+    // ==================================================================
+    // الدفع من الخادم (Web Push)
+    // ==================================================================
+    // تنبيه الصفحة لا يعمل إلا والتطبيق مفتوح: لا كود يعمل بعد إغلاقه
+    // فلا أحد يسأل الخادم. الاشتراك هنا يجعل الخادم هو من يدفع، فيوقظ
+    // المتصفحُ العاملَ الخدمي ولو كان الجوال في الجيب والتطبيق مغلقاً.
+    function urlBase64ToUint8Array(value) {
+        var padded = (value + '='.repeat((4 - value.length % 4) % 4))
+            .replace(/-/g, '+').replace(/_/g, '/');
+        var raw = window.atob(padded);
+        var output = new Uint8Array(raw.length);
+        for (var i = 0; i < raw.length; i++) {
+            output[i] = raw.charCodeAt(i);
+        }
+        return output;
+    }
+
+    function ensurePushSubscription() {
+        if (!session || !swRegistration || !swRegistration.pushManager) {
+            return;
+        }
+        if (!('Notification' in window)
+                || Notification.permission !== 'granted') {
+            return;
+        }
+        if (pushSyncing) { return; }
+        pushSyncing = true;
+
+        swRegistration.pushManager.getSubscription()
+            .then(function (existing) {
+                if (existing) { return existing; }
+                return window.fetch(API_PUSH_KEY)
+                    .then(function (response) { return response.json(); })
+                    .then(function (data) {
+                        if (!data || !data.public_key) {
+                            throw new Error('لا مفتاح دفع');
+                        }
+                        return swRegistration.pushManager.subscribe({
+                            // إلزاميّ في كروم: كل دفعة تُنتج إشعاراً
+                            // مرئياً، ولا دفع صامت يتتبّع المندوب.
+                            userVisibleOnly: true,
+                            applicationServerKey:
+                                urlBase64ToUint8Array(data.public_key)
+                        });
+                    });
+            })
+            .then(function (subscription) {
+                // التسجيل يتكرّر عند كل إقلاع عمداً: الخادم يُحدِّث ولا
+                // يُكرّر، وجوالٌ انتقل إلى مندوب آخر ينتقل معه تسجيله.
+                return callApi(API_PUSH_SUB, subscription.toJSON());
+            })
+            .then(function () { pushSyncing = false; })
+            .catch(function () {
+                // لا رسالة للمندوب: التنبيه داخل التطبيق يعمل على كل
+                // حال، وهذه طبقةٌ فوقه لا بديلٌ عنه.
+                pushSyncing = false;
+            });
     }
 
     function handleApiError(error) {
@@ -386,6 +454,7 @@
 
     function startPolling() {
         stopPolling();
+        ensurePushSubscription();
         pollTimer = window.setInterval(function () { sync(null); }, POLL_MS);
         tickTimer = window.setInterval(tickCountdown, 1000);
     }
@@ -677,7 +746,10 @@
         // تُرسَل من مسار أودو لا من ملف static.
         navigator.serviceWorker.register('/driver/sw.js', { scope: '/driver' })
             .then(function () { return navigator.serviceWorker.ready; })
-            .then(function (registration) { swRegistration = registration; })
+            .then(function (registration) {
+                swRegistration = registration;
+                ensurePushSubscription();
+            })
             .catch(function () { /* يعمل التطبيق بلا تخزين مؤقت */ });
     }
 

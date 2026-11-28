@@ -689,6 +689,59 @@ class QuickCommerceController(http.Controller):
             driver, data.get('lat'), data.get('lng'),
             data.get('set_status')))
 
+    @http.route('/api/v1/driver/push/key', type='http', auth='none',
+                methods=['GET'], csrf=False, save_session=False,
+                readonly=True)
+    @api_endpoint
+    def driver_push_key(self, **kwargs):
+        """المفتاح العام لـVAPID - عامٌّ بطبيعته، فلا جلسة له.
+
+        التطبيق يحتاجه قبل الاشتراك، والاشتراك يسبق تسجيل الدخول
+        أحياناً (يُسأل الإذن أول فتح).
+        """
+        return _json_response({
+            'public_key': request.env['quick.delivery.push.config'].sudo(
+            )._vapid_public(),
+        })
+
+    @http.route('/api/v1/driver/push/subscribe', type='http', auth='none',
+                methods=['POST'], csrf=False, save_session=False,
+                readonly=False)
+    @api_endpoint
+    def driver_push_subscribe(self, **kwargs):
+        """يربط جهاز المندوب بحسابه.
+
+        الاشتراك من المتصفح يُعرَّف بنقطة الدفع وحدها، ومن يملك الجلسة
+        هو صاحبها - فلا يُقبل تسجيل جهاز باسم مندوب آخر.
+        """
+        driver = _session_driver()
+        _throttle('driver', 'push-%s' % driver.id)
+        data = _body_json()
+        keys = data.get('keys') or {}
+        device = request.env['quick.delivery.push.subscription'].sudo(
+        )._register_device(
+            driver,
+            data.get('endpoint'),
+            keys.get('p256dh'),
+            keys.get('auth'),
+            request.httprequest.headers.get('User-Agent', ''),
+        )
+        return _json_response({'status': 'subscribed', 'device_id': device.id})
+
+    @http.route('/api/v1/driver/push/unsubscribe', type='http', auth='none',
+                methods=['POST'], csrf=False, save_session=False,
+                readonly=False)
+    @api_endpoint
+    def driver_push_unsubscribe(self, **kwargs):
+        driver = _session_driver()
+        data = _body_json()
+        endpoint = (data.get('endpoint') or '').strip()
+        devices = request.env['quick.delivery.push.subscription'].sudo(
+        ).search([('driver_id', '=', driver.id),
+                  ('endpoint', '=', endpoint)])
+        devices.unlink()
+        return _json_response({'status': 'unsubscribed'})
+
     @http.route('/api/v1/driver/order/<int:order_id>/status', type='http',
                 auth='none', methods=['POST'], csrf=False, save_session=False,
                 readonly=False)
@@ -747,6 +800,9 @@ class QuickCommerceController(http.Controller):
         }
         if order:
             payload['order'] = _order_payload(order)
+            # أول ظهور للطلب على جواله: هذه لحظة "علم به" التي نقيس
+            # بها زمن وصول الإشعار. تُكتب مرة واحدة لا في كل استطلاع.
+            order._mark_seen_by_driver()
         return payload
 
     def _apply_driver_state(self, driver, order, new_state, otp_code=None,

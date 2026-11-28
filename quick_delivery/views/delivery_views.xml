@@ -303,6 +303,12 @@
                             string="تسوية عهدة التحصيل (COD)" class="btn-success"
                             groups="quick_delivery.group_qd_manager"
                             invisible="cod_custody_balance == 0"/>
+                    <button name="action_qd_test_push" type="object"
+                            string="جرّب الإشعار الآن"
+                            groups="quick_delivery.group_qd_manager"
+                            invisible="push_device_count == 0"
+                            help="يُرسل إشعاراً تجريبياً إلى جواله فوراً - قبل أن يضيع طلب حقيقي."/>
+                    <field name="push_device_count" invisible="1"/>
                     <field name="driver_status" widget="statusbar"
                            statusbar_visible="offline,online,busy"/>
                 </header>
@@ -813,6 +819,84 @@
         <field name="context">{'search_default_filter_not_sent': 1}</field>
     </record>
 
+    <!-- ============ إشعارات المندوبين (Web Push) ============ -->
+    <record id="view_quick_delivery_push_list" model="ir.ui.view">
+        <field name="name">quick.delivery.push.list</field>
+        <field name="model">quick.delivery.push</field>
+        <field name="arch" type="xml">
+            <list string="إشعارات المندوبين" create="0"
+                  decoration-danger="state == 'failed'"
+                  decoration-warning="state == 'no_device'"
+                  decoration-muted="state == 'sent'">
+                <header>
+                    <button name="action_retry" type="object"
+                            string="أعد الإرسال"
+                            groups="quick_delivery.group_qd_manager"/>
+                </header>
+                <field name="create_date" string="وقت الإنشاء"/>
+                <field name="driver_id"/>
+                <field name="order_id"/>
+                <field name="kind"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'sent'"
+                       decoration-danger="state == 'failed'"
+                       decoration-warning="state == 'no_device'"/>
+                <field name="device_count" string="أجهزة"/>
+                <field name="attempts" string="محاولات"/>
+                <field name="sent_at" optional="show"/>
+                <field name="last_error" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_quick_delivery_push_search" model="ir.ui.view">
+        <field name="name">quick.delivery.push.search</field>
+        <field name="model">quick.delivery.push</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="driver_id"/>
+                <field name="order_id"/>
+                <filter name="filter_not_sent" string="لم يصل"
+                        domain="[('state', '!=', 'sent')]"/>
+                <filter name="filter_no_device" string="بلا جهاز مسجَّل"
+                        domain="[('state', '=', 'no_device')]"/>
+                <filter name="group_driver" string="المندوب"
+                        context="{'group_by': 'driver_id'}"/>
+                <filter name="group_state" string="الحالة"
+                        context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_quick_delivery_push" model="ir.actions.act_window">
+        <field name="name">إشعارات المندوبين</field>
+        <field name="res_model">quick.delivery.push</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_filter_not_sent': 1}</field>
+    </record>
+
+    <record id="view_quick_delivery_push_sub_list" model="ir.ui.view">
+        <field name="name">quick.delivery.push.subscription.list</field>
+        <field name="model">quick.delivery.push.subscription</field>
+        <field name="arch" type="xml">
+            <list string="أجهزة الإشعارات" create="0"
+                  decoration-muted="not active">
+                <field name="driver_id"/>
+                <field name="user_agent" string="الجهاز"/>
+                <field name="last_sent_at"/>
+                <field name="fail_count" string="إخفاقات"/>
+                <field name="last_error" optional="hide"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_quick_delivery_push_sub" model="ir.actions.act_window">
+        <field name="name">أجهزة الإشعارات</field>
+        <field name="res_model">quick.delivery.push.subscription</field>
+        <field name="view_mode">list</field>
+    </record>
+
     <!-- ============ صادر إبلاغ التاجر (Webhook) ============ -->
     <record id="view_quick_delivery_webhook_list" model="ir.ui.view">
         <field name="name">quick.delivery.webhook.list</field>
@@ -883,6 +967,10 @@
               groups="quick_delivery.group_qd_dispatcher"/>
     <menuitem id="menu_quick_messages" name="رسائل العملاء" parent="menu_quick_delivery_root" action="action_quick_delivery_messages" sequence="6"
               groups="quick_delivery.group_qd_dispatcher"/>
+    <menuitem id="menu_quick_push" name="إشعارات المندوبين" parent="menu_quick_delivery_root" action="action_quick_delivery_push" sequence="9"
+              groups="quick_delivery.group_qd_dispatcher"/>
+    <menuitem id="menu_quick_push_devices" name="أجهزة الإشعارات" parent="menu_quick_delivery_root" action="action_quick_delivery_push_sub" sequence="10"
+              groups="quick_delivery.group_qd_manager"/>
     <menuitem id="menu_quick_channels" name="قنوات الإبلاغ" parent="menu_quick_delivery_root" action="action_quick_delivery_channels" sequence="8"
               groups="quick_delivery.group_qd_manager"/>
     <menuitem id="menu_quick_webhooks" name="إبلاغات التاجر (Webhook)" parent="menu_quick_delivery_root" action="action_quick_delivery_webhooks" sequence="7"

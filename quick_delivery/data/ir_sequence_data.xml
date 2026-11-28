@@ -44,6 +44,19 @@
             <field name="active" eval="True"/>
         </record>
 
+        <!-- إعادة محاولة إشعارات المندوبين. الدفع يُرسل فور الإسناد
+             بعد تثبيت المعاملة؛ وهذا للمتعثّر: خدمة دفعٍ متوقفة، أو
+             شبكة الخادم انقطعت تلك اللحظة. -->
+        <record id="ir_cron_flush_driver_push" model="ir.cron">
+            <field name="name">Quick Delivery: Retry Driver Push</field>
+            <field name="model_id" ref="model_quick_delivery_push"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_flush_pending()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">minutes</field>
+            <field name="active" eval="True"/>
+        </record>
+
         <record id="ir_cron_flush_webhooks" model="ir.cron">
             <field name="name">Quick Delivery: Retry Merchant Webhooks</field>
             <field name="model_id" ref="model_quick_delivery_webhook"/>

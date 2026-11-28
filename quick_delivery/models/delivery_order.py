@@ -426,6 +426,17 @@ class QuickDeliveryOrder(models.Model):
     driver_id = fields.Many2one('quick.delivery.driver',
                                 string='المندوب المسند', index=True,
                                 ondelete='restrict')
+    # قياس زمن الوصول: متى أُسند، ومتى علم به جوال المندوب فعلاً.
+    # بلا هذين الرقمين يبقى السؤال "هل الإشعار يصل؟" رأياً يتبادله
+    # الناس - ومعهما يصير جدولاً يُقرأ قبل شراء تطبيقٍ أصلي.
+    assigned_at = fields.Datetime(string='وقت الإسناد', readonly=True,
+                                  copy=False)
+    driver_seen_at = fields.Datetime(string='علم به المندوب', readonly=True,
+                                     copy=False)
+    notify_seconds = fields.Integer(
+        string='ثوانٍ حتى علم المندوب', compute='_compute_notify_seconds',
+        store=True, readonly=True,
+        help='الفرق بين الإسناد وأول مرة ظهر فيها الطلب على جواله.')
     state = fields.Selection([
         ('searching_driver', 'جاري البحث عن مندوب'),
         ('driver_assigned', 'تم تعيين مندوب'),
@@ -562,10 +573,34 @@ class QuickDeliveryOrder(models.Model):
         # اسمه، وطلبٌ بلا مندوب ليس عند العميل منه خبر بعد.
         if new_state == 'driver_assigned' or (
                 'driver_id' in vals and vals.get('driver_id')):
-            self.filtered(
-                lambda rec: rec.state == 'driver_assigned'
-            )._queue_customer_sms()
+            assigned = self.filtered(
+                lambda rec: rec.state == 'driver_assigned')
+            assigned._queue_customer_sms()
+            # ختم الإسناد قبل الإشعار: الرقم الذي نقيس به زمن الوصول
+            # يجب أن يسبق الدفع لا أن يتبعه.
+            assigned._stamp_assignment()
+            assigned._queue_driver_push()
         return res
+
+    @api.depends('assigned_at', 'driver_seen_at')
+    def _compute_notify_seconds(self):
+        for rec in self:
+            if rec.assigned_at and rec.driver_seen_at:
+                delta = rec.driver_seen_at - rec.assigned_at
+                rec.notify_seconds = max(0, int(delta.total_seconds()))
+            else:
+                rec.notify_seconds = 0
+
+    def _mark_seen_by_driver(self):
+        """أول ظهور للطلب على جوال المندوب - يُكتب مرة واحدة.
+
+        الكتابة من المسار العام تحتاج sudo، والشرط يمنع إعادة ضبط
+        الرقم مع كل نداء استطلاع كل ثماني ثوان.
+        """
+        fresh = self.sudo().filtered(
+            lambda rec: rec.assigned_at and not rec.driver_seen_at)
+        if fresh:
+            fresh.write({'driver_seen_at': fields.Datetime.now()})
 
     @api.model
     def _day_start_utc_for_env(self):
@@ -902,6 +937,35 @@ class QuickDeliveryOrder(models.Model):
                 'body': rec._qd_sms_body(channel.message_template),
                 'kind': 'otp',
             })
+
+    def _stamp_assignment(self):
+        for rec in self:
+            rec.sudo().write({'assigned_at': fields.Datetime.now(),
+                              'driver_seen_at': False})
+
+    def _queue_driver_push(self):
+        """إشعار المندوب والتطبيق مغلق.
+
+        بلا تفاصيل عمداً - نفس قاعدة إشعار التطبيق: لا اسم عميل ولا
+        عنوان ولا مبلغ على شاشة مقفلة في جهاز قد يُسلَّم لمندوب آخر
+        غداً. الفرع وحده يكفي ليعرف إلى أين يتحرّك.
+        """
+        Push = self.env['quick.delivery.push'].sudo()
+        for rec in self:
+            if not rec.driver_id:
+                continue
+            if Push.search_count([('order_id', '=', rec.id),
+                                  ('driver_id', '=', rec.driver_id.id),
+                                  ('kind', '=', 'new_order')]):
+                continue
+            Push._enqueue(
+                rec.driver_id,
+                title=_('طلب توصيل جديد'),
+                body=_('%(store)s - افتح التطبيق للتفاصيل') % {
+                    'store': rec.store_name or rec.client_id.name or ''},
+                url='/driver',
+                order=rec,
+            )
 
     def _merchant_webhook_payload(self):
         self.ensure_one()

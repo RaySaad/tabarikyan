@@ -1,6 +1,6 @@
 {
     'name': 'Quick Commerce Delivery Pro (30-Min SLA + OTP + Wallet + Live Map)',
-    'version': '19.0.16.0.0',
+    'version': '19.0.17.0.0',
     'author': 'Tabarikyan',
     'category': 'Operations/Logistics',
     'summary': 'Full 30-Min Supermarket Delivery: Auto-Dispatch, OTP POD, Driver COD Wallet, Failure Reasons & Live Map',
@@ -24,7 +24,8 @@
     },
     # requests و pytz مثبّتتان مع أودو، لكن التصريح بهما يجعل العطل
     # واضحاً على بيئة مقلّصة بدل خطأ استيراد غامض وقت التحميل.
-    'external_dependencies': {'python': ['requests', 'pytz']},
+    'external_dependencies': {'python': ['requests', 'pytz',
+                                         'cryptography', 'jwt']},
     'installable': True,
     'application': True,
     'license': 'LGPL-3',

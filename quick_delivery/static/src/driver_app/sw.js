@@ -9,7 +9,7 @@
  */
 'use strict';
 
-var CACHE = 'qd-driver-v12';
+var CACHE = 'qd-driver-v13';
 var SHELL = [
     '/driver',
     '/quick_delivery/static/src/driver_app/app.css',
@@ -41,6 +41,33 @@ self.addEventListener('activate', function (event) {
     );
 });
 
+/* الدفع من الخادم: هذا ما يجعل الإشعار يصل **والتطبيق مغلق**.
+   الصفحة لا تعمل حينها، فالمتصفح يوقظ هذا العامل الخدمي وحده. */
+self.addEventListener('push', function (event) {
+    var data = {};
+    try {
+        data = event.data ? event.data.json() : {};
+    } catch (err) {
+        data = { body: event.data ? event.data.text() : '' };
+    }
+    var title = data.title || 'طلب توصيل';
+    var options = {
+        body: data.body || 'افتح التطبيق',
+        icon: '/quick_delivery/static/src/driver_app/icon-192.png',
+        badge: '/quick_delivery/static/src/driver_app/icon-192.png',
+        vibrate: [300, 120, 300, 120, 300],
+        tag: data.tag || 'qd-order',
+        renotify: true,
+        requireInteraction: true,
+        lang: 'ar',
+        dir: 'rtl',
+        data: { url: data.url || '/driver' }
+    };
+    // waitUntil إلزامي: بدونه قد يُنهي المتصفح العامل قبل أن يظهر
+    // الإشعار، فتُحسب الرسالة "صامتة" ويعاقب الموقع بحجب الدفع.
+    event.waitUntil(self.registration.showNotification(title, options));
+});
+
 /* ضغط الإشعار يفتح التطبيق - أو يعيد تنشيط نافذته إن كانت مفتوحة
    في الخلفية، بدل فتح ثانية فوقها. */
 self.addEventListener('notificationclick', function (event) {
@@ -55,7 +82,9 @@ self.addEventListener('notificationclick', function (event) {
                         return client.focus();
                     }
                 }
-                return self.clients.openWindow('/driver');
+                var target = (event.notification.data
+                              && event.notification.data.url) || '/driver';
+                return self.clients.openWindow(target);
             })
     );
 });
