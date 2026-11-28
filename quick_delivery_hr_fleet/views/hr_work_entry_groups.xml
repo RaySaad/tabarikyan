@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- تقييد زر "فتح إدخالات العمل" ليطابق صلاحية الحقل الذي يتحكّم به.
+
+         الزر (hr_work_entry) يظهر شرطاً بالحقل has_work_entries المقصور
+         على base.group_system/hr.group_hr_user. ومستخدم السداد البنكي
+         يملك قراءةً على hr.employee (bank_settlement/security/
+         ir.model.access.csv) بلا تلك المجموعتين - فيُحسب الزرُّ مرئياً
+         له والحقلُ محجوباً عنه، وهو ما يُطلق تحذير "عدم اتساق في
+         صلاحيات الوصول".
+
+         السجل نفسه موجود في recruitment_workflow منذ 4cd3396 ويعمل وقت
+         التشغيل. لكنه لا يُسعف هنا: أودو أثناء الترقية لا يضمّ إلى
+         الشجرة إلا عروض الموديولات المُحمَّلة فعلاً (ir_ui_view.py،
+         _filter_loaded_views)، وترتيب التحميل المقيس:
+
+             hr_work_entry           65/79   (الزر موجود)
+             quick_delivery_hr_fleet 70/79   (عرضنا يُفحص هنا)
+             recruitment_workflow    78/79   (المُصحِّح لم يصل بعد)
+
+         فأي عرضٍ منّا على نموذج الموظف يُجبر أودو على إعادة فحص النموذج
+         المُجمَّع في اللحظة ٧٠، والزرُّ حينها بلا تصحيح. ولذلك نحمل
+         نسخةً منه هنا: عروض الموديول الجاري تثبيته لا يستبعدها الفلتر.
+
+         النسختان تكتبان القيمة نفسها، فلا يهمّ أيُّهما طُبّقت أخيراً.
+
+         ويُحمَّل هذا الملف أولاً في المانيفست - قبل أي عرضٍ يمسّ بطاقة
+         الموظف - وإلا وقع الفحص قبل التصحيح داخل الموديول الواحد. -->
+    <record id="view_hr_employee_work_entries_groups_qd" model="ir.ui.view">
+        <field name="name">hr.employee.form.qd.work.entries.groups</field>
+        <field name="model">hr.employee</field>
+        <!-- الوراثة من عرض hr_work_entry مباشرةً لا من hr.view_employee_form:
+             ذاك العرض يحمل priority=90 (يُدمج متأخراً عمداً)، فالزر غير
+             موجود بعد في الشجرة وقت معالجة عرضٍ بأولوية افتراضية. -->
+        <field name="inherit_id" ref="hr_work_entry.hr_employee_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@id='open_work_entries']" position="attributes">
+                <attribute name="groups">base.group_system,hr.group_hr_user</attribute>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
