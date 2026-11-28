@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'التوصيل الفوري: ربط المندوبين بالموظفين والأسطول',
-    'version': '19.0.2.0.0',
+    'version': '19.0.2.0.1',
     'author': 'Tabarikyan',
     'category': 'Operations/Logistics',
     'summary': 'يربط مندوب التوصيل بملف الموظف وبمركبة الأسطول',

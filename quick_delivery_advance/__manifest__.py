@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'التوصيل الفوري: كشف حساب المندوب وطلب السلفة',
-    'version': '19.0.1.0.2',
+    'version': '19.0.1.0.3',
     'author': 'Tabarikyan',
     'category': 'Operations/Logistics',
     'summary': 'المندوب يرى كشف حسابه ويرفع طلب سلفة من تطبيقه',
