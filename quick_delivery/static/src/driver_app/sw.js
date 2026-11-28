@@ -9,7 +9,7 @@
  */
 'use strict';
 
-var CACHE = 'qd-driver-v13';
+var CACHE = 'qd-driver-v14';
 var SHELL = [
     '/driver',
     '/quick_delivery/static/src/driver_app/app.css',

@@ -180,6 +180,8 @@ def _order_payload(order):
         'payment_method': order.payment_method,
         'state': order.state,
         'remaining_seconds': remaining,
+        'accepted': bool(order.accepted_at),
+        'accept_seconds_left': order._accept_seconds_left(),
     }
 
 
@@ -476,7 +478,15 @@ class QuickCommerceController(http.Controller):
 
         try:
             # write() يحرّر المندوب السابق ويتحقّق من الانتقال.
-            order.write({'driver_id': driver.id, 'state': 'driver_assigned'})
+            # والإسناد اليدوي تجاوزٌ مقصود: يرفع علامة "يحتاج غرفة
+            # العمليات" ويعتبر الطلب مقبولاً - من أسنده إنسانٌ يعرف
+            # ما يفعل، فلا يُسحب منه بعد دقيقة.
+            order.write({
+                'driver_id': driver.id,
+                'state': 'driver_assigned',
+                'needs_attention': False,
+                'accepted_at': fields.Datetime.now(),
+            })
             driver.write({'driver_status': 'busy'})
         except (UserError, ValidationError) as error:
             return {'status': 'error',
@@ -688,6 +698,38 @@ class QuickCommerceController(http.Controller):
         return _json_response(self._driver_state(
             driver, data.get('lat'), data.get('lng'),
             data.get('set_status')))
+
+    @http.route('/api/v1/driver/order/<int:order_id>/accept',
+                type='http', auth='none', methods=['POST'], csrf=False,
+                save_session=False, readonly=False)
+    @api_endpoint
+    def driver_accept_order(self, order_id, **kwargs):
+        """تأكيد أخذ الطلب - يوقف عدّاد السحب."""
+        driver = _session_driver()
+        order = _order_of_driver(driver, order_id)
+        order._qd_accept(driver)
+        return _json_response(self._driver_state(driver))
+
+    @http.route('/api/v1/driver/order/<int:order_id>/decline',
+                type='http', auth='none', methods=['POST'], csrf=False,
+                save_session=False, readonly=False)
+    @api_endpoint
+    def driver_decline_order(self, order_id, **kwargs):
+        """ردّ الطلب صراحةً.
+
+        الرفض أصدق من الصمت: يُحرّر الطلب فوراً لمندوب آخر بدل
+        انتظار المهلة كاملةً.
+        """
+        driver = _session_driver()
+        order = _order_of_driver(driver, order_id)
+        data = _body_json()
+        order._qd_decline(driver, (data.get('reason') or '')[:200])
+        _logger.info('ردّ المندوب %s (id=%s) الطلب %s: %s',
+                     driver.name, driver.id, order.name,
+                     data.get('reason') or '(بلا سبب)')
+        # لا يُعاد البحث هنا: المجدول يلتقطه خلال دقيقة، وإعادة
+        # الإسناد داخل نداء المندوب قد تُعيده إليه إن كان الوحيد.
+        return _json_response(self._driver_state(driver))
 
     @http.route('/api/v1/driver/push/key', type='http', auth='none',
                 methods=['GET'], csrf=False, save_session=False,

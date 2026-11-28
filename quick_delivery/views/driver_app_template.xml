@@ -216,6 +216,20 @@
                             </label>
                         </div>
 
+                        <!-- القبول: يظهر وحده قبل أن يؤكّد المندوب
+                             أخذه الطلب. السكوت كان يعني "عنده" إلى
+                             الأبد؛ الآن له مهلة ثم يُسحب لغيره. -->
+                        <div id="acceptBox" class="qd-accept hidden">
+                            <div class="qd-accept__timer">
+                                يُسحب منك خلال
+                                <b id="acceptTimer">--</b>
+                            </div>
+                            <button id="acceptBtn" class="qd-btn qd-btn--primary"
+                                    type="button">قبلت الطلب</button>
+                            <button id="declineBtn" class="qd-btn qd-btn--danger-ghost"
+                                    type="button">لا أستطيع - ردّ الطلب</button>
+                        </div>
+
                         <button id="stepBtn" class="qd-btn qd-btn--step"
                                 type="button">تحديث الحالة</button>
 

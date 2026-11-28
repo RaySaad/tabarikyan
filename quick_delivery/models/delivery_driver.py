@@ -121,6 +121,10 @@ class QuickDeliveryDriver(models.Model):
     # ------------------------------------------------------------------
     # المحفظة والعهدة
     # ------------------------------------------------------------------
+    # مهلات متتالية بلا قبول. يُصفَّر عند أول قبول - من يستجيب اليوم
+    # لا يُحاسَب بأمس.
+    missed_assignments = fields.Integer(
+        string='مهلات بلا استجابة', readonly=True, copy=False)
     commission_per_order = fields.Float(
         string='عمولة المندوب للطلب (SAR)', default=8.0,
         groups='quick_delivery.group_qd_manager')

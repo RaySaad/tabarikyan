@@ -11,10 +11,13 @@
     var API_LOGOUT = '/api/v1/driver/logout';
     var API_STATE = '/api/v1/driver/state';
     var API_PUSH_KEY = '/api/v1/driver/push/key';
+    var API_ACCEPT = '/api/v1/driver/order/{id}/accept';
+    var API_DECLINE = '/api/v1/driver/order/{id}/decline';
     var API_PUSH_SUB = '/api/v1/driver/push/subscribe';
     var SESSION_KEY = 'qd_driver_session';
     var POLL_MS = 8000;
     var pushSyncing = false;
+    var acceptLeft = 0;
     var LATE_SECONDS = 600;
 
     var session = null;        // {token, name}
@@ -565,6 +568,16 @@
 
         renderTrack();
 
+        // قبل القبول: لا شيء إلا "قبلت" أو "لا أستطيع". إظهار بقية
+        // الأزرار يجعل المندوب يمضي بلا تأكيد، فيبقى العدّاد يسحب
+        // منه طلباً هو في طريقه إليه فعلاً.
+        var pending = (order.state === 'driver_assigned' && !order.accepted);
+        acceptLeft = pending ? (order.accept_seconds_left || 0) : 0;
+        $('acceptBox').classList.toggle('hidden', !pending);
+        $('stepBtn').classList.toggle('hidden', pending);
+        $('failToggle').classList.toggle('hidden', pending);
+        renderAcceptTimer();
+
         var step = $('stepBtn');
         var pod = $('podBox');
         if (order.state === 'driver_assigned') {
@@ -610,6 +623,58 @@
         $('slaLabel').textContent = remaining <= 0
             ? 'تجاوز الوقت المستهدف'
             : 'الوقت المتبقي للتسليم';
+        if (!force && acceptLeft > 0) {
+            acceptLeft -= 1;
+            renderAcceptTimer();
+        }
+    }
+
+    function renderAcceptTimer() {
+        var box = $('acceptBox');
+        if (!box || box.classList.contains('hidden')) { return; }
+        $('acceptTimer').textContent = acceptLeft > 0
+            ? acceptLeft + ' ثانية' : 'لحظات';
+        box.classList.toggle('is-urgent', acceptLeft <= 15);
+    }
+
+    // ==================================================================
+    // القبول والردّ
+    // ==================================================================
+    function acceptOrder() {
+        if (!order) { return; }
+        var button = $('acceptBtn');
+        button.disabled = true;
+        callApi(API_ACCEPT.replace('{id}', order.id), {})
+            .then(function (data) {
+                button.disabled = false;
+                stopAlertLoop();
+                applyState(data);
+                toast('تم - الطلب لك', 'success');
+            })
+            .catch(function (error) {
+                button.disabled = false;
+                handleApiError(error);
+            });
+    }
+
+    function declineOrder() {
+        if (!order) { return; }
+        // سببٌ اختياري: إلزامه بالكتابة وهو على الطريق يجعله يصمت
+        // بدل أن يردّ - والصمت هو ما نحاربه.
+        var reason = window.prompt('لماذا لا تستطيع؟ (اختياري)') || '';
+        var button = $('declineBtn');
+        button.disabled = true;
+        callApi(API_DECLINE.replace('{id}', order.id), { reason: reason })
+            .then(function (data) {
+                button.disabled = false;
+                stopAlertLoop();
+                applyState(data);
+                toast('رُدّ الطلب - سيُسنَد لمندوب آخر', 'success');
+            })
+            .catch(function (error) {
+                button.disabled = false;
+                handleApiError(error);
+            });
     }
 
     // ==================================================================
@@ -772,6 +837,8 @@
             endSession(true);
         });
         $('stepBtn').addEventListener('click', advance);
+        $('acceptBtn').addEventListener('click', acceptOrder);
+        $('declineBtn').addEventListener('click', declineOrder);
         $('failToggle').addEventListener('click', function () {
             $('failBox').classList.toggle('hidden');
         });

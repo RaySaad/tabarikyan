@@ -16,11 +16,18 @@
         <field name="name">quick.delivery.order.list</field>
         <field name="model">quick.delivery.order</field>
         <field name="arch" type="xml">
-            <list decoration-danger="state in ('searching_driver', 'failed')" decoration-success="state == 'delivered'">
+            <list decoration-danger="state in ('searching_driver', 'failed') or needs_attention" decoration-success="state == 'delivered'">
+                <field name="needs_attention" column_invisible="1"/>
                 <field name="name"/>
                 <field name="merchant_order_id"/>
                 <field name="client_id"/>
                 <field name="store_name"/>
+                <field name="assign_attempts" string="مرات الإسناد"
+                       optional="hide"/>
+                <field name="decline_count" string="تخلّى عنه"
+                       optional="hide"/>
+                <field name="notify_seconds" string="ثوانٍ حتى علم المندوب"
+                       optional="hide"/>
                 <field name="customer_name"/>
                 <field name="driver_id"/>
                 <field name="delivery_otp"/>
@@ -67,7 +74,20 @@
                     </group>
                     <group>
                         <group string="التنفيذ والمؤقت وإثبات التسليم">
+                            <div class="alert alert-danger" colspan="2"
+                                 role="alert" invisible="not needs_attention">
+                                <b>دار على عدة مندوبين بلا قبول.</b>
+                                التدوير التلقائي توقّف - أسنده يدوياً من
+                                غرفة العمليات، أو راجع سجلّ التخلّي أدناه.
+                            </div>
+                            <field name="needs_attention" invisible="1"/>
                             <field name="driver_id"/>
+                            <field name="accepted_at"
+                                   invisible="not driver_id"/>
+                            <field name="assign_attempts"
+                                   invisible="assign_attempts == 0"/>
+                            <field name="notify_seconds"
+                                   invisible="notify_seconds == 0"/>
                             <field name="delivery_otp"/>
                             <!-- يُعطى للعميل النهائي: يرى حالته ومندوبه
                                  ورمز تسليمه. الرمز في الرابط هو حارسه. -->
@@ -122,6 +142,11 @@
                                  'picked_up'])]"/>
                 <filter name="filter_unassigned" string="بلا مندوب"
                         domain="[('state', '=', 'searching_driver')]"/>
+                <filter name="filter_attention" string="يحتاج غرفة العمليات"
+                        domain="[('needs_attention', '=', True)]"/>
+                <filter name="filter_not_accepted" string="أُسند ولم يُقبل"
+                        domain="[('state', '=', 'driver_assigned'),
+                                 ('accepted_at', '=', False)]"/>
                 <filter name="filter_late" string="تجاوزت الوقت"
                         domain="[('sla_deadline', '&lt;',
                                   datetime.datetime.now()
@@ -819,6 +844,51 @@
         <field name="context">{'search_default_filter_not_sent': 1}</field>
     </record>
 
+    <!-- ============ التخلّي عن الطلبات ============ -->
+    <record id="view_quick_delivery_decline_list" model="ir.ui.view">
+        <field name="name">quick.delivery.decline.list</field>
+        <field name="model">quick.delivery.decline</field>
+        <field name="arch" type="xml">
+            <list string="التخلّي عن الطلبات" create="0" edit="0">
+                <field name="create_date" string="الوقت"/>
+                <field name="driver_id"/>
+                <field name="order_id"/>
+                <field name="client_id" optional="show"/>
+                <field name="kind" widget="badge"
+                       decoration-danger="kind == 'timeout'"
+                       decoration-warning="kind == 'declined'"/>
+                <field name="seconds_waited" string="ثوانٍ قبل السحب"/>
+                <field name="reason"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_quick_delivery_decline_search" model="ir.ui.view">
+        <field name="name">quick.delivery.decline.search</field>
+        <field name="model">quick.delivery.decline</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="driver_id"/>
+                <field name="order_id"/>
+                <filter name="filter_timeout" string="لم يستجب"
+                        domain="[('kind', '=', 'timeout')]"/>
+                <filter name="filter_declined" string="رفض صراحةً"
+                        domain="[('kind', '=', 'declined')]"/>
+                <filter name="group_driver" string="المندوب"
+                        context="{'group_by': 'driver_id'}"/>
+                <filter name="group_kind" string="النوع"
+                        context="{'group_by': 'kind'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_quick_delivery_declines" model="ir.actions.act_window">
+        <field name="name">التخلّي عن الطلبات</field>
+        <field name="res_model">quick.delivery.decline</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_group_driver': 1}</field>
+    </record>
+
     <!-- ============ إشعارات المندوبين (Web Push) ============ -->
     <record id="view_quick_delivery_push_list" model="ir.ui.view">
         <field name="name">quick.delivery.push.list</field>
@@ -966,6 +1036,8 @@
     <menuitem id="menu_quick_inbox" name="الوارد من التجّار" parent="menu_quick_delivery_root" action="action_quick_delivery_inbox" sequence="5"
               groups="quick_delivery.group_qd_dispatcher"/>
     <menuitem id="menu_quick_messages" name="رسائل العملاء" parent="menu_quick_delivery_root" action="action_quick_delivery_messages" sequence="6"
+              groups="quick_delivery.group_qd_dispatcher"/>
+    <menuitem id="menu_quick_declines" name="التخلّي عن الطلبات" parent="menu_quick_delivery_root" action="action_quick_delivery_declines" sequence="11"
               groups="quick_delivery.group_qd_dispatcher"/>
     <menuitem id="menu_quick_push" name="إشعارات المندوبين" parent="menu_quick_delivery_root" action="action_quick_delivery_push" sequence="9"
               groups="quick_delivery.group_qd_dispatcher"/>

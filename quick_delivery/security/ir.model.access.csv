@@ -15,3 +15,5 @@ access_quick_delivery_push_sub_dispatcher,quick.delivery.push.subscription.dispa
 access_quick_delivery_push_sub_manager,quick.delivery.push.subscription.manager,model_quick_delivery_push_subscription,quick_delivery.group_qd_manager,1,1,1,1
 access_quick_delivery_push_dispatcher,quick.delivery.push.dispatcher,model_quick_delivery_push,quick_delivery.group_qd_dispatcher,1,1,0,0
 access_quick_delivery_push_manager,quick.delivery.push.manager,model_quick_delivery_push,quick_delivery.group_qd_manager,1,1,1,1
+access_quick_delivery_decline_dispatcher,quick.delivery.decline.dispatcher,model_quick_delivery_decline,quick_delivery.group_qd_dispatcher,1,0,0,0
+access_quick_delivery_decline_manager,quick.delivery.decline.manager,model_quick_delivery_decline,quick_delivery.group_qd_manager,1,1,1,1

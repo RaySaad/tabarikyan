@@ -17,6 +17,14 @@ _logger = logging.getLogger(__name__)
 # نطاق البحث الافتراضي عن مندوب (كم). يُقرأ من إعدادات النظام
 # (quick_delivery.dispatch_radius_km) ليُعدَّل بلا تعديل كود.
 DEFAULT_DISPATCH_RADIUS_KM = 6.0
+# مهلة قبول المندوب للطلب. انقضاؤها يسحب الطلب منه ويعيده إلى البحث.
+DEFAULT_ACCEPT_TIMEOUT_SECONDS = 60
+# بعد ثلاثة مندوبين يتوقّف التدوير ويُرفع الطلب إلى غرفة العمليات -
+# بدل أن يدور بين الجميع حتى ينتهي وقته صامتاً.
+MAX_DISPATCH_ATTEMPTS = 3
+# مهلتان متتاليتان بلا استجابة: جواله مات أو انتهت ورديته، وإبقاؤه
+# "متاحاً" يجعله يبتلع الطلبات ويُسقطها.
+MAX_MISSED_BEFORE_OFFLINE = 2
 
 # حدّ محاولات رمز التسليم على الطلب الواحد. بعده لا يُغلق إلا بصورة.
 MAX_OTP_ATTEMPTS = 5
@@ -433,6 +441,17 @@ class QuickDeliveryOrder(models.Model):
                                   copy=False)
     driver_seen_at = fields.Datetime(string='علم به المندوب', readonly=True,
                                      copy=False)
+    accepted_at = fields.Datetime(string='وقت قبول المندوب', readonly=True,
+                                  copy=False)
+    assign_attempts = fields.Integer(string='مرات الإسناد', readonly=True,
+                                     copy=False)
+    needs_attention = fields.Boolean(
+        string='يحتاج غرفة العمليات', readonly=True, copy=False, index=True,
+        help='دار الطلب على الحدّ الأقصى من المندوبين بلا قبول.')
+    decline_ids = fields.One2many('quick.delivery.decline', 'order_id',
+                                  string='من تخلّى عنه')
+    decline_count = fields.Integer(string='مرات التخلّي',
+                                   compute='_compute_decline_count')
     notify_seconds = fields.Integer(
         string='ثوانٍ حتى علم المندوب', compute='_compute_notify_seconds',
         store=True, readonly=True,
@@ -591,6 +610,32 @@ class QuickDeliveryOrder(models.Model):
             else:
                 rec.notify_seconds = 0
 
+    @api.depends('decline_ids')
+    def _compute_decline_count(self):
+        for rec in self:
+            rec.decline_count = len(rec.decline_ids)
+
+    @api.model
+    def _accept_timeout_seconds(self):
+        value = self.env['ir.config_parameter'].sudo().get_param(
+            'quick_delivery.accept_timeout_seconds')
+        try:
+            seconds = int(value) if value else DEFAULT_ACCEPT_TIMEOUT_SECONDS
+        except (TypeError, ValueError):
+            _logger.warning('مهلة القبول غير صالحة: %r', value)
+            return DEFAULT_ACCEPT_TIMEOUT_SECONDS
+        # صفر = تعطيل المهلة عمداً، لمن يريد السلوك القديم.
+        return max(0, seconds)
+
+    def _accept_seconds_left(self):
+        """ما تبقّى للمندوب ليقبل - يعرضه تطبيقه عدّاداً."""
+        self.ensure_one()
+        timeout = self._accept_timeout_seconds()
+        if not timeout or self.accepted_at or not self.assigned_at:
+            return 0
+        spent = (fields.Datetime.now() - self.assigned_at).total_seconds()
+        return max(0, int(timeout - spent))
+
     def _mark_seen_by_driver(self):
         """أول ظهور للطلب على جوال المندوب - يُكتب مرة واحدة.
 
@@ -676,20 +721,29 @@ class QuickDeliveryOrder(models.Model):
             # متاح، فيصير الإسناد اليدوي بلا أثر.
             if rec.driver_id:
                 continue
+            # طلبٌ دار على الحدّ الأقصى يتوقّف هنا: الدوران بلا نهاية
+            # يُخفي المشكلة حتى ينتهي وقت الطلب صامتاً.
+            if rec.needs_attention:
+                continue
             # المؤرشف مستبعد تلقائياً من search: مندوبٌ أُوقف لا
             # يُسنَد له شيء دون أن نكتب شرطاً لذلك.
             Driver = self.env['quick.delivery.driver'].sudo()
+            # من تخلّى عن هذا الطلب لا يُرشَّح له ثانيةً - وإلا أعاده
+            # الترتيب إليه بعد ثوانٍ لأنه الأقرب، فيدور في محلّه.
+            refused = self.env['quick.delivery.decline'].sudo().search(
+                [('order_id', '=', rec.id)]).driver_id
             # المخصَّص لشركة أخرى يُستبعد هنا لا بعد الترتيب: وإلا رُشّح
             # أقربُ مندوب ثم رُفض، فظهر الطلب بلا مندوب وأقربُهم واقف.
             candidates = Driver.search([
                 ('driver_status', '=', 'online'),
                 ('current_lat', '!=', 0.0),
                 ('current_lng', '!=', 0.0),
+                ('id', 'not in', refused.ids),
                 '|', ('client_ids', '=', False),
                 ('client_ids', 'in', rec.client_id.id),
             ])
             if not candidates:
-                rec._qd_explain_no_driver(Driver, radius)
+                rec._qd_explain_no_driver(Driver, radius, refused=refused)
                 continue
             ranked = sorted(
                 ((self._haversine(rec.store_lat, rec.store_lng,
@@ -709,22 +763,138 @@ class QuickDeliveryOrder(models.Model):
                     continue
                 rec.write({'driver_id': driver.id,
                            'state': 'driver_assigned',
-                           'dispatch_note': False})
+                           'dispatch_note': False,
+                           'assign_attempts': rec.assign_attempts + 1})
                 driver.sudo().write({'driver_status': 'busy'})
                 assigned = True
                 break
             if not assigned:
                 # لا for/else هنا: الـbreak عند تجاوز النطاق كان
                 # يتخطّاه، فلا يُكتب أكثر الأسباب وقوعاً.
-                rec._qd_explain_no_driver(Driver, radius, ranked)
+                rec._qd_explain_no_driver(Driver, radius, ranked,
+                                          refused=refused)
 
-    def _qd_explain_no_driver(self, Driver, radius, ranked=None):
+    # ------------------------------------------------------------------
+    # القبول والتخلّي
+    # ------------------------------------------------------------------
+    def _qd_accept(self, driver):
+        """المندوب يؤكّد أنه أخذ الطلب - فيتوقّف عدّاد السحب."""
+        self.ensure_one()
+        if self.driver_id != driver:
+            raise UserError(_('هذا الطلب ليس لك.'))
+        if self.state != 'driver_assigned':
+            raise UserError(_('لا يُقبل طلب في هذه الحالة.'))
+        if self.accepted_at:
+            return self
+        self.sudo().write({'accepted_at': fields.Datetime.now()})
+        # القبول يمحو سجلّ التأخّر: من يستجيب اليوم لا يُحاسَب بأمس.
+        driver.sudo().write({'missed_assignments': 0})
+        _logger.info('قبل المندوب %s الطلب %s بعد %d ثانية.',
+                     driver.name, self.name,
+                     (fields.Datetime.now() - self.assigned_at).total_seconds()
+                     if self.assigned_at else 0)
+        return self
+
+    def _qd_release(self, kind, reason='', by_driver=None):
+        """يسحب الطلب من مندوبه ويعيده إلى البحث.
+
+        الرفض الصريح أصدق من الصمت: يُحرّر الطلب فوراً بدل انتظار
+        المهلة. وفي الحالتين يُسجَّل من تخلّى عنه حتى لا يُرشَّح له
+        ثانيةً.
+        """
+        self.ensure_one()
+        driver = by_driver or self.driver_id
+        if not driver or self.state != 'driver_assigned':
+            return False
+        waited = 0
+        if self.assigned_at:
+            waited = int((fields.Datetime.now()
+                          - self.assigned_at).total_seconds())
+        self.env['quick.delivery.decline']._record(
+            self, driver, kind, reason, waited)
+
+        values = {
+            'driver_id': False,
+            'state': 'searching_driver',
+            'accepted_at': False,
+            'assigned_at': False,
+            'driver_seen_at': False,
+        }
+        # بلغ الحدّ: يتوقّف التدوير ويُرفع إلى غرفة العمليات مُعلَّماً.
+        if self.assign_attempts >= MAX_DISPATCH_ATTEMPTS:
+            values['needs_attention'] = True
+            values['dispatch_note'] = _(
+                'دار على %(count)d مندوبين بلا قبول - يحتاج إسناداً '
+                'يدوياً.') % {'count': self.assign_attempts}
+        self.sudo().write(values)
+        driver.sudo()._qd_refresh_status()
+        _logger.warning('سُحب الطلب %s من %s (%s) بعد %d ثانية.',
+                        self.name, driver.name, kind, waited)
+        return True
+
+    def _qd_decline(self, driver, reason=''):
+        self.ensure_one()
+        if self.driver_id != driver:
+            raise UserError(_('هذا الطلب ليس لك.'))
+        if self.state != 'driver_assigned':
+            raise UserError(_('لا يمكن ردّ طلب بدأ تنفيذه - اتصل '
+                              'بغرفة العمليات.'))
+        return self._qd_release('declined', reason, by_driver=driver)
+
+    @api.model
+    def cron_reclaim_stalled_assignments(self):
+        """يسحب الطلبات من مندوبين لم يقبلوها خلال المهلة.
+
+        بلا هذا، طلبٌ أُسنِد لمندوبٍ نائم يبقى عنده إلى الأبد: مجدول
+        إعادة البحث يلتقط "جاري البحث" وحده، وهذا الطلب ليس فيها.
+        """
+        timeout = self._accept_timeout_seconds()
+        if not timeout:
+            return
+        cutoff = fields.Datetime.now() - timedelta(seconds=timeout)
+        stalled = self.search([
+            ('state', '=', 'driver_assigned'),
+            ('accepted_at', '=', False),
+            ('assigned_at', '!=', False),
+            ('assigned_at', '<=', cutoff),
+        ], limit=100)
+        for order in stalled:
+            driver = order.driver_id
+            if not order._qd_release('timeout',
+                                     _('لم يقبل خلال %d ثانية') % timeout):
+                continue
+            missed = driver.sudo().missed_assignments + 1
+            values = {'missed_assignments': missed}
+            if missed >= MAX_MISSED_BEFORE_OFFLINE:
+                # على الأرجح جواله مات أو انتهت ورديته. إبقاؤه "متاحاً"
+                # يجعله يبتلع الطلبات ويُسقطها واحداً بعد آخر.
+                values['driver_status'] = 'offline'
+                _logger.warning(
+                    'أُخرج المندوب %s من الخدمة: %d مهلة متتالية بلا '
+                    'استجابة.', driver.name, missed)
+            driver.sudo().write(values)
+        if stalled:
+            # الالتقاط فوراً لا بعد دقيقة: الطلب خسر دقيقةً بالفعل.
+            stalled.filtered(
+                lambda rec: rec.state == 'searching_driver'
+            ).auto_assign_nearest_driver()
+
+    def _qd_explain_no_driver(self, Driver, radius, ranked=None,
+                              refused=None):
         """يكتب على الطلب لماذا لم يجد مندوباً.
 
         السؤال "لماذا لم يُسنَد" يجب أن يجيبه النظام لا أن يبحث عنه
         المستخدم، ولكلّ سبب قرارٌ مختلف.
         """
         self.ensure_one()
+        # من تخلّى عنه مستبعَد، فقد يكون الباقي صفراً لهذا السبب وحده -
+        # وقراره مختلف تماماً عن "لا مندوب قريب".
+        if refused and not ranked:
+            note = _('تخلّى عنه %(names)s ولا مندوب آخر متاح.') % {
+                'names': '، '.join(refused.mapped('name'))}
+            if self.dispatch_note != note:
+                self.sudo().dispatch_note = note
+            return
         # مندوبون متاحون لكنهم مخصَّصون لشركات أخرى: سببٌ مختلف
         # تماماً، وقراره مختلف (ارفع التخصيص أو عيّن مندوباً للشركة).
         dedicated_elsewhere = Driver.search_count([

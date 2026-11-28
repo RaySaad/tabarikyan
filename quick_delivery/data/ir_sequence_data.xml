@@ -47,6 +47,25 @@
         <!-- إعادة محاولة إشعارات المندوبين. الدفع يُرسل فور الإسناد
              بعد تثبيت المعاملة؛ وهذا للمتعثّر: خدمة دفعٍ متوقفة، أو
              شبكة الخادم انقطعت تلك اللحظة. -->
+        <!-- سحب الطلبات من مندوبين لم يقبلوها خلال المهلة. بلا هذا
+             يبقى الطلب عند مندوب نائم إلى الأبد: مجدول إعادة البحث
+             يلتقط "جاري البحث" وحده، وهذا الطلب ليس فيها. -->
+        <record id="ir_cron_reclaim_stalled" model="ir.cron">
+            <field name="name">Quick Delivery: Reclaim Unaccepted Orders</field>
+            <field name="model_id" ref="model_quick_delivery_order"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_reclaim_stalled_assignments()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">minutes</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- مهلة القبول: دقيقة. صفر يُعطّلها. -->
+        <record id="config_accept_timeout" model="ir.config_parameter">
+            <field name="key">quick_delivery.accept_timeout_seconds</field>
+            <field name="value">60</field>
+        </record>
+
         <record id="ir_cron_flush_driver_push" model="ir.cron">
             <field name="name">Quick Delivery: Retry Driver Push</field>
             <field name="model_id" ref="model_quick_delivery_push"/>
