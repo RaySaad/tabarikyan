@@ -1,0 +1,139 @@
+/* شاشة "حسابي" - بنفس متغيّرات تطبيق المندوب وألوانه. */
+
+.qa-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    background: var(--page, #f1f5f9);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.qa-panel.hidden { display: none; }
+
+.qa-head {
+    background: var(--ink, #0f172a);
+    color: #fff;
+    padding: calc(14px + env(safe-area-inset-top, 0)) 16px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: none;
+}
+.qa-title { font-weight: 700; font-size: 1.05rem; }
+.qa-back {
+    background: rgba(255, 255, 255, .14);
+    border: 0; color: #fff; border-radius: 10px;
+    width: 40px; height: 40px; font-size: 1.1rem; cursor: pointer;
+}
+
+.qa-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 16px calc(28px + env(safe-area-inset-bottom, 0));
+    max-width: 560px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* ===================== الرصيد ===================== */
+.qa-balance {
+    border-radius: 16px;
+    padding: 20px 16px 14px;
+    text-align: center;
+    margin-bottom: 14px;
+    background: var(--card, #fff);
+    border: 1px solid var(--line, #e2e8f0);
+}
+.qa-balance--due { background: #fee2e2; border-color: #fecaca; color: #b91c1c; }
+.qa-balance--credit { background: #dcfce7; border-color: #bbf7d0; color: #15803d; }
+.qa-balance--none { color: #64748b; }
+.qa-balance__label { font-size: .85rem; font-weight: 600; }
+.qa-balance__value {
+    font-size: 2.2rem; font-weight: 800; line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+.qa-strip {
+    display: flex;
+    margin-top: 14px;
+    border-top: 1px solid rgba(15, 23, 42, .12);
+    padding-top: 10px;
+}
+.qa-strip__cell { flex: 1; text-align: center; font-size: .9rem; }
+.qa-strip__cell + .qa-strip__cell {
+    border-inline-start: 1px solid rgba(15, 23, 42, .12);
+}
+.qa-strip__label {
+    display: block; font-size: .7rem; opacity: .75; margin-bottom: 2px;
+}
+
+/* ===================== البطاقات ===================== */
+.qa-card {
+    background: var(--card, #fff);
+    border: 1px solid var(--line, #e2e8f0);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+}
+.qa-card__title {
+    font-size: .95rem; font-weight: 700; margin: 0 0 10px;
+    color: var(--ink, #0f172a);
+}
+.qa-empty, .qa-note {
+    color: #64748b; font-size: .88rem; margin: 0; line-height: 1.7;
+}
+.qa-note {
+    background: #fef3c7; color: #b45309; border-radius: 10px; padding: 10px 12px;
+}
+
+/* ===================== السطور ===================== */
+.qa-line {
+    display: flex; align-items: center; gap: 12px; padding: 10px 0;
+}
+.qa-line + .qa-line { border-top: 1px solid var(--line, #e2e8f0); }
+.qa-line__main { min-width: 0; flex: 1; }
+.qa-line__desc {
+    font-size: .92rem; font-weight: 600; color: var(--ink, #0f172a);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.qa-line__date { font-size: .75rem; color: #64748b; direction: ltr; }
+.qa-line__side { text-align: end; }
+.qa-line__amount {
+    font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.qa-line__amount.is-debit { color: #b91c1c; }
+.qa-line__amount.is-credit { color: #15803d; }
+
+.qa-badge {
+    display: inline-block; margin-top: 3px;
+    font-size: .7rem; font-weight: 700;
+    border-radius: 999px; padding: 2px 8px;
+    background: #e2e8f0; color: #475569;
+}
+.qa-badge.is-open { background: #dbeafe; color: #1d4ed8; }
+
+/* ===================== النموذج ===================== */
+.qa-field {
+    width: 100%; min-height: 48px;
+    border: 1px solid var(--line, #e2e8f0); border-radius: 10px;
+    padding: 10px 12px; font-family: inherit; font-size: 1rem;
+    background: #fff; margin-bottom: 10px;
+    -webkit-user-select: text; user-select: text;
+}
+.qa-field:focus { outline: 0; border-color: #1d4ed8; }
+
+.qa-submit {
+    width: 100%; min-height: 52px; border: 0; border-radius: 12px;
+    background: var(--green, #15803d); color: #fff;
+    font-family: inherit; font-size: 1.02rem; font-weight: 700;
+    cursor: pointer;
+}
+.qa-submit[disabled] { opacity: .6; }
+
+.qa-error {
+    background: #fee2e2; color: #b91c1c;
+    border-radius: 10px; padding: 10px 12px; margin: 0 0 10px;
+    font-size: .9rem; font-weight: 600; line-height: 1.6;
+}
+.qa-error.hidden { display: none; }

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- سلف المندوب في بطاقته -->
+    <record id="view_qd_driver_form_advance" model="ir.ui.view">
+        <field name="name">quick.delivery.driver.form.advance</field>
+        <field name="model">quick.delivery.driver</field>
+        <field name="inherit_id"
+               ref="quick_delivery.view_quick_delivery_driver_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[last()]" position="after">
+                <page string="السلف" invisible="not employee_id">
+                    <field name="open_advance_count" invisible="1"/>
+                    <field name="advance_ids" readonly="1">
+                        <list decoration-muted="state == 'paid'"
+                              decoration-danger="state == 'rejected'">
+                            <field name="name"/>
+                            <field name="create_date" string="تاريخ الطلب"/>
+                            <field name="advance_reason_id"/>
+                            <field name="amount" sum="الإجمالي"/>
+                            <field name="state" widget="badge"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- واجهة "حسابي" داخل تطبيق المندوب.
+
+         تُضاف بوراثة القالب لا بتعديل الأساس: التوصيل الفوري لا يعرف
+         السداد البنكي، وإزالة هذا الموديول تُعيد التطبيق كما كان. -->
+    <template id="driver_app_account"
+              inherit_id="quick_delivery.driver_app_template"
+              name="Driver App - Account Tab">
+        <xpath expr="//body/script" position="before">
+            <link rel="stylesheet"
+                  href="/quick_delivery_advance/static/src/account.css?v=1.0.0"/>
+        </xpath>
+        <xpath expr="//body/script" position="after">
+            <script type="text/javascript"
+                    src="/quick_delivery_advance/static/src/account.js?v=1.0.0"></script>
+        </xpath>
+    </template>
+</odoo>
